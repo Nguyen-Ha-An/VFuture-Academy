@@ -1,0 +1,104 @@
+{
+  "id": "cau-7",
+  "type": "matching",
+  "points": 2,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Nối mỗi phân số với phân số bằng nó."
+          }
+        ]
+      }
+    ]
+  },
+  "left": [
+    {
+      "id": "trai-1",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "1/2"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "trai-2",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "2/3"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "right": [
+    {
+      "id": "phai-1",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "4/6"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "phai-2",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "3/6"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "correctAnswer": [
+    {
+      "left": "trai-1",
+      "right": "phai-2"
+    },
+    {
+      "left": "trai-2",
+      "right": "phai-1"
+    }
+  ],
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "1/2 = 3/6 và 2/3 = 4/6 khi nhân cả tử và mẫu với cùng một số."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "vi": {
+    "core": {
+      "toggleSidebar": "Thu gọn hoặc mở rộng thanh bên",
+      "mobileDescription": "Điều hướng không gian làm việc, phạm vi và tài khoản"
+    }
+  },
+  "en": {
+    "core": {
+      "toggleSidebar": "Toggle sidebar",
+      "mobileDescription": "Workspace navigation, scope and account"
+    }
+  }
+}

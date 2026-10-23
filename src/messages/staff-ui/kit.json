@@ -1,0 +1,166 @@
+{
+  "vi": {
+    "toolbar": {
+      "search": "Tìm kiếm",
+      "searchPlaceholder": "Tìm kiếm…",
+      "clearFilters": "Xóa bộ lọc",
+      "all": "Tất cả",
+      "label": "Công cụ lọc"
+    },
+    "view": {
+      "label": "Chế độ xem",
+      "list": "Danh sách",
+      "grid": "Lưới"
+    },
+    "pagination": {
+      "label": "Phân trang",
+      "previous": "Trước",
+      "next": "Tiếp",
+      "page": "Trang {page}",
+      "goToPage": "Đến trang {page}",
+      "showing": "Hiển thị {from}–{to} trên {total}",
+      "noResults": "Không có kết quả",
+      "rowsPerPage": "Số dòng mỗi trang",
+      "loadMore": "Tải thêm",
+      "loading": "Đang tải…"
+    },
+    "rowActions": {
+      "label": "Thao tác"
+    },
+    "status": {
+      "review": {
+        "pending": "Chờ duyệt",
+        "changes_requested": "Cần chỉnh sửa",
+        "approved": "Đã duyệt",
+        "stale": "Cần gửi duyệt lại",
+        "withdrawn": "Đã rút",
+        "published": "Đã xuất bản"
+      },
+      "content": {
+        "draft": "Bản nháp",
+        "published": "Đã xuất bản",
+        "archived": "Đã lưu trữ"
+      },
+      "project": {
+        "idea": "Ý tưởng",
+        "forming": "Đang lập nhóm",
+        "active": "Đang thực hiện",
+        "completed": "Đã hoàn thành",
+        "showcased": "Đang giới thiệu",
+        "published": "Đã xuất bản"
+      },
+      "submission": {
+        "submitted": "Đã nộp",
+        "in_review": "Đang chấm",
+        "approved": "Đã duyệt",
+        "changes_requested": "Cần chỉnh sửa"
+      },
+      "examAttempt": {
+        "in_progress": "Đang làm",
+        "submitted": "Đã nộp",
+        "submitted_late": "Nộp muộn",
+        "graded": "Đã chấm",
+        "pending_manual": "Chờ chấm tay",
+        "expired": "Hết hạn"
+      },
+      "enrollment": {
+        "active": "Đang học",
+        "completed": "Đã hoàn thành",
+        "dropped": "Đã dừng"
+      },
+      "invitation": {
+        "pending": "Đang chờ",
+        "accepted": "Đã chấp nhận",
+        "revoked": "Đã thu hồi",
+        "expired": "Hết hạn"
+      },
+      "member": {
+        "active": "Hoạt động",
+        "suspended": "Tạm ngưng",
+        "invited": "Đã mời"
+      }
+    }
+  },
+  "en": {
+    "toolbar": {
+      "search": "Search",
+      "searchPlaceholder": "Search…",
+      "clearFilters": "Clear filters",
+      "all": "All",
+      "label": "Filters"
+    },
+    "view": {
+      "label": "View",
+      "list": "List",
+      "grid": "Grid"
+    },
+    "pagination": {
+      "label": "Pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page}",
+      "goToPage": "Go to page {page}",
+      "showing": "Showing {from}–{to} of {total}",
+      "noResults": "No results",
+      "rowsPerPage": "Rows per page",
+      "loadMore": "Load more",
+      "loading": "Loading…"
+    },
+    "rowActions": {
+      "label": "Actions"
+    },
+    "status": {
+      "review": {
+        "pending": "Pending review",
+        "changes_requested": "Changes requested",
+        "approved": "Approved",
+        "stale": "Resubmit for review",
+        "withdrawn": "Withdrawn",
+        "published": "Published"
+      },
+      "content": {
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "project": {
+        "idea": "Idea",
+        "forming": "Forming",
+        "active": "Active",
+        "completed": "Completed",
+        "showcased": "Showcased",
+        "published": "Published"
+      },
+      "submission": {
+        "submitted": "Submitted",
+        "in_review": "In review",
+        "approved": "Approved",
+        "changes_requested": "Changes requested"
+      },
+      "examAttempt": {
+        "in_progress": "In progress",
+        "submitted": "Submitted",
+        "submitted_late": "Submitted late",
+        "graded": "Graded",
+        "pending_manual": "Pending manual grading",
+        "expired": "Expired"
+      },
+      "enrollment": {
+        "active": "Active",
+        "completed": "Completed",
+        "dropped": "Dropped"
+      },
+      "invitation": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "revoked": "Revoked",
+        "expired": "Expired"
+      },
+      "member": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "invited": "Invited"
+      }
+    }
+  }
+}

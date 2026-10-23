@@ -1,0 +1,100 @@
+{
+  "vi": {
+    "mcp": {
+      "title": "Thêm MCP",
+      "description": "Kết nối ứng dụng AI để đọc nội dung khóa học trong Studio và kiểm tra bản chỉnh sửa đề xuất.",
+      "availability": {
+        "label": "Trạng thái kết nối MCP",
+        "enabled": "Đã bật điểm kết nối",
+        "enabledDescription": "Bạn có thể bắt đầu thiết lập. Việc đăng nhập còn phụ thuộc vào cấu hình OAuth của quản trị viên.",
+        "disabled": "Chưa khả dụng",
+        "disabledDescription": "Hiện chưa thể kết nối. Quản trị viên cần bật Studio MCP trước.",
+        "restricted": "Chưa khả dụng",
+        "restrictedDescription": "Studio MCP chưa khả dụng cho tài khoản này.",
+        "unavailable": "Không khả dụng",
+        "unavailableDescription": "Chưa có địa chỉ máy chủ MCP hợp lệ. Hãy liên hệ quản trị viên."
+      },
+      "server": {
+        "title": "Địa chỉ máy chủ",
+        "description": "Dùng chính xác địa chỉ này cho máy chủ MCP từ xa. Không nhập địa chỉ máy chủ xác thực.",
+        "urlLabel": "Địa chỉ máy chủ MCP",
+        "copy": "Sao chép địa chỉ máy chủ",
+        "copyShort": "Sao chép",
+        "copied": "Đã sao chép",
+        "copyFailed": "Không thể sao chép. Hãy chọn và sao chép địa chỉ ở trên."
+      },
+      "connect": {
+        "title": "Kết nối ứng dụng được hỗ trợ",
+        "description": "Thêm điểm kết nối MCP từ xa bằng địa chỉ ở trên, rồi đăng nhập bằng tài khoản Studio khi được yêu cầu.",
+        "claude": "Claude.ai / Desktop",
+        "claudeStep": "Mở Connectors, thêm custom connector từ xa và dán địa chỉ máy chủ.",
+        "claudeCode": "Claude Code",
+        "claudeCodeStep": "Chạy lệnh sau, rồi mở /mcp để đăng nhập và kiểm tra kết nối.",
+        "claudeCodeCommand": "Lệnh kết nối Claude Code",
+        "chatgpt": "ChatGPT",
+        "chatgptStep": "Nếu không gian làm việc hỗ trợ MCP apps, tạo app bằng địa chỉ này, chọn OAuth rồi quét các công cụ."
+      },
+      "before": {
+        "title": "Trước khi cấp quyền",
+        "signIn": "Chỉ tiếp tục khi trang đăng nhập Studio và máy chủ nhận chuyển hướng được hiển thị đúng như bạn mong đợi.",
+        "content": "Các công cụ có thể gửi nội dung khóa học, gồm đáp án mà tài khoản bạn được xem, đến ứng dụng AI.",
+        "token": "Mã đăng nhập OAuth cũng có thể truy cập các API khác của dự án theo quyền tài khoản của bạn. Chỉ kết nối ứng dụng AI mà bạn tin cậy.",
+        "workflow": "MCP đọc và kiểm tra bản chỉnh sửa đề xuất. Bạn vẫn phải tự nhập và lưu thay đổi trong Studio."
+      },
+      "manage": {
+        "title": "Quản lý kết nối",
+        "description": "Xem và gỡ quyền đã cấp cho ứng dụng từ trang tài khoản, kể cả khi Studio MCP hiện chưa khả dụng.",
+        "link": "Xem ứng dụng đã kết nối"
+      }
+    }
+  },
+  "en": {
+    "mcp": {
+      "title": "Add MCP",
+      "description": "Connect an AI client to read Studio course content and check proposed edits.",
+      "availability": {
+        "label": "MCP connection status",
+        "enabled": "Endpoint enabled",
+        "enabledDescription": "You can start setup. Sign-in also depends on your administrator's OAuth configuration.",
+        "disabled": "Not available yet",
+        "disabledDescription": "Connections are currently unavailable. An administrator must enable Studio MCP first.",
+        "restricted": "Not available",
+        "restrictedDescription": "Studio MCP is not available for this account.",
+        "unavailable": "Unavailable",
+        "unavailableDescription": "No valid MCP server URL is configured. Contact an administrator."
+      },
+      "server": {
+        "title": "Server URL",
+        "description": "Use this exact URL for a remote MCP server. Do not enter the authorization server URL.",
+        "urlLabel": "MCP server URL",
+        "copy": "Copy server URL",
+        "copyShort": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Could not copy. Select and copy the URL above."
+      },
+      "connect": {
+        "title": "Connect a supported client",
+        "description": "Add a remote MCP connection with the URL above, then sign in with your Studio account when prompted.",
+        "claude": "Claude.ai / Desktop",
+        "claudeStep": "Open Connectors, add a custom remote connector, and paste the server URL.",
+        "claudeCode": "Claude Code",
+        "claudeCodeStep": "Run this command, then open /mcp to sign in and check the connection.",
+        "claudeCodeCommand": "Claude Code command",
+        "chatgpt": "ChatGPT",
+        "chatgptStep": "If your workspace supports MCP apps, create an app with this URL, choose OAuth, then scan its tools."
+      },
+      "before": {
+        "title": "Before you approve access",
+        "signIn": "Continue only when the Studio sign-in page and displayed callback host match what you expect.",
+        "content": "Tool calls can send course content, including answer keys your account may read, to the AI client.",
+        "token": "The OAuth sign-in token may also access other project APIs under your account's permissions. Connect only a client you trust.",
+        "workflow": "MCP reads and validates proposed edits. You still paste and save changes in Studio yourself."
+      },
+      "manage": {
+        "title": "Manage connections",
+        "description": "Review and remove app authorizations from your account, even when Studio MCP is unavailable.",
+        "link": "View connected apps"
+      }
+    }
+  }
+}

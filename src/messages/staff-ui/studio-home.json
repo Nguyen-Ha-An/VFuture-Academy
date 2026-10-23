@@ -1,0 +1,264 @@
+{
+  "vi": {
+    "home": {
+      "eyebrow": "Studio",
+      "title": "Không gian nội dung",
+      "description": "Soạn, duyệt và phát hành nội dung học tập trong phạm vi được cấp quyền.",
+      "central": "Trung tâm",
+      "unknownPerson": "Người dùng không xác định",
+      "primary": {
+        "reviews": "Mở hàng đợi duyệt",
+        "library": "Mở thư viện nội dung",
+        "courses": "Mở khóa học"
+      },
+      "kpi": {
+        "label": "Chỉ số nội dung",
+        "waiting": "Đang chờ duyệt",
+        "waitingHint": "Yêu cầu duyệt đang mở",
+        "waitingItemsHint": "Mục nội dung đang được duyệt",
+        "changesRequested": "Cần chỉnh sửa",
+        "drafts": "Bản nháp",
+        "published": "Đã xuất bản",
+        "snapshotHint": "Số mục hiện tại"
+      },
+      "stages": {
+        "draft": "Bản nháp",
+        "in_review": "Đang duyệt",
+        "changes_requested": "Cần chỉnh sửa",
+        "approved": "Đã duyệt",
+        "published": "Đã xuất bản",
+        "archived": "Đã lưu trữ"
+      },
+      "pipeline": {
+        "title": "Vòng đời nội dung",
+        "description": "Mỗi mục nội dung nằm ở đúng một giai đoạn."
+      },
+      "chart": {
+        "title": "Nội dung theo loại",
+        "description": "Số mục hiện tại theo từng giai đoạn.",
+        "category": "Loại nội dung",
+        "summary": "{total, plural, other {# mục nội dung}} thuộc {types, plural, other {# loại}}.",
+        "reviewFlow": "Trong quy trình duyệt"
+      },
+      "activity": {
+        "title": "Hoạt động nội dung gần đây",
+        "updated": "đã cập nhật",
+        "submitted": "đã gửi duyệt",
+        "empty": "Chưa có hoạt động nội dung nào.",
+        "unavailable": "Không thể tải hoạt động nội dung."
+      },
+      "columns": {
+        "content": "Nội dung",
+        "type": "Loại",
+        "owner": "Quản lý bởi",
+        "status": "Trạng thái",
+        "updated": "Cập nhật",
+        "submitted": "Gửi duyệt"
+      },
+      "waiting": {
+        "title": "Đang chờ duyệt",
+        "description": "Yêu cầu chờ lâu nhất hiển thị trước.",
+        "empty": "Không có yêu cầu nào đang chờ duyệt.",
+        "unavailable": "Không thể tải hàng đợi duyệt.",
+        "footer": "Mở hàng đợi duyệt",
+        "by": "bởi {name}"
+      },
+      "recent": {
+        "title": "Nội dung gần đây",
+        "description": "Mục cập nhật gần nhất hiển thị trước.",
+        "empty": "Chưa có nội dung nào trong phạm vi này.",
+        "unavailable": "Không thể tải nội dung gần đây.",
+        "footer": "Mở thư viện nội dung"
+      },
+      "shortcuts": {
+        "title": "Lối tắt",
+        "courses": {
+          "title": "Khoá học",
+          "description": "Tiếp tục soạn nội dung và kiểm tra bản xem trước."
+        },
+        "library": {
+          "title": "Thư viện nội dung",
+          "description": "Tìm tài nguyên, dự án, cơ hội và tệp nội dung."
+        },
+        "questionBank": {
+          "title": "Ngân hàng câu hỏi",
+          "description": "Soạn và quản lý các phiên bản câu hỏi."
+        },
+        "reviews": {
+          "title": "Duyệt nội dung",
+          "description": "Theo dõi bản gửi duyệt và quyết định xuất bản."
+        }
+      }
+    },
+    "library": {
+      "listTitle": "Tất cả nội dung",
+      "searchPlaceholder": "Tìm theo tiêu đề hoặc mã",
+      "reviewWorkflow": "Xem quy trình duyệt",
+      "workflowDescription": "Trạng thái duyệt và xuất bản của {title}.",
+      "rowActions": "Thao tác cho {title}",
+      "assetState": "Đã tải lên",
+      "focused": "Đang hiển thị một mục: {id}.",
+      "showAll": "Hiện tất cả nội dung",
+      "createMenu": "Tạo nội dung",
+      "openEditor": "Mở trình chỉnh sửa",
+      "stats": {
+        "label": "Tổng quan nội dung",
+        "total": "Tổng nội dung"
+      }
+    },
+    "reviews": {
+      "listTitle": "Yêu cầu duyệt",
+      "search": "Tìm nội dung",
+      "type": "Loại nội dung",
+      "submittedBy": "Gửi bởi {name}",
+      "viewing": "Đang xem",
+      "selectTitle": "Chọn một yêu cầu duyệt",
+      "selectDescription": "Bản gửi duyệt sẽ mở ở đây để bạn đọc và so sánh trước khi quyết định.",
+      "history": {
+        "title": "Lịch sử duyệt",
+        "submitted": "Gửi duyệt một phiên bản",
+        "empty": "Chưa có yêu cầu duyệt nào cho nội dung này."
+      },
+      "approveAndPublish": "Duyệt và xuất bản",
+      "completePublication": "Hoàn tất xuất bản",
+      "reviewNote": "Ghi chú duyệt (bắt buộc)",
+      "reviewNoteRequired": "Cần có ghi chú duyệt.",
+      "dependenciesTab": "Tài nguyên & tích hợp",
+      "historyTab": "Lịch sử",
+      "detailsLabel": "Chi tiết duyệt",
+      "snapshot": "Bản chụp để duyệt",
+      "readOnlyPreview": "Bản xem trước chỉ đọc và không tạo lượt làm bài hoặc phiên notebook."
+    }
+  },
+  "en": {
+    "home": {
+      "eyebrow": "Studio",
+      "title": "Content workspace",
+      "description": "Author, review, and publish learning content within your authorized scope.",
+      "central": "Central",
+      "unknownPerson": "Unknown user",
+      "primary": {
+        "reviews": "Open review queue",
+        "library": "Open content library",
+        "courses": "Open courses"
+      },
+      "kpi": {
+        "label": "Content metrics",
+        "waiting": "Waiting for review",
+        "waitingHint": "Open review requests",
+        "waitingItemsHint": "Content items in review",
+        "changesRequested": "Changes requested",
+        "drafts": "Drafts",
+        "published": "Published",
+        "snapshotHint": "Items right now"
+      },
+      "stages": {
+        "draft": "Draft",
+        "in_review": "In review",
+        "changes_requested": "Changes requested",
+        "approved": "Approved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "pipeline": {
+        "title": "Content lifecycle",
+        "description": "Each content item sits in exactly one stage."
+      },
+      "chart": {
+        "title": "Content by type",
+        "description": "Current items in each stage.",
+        "category": "Content type",
+        "summary": "{total, plural, one {# content item} other {# content items}} across {types, plural, one {# type} other {# types}}.",
+        "reviewFlow": "In the review flow"
+      },
+      "activity": {
+        "title": "Recent content activity",
+        "updated": "updated",
+        "submitted": "submitted for review",
+        "empty": "No content activity yet.",
+        "unavailable": "Content activity is temporarily unavailable."
+      },
+      "columns": {
+        "content": "Content",
+        "type": "Type",
+        "owner": "Managed by",
+        "status": "Status",
+        "updated": "Updated",
+        "submitted": "Submitted"
+      },
+      "waiting": {
+        "title": "Waiting for review",
+        "description": "Longest-waiting requests first.",
+        "empty": "Nothing is waiting for review.",
+        "unavailable": "The review queue is temporarily unavailable.",
+        "footer": "Open review queue",
+        "by": "by {name}"
+      },
+      "recent": {
+        "title": "Recent content",
+        "description": "Most recently updated first.",
+        "empty": "No content in this scope yet.",
+        "unavailable": "Recent content is temporarily unavailable.",
+        "footer": "Open content library"
+      },
+      "shortcuts": {
+        "title": "Shortcuts",
+        "courses": {
+          "title": "Courses",
+          "description": "Continue authoring and check the learner preview."
+        },
+        "library": {
+          "title": "Content library",
+          "description": "Find resources, projects, opportunities, and media."
+        },
+        "questionBank": {
+          "title": "Question bank",
+          "description": "Author and manage question versions."
+        },
+        "reviews": {
+          "title": "Content review",
+          "description": "Track submitted revisions and publication decisions."
+        }
+      }
+    },
+    "library": {
+      "listTitle": "All content",
+      "searchPlaceholder": "Search by title or ID",
+      "reviewWorkflow": "Review workflow",
+      "workflowDescription": "Review and publication state of {title}.",
+      "rowActions": "Actions for {title}",
+      "assetState": "Uploaded",
+      "focused": "Showing one item: {id}.",
+      "showAll": "Show all content",
+      "createMenu": "Create content",
+      "openEditor": "Open editor",
+      "stats": {
+        "label": "Content overview",
+        "total": "All content"
+      }
+    },
+    "reviews": {
+      "listTitle": "Review requests",
+      "search": "Find content",
+      "type": "Content type",
+      "submittedBy": "Submitted by {name}",
+      "viewing": "Viewing",
+      "selectTitle": "Select a review request",
+      "selectDescription": "The submitted version opens here so you can read and compare it before deciding.",
+      "history": {
+        "title": "Review history",
+        "submitted": "Revision submitted for review",
+        "empty": "No review requests for this content yet."
+      },
+      "approveAndPublish": "Approve and publish",
+      "completePublication": "Complete publication",
+      "reviewNote": "Review note (required)",
+      "reviewNoteRequired": "A review note is required.",
+      "dependenciesTab": "Resources & integrations",
+      "historyTab": "History",
+      "detailsLabel": "Review details",
+      "snapshot": "Review snapshot",
+      "readOnlyPreview": "This read-only preview never creates learner attempts or notebook sessions."
+    }
+  }
+}

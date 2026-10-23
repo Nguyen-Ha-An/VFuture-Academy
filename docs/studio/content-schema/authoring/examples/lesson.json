@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "lesson",
+  "id": "earth-orbit-lesson",
+  "title": "Earth and the Sun",
+  "blocks": [
+    {
+      "id": "orbit-check",
+      "type": "quiz",
+      "title": "Quick check",
+      "settings": {
+        "mode": "practice"
+      },
+      "questions": [
+        {
+          "id": "earth-orbits-sun",
+          "type": "true_false",
+          "points": 1,
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Earth orbits the Sun."
+                  }
+                ]
+              }
+            ]
+          },
+          "correctAnswer": true,
+          "explanation": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Earth completes an orbit around the Sun."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

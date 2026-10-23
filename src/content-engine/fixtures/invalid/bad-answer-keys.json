@@ -1,0 +1,20 @@
+{
+  "manifest": { "schemaVersion": 1, "kind": "course", "id": "bad-answer-keys", "title": "Bad answer keys", "summary": "Every way an answer key can be wrong.", "languages": ["en"], "defaultLanguage": "en", "level": "foundation", "difficulty": "beginner", "pathway": "core-future-skills", "learningOutcomes": ["Trip every answer key check."], "access": { "scope": "global" }, "skills": [{ "id": "qa", "name": "QA" }], "modules": [{ "id": "m1", "title": "Module", "items": [{ "type": "lesson", "id": "keys" }, { "type": "lesson", "id": "structural" }] }] },
+  "items": {
+    "keys": { "schemaVersion": 1, "kind": "lesson", "id": "keys", "title": "Semantic key errors", "objectives": ["Fail semantically, not structurally."], "blocks": [
+      { "id": "quiz-keys", "type": "quiz", "questions": [
+        { "id": "q1", "type": "single_choice", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Which option is correct?" }] }] }, "options": [{ "id": "a", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "A" }] }] } }, { "id": "b", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "B" }] }] } }], "correctAnswer": "z", "explanation": { "blocks": [{ "type": "paragraph", "content": [{ "text": "There is no option z." }] }] } },
+        { "id": "q2", "type": "fill_blank", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "The capital is " }, { "blank": "bx" }, { "text": "." }] }] }, "blanks": [{ "id": "b1" }], "correctAnswer": { "bx": ["Hanoi"] }, "explanation": { "blocks": [{ "type": "paragraph", "content": [{ "text": "The content uses a blank that was never declared." }] }] } },
+        { "id": "q3", "type": "ordering", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Order the steps." }] }] }, "items": [{ "id": "a", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "First" }] }] } }, { "id": "b", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Second" }] }] } }], "correctAnswer": ["a", "a"], "explanation": { "blocks": [{ "type": "paragraph", "content": [{ "text": "That is not a permutation." }] }] } },
+        { "id": "q4", "type": "essay", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Discuss." }] }] }, "rubric": { "criteria": [{ "id": "ideas", "name": "Ideas", "maxPoints": 4 }] } }
+      ] }
+    ] },
+    "structural": { "schemaVersion": 1, "kind": "lesson", "id": "structural", "title": "Structural key error", "objectives": ["Fail structurally."], "blocks": [
+      { "id": "quiz-structural", "type": "quiz", "questions": [
+        { "id": "q1", "type": "multiple_choice", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Select all that apply." }] }] }, "options": [{ "id": "a", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "A" }] }] } }, { "id": "b", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "B" }] }] } }], "correctAnswer": "a", "explanation": { "blocks": [{ "type": "paragraph", "content": [{ "text": "The key must be an array." }] }] } },
+        { "id": "q2", "type": "essay", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Discuss." }] }] }, "correctAnswer": "manually graded questions have no answer key", "rubric": { "criteria": [{ "id": "ideas", "name": "Ideas", "maxPoints": 4 }] } }
+      ] }
+    ] }
+  },
+  "expect": ["E_ANSWER_REF_UNKNOWN", "E_SCHEMA", "E_BLANK_UNDECLARED", "E_ORDERING_NOT_PERMUTATION"]
+}

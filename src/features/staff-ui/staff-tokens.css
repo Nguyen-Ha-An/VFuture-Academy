@@ -1,0 +1,133 @@
+/*
+ * Staff tokens (DESIGN.md staff spec: Catmin monochrome, stock shadcn zinc). Scoped to
+ * documents that render a `.vf-staff` shell via :root:has(), like workspace-ui/workspace.css,
+ * so Radix portals inherit them. Light is the default; dark follows the OS unless the shell's
+ * `data-theme` (from the `vf-theme` cookie) says otherwise. Imported by the staff shell only.
+ *
+ * Deviations from stock zinc, each held to WCAG AA by tests/features/staff-ui/tokens.test.ts:
+ * light --muted-foreground 43% (stock 46.1% is 4.39:1 on --muted), --destructive light
+ * 0 72.2% 50.6% and dark 0 91% 71% on a zinc-950 foreground, a darker light
+ * --destructive-soft-foreground for red text on the 10% red tint, zinc (not blue) sidebar
+ * primary/ring, grayscale charts in both themes. The complete list (sidebar border/ring, dark
+ * destructive and sidebar-primary foregrounds, status triples, --brand) is the deviations table
+ * in DESIGN.md → Staff workspaces.
+ */
+:root:has(.vf-staff) {
+  --background: hsl(0 0% 100%); --foreground: hsl(240 10% 3.9%);
+  --card: hsl(0 0% 100%); --card-foreground: hsl(240 10% 3.9%);
+  --popover: hsl(0 0% 100%); --popover-foreground: hsl(240 10% 3.9%);
+  --primary: hsl(240 5.9% 10%); --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(240 4.8% 95.9%); --secondary-foreground: hsl(240 5.9% 10%);
+  --muted: hsl(240 4.8% 95.9%); --muted-foreground: hsl(240 3.8% 43%);
+  --accent: hsl(240 4.8% 95.9%); --accent-foreground: hsl(240 5.9% 10%);
+  --destructive: hsl(0 72.2% 50.6%); --destructive-foreground: hsl(0 0% 98%);
+  /* Red text on a --destructive/10 tint (danger pills, destructive menu focus); plain --destructive is 4.14:1 there. */
+  --destructive-soft-foreground: hsl(0 74% 42%);
+  --border: hsl(240 5.9% 90%); --input: hsl(240 5.9% 90%); --ring: hsl(240 10% 3.9%);
+  --chart-1: hsl(240 5.9% 10%); --chart-2: hsl(240 5.3% 26.1%); --chart-3: hsl(240 3.8% 46.1%); --chart-4: hsl(240 5% 64.9%); --chart-5: hsl(240 4.9% 83.9%);
+  --sidebar: hsl(0 0% 98%); --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%); --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%); --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(240 5.9% 90%); --sidebar-ring: hsl(240 10% 3.9%);
+  /* VFuture teal, used only by the logo tile. */
+  --brand: oklch(0.47 0.11 215); --brand-foreground: hsl(0 0% 100%);
+  /* Soft status pairs (background, text, hairline) for pills and notices. */
+  --success: hsl(138 76% 97%); --success-foreground: hsl(143 64% 24%); --success-border: hsl(141 79% 85%);
+  --warning: hsl(48 100% 96%); --warning-foreground: hsl(23 83% 31%); --warning-border: hsl(48 97% 77%);
+  --info: hsl(214 100% 97%); --info-foreground: hsl(224 76% 33%); --info-border: hsl(213 97% 87%);
+  --radius: 0.5rem; --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 12px;
+  --app-font-sans: "Inter", "Be Vietnam Pro", system-ui, sans-serif;
+  /* Mono is the JSON editor only; never the browser's Courier fallback. */
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Native radios, checkboxes, range and progress take the black/white primary, not the UA blue. */
+  accent-color: var(--primary);
+  color-scheme: light;
+  background-color: var(--background);
+}
+:root:has(.vf-staff) body { background: var(--background); color: var(--foreground); }
+
+/* Dark: the OS preference unless the shell pins light, or an explicit dark pin. Keep both blocks identical. */
+@media (prefers-color-scheme: dark) {
+  :root:has(.vf-staff:not([data-theme="light"])) {
+    --background: hsl(240 10% 3.9%); --foreground: hsl(0 0% 98%);
+    --card: hsl(240 10% 3.9%); --card-foreground: hsl(0 0% 98%);
+    --popover: hsl(240 10% 3.9%); --popover-foreground: hsl(0 0% 98%);
+    --primary: hsl(0 0% 98%); --primary-foreground: hsl(240 5.9% 10%);
+    --secondary: hsl(240 3.7% 15.9%); --secondary-foreground: hsl(0 0% 98%);
+    --muted: hsl(240 3.7% 15.9%); --muted-foreground: hsl(240 5% 64.9%);
+    --accent: hsl(240 3.7% 15.9%); --accent-foreground: hsl(0 0% 98%);
+    --destructive: hsl(0 91% 71%); --destructive-foreground: hsl(240 10% 3.9%);
+    --destructive-soft-foreground: hsl(0 91% 71%);
+    --border: hsl(240 3.7% 15.9%); --input: hsl(240 3.7% 15.9%); --ring: hsl(240 4.9% 83.9%);
+    --chart-1: hsl(0 0% 98%); --chart-2: hsl(240 4.9% 83.9%); --chart-3: hsl(240 5% 64.9%); --chart-4: hsl(240 3.8% 46.1%); --chart-5: hsl(240 5.3% 26.1%);
+    --sidebar: hsl(240 5.9% 10%); --sidebar-foreground: hsl(240 4.8% 95.9%);
+    --sidebar-primary: hsl(0 0% 98%); --sidebar-primary-foreground: hsl(240 5.9% 10%);
+    --sidebar-accent: hsl(240 3.7% 15.9%); --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+    --sidebar-border: hsl(240 3.7% 15.9%); --sidebar-ring: hsl(240 4.9% 83.9%);
+    --success: hsl(144 61% 10%); --success-foreground: hsl(141 79% 85%); --success-border: hsl(143 64% 24%);
+    --warning: hsl(30 60% 10%); --warning-foreground: hsl(48 97% 77%); --warning-border: hsl(26 90% 37%);
+    --info: hsl(222 47% 13%); --info-foreground: hsl(213 97% 87%); --info-border: hsl(224 76% 48%);
+    color-scheme: dark;
+  }
+}
+:root:has(.vf-staff[data-theme="dark"]) {
+  --background: hsl(240 10% 3.9%); --foreground: hsl(0 0% 98%);
+  --card: hsl(240 10% 3.9%); --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(240 10% 3.9%); --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 98%); --primary-foreground: hsl(240 5.9% 10%);
+  --secondary: hsl(240 3.7% 15.9%); --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(240 3.7% 15.9%); --muted-foreground: hsl(240 5% 64.9%);
+  --accent: hsl(240 3.7% 15.9%); --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 91% 71%); --destructive-foreground: hsl(240 10% 3.9%);
+  --destructive-soft-foreground: hsl(0 91% 71%);
+  --border: hsl(240 3.7% 15.9%); --input: hsl(240 3.7% 15.9%); --ring: hsl(240 4.9% 83.9%);
+  --chart-1: hsl(0 0% 98%); --chart-2: hsl(240 4.9% 83.9%); --chart-3: hsl(240 5% 64.9%); --chart-4: hsl(240 3.8% 46.1%); --chart-5: hsl(240 5.3% 26.1%);
+  --sidebar: hsl(240 5.9% 10%); --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(0 0% 98%); --sidebar-primary-foreground: hsl(240 5.9% 10%);
+  --sidebar-accent: hsl(240 3.7% 15.9%); --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%); --sidebar-ring: hsl(240 4.9% 83.9%);
+  --success: hsl(144 61% 10%); --success-foreground: hsl(141 79% 85%); --success-border: hsl(143 64% 24%);
+  --warning: hsl(30 60% 10%); --warning-foreground: hsl(48 97% 77%); --warning-border: hsl(26 90% 37%);
+  --info: hsl(222 47% 13%); --info-foreground: hsl(213 97% 87%); --info-border: hsl(224 76% 48%);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:has(.vf-staff) *, :root:has(.vf-staff) *::before, :root:has(.vf-staff) *::after { transition: none !important; animation: none !important; }
+}
+
+/*
+ * TEMPORARY dark bridge: readable dark equivalents for the hard-coded red/amber/emerald
+ * status classes still in staff code. Removed by the page sweep once those become
+ * StatusBadge tones and token utilities.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.bg-red-50, .bg-red-100) { background-color: hsl(0 62% 14%); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: var(--destructive); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.border-red-200, .border-red-300) { border-color: hsl(0 55% 32%); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.bg-amber-50, .bg-amber-50\/60, .bg-amber-100\/60) { background-color: var(--warning); }
+  :root:has(.vf-staff:not([data-theme="light"])) .bg-amber-100 { background-color: hsl(30 55% 15%); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: var(--warning-foreground); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.border-amber-200, .border-amber-300, .border-amber-400) { border-color: var(--warning-border); }
+  :root:has(.vf-staff:not([data-theme="light"])) .bg-emerald-50 { background-color: var(--success); }
+  :root:has(.vf-staff:not([data-theme="light"])) .bg-emerald-100 { background-color: hsl(144 55% 14%); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.text-emerald-700, .text-emerald-800) { color: var(--success-foreground); }
+  :root:has(.vf-staff:not([data-theme="light"])) :is(.border-emerald-200, .border-emerald-300) { border-color: var(--success-border); }
+  :root:has(.vf-staff:not([data-theme="light"])) .hover\:bg-red-50:hover { background-color: hsl(0 60% 18%); }
+  :root:has(.vf-staff:not([data-theme="light"])) .hover\:text-red-700:hover { color: var(--destructive); }
+  :root:has(.vf-staff:not([data-theme="light"])) .hover\:bg-amber-100:hover { background-color: hsl(30 55% 15%); }
+}
+:root:has(.vf-staff[data-theme="dark"]) :is(.bg-red-50, .bg-red-100) { background-color: hsl(0 62% 14%); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: var(--destructive); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.border-red-200, .border-red-300) { border-color: hsl(0 55% 32%); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.bg-amber-50, .bg-amber-50\/60, .bg-amber-100\/60) { background-color: var(--warning); }
+:root:has(.vf-staff[data-theme="dark"]) .bg-amber-100 { background-color: hsl(30 55% 15%); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) { color: var(--warning-foreground); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.border-amber-200, .border-amber-300, .border-amber-400) { border-color: var(--warning-border); }
+:root:has(.vf-staff[data-theme="dark"]) .bg-emerald-50 { background-color: var(--success); }
+:root:has(.vf-staff[data-theme="dark"]) .bg-emerald-100 { background-color: hsl(144 55% 14%); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.text-emerald-700, .text-emerald-800) { color: var(--success-foreground); }
+:root:has(.vf-staff[data-theme="dark"]) :is(.border-emerald-200, .border-emerald-300) { border-color: var(--success-border); }
+:root:has(.vf-staff[data-theme="dark"]) .hover\:bg-red-50:hover { background-color: hsl(0 60% 18%); }
+:root:has(.vf-staff[data-theme="dark"]) .hover\:text-red-700:hover { color: var(--destructive); }
+:root:has(.vf-staff[data-theme="dark"]) .hover\:bg-amber-100:hover { background-color: hsl(30 55% 15%); }

@@ -1,0 +1,14 @@
+.venv/
+extension/node_modules/
+extension/lib/
+extension/labextension/
+dist/
+.jupyterlite.doit.db
+
+
+lite/extensions/
+.vercel/
+
+lite/pypi/
+
+lite/.cache/

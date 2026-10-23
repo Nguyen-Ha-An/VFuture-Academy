@@ -1,0 +1,31 @@
+{
+  "id": "cau-3",
+  "type": "true_false",
+  "points": 1,
+  "difficulty": "easy",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Hai phân số 2/4 và 1/2 là hai phân số bằng nhau."
+          }
+        ]
+      }
+    ]
+  },
+  "correctAnswer": true,
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "2/4 rút gọn bằng cách chia tử và mẫu cho 2 được 1/2."
+          }
+        ]
+      }
+    ]
+  }
+}

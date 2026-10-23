@@ -1,0 +1,34 @@
+{
+  "id": "cau-10",
+  "type": "essay",
+  "points": 5,
+  "difficulty": "hard",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Giải thích vì sao 2/4 và 1/2 bằng nhau. Nêu một ví dụ tương tự trong đời sống."
+          }
+        ]
+      }
+    ]
+  },
+  "minWords": 40,
+  "maxWords": 200,
+  "rubric": {
+    "criteria": [
+      {
+        "id": "giai-thich",
+        "name": "Giải thích đúng cách rút gọn phân số",
+        "maxPoints": 3
+      },
+      {
+        "id": "vi-du",
+        "name": "Ví dụ đời sống phù hợp",
+        "maxPoints": 2
+      }
+    ]
+  }
+}

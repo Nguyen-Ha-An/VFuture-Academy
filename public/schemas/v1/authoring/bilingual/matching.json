@@ -1,0 +1,687 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "points": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1000
+    },
+    "content": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "explanation": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "hint": {
+      "$ref": "#/$defs/__schema1"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "accessibility": {
+      "type": "object",
+      "properties": {
+        "transcript": {
+          "$ref": "#/$defs/__schema13"
+        }
+      },
+      "additionalProperties": false
+    },
+    "type": {
+      "type": "string",
+      "const": "matching"
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "partialScoring": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "left": {
+      "minItems": 2,
+      "maxItems": 15,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema17"
+      }
+    },
+    "right": {
+      "minItems": 2,
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema17"
+      }
+    },
+    "allowManyToOne": {
+      "type": "boolean"
+    },
+    "correctAnswer": {
+      "minItems": 1,
+      "maxItems": 30,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema18"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "points",
+    "content",
+    "explanation",
+    "type",
+    "left",
+    "right",
+    "correctAnswer"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "__schema1": {
+      "type": "object",
+      "properties": {
+        "vi": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "en": {
+          "$ref": "#/$defs/__schema2"
+        }
+      },
+      "required": [
+        "vi",
+        "en"
+      ],
+      "additionalProperties": false
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "minItems": 1,
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema3"
+          }
+        }
+      },
+      "required": [
+        "blocks"
+      ],
+      "additionalProperties": false
+    },
+    "__schema3": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "paragraph"
+            },
+            "content": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "align": {
+              "$ref": "#/$defs/__schema7"
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "list"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema8"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "ordered",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "table"
+            },
+            "headers": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema11"
+              }
+            },
+            "rows": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema12"
+              }
+            },
+            "caption": {
+              "$ref": "#/$defs/__schema13"
+            }
+          },
+          "required": [
+            "type",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "code"
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "tsx",
+                "jsx",
+                "html",
+                "css",
+                "json",
+                "sql",
+                "bash",
+                "markdown",
+                "yaml",
+                "plaintext",
+                "java",
+                "c",
+                "cpp",
+                "csharp",
+                "go",
+                "rust",
+                "swift",
+                "kotlin",
+                "r"
+              ]
+            },
+            "code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "filename": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "highlightLines": {
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema15"
+              }
+            },
+            "showLineNumbers": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "language",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "quote"
+            },
+            "content": {
+              "$ref": "#/$defs/__schema5"
+            },
+            "author": {
+              "$ref": "#/$defs/__schema13"
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "image"
+            },
+            "src": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "alt": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "caption": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "width": {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "full"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "audio"
+            },
+            "src": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "label": {
+              "$ref": "#/$defs/__schema13"
+            }
+          },
+          "required": [
+            "type",
+            "src"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "video"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "youtube",
+                "vimeo"
+              ]
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^https:\\/\\/(?:youtube\\.com|www\\.youtube\\.com|youtu\\.be|www\\.youtube-nocookie\\.com|vimeo\\.com|player\\.vimeo\\.com)(?:\\/[^\\s]*)?$"
+            },
+            "caption": {
+              "$ref": "#/$defs/__schema13"
+            }
+          },
+          "required": [
+            "type",
+            "provider",
+            "url"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "provider": {
+                    "const": "youtube"
+                  }
+                },
+                "required": [
+                  "provider"
+                ],
+                "type": "object"
+              },
+              "then": {
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https:\\/\\/(?:youtube\\.com|www\\.youtube\\.com|youtu\\.be|www\\.youtube-nocookie\\.com)(?:\\/[^\\s]*)?$"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "provider": {
+                    "const": "vimeo"
+                  }
+                },
+                "required": [
+                  "provider"
+                ],
+                "type": "object"
+              },
+              "then": {
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https:\\/\\/(?:vimeo\\.com|player\\.vimeo\\.com)(?:\\/[^\\s]*)?$"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "type": {
+              "type": "string",
+              "const": "divider"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema4": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "__schema5": {
+      "minItems": 1,
+      "maxItems": 500,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema6"
+      }
+    },
+    "__schema6": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000
+        },
+        "annotations": {
+          "type": "object",
+          "properties": {
+            "bold": {
+              "type": "boolean"
+            },
+            "italic": {
+              "type": "boolean"
+            },
+            "underline": {
+              "type": "boolean"
+            },
+            "strike": {
+              "type": "boolean"
+            },
+            "code": {
+              "type": "boolean"
+            },
+            "sub": {
+              "type": "boolean"
+            },
+            "sup": {
+              "type": "boolean"
+            },
+            "link": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "pattern": "^(https:\\/\\/|mailto:)\\S+$"
+                },
+                "target": {
+                  "type": "string",
+                  "const": "_blank"
+                }
+              },
+              "required": [
+                "href"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "__schema7": {
+      "type": "string",
+      "enum": [
+        "left",
+        "center",
+        "right",
+        "justify"
+      ]
+    },
+    "__schema8": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "items": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema9"
+          }
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "__schema9": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "items": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema10"
+          }
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "__schema10": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/__schema5"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "__schema11": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "align": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "__schema12": {
+      "minItems": 1,
+      "maxItems": 12,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema11"
+      }
+    },
+    "__schema13": {
+      "type": "object",
+      "properties": {
+        "vi": {
+          "$ref": "#/$defs/__schema14"
+        },
+        "en": {
+          "$ref": "#/$defs/__schema14"
+        }
+      },
+      "required": [
+        "vi",
+        "en"
+      ],
+      "additionalProperties": false
+    },
+    "__schema14": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "\\S"
+    },
+    "__schema15": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "__schema16": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https:\\/\\/(?:cdn\\.vfuturelabs\\.org|images\\.unsplash\\.com|upload\\.wikimedia\\.org|commons\\.wikimedia\\.org|[a-z0-9-]+(?:\\.[a-z0-9-]+)*(?:\\.supabase\\.co|\\.supabase\\.in))(?:\\/[^\\s]*)?$"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "__schema17": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "content": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "id",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "__schema18": {
+      "type": "object",
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "right": {
+          "$ref": "#/$defs/__schema0"
+        }
+      },
+      "required": [
+        "left",
+        "right"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$id": "https://academy.vfuturelabs.org/schemas/v1/authoring/bilingual/matching.json",
+  "title": "VFuture MCP matching question profile v1",
+  "description": "MCP authoring profile v1. Existing profile violations may remain only when their owning construct is unchanged. Server-side semantic and storage checks are also required."
+}

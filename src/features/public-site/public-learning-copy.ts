@@ -1,0 +1,28 @@
+export const learningCopy = {
+  en: {
+    home: 'Home', academy: 'Academy', courses: 'Courses', apply: 'Apply filter', reset: 'All courses',
+    emptyHint: 'Try another pathway, or return to all published courses.',
+    overview: 'Course overview', outlineNote: 'Explore the structure before you begin. Learning activities open in your learner account.',
+    accountNote: 'Continue in your learner account to access the course activities.',
+    noOutcomes: 'Learning outcomes will appear here when they are available.',
+    noOutline: 'The course outline will appear here when it is available.',
+    nextEyebrow: 'Keep exploring', nextTitle: 'Take learning into practice.',
+    projectsTitle: 'Explore learner projects', projectsDescription: 'See published projects and the skills behind them.',
+    resourcesTitle: 'Open the resource library', resourcesDescription: 'Find public reading, tools and materials for your next step.',
+    moduleCount: (count: number) => `${count} ${count === 1 ? 'module' : 'modules'}`,
+    activityCount: (count: number) => `${count} ${count === 1 ? 'activity' : 'activities'}`,
+  },
+  vi: {
+    home: 'Trang chủ', academy: 'Học viện', courses: 'Khóa học', apply: 'Áp dụng', reset: 'Tất cả khóa học',
+    emptyHint: 'Thử một lộ trình khác hoặc xem tất cả khóa học đã xuất bản.',
+    overview: 'Tổng quan khóa học', outlineNote: 'Xem cấu trúc trước khi bắt đầu. Các hoạt động học tập mở trong tài khoản học viên.',
+    accountNote: 'Tiếp tục trong tài khoản học viên để truy cập các hoạt động của khóa học.',
+    noOutcomes: 'Mục tiêu học tập sẽ được hiển thị khi có thông tin.',
+    noOutline: 'Nội dung khóa học sẽ được hiển thị khi có thông tin.',
+    nextEyebrow: 'Tiếp tục khám phá', nextTitle: 'Đưa kiến thức vào thực hành.',
+    projectsTitle: 'Khám phá dự án học viên', projectsDescription: 'Xem các dự án đã xuất bản và những kỹ năng được vận dụng.',
+    resourcesTitle: 'Mở thư viện tài nguyên', resourcesDescription: 'Tìm tài liệu, công cụ và nội dung công khai cho bước tiếp theo.',
+    moduleCount: (count: number) => `${count} học phần`,
+    activityCount: (count: number) => `${count} hoạt động`,
+  },
+} as const;

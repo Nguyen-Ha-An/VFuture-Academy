@@ -1,0 +1,13 @@
+{
+  "@jupyterlab/application-extension:shell": {
+    "startMode": "single"
+  },
+  "@jupyterlab/notebook-extension:tracker": {
+    "autoStartDefaultKernel": false
+  },
+  "@jupyterlab/apputils-extension:themes": {
+    "adaptive-theme": true,
+    "preferred-light-theme": "JupyterLab Light",
+    "preferred-dark-theme": "JupyterLab Dark"
+  }
+}

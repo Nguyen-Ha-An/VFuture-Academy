@@ -1,0 +1,16 @@
+{
+  "manifest": { "schemaVersion": 1, "kind": "course", "id": "unresolved-refs", "title": "Unresolved references", "summary": "Nothing in this course resolves.", "languages": ["en"], "defaultLanguage": "en", "level": "foundation", "difficulty": "beginner", "pathway": "core-future-skills", "learningOutcomes": ["Trip every reference check."], "access": { "scope": "branches", "branchIds": ["mars"] }, "skills": [{ "id": "qa", "name": "QA" }], "modules": [{ "id": "m1", "title": "Module", "items": [{ "type": "lesson", "id": "l1" }, { "type": "exam", "id": "e1" }] }] },
+  "items": {
+    "l1": { "schemaVersion": 1, "kind": "lesson", "id": "l1", "title": "Lesson", "objectives": ["Point at a resource that does not exist."], "blocks": [
+      { "type": "paragraph", "content": [{ "text": "The resource below does not exist." }] },
+      { "id": "res-ghost", "type": "resource_link", "resourceId": "ghost", "label": "Ghost resource" }
+    ] },
+    "e1": { "schemaVersion": 1, "kind": "exam", "id": "e1", "title": "Exam", "settings": { "timeLimitMinutes": 10 }, "sections": [
+      { "id": "s1", "title": "Section", "questions": [
+        { "$ref": "bank:nope" },
+        { "$pool": { "id": "p1", "count": 50, "filter": { "tags": ["prompting"] } } }
+      ] }
+    ] }
+  },
+  "expect": ["E_REF_UNRESOLVED", "E_RESOURCE_UNKNOWN", "E_POOL_UNSATISFIABLE", "E_BRANCH_UNKNOWN"]
+}

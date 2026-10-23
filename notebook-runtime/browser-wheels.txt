@@ -1,0 +1,17 @@
+ipython==9.17.1
+jedi==0.20.0
+comm==0.2.3
+traitlets==5.16.1
+prompt-toolkit==3.0.53
+matplotlib-inline==0.2.2
+stack-data==0.6.3
+executing==2.2.1
+asttokens==3.0.2
+pure-eval==0.2.3
+pygments==2.21.0
+wcwidth==0.8.3
+parso==0.8.7
+ipython-pygments-lexers==1.1.1
+typing_extensions==4.16.0
+pexpect==4.9.0
+ptyprocess==0.7.0

@@ -1,0 +1,576 @@
+/*
+ * The one learner stylesheet (shell frame, tokens, dashboard, catalog, explore, profile,
+ * leaderboard, projects). Imported only by AppShell. Theme tokens come from workspace.css;
+ * everything here is scoped to the learner surface so staff and public pages are untouched.
+ */
+
+/* ---------- tokens ----------
+ * Compound-scoped on purpose: (0,3,0) on :root and (0,2,0) on the surface element always beat
+ * workspace.css's :root:has(.vf-workspace) and .vf-workspace entries, whatever the chunk order.
+ * The element entry gives the surface the same computed values as the document (WebKit can drop
+ * custom-property inheritance from :root:has()), and portals inherit from :root. */
+:root:has(.vf-workspace.vf-learner-refined), .vf-workspace.vf-learner-refined {
+  --vf-col: 1080px; --vf-aside: 280px; --vf-col-gap: 24px; --vf-reading: 760px;
+  --vf-gutter: 16px; --vf-bar-h: 56px;
+  --vf-frame: calc(var(--vf-col) + var(--vf-col-gap) + var(--vf-aside));
+  --vf-box: calc(var(--vf-frame) + 80px);
+  --radius: 6px; --radius-xs: 2px; --radius-sm: 4px; --radius-md: 6px;
+  --radius-lg: 8px; --radius-xl: 8px; --radius-2xl: 8px; --radius-3xl: 8px;
+  --vf-radius-card: 8px; --vf-radius-control: 6px;
+}
+@media (min-width: 760px) {
+  :root:has(.vf-workspace.vf-learner-refined), .vf-workspace.vf-learner-refined { --vf-gutter: 40px; }
+}
+/* Signal text keeps AA where a selected row and a state tag layer their soft fills (DESIGN D5). */
+@media (prefers-color-scheme: light) {
+  :root:has(.vf-workspace.vf-learner-refined:not([data-theme="dark"])), .vf-workspace.vf-learner-refined:not([data-theme="dark"]) {
+    --vf-signal: #08666a; --vf-signal-soft: rgb(8 102 106 / 9%); --vf-grid: rgb(8 102 106 / 6%);
+  }
+}
+:root:has(.vf-workspace.vf-learner-refined[data-theme="light"]), .vf-workspace.vf-learner-refined[data-theme="light"] {
+  --vf-signal: #08666a; --vf-signal-soft: rgb(8 102 106 / 9%); --vf-grid: rgb(8 102 106 / 6%);
+}
+
+/* ---------- frame ----------
+ * .vf-l-main owns the width: a left-aligned 1080px column on 16/40px gutters inside a box wide
+ * enough for the column, a 24px gap and the 280px aside. Pages never set their own max-width. */
+.vf-l-main, .vf-l-page { box-sizing: border-box; width: 100%; min-width: 0; margin-inline: auto; max-width: var(--vf-box); padding: 28px var(--vf-gutter) 48px; }
+@media (min-width: 760px) { .vf-l-main, .vf-l-page { padding-block: 36px 56px; } }
+.vf-l-main > *, .vf-l-page > * { max-width: var(--vf-col); }
+.vf-l-main > .vf-l-frame, .vf-l-page > .vf-l-frame { max-width: none; }
+/* home (/app): full-width trace, then a .vf-l-page. focus (item, notebook): the page owns its frame. */
+.vf-l-main[data-layout] { max-width: none; padding: 0; }
+.vf-l-main[data-layout] > * { max-width: none; }
+.vf-l-main > .vf-l-page { max-width: var(--vf-box); }
+/* Anything else home renders in place of the dashboard (route loading, the fault panel, a trace
+ * fault) keeps the page edge: the gutter inside the centred box, capped at the column. */
+.vf-l-main[data-layout="home"] > :not(.vf-l-page, .vf-l-trace-slot) { max-width: var(--vf-col); margin: 28px var(--vf-gutter); margin-left: max(var(--vf-gutter), (100% - var(--vf-box)) / 2 + var(--vf-gutter)); }
+/* Focus routes: the activity frame (below) draws the full-width focus bar and owns its gutters. */
+/* Loading, error and not-found fallbacks on focus routes have no activity frame: keep the gutters. */
+.vf-l-main[data-layout="focus"]:not(:has(> .vf-activity)) { max-width: var(--vf-box); padding: 28px var(--vf-gutter) 48px; }
+.vf-l-main[data-layout="focus"]:not(:has(> .vf-activity)) > * { max-width: var(--vf-col); }
+
+/* Split: head, action, main and aside stack in source order; from 1100px, with [data-aside], the
+ * aside column sits beside the main column and the action sticks under the bar. */
+.vf-l-split { display: grid; gap: 24px; min-width: 0; }
+.vf-l-split > * { min-width: 0; }
+@media (min-width: 1100px) {
+  .vf-l-split[data-aside] { grid-template-columns: minmax(0, var(--vf-col)) var(--vf-aside); column-gap: var(--vf-col-gap); grid-template-areas: "head ." "main action" "main aside"; grid-template-rows: auto auto 1fr; align-items: start; }
+  .vf-l-split[data-aside]:not(:has(> [data-area="head"])) { grid-template-areas: "main action" "main aside"; grid-template-rows: auto 1fr; }
+  .vf-l-split[data-aside]:not(:has(> [data-area="action"])) { grid-template-areas: "head ." "main aside"; grid-template-rows: auto 1fr; }
+  .vf-l-split[data-aside]:not(:has(> [data-area="head"])):not(:has(> [data-area="action"])) { grid-template-areas: "main aside"; grid-template-rows: auto; }
+  .vf-l-split[data-aside] > [data-area="head"] { grid-area: head; }
+  .vf-l-split[data-aside] > [data-area="action"] { grid-area: action; position: sticky; top: calc(var(--vf-bar-h) + 16px); }
+  .vf-l-split[data-aside] > [data-area="main"] { grid-area: main; }
+  .vf-l-split[data-aside] > [data-area="aside"] { grid-area: aside; }
+}
+
+/* ---------- shell ---------- */
+.vf-workspace .vf-l-skip { position: fixed; left: 16px; top: 8px; z-index: 70; transform: translateY(-80px); padding: 12px 16px; background: var(--vf-ink); color: var(--vf-bg); font-weight: 500; font-size: 13px; text-decoration: none; }
+.vf-workspace .vf-l-skip:focus { transform: none; }
+.vf-workspace .vf-bench-nav a { min-height: 44px; }
+.vf-workspace .vf-bench-account { display: none; }
+@media (min-width: 760px) { .vf-workspace .vf-bench-account { display: flex; } }
+/* Lesson reader: long words, code and media stay inside the reading column. */
+.vf-workspace .learner-reader-prose { min-width: 0; overflow-wrap: anywhere; }
+.vf-workspace .learner-reader-prose :is(pre, .overflow-x-auto) { max-width: 100%; overflow-x: auto; }
+.vf-workspace .learner-reader-prose :is(img, video, iframe) { max-width: 100%; }
+/* Portal markup: never prefixed with .vf-workspace; tokens arrive from :root:has(). */
+.vf-l-drawer-nav ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.vf-l-drawer-nav a { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: var(--vf-radius-control); color: var(--vf-muted); font-weight: 500; text-decoration: none; }
+.vf-l-drawer-nav a:hover { color: var(--vf-ink); background: var(--vf-raised); }
+.vf-l-drawer-nav a[aria-current="page"] { color: var(--vf-ink); background: var(--vf-raised); box-shadow: inset 2px 0 0 var(--vf-signal); }
+/* The drawer's segmented language and theme groups: 6px control radius, pressed ends follow it. */
+.vf-l-drawer-seg { display: inline-flex; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); }
+.vf-l-drawer-seg > button:first-child { border-radius: calc(var(--vf-radius-control) - 1px) 0 0 calc(var(--vf-radius-control) - 1px); }
+.vf-l-drawer-seg > button:last-child { border-radius: 0 calc(var(--vf-radius-control) - 1px) calc(var(--vf-radius-control) - 1px) 0; }
+.vf-l-drawer-nav .vf-code { font: 400 11px "IBM Plex Mono", monospace; color: var(--vf-muted); }
+.vf-l-drawer-nav a[aria-current="page"] .vf-code { color: var(--vf-signal); }
+.vf-l-account-trigger { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 12rem; min-width: 0; padding: 0 12px; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); background: transparent; color: var(--vf-ink); font-weight: 500; font-size: 13px; }
+.vf-l-account-trigger:hover { border-color: var(--vf-ink); }
+/* Account identity (C13): initials chip plus name; the name hides between 760 and 1099px while the
+ * nav needs the room (the trigger's aria-label keeps it). Profile and leaderboard underline it. */
+.vf-l-account-initials { display: inline-grid; place-items: center; flex: none; min-width: 24px; height: 24px; padding: 0 4px; border: 1px solid var(--vf-line); border-radius: var(--radius-sm); background: var(--vf-raised); color: var(--vf-ink); font: 500 10px "IBM Plex Mono", monospace; letter-spacing: .04em; }
+.vf-l-account-trigger[data-active] { border-bottom-color: var(--vf-signal); box-shadow: inset 0 -1px 0 var(--vf-signal); }
+.vf-l-account-trigger[data-active] .vf-l-account-initials { border-color: var(--vf-signal); color: var(--vf-signal); }
+@media (min-width: 760px) and (max-width: 1099px) {
+  .vf-l-account-trigger:has(.vf-l-account-initials) { padding: 0 9px; }
+  .vf-l-account-trigger:has(.vf-l-account-initials) .vf-l-account-name { display: none; }
+}
+.vf-l-account-label { display: grid; gap: 2px; max-width: 16rem; padding: 8px 12px; }
+/* ---------- command menu (C14) ----------
+ * The bench bar's search slot (glyph-only below 1100px, where the nav and account need the room)
+ * and the portalled ⌘K palette, which takes the learner tokens from :root:has(). */
+.vf-l-search-trigger { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px; width: 44px; min-height: 44px; padding: 0; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); background: transparent; color: var(--vf-muted); font-size: 13px; font-weight: 400; cursor: pointer; }
+.vf-l-search-trigger:hover { border-color: var(--vf-ink); color: var(--vf-ink); }
+.vf-l-search-glyph { flex: none; }
+.vf-l-search-label, .vf-l-search-kbd { display: none; }
+@media (min-width: 1100px) {
+  .vf-l-search-trigger { justify-content: flex-start; width: 16rem; padding: 0 8px 0 12px; }
+  .vf-l-search-label { display: block; flex: 1; min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+  .vf-l-search-kbd { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1px solid var(--vf-line); border-radius: var(--radius-sm); background: var(--vf-raised); color: var(--vf-muted); font: 500 11px "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+}
+.vf-l-command { border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); color: var(--vf-ink); }
+/* 44px close target (DESIGN density), inside the 48px input row the wrapper's pr-12 leaves free. */
+.vf-l-command [data-slot="dialog-close"] { top: 2px; right: 2px; width: 44px; height: 44px; }
+.vf-l-command-list { max-height: min(24rem, 60svh); padding-bottom: 4px; }
+.vf-l-command-list [cmdk-group]:not([hidden]) ~ [cmdk-group]:not([hidden]) { border-top: 1px solid var(--vf-line); }
+.vf-l-command-list [cmdk-group-heading] { font: 500 11px "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-l-command-list [cmdk-empty] { color: var(--vf-muted); }
+.vf-l-command-item { min-height: 44px; border-radius: var(--vf-radius-control); font-size: 14px; font-weight: 500; line-height: 1.4; }
+.vf-l-command-item[data-selected="true"] { background: var(--vf-raised); color: var(--vf-ink); box-shadow: inset 2px 0 0 var(--vf-signal); }
+.vf-l-command-code, .vf-l-command-hint { flex: none; font: 400 11px "IBM Plex Mono", monospace; color: var(--vf-muted); }
+.vf-l-command-code { min-width: 20px; }
+.vf-l-command-item[data-selected="true"] .vf-l-command-code { color: var(--vf-signal); }
+.vf-l-command-hint { margin-left: auto; }
+.vf-l-command-current { margin-left: auto; color: var(--vf-signal); font-size: 10px; }
+.vf-l-command-error { margin: 0; padding: 8px 12px; color: var(--vf-fault); font-size: 13px; }
+.vf-l-command-footer { margin: 0; padding: 8px 12px; border-top: 1px solid var(--vf-line); color: var(--vf-muted); font: 400 11px "IBM Plex Mono", monospace; }
+/* WebKit can retain the document's default select foreground despite the
+ * Tailwind token utility after the workspace theme changes. */
+.vf-learner-refined select { color: var(--vf-ink); background-color: var(--vf-surface); }
+
+/* ---------- shared page pieces ---------- */
+.vf-learner-refined .vf-page-head { gap: 12px; }
+.vf-l-head-main { display: grid; gap: 12px; flex: 1 1 440px; min-width: 0; }
+.vf-l-head-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: none; }
+.vf-l-head-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vf-l-head-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+/* Meta links (the profile's "Public profile") keep the learner 44px target. */
+.vf-l-head-meta a { display: inline-flex; align-items: center; min-height: 44px; color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.vf-l-head-meta a:hover { color: var(--vf-signal); }
+/* Crumb links keep the learner 44px target (the section crumb is the way back to the list); the
+ * trail's negative margins keep the head's visual rhythm. */
+.vf-learner-refined .vf-crumbs a { min-height: 44px; }
+.vf-learner-refined .vf-page-head > nav:first-child .vf-crumbs { margin: -10px 0 -8px; }
+/* Not-found is a plain hairline panel; the dashed rule and grid belong to empty states. */
+.vf-learner-refined .vf-empty[data-kind="not-found"] { border-style: solid; border-color: var(--vf-line); background: var(--vf-surface); }
+.vf-l-head-meta > * + *::before { content: "·"; margin-right: 12px; color: var(--vf-line-strong); }
+.vf-l-lead { margin: 0; max-width: 62ch; color: var(--vf-muted); font-size: 16px; line-height: 1.6; }
+.vf-l-arrow { font-family: "IBM Plex Mono", monospace; }
+.vf-l-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--vf-signal); font-weight: 500; text-decoration: none; }
+.vf-l-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.vf-l-title-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--vf-ink); font-weight: 500; font-size: 15px; text-decoration: none; overflow-wrap: anywhere; }
+.vf-l-title-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.vf-l-row-title { margin: 0; font: inherit; }
+.vf-l-pct { font: 400 12px "IBM Plex Mono", monospace; color: var(--vf-muted); white-space: nowrap; }
+.vf-l-meter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 120px; }
+.vf-l-next { display: inline-flex; align-items: center; justify-content: flex-end; min-height: 44px; font: 400 12px "IBM Plex Mono", monospace; color: var(--vf-signal); text-decoration: none; white-space: nowrap; }
+.vf-l-next:hover { text-decoration: underline; text-underline-offset: 4px; }
+.vf-spec td.vf-l-next-cell { text-align: right; }
+/* Segmented control (catalog Learning/Discover, leaderboard scope). */
+.vf-seg { display: inline-flex; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); }
+.vf-seg a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; color: var(--vf-muted); font-weight: 500; font-size: 13px; text-decoration: none; }
+.vf-seg a + a { border-left: 1px solid var(--vf-line-strong); }
+.vf-seg a:first-child { border-radius: calc(var(--vf-radius-control) - 1px) 0 0 calc(var(--vf-radius-control) - 1px); }
+.vf-seg a:last-child { border-radius: 0 calc(var(--vf-radius-control) - 1px) calc(var(--vf-radius-control) - 1px) 0; }
+.vf-seg a:hover { color: var(--vf-ink); }
+.vf-seg a[aria-current="page"] { background: var(--vf-ink); color: var(--vf-bg); }
+/* Spec table as a card. */
+.vf-learner-refined .vf-spec { border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); border-collapse: separate; border-spacing: 0; background: var(--vf-surface); overflow: hidden; }
+.vf-learner-refined .vf-spec th:first-child,
+.vf-learner-refined .vf-spec td:first-child { padding-left: 16px; }
+.vf-learner-refined .vf-spec th:last-child,
+.vf-learner-refined .vf-spec td:last-child { padding-right: 16px; }
+:where(.vf-workspace) .vf-spec td { overflow-wrap: anywhere; }
+/* Plain links in the profile and leaderboard tables (formerly profile.css, which only those pages
+ * loaded). Scoped so the dashboard, catalog and project tables keep .vf-l-next at mono 400 and
+ * .vf-l-title-link in ink on hover. */
+:where(.vf-profile, .vf-lb) .vf-spec td a { text-decoration: none; font-weight: 500; }
+:where(.vf-profile, .vf-lb) .vf-spec td a:hover { color: var(--vf-signal); }
+@media (max-width: 759px) {
+  .vf-learner-refined .vf-spec[data-stack] { display: block; padding: 0 16px; }
+  .vf-learner-refined .vf-spec[data-stack] th:first-child,
+  .vf-learner-refined .vf-spec[data-stack] td:first-child { padding-left: 0; }
+}
+.vf-learner-refined .vf-readout { border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); overflow: hidden; }
+.vf-learner-refined .vf-tag { letter-spacing: .02em; }
+
+/* ---------- dashboard ---------- */
+.vf-l-resume { display: grid; gap: 12px; padding: 24px; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); }
+.vf-l-resume[data-state="first-run"] { border-style: dashed; }
+.vf-l-resume-body { display: grid; gap: 16px; margin-top: 8px; }
+@media (min-width: 760px) { .vf-l-resume-body { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 32px; } }
+.vf-l-resume-body .vf-btn { width: 100%; }
+@media (min-width: 760px) { .vf-l-resume-body .vf-btn { width: auto; } }
+.vf-l-resume-meter { display: grid; gap: 8px; min-width: 0; max-width: 520px; }
+/* Below 1100px the readout column stacks under main, so the next deadline moves into the head meta. */
+@media (min-width: 1100px) { .vf-l-head-deadline { display: none; } }
+.vf-l-head-deadline { color: var(--vf-pending); }
+.vf-l-exam { display: grid; gap: 8px 16px; padding: 16px 0; border-bottom: 1px solid var(--vf-line); }
+@media (min-width: 760px) { .vf-l-exam { grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; } }
+.vf-l-exam-title { margin: 0; font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
+.vf-l-countdown { font: 400 13px "IBM Plex Mono", monospace; color: var(--vf-pending); white-space: nowrap; }
+.vf-l-skills { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.vf-l-skills li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: baseline; }
+.vf-l-skills li > .vf-tol { grid-column: 1 / -1; }
+.vf-l-cell-fault { color: var(--vf-fault); }
+.vf-l-trace-slot { min-height: 44px; }
+@media (max-width: 759px) { .vf-l-completion .vf-notice { grid-template-columns: 1fr; justify-items: start; } }
+
+/* ---------- disclosure and filter base (the grid is in the directory section) ---------- */
+.vf-l-disclosure { border-top: 1px solid var(--vf-line); border-bottom: 1px solid var(--vf-line); }
+.vf-l-disclosure > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font: 500 11px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); list-style: none; }
+.vf-l-disclosure > summary::-webkit-details-marker { display: none; }
+.vf-l-disclosure > summary::before { content: "+"; width: 16px; color: var(--vf-signal); }
+.vf-l-disclosure[open] > summary::before { content: "−"; }
+.vf-l-filter-form { display: grid; gap: 12px; padding: 12px 0 16px; }
+.vf-l-filter-form label { display: grid; gap: 6px; min-width: 0; }
+.vf-l-filter-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+@media (min-width: 760px) {
+  /* Always-visible filter row at 760px and wider; the disclosure stays on phones. */
+  .vf-l-filters > summary { display: none; }
+  .vf-l-filters::details-content { content-visibility: visible; display: contents; }
+  .vf-l-filter-form { padding: 16px 0; }
+}
+.vf-l-results-count { margin: 0; }
+
+/* ---------- explore ---------- */
+.vf-l-explore { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 760px) { .vf-l-explore { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vf-l-explore > li { min-width: 0; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); overflow: hidden; }
+.vf-l-explore a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 16px; align-items: baseline; height: 100%; min-height: 44px; padding: 24px 20px; color: var(--vf-ink); text-decoration: none; }
+.vf-l-explore a:hover { background: var(--vf-raised); }
+.vf-l-explore a:hover .vf-l-arrow { color: var(--vf-signal); }
+.vf-l-explore h2 { margin: 0; font-weight: 500; font-size: 20px; line-height: 1.3; letter-spacing: -.01em; }
+.vf-l-explore p { grid-column: 2; margin: 0; color: var(--vf-muted); }
+.vf-l-explore .vf-code { font: 500 12px "IBM Plex Mono", monospace; color: var(--vf-signal); }
+.vf-l-explore .vf-l-arrow { color: var(--vf-muted); }
+
+/* ---------- route skeletons (loading.tsx): static hairlines, no shimmer ---------- */
+.vf-l-skeleton-body { display: grid; gap: 24px; }
+.vf-l-skel-head { display: grid; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--vf-line); }
+.vf-l-skel-title { height: 28px; }
+.vf-l-skel-card { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); }
+.vf-l-skel-anchor { padding: 24px; }
+.vf-l-skel-rows { border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); overflow: hidden; }
+.vf-l-skel-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 64px; padding: 0 16px; border-bottom: 1px solid var(--vf-line); }
+.vf-l-skel-row:last-child { border-bottom: 0; }
+.vf-l-skel-controls { display: grid; gap: 12px; }
+@media (min-width: 760px) { .vf-l-skel-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .vf-l-skel-controls { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.vf-l-skel-control { display: block; height: 44px; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-control); }
+.vf-l-skel-readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); overflow: hidden; }
+@media (min-width: 760px) { .vf-l-skel-readout { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.vf-l-skel-readout > div { display: grid; gap: 8px; padding: 16px; border-right: 1px solid var(--vf-line); border-bottom: 1px solid var(--vf-line); margin: 0 -1px -1px 0; }
+.vf-l-skel-reading { display: grid; gap: 16px; max-width: var(--vf-reading); }
+
+/* ---------- fault panel (route error.tsx) ---------- */
+.vf-l-fault { display: grid; gap: 14px; justify-items: start; max-width: 640px; margin: 40px 0; padding: 28px; border: 1px solid var(--vf-line); border-left: 2px solid var(--vf-fault); border-radius: var(--vf-radius-card); background: var(--vf-fault-soft); }
+.vf-l-fault .vf-kicker { color: var(--vf-fault); }
+.vf-l-fault p { margin: 0; max-width: 56ch; color: var(--vf-muted); }
+.vf-l-fault .vf-btn { min-height: 44px; }
+
+/* ---------- profile, certificates and leaderboard ---------- */
+.vf-profile, .vf-lb { display: grid; min-width: 0; }
+.vf-profile :is(a, button, summary), .vf-lb :is(a, button) { min-height: 44px; }
+/* Links inherit the text colour at zero class specificity, so every component rule (segmented ink,
+ * head meta and hairlist hover signal, vf-btn) still wins over it. */
+:where(.vf-profile, .vf-lb) a { color: inherit; }
+.vf-profile-identity { padding-top: 24px; }
+/* The trace sits in the content column above the page head (spec section 8). */
+.vf-profile-trace { margin: 0 0 28px; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); overflow: hidden; }
+.vf-profile-trace .vf-trace { border-bottom: 0; }
+/* hairline lists (skills, projects) */
+.vf-hairlist { margin: 0; padding: 0; list-style: none; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); overflow: hidden; }
+.vf-hairlist > li { display: grid; gap: 8px 16px; padding: 14px 16px; border-bottom: 1px solid var(--vf-line); min-width: 0; }
+.vf-hairlist > li:last-child { border-bottom: 0; }
+.vf-hairlist a.vf-hair-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
+.vf-hairlist a.vf-hair-link:hover { color: var(--vf-signal); }
+.vf-skill { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .vf-skill { grid-template-columns: minmax(0, 1fr) 200px auto; align-items: center; } }
+.vf-skill-name { margin: 0; font-weight: 500; font-size: 14px; overflow-wrap: anywhere; }
+.vf-skill details { grid-column: 1 / -1; }
+.vf-skill summary { display: inline-flex; align-items: center; cursor: pointer; font: 400 12px "IBM Plex Mono", monospace; color: var(--vf-muted); }
+.vf-skill summary:hover { color: var(--vf-ink); }
+.vf-skill details ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.vf-skill details a, .vf-skill details .vf-evidence { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-height: 44px; padding: 0 8px; font-size: 13px; text-decoration: none; }
+.vf-skill details a { color: var(--vf-signal); }
+.vf-skill details a:hover { background: var(--vf-raised); }
+.vf-cert-list { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.vf-cert-title { margin: 0; font-weight: 500; font-size: 24px; line-height: 1.25; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.vf-cert-fields dt { font: 500 10.5px "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-cert-fields .vf-cert-verify { grid-column: 1 / -1; }
+.vf-cert-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vf-cert-actions .vf-btn { min-height: 44px; }
+.vf-cert-hint { flex-basis: 100%; margin: 0; font: 400 12px "IBM Plex Mono", monospace; color: var(--vf-fault); }
+.vf-xp-total { display: flex; align-items: baseline; gap: 10px; padding: 18px 20px; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); }
+.vf-lb td { overflow-wrap: anywhere; }
+.vf-lb .vf-spec td, .vf-lb .vf-spec th { padding-top: 10px; padding-bottom: 10px; }
+.vf-lb .vf-spec td:first-child, .vf-lb .vf-spec th:first-child { width: 64px; }
+.vf-lb-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 500; }
+
+/* ---------- projects ---------- */
+.vf-projects-bench .vf-project-section-desc { margin: 4px 0 0; color: var(--vf-muted); font-size: 13px; line-height: 1.55; }
+
+/* ---------- directory ----------
+ * The one list pattern for Courses, Resources, Opportunities and Projects (DESIGN "Directory spec
+ * table"): learner/directory/{DirectoryPage, FilterBar, ResultsHeader, DirectoryTable,
+ * DirectoryPagination}. Every filter form is the kit's ([data-cols]); the disclosure and base form
+ * rules above only space it. The phone summary is hidden from 760px by the .vf-l-filters rules
+ * above (with ::details-content). Stacked rows are the [data-stack] areas in workspace.css. */
+.vf-l-directory { display: grid; gap: 20px; min-width: 0; }
+.vf-l-directory > * { min-width: 0; }
+/* Segmented tabs keep their own width instead of stretching across the grid column. */
+.vf-l-directory > .vf-seg { justify-self: start; }
+.vf-l-filter-form[data-cols] { grid-template-columns: minmax(0, 1fr); align-items: end; }
+.vf-l-filter-form[data-cols] :is(select, input[type="search"]) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); background: var(--vf-surface); color: var(--vf-ink); font-size: 16px; }
+.vf-l-filter-form[data-cols] .vf-l-filter-checks { min-width: 0; margin: 0; padding: 0; border: 0; }
+.vf-l-filter-form[data-cols] .vf-l-filter-checks > legend { padding: 0; margin-bottom: 6px; }
+.vf-l-filter-form[data-cols] .vf-l-filter-checks > div { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.vf-l-filter-form[data-cols] .vf-l-filter-checks label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; cursor: pointer; }
+.vf-l-filter-form[data-cols] .vf-l-filter-checks input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--vf-signal); }
+@media (min-width: 760px) {
+  .vf-l-filter-form[data-cols] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vf-l-filter-form[data-cols] :is(select, input[type="search"]) { font-size: 13px; }
+  .vf-l-filter-form[data-cols] > :is([data-wide], .vf-l-filter-actions) { grid-column: 1 / -1; }
+}
+@media (min-width: 1100px) {
+  .vf-l-filter-form[data-cols] { grid-template-columns: repeat(var(--vf-filter-cols, 4), minmax(0, 1fr)) auto; }
+  .vf-l-filter-form[data-cols] > [data-wide] { grid-column: span 2; }
+  .vf-l-filter-form[data-cols] > .vf-l-filter-actions { grid-column: -2 / -1; flex-wrap: nowrap; }
+}
+/* Results line: the count (focus target) plus removable chips (tag look, 44px hit area). */
+.vf-l-results { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 44px; }
+.vf-l-results-count:focus:not(:focus-visible) { outline: none; }
+.vf-l-chips { display: flex; flex-wrap: wrap; gap: 0 8px; margin: 0; padding: 0; list-style: none; }
+.vf-l-chip { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+.vf-l-chip .vf-tag { gap: 8px; border-color: var(--vf-line-strong); border-radius: var(--vf-radius-control); color: var(--vf-ink); }
+.vf-l-chip:hover .vf-tag { border-color: var(--vf-ink); }
+.vf-l-chip-x { font-size: 14px; line-height: 1; color: var(--vf-muted); }
+.vf-l-chip:hover .vf-l-chip-x { color: var(--vf-ink); }
+/* Table rows */
+.vf-l-dir-list { display: grid; gap: 40px; }
+.vf-l-dir-table .vf-l-row-title { font-weight: 500; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+.vf-l-row-summary { display: -webkit-box; margin: 2px 0 0; max-width: 68ch; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; color: var(--vf-muted); font-size: 13px; line-height: 1.55; }
+.vf-l-row-meta { margin: 4px 0 0; overflow-wrap: anywhere; }
+@media (max-width: 759px) {
+  .vf-learner-refined .vf-spec[data-stack] th:last-child,
+  .vf-learner-refined .vf-spec[data-stack] td:last-child { padding-right: 0; }
+}
+/* Pager: previous | mono summary | next, each keeping its column when a neighbour is absent. */
+.vf-l-pager { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.vf-l-pager > [data-dir="prev"] { grid-area: 1 / 1; justify-self: start; }
+.vf-l-pager > p { grid-area: 1 / 2; margin: 0; white-space: nowrap; }
+.vf-l-pager > [data-dir="next"] { grid-area: 1 / 3; justify-self: end; }
+
+/* ---------- detail (learner/DetailPage) ----------
+ * DetailPage is a .vf-l-frame on the .vf-l-split areas above; without an action or aside it stays
+ * in the 1080px column. ActionPanel is a card with a 2px signal left rule. */
+.vf-l-split.vf-l-detail:not([data-aside]) { max-width: var(--vf-col); }
+.vf-l-detail > [data-area="aside"] { display: grid; align-content: start; gap: 16px; }
+.vf-l-action { display: grid; gap: 12px; min-width: 0; padding: 20px; border: 1px solid var(--vf-line); border-left: 2px solid var(--vf-signal); border-radius: var(--vf-radius-card); background: var(--vf-surface); }
+.vf-l-action-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.vf-l-action-title { overflow-wrap: anywhere; }
+.vf-l-action-body { color: var(--vf-muted); font-size: 14px; line-height: 1.55; }
+.vf-l-action-body > * { margin: 0; }
+.vf-l-action-body > * + * { margin-top: 8px; }
+.vf-l-action-cta { display: flex; flex-wrap: wrap; gap: 8px; }
+.vf-l-action-note { margin: 0; }
+@media (max-width: 759px) { .vf-l-action-cta > * { flex: 1 1 100%; } }
+@media (min-width: 1100px) { .vf-l-split[data-aside] > [data-area="action"] .vf-l-action-cta > * { flex: 1 1 100%; } }
+
+/* ---------- activity frame (C12, DESIGN D9) ----------
+ * .vf-activity > .vf-focus-bar (sticky 56px nav) + .vf-activity-body. The body is the same
+ * left-aligned box as .vf-l-main; head, main, footer and pager share its left edge and stop at
+ * the activity width: reading 760px, column 1080px or frame 1384px (column + gap + aside). */
+.vf-activity { --vf-activity-w: var(--vf-reading); min-width: 0; }
+.vf-activity[data-width="column"] { --vf-activity-w: var(--vf-col); }
+.vf-activity[data-width="frame"] { --vf-activity-w: var(--vf-frame); }
+.vf-focus-bar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 12px; box-sizing: border-box; height: var(--vf-bar-h); padding: 0 var(--vf-gutter); border-bottom: 1px solid var(--vf-line); background: var(--vf-bg); }
+.vf-focus-back { display: inline-flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; min-height: 44px; color: var(--vf-ink); font-weight: 500; font-size: 14px; text-decoration: none; }
+.vf-focus-back:hover .vf-focus-course { text-decoration: underline; text-underline-offset: 4px; }
+.vf-focus-course { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vf-focus-readout { display: none; flex: none; align-items: center; gap: 16px; }
+@media (min-width: 760px) { .vf-focus-readout { display: flex; } }
+.vf-focus-progress { display: flex; align-items: center; gap: 8px; width: 160px; }
+.vf-focus-progress > div { flex: 1; }
+.vf-focus-actions { display: flex; flex: none; align-items: center; gap: 8px; }
+.vf-focus-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); background: transparent; color: var(--vf-ink); }
+.vf-focus-icon:hover { border-color: var(--vf-ink); }
+.vf-focus-outline-trigger { min-height: 44px; }
+/* Phones keep the name for assistive tech and show the icon only, so the course link keeps room. */
+@media (max-width: 759px) {
+  .vf-focus-outline-trigger { width: 44px; padding: 0; }
+  .vf-focus-outline-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+.vf-activity-body { box-sizing: border-box; display: grid; gap: 28px; width: 100%; max-width: var(--vf-box); margin-inline: auto; padding: 28px var(--vf-gutter) 48px; }
+@media (min-width: 760px) { .vf-activity-body { padding-block: 36px 56px; } }
+.vf-activity-body > * { width: 100%; min-width: 0; max-width: var(--vf-activity-w); }
+.vf-activity-head { display: grid; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--vf-line); }
+.vf-activity-title { margin: 0; font-weight: 500; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.vf-activity-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.vf-activity-main { display: grid; gap: 24px; min-width: 0; }
+.vf-activity-main > * { min-width: 0; }
+.vf-activity-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; padding-top: 20px; border-top: 1px solid var(--vf-line); }
+.vf-activity-footer-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.vf-activity-footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.vf-activity-footer .vf-btn { min-height: 44px; white-space: normal; text-align: center; }
+@media (max-width: 759px) { .vf-activity-footer-actions { width: 100%; } .vf-activity-footer-actions > * { flex: 1 1 auto; } }
+.vf-activity-pager { display: grid; gap: 12px; padding-top: 24px; border-top: 1px solid var(--vf-line); }
+@media (min-width: 760px) { .vf-activity-pager { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vf-pager-link { display: grid; align-content: center; gap: 6px; min-width: 0; min-height: 64px; padding: 12px 16px; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); color: var(--vf-ink); text-decoration: none; }
+.vf-pager-link:hover { border-color: var(--vf-ink); }
+.vf-pager-link[data-dir="next"] { justify-items: end; text-align: right; }
+.vf-pager-title { font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
+@media (max-width: 759px) {
+  .vf-pager-link[data-dir="next"] { justify-items: start; text-align: left; border-left: 2px solid var(--vf-signal); }
+  .vf-pager-spacer { display: none; }
+}
+/* Exam: the palette, timer and save state sit in the 280px aside from 1100px (.vf-l-split). */
+.vf-exam-split[data-aside] > [data-area="aside"] { min-width: 0; }
+@media (min-width: 1100px) {
+  .vf-exam-split[data-aside] { grid-template-areas: "main aside"; grid-template-rows: auto; }
+  /* Capped to the viewport so a long palette never pushes Submit out of reach while it sticks. */
+  .vf-exam-split[data-aside] > [data-area="aside"] { position: sticky; top: calc(var(--vf-bar-h) + 16px); max-height: calc(100dvh - var(--vf-bar-h) - 32px); overflow-y: auto; }
+  .vf-exam-split .vf-exam-palette-toggle { display: none; }
+}
+.vf-exam-readout { border-radius: var(--vf-radius-card); overflow: hidden; }
+.vf-exam-readout .vf-readout-cell { border-bottom: 0; }
+@media (max-width: 759px) { .vf-exam-readout { grid-template-columns: repeat(3, minmax(0, 1fr)); } .vf-exam-readout .vf-readout-cell { padding: 14px 12px; } .vf-exam-readout .vf-readout-big { font-size: 22px; } }
+.vf-exam-readout > :last-child { border-right: 0; }
+/* Exam feedback is read in full: the mentor quote's four-line clamp does not apply here. */
+.vf-exam-feedback .vf-mentor blockquote { display: block; overflow: visible; -webkit-line-clamp: unset; white-space: pre-wrap; }
+/* Below 760px the start action stays reachable at the bottom of the viewport. */
+@media (max-width: 759px) {
+  .vf-exam-start { position: sticky; bottom: 0; z-index: 10; margin-inline: calc(var(--vf-gutter) * -1); padding: 12px var(--vf-gutter) max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--vf-line); background: var(--vf-bg); }
+  .vf-exam-start .vf-btn { width: 100%; }
+}
+
+/* ---------- project proposal: /app/projects/new (C16); fields sit on --surface like every learner input ---------- */
+.vf-card.vf-proposal-card { box-sizing: border-box; max-width: var(--vf-reading); margin-top: 28px; padding: 16px; }
+@media (min-width: 760px) { .vf-card.vf-proposal-card { padding: 24px; } }
+.vf-proposal { display: grid; gap: 0; min-width: 0; }
+.vf-proposal-section { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 24px 0; border: 0; border-top: 1px solid var(--vf-line); }
+.vf-proposal-section:first-child { padding-top: 0; border-top: 0; }
+.vf-proposal-legend { float: left; width: 100%; margin: 0 0 4px; padding: 0; font-weight: 500; font-size: 15px; color: var(--vf-ink); }
+.vf-proposal-legend + * { clear: both; }
+.vf-proposal-field { display: grid; gap: 6px; min-width: 0; }
+.vf-proposal-field[hidden] { display: none; }
+.vf-proposal-field > label, .vf-mcb-label, .vf-proposal-sublabel { margin: 0; font-weight: 500; font-size: 13px; color: var(--vf-ink); }
+.vf-proposal :is(input:not([type="file"]), textarea), .vf-mcb-trigger { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); background: var(--vf-surface); color: var(--vf-ink); font: inherit; font-size: 14px; }
+.vf-proposal textarea { padding: 10px 12px; line-height: 1.55; resize: vertical; }
+.vf-proposal [aria-invalid="true"] { border-color: var(--vf-fault); }
+.vf-proposal-error { margin: 0; font: 400 12px "IBM Plex Mono", monospace; color: var(--vf-fault); }
+.vf-proposal-disclosure { border-top: 1px solid var(--vf-line); border-bottom: 1px solid var(--vf-line); }
+.vf-proposal-disclosure > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-weight: 500; font-size: 13px; color: var(--vf-ink); list-style: none; }
+.vf-proposal-disclosure > summary::-webkit-details-marker { display: none; }
+.vf-proposal-disclosure > summary::before { content: "+"; width: 20px; color: var(--vf-signal); font-family: "IBM Plex Mono", monospace; }
+.vf-proposal-disclosure[open] > summary::before { content: "−"; }
+.vf-proposal-disclosure-body { display: grid; gap: 16px; padding-bottom: 16px; }
+.vf-proposal-link { display: grid; gap: 8px; }
+.vf-proposal-link-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.vf-proposal-link-row .vf-meta { overflow-wrap: anywhere; }
+/* Multi combobox (src/components/ui/multi-combobox.tsx) */
+.vf-mcb { display: grid; gap: 6px; min-width: 0; }
+.vf-mcb-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--vf-muted); text-align: left; cursor: pointer; }
+.vf-mcb-trigger:hover { border-color: var(--vf-ink); }
+.vf-mcb-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.vf-mcb-chip { min-height: 32px; padding-right: 2px; max-width: 100%; white-space: normal; }
+.vf-mcb-remove { position: relative; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--vf-radius-control); background: transparent; color: inherit; cursor: pointer; }
+/* A 44px hit area around the 28px button (DESIGN: 44px learner targets) that leaves the 32px chip row as is. */
+.vf-mcb-remove::before { content: ""; position: absolute; inset: -8px; }
+.vf-mcb-remove:hover { background: var(--vf-raised); color: var(--vf-ink); }
+@media (pointer: coarse) { .vf-mcb-chip { min-height: 44px; } .vf-mcb-remove { width: 44px; height: 44px; } .vf-mcb-remove::before { inset: 0; } }
+.vf-mcb-option[data-checked] { font-weight: 500; }
+/* Cover and link rows */
+.vf-proposal-cover, .vf-proposal-links { display: grid; gap: 8px; min-width: 0; }
+.vf-proposal-links { margin-top: 8px; }
+.vf-proposal-cover-frame { aspect-ratio: 16 / 9; max-width: 480px; overflow: hidden; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-raised); }
+.vf-proposal-cover-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.vf-proposal-cover-status { display: grid; gap: 6px; max-width: 480px; }
+.vf-proposal-progress { height: 4px; overflow: hidden; background: var(--vf-line); }
+.vf-proposal-progress > span { display: block; height: 100%; background: var(--vf-signal); }
+.vf-proposal-actions-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vf-proposal-file { position: relative; }
+.vf-proposal-file:focus-within { outline: 2px solid var(--vf-signal); outline-offset: 2px; }
+.vf-proposal-link-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+/* Rows are divided by hairlines, not boxed: the form already sits in one card (no nested cards). */
+.vf-proposal-link-item { display: grid; gap: 8px; padding: 12px 0 0; border-top: 1px solid var(--vf-line); }
+@media (min-width: 760px) { .vf-proposal-link-item { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; align-items: end; } }
+.vf-proposal-link-remove { justify-self: start; font-family: "IBM Plex Mono", monospace; }
+.vf-proposal-submit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-top: 24px; border-top: 1px solid var(--vf-line); }
+.vf-proposal-submitted { margin-bottom: 20px; }
+/* On the project detail page the notice sits in the head, under the page header. */
+.vf-l-detail > [data-area="head"] > .vf-proposal-submitted { margin: 16px 0 0; }
+/* A full-width primary action where the CTA row is one column (phones, the 280px aside). */
+@media (max-width: 759px) { .vf-l-action-cta .vf-btn { width: 100%; } }
+@media (min-width: 1100px) { .vf-l-split[data-aside] > [data-area="action"] .vf-l-action-cta .vf-btn { width: 100%; } }
+.vf-l-action-cta :is(p[role="status"], p[role="alert"], [role="alert"] p) { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--vf-muted); }
+.vf-l-action-cta [role="alert"] p { color: var(--vf-fault); }
+.vf-l-action-cta p[role="status"]:empty { margin: 0; }
+.vf-l-action-cta p[role="status"][data-tone="fault"] { color: var(--vf-fault); }
+.vf-l-action-cta [role="alert"] .vf-btn { margin-top: 8px; }
+.vf-l-action .vf-tol { margin-top: 4px; }
+.vf-l-needs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 8px 0 0; font-size: 13px; }
+.vf-l-needs a { display: inline-flex; align-items: center; min-height: 44px; color: var(--vf-signal); font: 500 12px "IBM Plex Mono", monospace; text-underline-offset: 3px; }
+
+/* Detail content: cards stack in the main column and the aside; hairline rows, mono definition
+ * lists, tag lists, prose and the project cover. Cards never nest (workspace.css). */
+.vf-l-detail > [data-area="main"] { display: grid; align-content: start; gap: 16px; }
+.vf-l-muted { color: var(--vf-muted); }
+.vf-l-prose { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-line; }
+.vf-l-prose + .vf-l-dl, .vf-l-prose + .vf-l-rows { margin-top: 12px; }
+.vf-l-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.vf-l-tags .vf-tag { white-space: normal; overflow-wrap: anywhere; }
+.vf-l-rows { margin: 0; padding: 0; list-style: none; }
+.vf-l-rows > li { min-width: 0; border-bottom: 1px solid var(--vf-line); }
+.vf-l-rows > li:last-child { border-bottom: 0; }
+.vf-card[data-flush] > .vf-l-rows { border-top: 1px solid var(--vf-line); }
+.vf-l-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; min-height: 48px; padding: 8px 0; overflow-wrap: anywhere; }
+.vf-card[data-flush] .vf-l-row { padding-inline: 16px; }
+.vf-l-row-link { color: var(--vf-ink); font-weight: 500; text-decoration: none; overflow-wrap: anywhere; }
+a.vf-l-row-link:hover, .vf-l-row a.vf-l-row-link:hover { color: var(--vf-signal); }
+.vf-l-row > a.vf-l-row-link:only-child, a.vf-l-row { flex: 1 1 auto; }
+.vf-l-row a.vf-l-row-link { display: inline-flex; align-items: center; min-height: 44px; }
+.vf-l-row-arrow { flex: none; color: var(--vf-signal); font-family: "IBM Plex Mono", monospace; }
+.vf-l-dl { display: grid; margin: 0; }
+.vf-l-dl > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 16px; padding: 10px 0; border-top: 1px solid var(--vf-line); min-width: 0; }
+.vf-l-dl > div:first-child { padding-top: 0; border-top: 0; }
+.vf-l-dl > div:last-child { padding-bottom: 0; }
+.vf-l-dl dt { color: var(--vf-muted); font-size: 13px; }
+.vf-l-dl dd { margin: 0; font: 400 12px/1.45 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.vf-l-dl[data-stack] > div { display: grid; gap: 2px; }
+.vf-l-dl[data-stack] dd { font-family: inherit; font-size: 14px; line-height: 1.55; text-align: left; }
+.vf-l-cover { aspect-ratio: 2 / 1; overflow: hidden; border: 1px solid var(--vf-line); border-radius: var(--vf-radius-card); background: var(--vf-surface); }
+.vf-l-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.vf-l-subhead { margin: 20px 0 10px; padding-top: 16px; border-top: 1px solid var(--vf-line); }
+
+/* Course overview: one card per module (mono M01 and an h3) with hairline item rows. */
+.vf-l-module-code { margin-right: 10px; color: var(--vf-signal); font: 500 12px "IBM Plex Mono", monospace; letter-spacing: .06em; }
+.vf-l-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; min-height: 56px; padding: 8px 16px; color: var(--vf-ink); text-decoration: none; }
+a.vf-l-item:hover { background: var(--vf-raised); }
+a.vf-l-item:hover .vf-l-item-title { color: var(--vf-signal); }
+a.vf-l-item:focus-visible { outline-offset: -2px; }
+.vf-l-item[data-locked] { color: var(--vf-muted); }
+.vf-l-item-code { color: var(--vf-muted); font: 500 11px "IBM Plex Mono", monospace; letter-spacing: .06em; }
+.vf-l-item-title { display: block; font-weight: 500; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.vf-l-item-meta { display: block; margin-top: 2px; }
+.vf-l-outline-note { margin: 0 0 16px; max-width: 68ch; color: var(--vf-muted); font-size: 13px; line-height: 1.55; }
+.vf-l-outline > .vf-card + .vf-card { margin-top: 16px; }
+.vf-l-outcomes { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; line-height: 1.55; }
+.vf-l-req { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 10px 0; }
+.vf-l-req > p { margin: 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.vf-l-req-state { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Profile settings: the Account and Public profile cards (vf-label labels, vf-btn, Notice). */
+.vf-l-account { display: grid; gap: 20px; }
+@media (min-width: 760px) { .vf-l-account { grid-template-columns: 112px minmax(0, 1fr); align-items: start; } }
+.vf-l-account-photo { display: grid; justify-items: start; gap: 12px; }
+.vf-l-avatar { display: grid; place-items: center; width: 96px; height: 96px; border: 1px solid var(--vf-line); border-radius: 50%; object-fit: cover; }
+.vf-l-avatar[data-initial] { background: var(--vf-signal); color: var(--vf-signal-ink); font-size: 32px; font-weight: 600; }
+.vf-l-upload { position: relative; min-height: 44px; }
+.vf-l-upload:has(:focus-visible) { outline: 2px solid var(--vf-signal); outline-offset: 2px; }
+.vf-l-account-fields { display: grid; gap: 16px; margin: 0; }
+@media (min-width: 760px) { .vf-l-account-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vf-l-account-fields dd { margin: 6px 0 0; font-size: 15px; overflow-wrap: anywhere; }
+.vf-l-settings .vf-notice { margin-top: 12px; }
+.vf-l-settings-forms { display: grid; gap: 16px; margin-top: 16px; }
+@media (min-width: 760px) { .vf-l-settings-forms { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vf-l-settings-form { display: grid; align-content: start; gap: 8px; min-width: 0; padding-top: 16px; border-top: 1px solid var(--vf-line); }
+.vf-l-settings-form .vf-meta { margin: 0; }
+.vf-l-input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--vf-line-strong); border-radius: var(--vf-radius-control); background: var(--vf-surface); color: var(--vf-ink); font: 400 16px "IBM Plex Mono", monospace; }
+.vf-l-input[aria-invalid="true"] { border-color: var(--vf-fault); }
+.vf-l-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.vf-l-check input { width: 18px; height: 18px; flex: none; accent-color: var(--vf-signal); }
+.vf-l-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }

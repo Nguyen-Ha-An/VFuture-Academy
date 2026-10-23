@@ -1,0 +1,84 @@
+{
+  "vi": {
+    "workbench": {
+      "back": {
+        "queue": "Quay lại danh sách",
+        "home": "Quay lại tổng quan chấm bài",
+        "assessments": "Quay lại Bài tập & bài thi",
+        "reports": "Quay lại báo cáo học tập"
+      },
+      "next": "Bài tiếp theo trong hàng chờ",
+      "identity": "{course} · {item}",
+      "source": {
+        "course": "Khoá học",
+        "item": "Bài đánh giá",
+        "unavailable": "Không có tên bài đánh giá",
+        "version": "Phiên bản {version}"
+      },
+      "panels": {
+        "prompt": "Hướng dẫn đã ghim",
+        "response": "Bài nộp của học viên",
+        "rubric": "Rubric và điểm",
+        "save": "Lưu bản chấm",
+        "complete": "Hoàn tất chấm",
+        "feedback": "Phản hồi",
+        "source": "Nguồn phiên bản đã xuất bản",
+        "questions": "Câu hỏi",
+        "examPrompt": "Đề bài đã ghim",
+        "answer": "Câu trả lời của học viên",
+        "gradeQuestion": "Lưu điểm câu hỏi"
+      }
+    },
+    "reports": {
+      "attempts": {
+        "title": "Lượt nộp theo loại bài",
+        "description": "Tổng lượt nộp trong kỳ đã chọn, theo loại bài đánh giá.",
+        "series": "Lượt nộp"
+      },
+      "outcomes": "Điểm trung bình và tỷ lệ đạt",
+      "courses": "Kết quả theo khóa học",
+      "questions": "Câu hỏi và lượt 0 điểm"
+    }
+  },
+  "en": {
+    "workbench": {
+      "back": {
+        "queue": "Back to grading queue",
+        "home": "Back to grading overview",
+        "assessments": "Back to assignments & exams",
+        "reports": "Back to learning reports"
+      },
+      "next": "Next in queue",
+      "identity": "{course} · {item}",
+      "source": {
+        "course": "Course",
+        "item": "Assessment",
+        "unavailable": "Assessment title unavailable",
+        "version": "Version {version}"
+      },
+      "panels": {
+        "prompt": "Pinned instructions",
+        "response": "Learner response",
+        "rubric": "Rubric and points",
+        "save": "Save grading draft",
+        "complete": "Complete grading",
+        "feedback": "Feedback",
+        "source": "Published version source",
+        "questions": "Questions",
+        "examPrompt": "Pinned instructions",
+        "answer": "Learner response",
+        "gradeQuestion": "Save question grade"
+      }
+    },
+    "reports": {
+      "attempts": {
+        "title": "Submitted attempts by type",
+        "description": "Attempts submitted in the selected period, by assessment type.",
+        "series": "Submitted attempts"
+      },
+      "outcomes": "Average scores and pass rates",
+      "courses": "Results by course",
+      "questions": "Questions and zero-point answers"
+    }
+  }
+}

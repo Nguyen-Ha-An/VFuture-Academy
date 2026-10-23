@@ -1,0 +1,138 @@
+{
+  "id": "nhom-1",
+  "type": "question_group",
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Đọc đoạn thông tin rồi trả lời hai câu hỏi bên dưới."
+          }
+        ]
+      }
+    ]
+  },
+  "sharedContent": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Một chiếc bánh được cắt thành 8 phần bằng nhau. An ăn 2 phần, Bình ăn 4 phần."
+          }
+        ]
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "nhom-1-cau-1",
+      "type": "single_choice",
+      "points": 1,
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "An đã ăn bao nhiêu phần bánh?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1/4"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1/2"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2/6"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correctAnswer": "a",
+      "explanation": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "2 phần trong 8 phần là 2/8 = 1/4."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "nhom-1-cau-2",
+      "type": "true_false",
+      "points": 1,
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Bình đã ăn đúng một nửa chiếc bánh."
+              }
+            ]
+          }
+        ]
+      },
+      "correctAnswer": true,
+      "explanation": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "4 phần trong 8 phần là 4/8 = 1/2."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

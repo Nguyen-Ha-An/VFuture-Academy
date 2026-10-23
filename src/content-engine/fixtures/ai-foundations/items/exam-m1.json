@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1, "kind": "exam", "id": "exam-m1", "title": { "vi": "Bài kiểm tra Module 1", "en": "Module 1 exam" },
+  "description": { "vi": { "blocks": [{ "type": "paragraph", "content": [{ "text": "30 phút. Cần đạt 70%." }] }] }, "en": { "blocks": [{ "type": "paragraph", "content": [{ "text": "30 minutes. 70% to pass." }] }] } },
+  "settings": { "timeLimitMinutes": 30, "attemptsAllowed": 2, "scoringPolicy": "best", "passPercent": 70, "review": { "showScore": "immediately", "showCorrectAnswers": "on_release", "showExplanations": "on_release" }, "shuffleQuestions": true, "shuffleOptions": true, "navigation": "free", "layout": "one_per_page", "integrity": { "logFocusLoss": true, "logPaste": true } },
+  "sections": [
+    { "id": "s1", "title": { "vi": "Phần 1: Khái niệm", "en": "Part 1: Concepts" }, "timeLimitMinutes": 15, "questions": [
+      { "id": "e1", "type": "single_choice", "points": 2, "content": { "vi": { "blocks": [{ "type": "paragraph", "content": [{ "text": "AI tạo sinh khác học máy truyền thống ở điểm nào?" }] }] }, "en": { "blocks": [{ "type": "paragraph", "content": [{ "text": "How does generative AI differ from traditional machine learning?" }] }] } }, "options": [ { "id": "a", "content": { "vi": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Tạo nội dung mới thay vì chỉ phân loại" }] }] }, "en": { "blocks": [{ "type": "paragraph", "content": [{ "text": "It creates new content instead of only classifying" }] }] } } }, { "id": "b", "content": { "vi": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Không cần dữ liệu" }] }] }, "en": { "blocks": [{ "type": "paragraph", "content": [{ "text": "It needs no data" }] }] } } } ], "correctAnswer": "a", "explanation": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Generative models produce text, images or code." }] }] } },
+      { "$ref": "bank:ai-basics-001" }, { "$ref": "bank:ai-basics-002" }
+    ] },
+    { "id": "s2", "title": { "vi": "Phần 2: Vận dụng", "en": "Part 2: Application" }, "timeLimitMinutes": 15, "questions": [
+      { "$pool": { "id": "pool-prompting", "count": 2, "pointsEach": 2, "filter": { "tags": ["prompting"] } } },
+      { "id": "e2", "type": "essay", "points": 4, "content": { "vi": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Đề xuất một cách dùng AI có trách nhiệm trong học tập và nêu một giới hạn." }] }] }, "en": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Propose one responsible use of AI for studying and name one limit." }] }] } }, "minWords": 40, "maxWords": 150, "rubric": { "criteria": [ { "id": "use", "name": { "vi": "Cách dùng hợp lý", "en": "Sensible use" }, "maxPoints": 2 }, { "id": "limit", "name": { "vi": "Giới hạn rõ ràng", "en": "Clear limit" }, "maxPoints": 2 } ] } }
+    ] }
+  ]
+}

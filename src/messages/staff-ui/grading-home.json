@@ -1,0 +1,126 @@
+{
+  "vi": {
+    "home": {
+      "gradeNext": "Chấm bài tiếp theo",
+      "gradeNextEmpty": "Không có bài nào đang chờ chấm.",
+      "gradeNextUnavailable": "Không đọc được hàng chờ chấm bài.",
+      "kpi": {
+        "waiting": "Chờ chấm",
+        "waitingHint": "Đã nộp hoặc đang chấm",
+        "exams": "Bài thi chờ chấm",
+        "examsHint": "Cần chấm tay",
+        "oldest": "Chờ lâu nhất",
+        "oldestValue": "{days, plural, =0 {Dưới 1 ngày} other {# ngày}}",
+        "oldestNone": "Không có bài chờ",
+        "oldestHint": "Nộp lúc {date}",
+        "graded": "Đã chấm trong 7 ngày",
+        "gradedHint": "Điểm đã trả cho học viên",
+        "gradedDelta": "so với 7 ngày trước"
+      },
+      "pipeline": {
+        "title": "Bài nộp theo trạng thái",
+        "description": "Số liệu hiện tại. Chọn một trạng thái để mở hàng chờ đã lọc."
+      },
+      "chart": {
+        "title": "Tiến độ chấm bài, 30 ngày",
+        "description": "Bài nộp nhận được và điểm đã trả cho học viên mỗi ngày (giờ UTC).",
+        "received": "Đã nhận",
+        "released": "Đã trả điểm",
+        "day": "Ngày"
+      },
+      "oldest": {
+        "title": "Bài nộp chờ lâu nhất",
+        "description": "Năm bài nộp đã chờ lâu nhất, theo đúng thứ tự của hàng chờ.",
+        "waiting": "Thời gian chờ",
+        "empty": "Không có bài nào đang chờ",
+        "emptyDescription": "Bài nộp mới sẽ hiện ở đây.",
+        "openQueue": "Mở hàng chờ chấm bài"
+      },
+      "recent": {
+        "title": "Mới chấm gần đây",
+        "released": "đã trả điểm cho",
+        "draft": "đã lưu bản nháp chấm cho",
+        "target": "{learner} · {item}",
+        "unknownGrader": "Một người chấm",
+        "empty": "Chưa có điểm nào được lưu."
+      },
+      "shortcuts": {
+        "title": "Lối tắt"
+      },
+      "queue": {
+        "statusPending": "Đang chờ",
+        "preview": "Xem trước bài của {learner}",
+        "previewTitle": "Xem trước bài nộp",
+        "previewMeta": "{course} · {item} · lần {attempt}",
+        "openWorkbench": "Mở bàn chấm bài",
+        "closePreview": "Đóng xem trước",
+        "noMatchesYet": "Trang này chưa có bài nào khớp. Hãy tải thêm để xem tiếp."
+      },
+      "unknownLearner": "Học viên chưa rõ tên",
+      "unknownCourse": "Khoá học chưa rõ tên",
+      "unknownItem": "Bài chưa rõ tên"
+    }
+  },
+  "en": {
+    "home": {
+      "gradeNext": "Grade next",
+      "gradeNextEmpty": "Nothing is waiting to be graded.",
+      "gradeNextUnavailable": "The grading queue could not be read.",
+      "kpi": {
+        "waiting": "Waiting to grade",
+        "waitingHint": "Submitted or in review",
+        "exams": "Exam attempts to grade",
+        "examsHint": "Need manual grading",
+        "oldest": "Oldest waiting",
+        "oldestValue": "{days, plural, =0 {Under a day} one {# day} other {# days}}",
+        "oldestNone": "None waiting",
+        "oldestHint": "Submitted {date}",
+        "graded": "Graded in 7 days",
+        "gradedHint": "Grades returned to learners",
+        "gradedDelta": "vs previous 7 days"
+      },
+      "pipeline": {
+        "title": "Submissions by status",
+        "description": "Current totals. Select a status to open the queue filtered to it."
+      },
+      "chart": {
+        "title": "Grading throughput, 30 days",
+        "description": "Submissions received and grades returned to learners each day (UTC).",
+        "received": "Received",
+        "released": "Returned",
+        "day": "Day"
+      },
+      "oldest": {
+        "title": "Oldest waiting submissions",
+        "description": "The five submissions that have waited longest, in queue order.",
+        "waiting": "Waiting",
+        "empty": "Nothing is waiting",
+        "emptyDescription": "New submissions appear here.",
+        "openQueue": "Open grading queue"
+      },
+      "recent": {
+        "title": "Recently graded",
+        "released": "returned a grade for",
+        "draft": "saved a grading draft for",
+        "target": "{learner} · {item}",
+        "unknownGrader": "A grader",
+        "empty": "No grades saved yet."
+      },
+      "shortcuts": {
+        "title": "Shortcuts"
+      },
+      "queue": {
+        "statusPending": "Waiting",
+        "preview": "Preview {learner}",
+        "previewTitle": "Submission preview",
+        "previewMeta": "{course} · {item} · attempt {attempt}",
+        "openWorkbench": "Open grading workbench",
+        "closePreview": "Close preview",
+        "noMatchesYet": "No matches on this page yet. Load more to keep looking."
+      },
+      "unknownLearner": "Unnamed learner",
+      "unknownCourse": "Untitled course",
+      "unknownItem": "Untitled item"
+    }
+  }
+}

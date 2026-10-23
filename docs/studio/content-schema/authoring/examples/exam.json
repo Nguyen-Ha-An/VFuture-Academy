@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "exam",
+  "id": "solar-system-exam",
+  "title": "Solar system check",
+  "settings": {
+    "timeLimitMinutes": 20
+  },
+  "sections": [
+    {
+      "id": "facts",
+      "title": "Facts",
+      "questions": [
+        {
+          "id": "sun-is-star",
+          "type": "true_false",
+          "points": 1,
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Sun is a star."
+                  }
+                ]
+              }
+            ]
+          },
+          "correctAnswer": true,
+          "explanation": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Sun is the star at the center of our solar system."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

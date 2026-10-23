@@ -1,0 +1,38 @@
+:root {
+  --jp-layout-color0: #ffffff;
+  --jp-layout-color1: #f8fafc;
+  --jp-border-color1: #e2e8f0;
+}
+
+#jp-top-panel,
+#jp-menu-panel,
+#jp-left-stack,
+#jp-right-stack,
+.jp-SideBar,
+.jp-StatusBar,
+.jp-NotebookPanel-toolbar .jp-Toolbar-item:not(.jp-Notebook-toolbarCellType) {
+  display: none !important;
+}
+
+#jp-main-dock-panel {
+  inset: 0 !important;
+}
+
+.jp-LabShell.jp-mod-single-document-mode .jp-MainAreaWidget {
+  border: 0;
+}
+
+.jp-Notebook {
+  padding: 20px max(20px, calc((100% - 920px) / 2));
+}
+
+
+.jp-Notebook .jp-ToolbarButtonComponent { min-width: 44px; min-height: 44px; }
+.jp-Notebook .cm-scroller { overflow-x: auto; }
+@media (max-width: 600px) {
+  .jp-Notebook { padding: 12px; }
+  .jp-Notebook .jp-Cell-toolbar { max-width: 100%; overflow-x: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jp-Notebook *, #jupyterlite-loading-indicator, .jupyterlite-loading-indicator-spinner { animation: none !important; transition: none !important; }
+}

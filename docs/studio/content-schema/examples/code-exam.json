@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "kind": "exam",
+  "id": "python-function-quiz",
+  "title": "Viết hàm Python",
+  "settings": {
+    "passPercent": 70,
+    "attemptsAllowed": 2,
+    "review": {
+      "showScore": "on_release",
+      "showCorrectAnswers": "on_release",
+      "showExplanations": "on_release"
+    }
+  },
+  "sections": [
+    {
+      "id": "functions",
+      "title": "Hàm và xử lý dữ liệu",
+      "questions": [
+        {
+          "id": "sum-even",
+          "type": "code_answer",
+          "language": "python",
+          "points": 10,
+          "difficulty": "easy",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Viết hàm sum_even(numbers) nhận danh sách số nguyên, trả về tổng các số chẵn. Không thay đổi danh sách đầu vào. Danh sách rỗng trả về 0. Ví dụ: sum_even([1, 2, 3, 4]) = 6; sum_even([]) = 0; sum_even([-2, 3, 4]) = 2. Không đọc input hoặc in kết quả; dùng return."
+                  }
+                ]
+              }
+            ]
+          },
+          "starterCode": "def sum_even(numbers):\n    # Viết lời giải tại đây\n    pass\n",
+          "sampleSolution": "def sum_even(numbers):\n    return sum(number for number in numbers if number % 2 == 0)\n",
+          "explanation": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Duyệt danh sách, chọn các số chia hết cho 2 và cộng chúng. Tổng danh sách rỗng là 0; số chẵn âm vẫn được tính."
+                  }
+                ]
+              }
+            ]
+          },
+          "rubric": {
+            "criteria": [
+              {
+                "id": "signature",
+                "name": "Đúng tên hàm, tham số và dùng return",
+                "maxPoints": 2
+              },
+              {
+                "id": "logic",
+                "name": "Tính đúng tổng số chẵn, bao gồm số âm",
+                "maxPoints": 5
+              },
+              {
+                "id": "empty",
+                "name": "Danh sách rỗng trả về 0",
+                "maxPoints": 2
+              },
+              {
+                "id": "immutable",
+                "name": "Không thay đổi danh sách đầu vào",
+                "maxPoints": 1
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

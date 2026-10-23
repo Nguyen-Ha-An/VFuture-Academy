@@ -1,0 +1,33 @@
+{
+  "jupyter-lite-schema-version": 0,
+  "jupyter-config-data": {
+    "appName": "VFuture Notebook",
+    "enableMemoryStorage": true,
+    "contentsStorageDrivers": [
+      "memoryStorageDriver"
+    ],
+    "settingsStorageDrivers": [
+      "memoryStorageDriver"
+    ],
+    "workspacesStorageDrivers": [
+      "memoryStorageDriver"
+    ],
+    "disabledExtensions": [
+      "@jupyterlab/apputils-extension:announcements",
+      "@jupyterlab/help-extension:jupyter-forum",
+      "@jupyterlab/workspaces-extension"
+    ],
+    "litePluginSettings": {
+      "@jupyterlite/pyodide-kernel-extension:kernel": {
+        "loadPyodideOptions": {
+          "packages": [
+            "numpy",
+            "pandas",
+            "matplotlib"
+          ]
+        },
+        "disablePyPIFallback": true
+      }
+    }
+  }
+}

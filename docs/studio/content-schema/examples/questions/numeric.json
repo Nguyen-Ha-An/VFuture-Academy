@@ -1,0 +1,32 @@
+{
+  "id": "cau-6",
+  "type": "numeric",
+  "points": 1,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Viết 3/4 dưới dạng số thập phân."
+          }
+        ]
+      }
+    ]
+  },
+  "tolerance": 0.001,
+  "correctAnswer": 0.75,
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "3 chia 4 bằng 0,75."
+          }
+        ]
+      }
+    ]
+  }
+}

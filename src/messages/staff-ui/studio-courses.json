@@ -1,0 +1,154 @@
+{
+  "vi": {
+    "courses": {
+      "kpi": {
+        "label": "Chỉ số khoá học",
+        "total": "Khoá học",
+        "drafts": "Bản nháp",
+        "inReview": "Đang chờ duyệt",
+        "published": "Đã xuất bản",
+        "snapshotHint": "Số liệu hiện tại",
+        "unavailable": "Không khả dụng"
+      },
+      "list": {
+        "title": "Tất cả khoá học",
+        "search": "Tìm theo tên hoặc mã khoá học",
+        "status": "Trạng thái",
+        "noMatches": "Không có khoá học nào khớp với bộ lọc.",
+        "reviewsUnavailable": "Tạm thời không tải được trạng thái duyệt; cột Trạng thái chỉ hiển thị trạng thái nội dung.",
+        "actions": "Thao tác",
+        "actionsFor": "Thao tác cho {title}",
+        "open": "Mở không gian soạn thảo",
+        "copyId": "Sao chép mã khoá học",
+        "copied": "Đã sao chép mã {id}.",
+        "copyError": "Không sao chép được mã khoá học."
+      },
+      "stages": {
+        "draft": "Bản nháp",
+        "in_review": "Đang chờ duyệt",
+        "changes_requested": "Cần chỉnh sửa",
+        "approved": "Đã duyệt",
+        "published": "Đã xuất bản",
+        "archived": "Đã lưu trữ"
+      },
+      "readiness": {
+        "button": "Mức sẵn sàng {done}/{total}",
+        "title": "Mức sẵn sàng xuất bản",
+        "description": "Kiểm tra trên nội dung đang hiển thị. Người duyệt xác nhận từng mục khi duyệt và xuất bản.",
+        "unverified": "Đang chờ kiểm tra phiên bản hiện tại.",
+        "close": "Đóng",
+        "issues": "{count, plural, other {# vấn đề}}",
+        "warnings": "{count, plural, other {# cảnh báo}}",
+        "noIssues": "Không có vấn đề.",
+        "manual": "Người duyệt xác nhận khi duyệt và xuất bản.",
+        "statusUnverified": "Chưa kiểm tra",
+        "blocked": "{count, plural, other {Sửa # lỗi trước khi gửi duyệt.}}"
+      },
+      "checklist": {
+        "legend": "Xác nhận trước khi xuất bản",
+        "items": {
+          "outcomesReviewed": {
+            "label": "Mục tiêu học tập",
+            "confirm": "Đã rà soát mục tiêu học tập"
+          },
+          "answerKeysVerified": {
+            "label": "Đáp án",
+            "confirm": "Đã kiểm tra đáp án"
+          },
+          "accessibilityReviewed": {
+            "label": "Khả năng tiếp cận",
+            "confirm": "Đã rà soát khả năng tiếp cận"
+          },
+          "ageAppropriate": {
+            "label": "Phù hợp độ tuổi",
+            "confirm": "Phù hợp độ tuổi"
+          },
+          "linksValid": {
+            "label": "Liên kết",
+            "confirm": "Liên kết hợp lệ"
+          },
+          "warningsAcknowledged": {
+            "label": "Cảnh báo",
+            "confirm": "Đã xác nhận cảnh báo"
+          }
+        }
+      }
+    }
+  },
+  "en": {
+    "courses": {
+      "kpi": {
+        "label": "Course metrics",
+        "total": "Courses",
+        "drafts": "Drafts",
+        "inReview": "Waiting for review",
+        "published": "Published",
+        "snapshotHint": "Right now",
+        "unavailable": "Unavailable"
+      },
+      "list": {
+        "title": "All courses",
+        "search": "Search by course title or ID",
+        "status": "Status",
+        "noMatches": "No courses match these filters.",
+        "reviewsUnavailable": "Review states could not be loaded; the Status column shows the content state only.",
+        "actions": "Actions",
+        "actionsFor": "Actions for {title}",
+        "open": "Open workspace",
+        "copyId": "Copy course ID",
+        "copied": "Copied {id}.",
+        "copyError": "The course ID could not be copied."
+      },
+      "stages": {
+        "draft": "Draft",
+        "in_review": "In review",
+        "changes_requested": "Changes requested",
+        "approved": "Approved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "readiness": {
+        "button": "Readiness {done}/{total}",
+        "title": "Publish readiness",
+        "description": "Checked against the text on screen. The reviewer confirms each item when approving and publishing.",
+        "unverified": "Waiting for the current revision to be checked.",
+        "close": "Close",
+        "issues": "{count, plural, one {# issue} other {# issues}}",
+        "warnings": "{count, plural, one {# warning} other {# warnings}}",
+        "noIssues": "No issues.",
+        "manual": "The reviewer confirms this when approving and publishing.",
+        "statusUnverified": "Not checked",
+        "blocked": "{count, plural, one {Fix # error before submitting for review.} other {Fix # errors before submitting for review.}}"
+      },
+      "checklist": {
+        "legend": "Publication checklist",
+        "items": {
+          "outcomesReviewed": {
+            "label": "Learning outcomes",
+            "confirm": "Learning outcomes reviewed"
+          },
+          "answerKeysVerified": {
+            "label": "Answer keys",
+            "confirm": "Answer keys verified"
+          },
+          "accessibilityReviewed": {
+            "label": "Accessibility",
+            "confirm": "Accessibility reviewed"
+          },
+          "ageAppropriate": {
+            "label": "Age appropriate",
+            "confirm": "Age appropriate"
+          },
+          "linksValid": {
+            "label": "Links",
+            "confirm": "Links valid"
+          },
+          "warningsAcknowledged": {
+            "label": "Warnings",
+            "confirm": "Warnings acknowledged"
+          }
+        }
+      }
+    }
+  }
+}

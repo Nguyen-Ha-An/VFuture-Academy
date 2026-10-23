@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "lesson",
+  "id": "ten-bai-hoc",
+  "title": "Tên bài học",
+  "blocks": [
+    {
+      "id": "quiz-1",
+      "type": "quiz",
+      "title": "Tự kiểm tra",
+      "settings": {
+        "mode": "practice",
+        "feedback": "after_submit",
+        "showExplanations": true
+      },
+      "questions": [
+        {
+          "id": "cau-1",
+          "type": "true_false",
+          "points": 1,
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Phát biểu cần đánh giá."
+                  }
+                ]
+              }
+            ]
+          },
+          "correctAnswer": true,
+          "explanation": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Vì sao phát biểu đúng."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

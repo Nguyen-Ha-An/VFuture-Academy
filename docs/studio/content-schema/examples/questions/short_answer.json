@@ -1,0 +1,34 @@
+{
+  "id": "cau-5",
+  "type": "short_answer",
+  "points": 1,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Viết phân số tối giản của 6/8."
+          }
+        ]
+      }
+    ]
+  },
+  "correctAnswer": [
+    "3/4",
+    "ba phần tư"
+  ],
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Ước chung lớn nhất của 6 và 8 là 2; 6/8 = 3/4."
+          }
+        ]
+      }
+    ]
+  }
+}

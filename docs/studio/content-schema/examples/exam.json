@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "kind": "exam",
+  "id": "kiem-tra",
+  "title": "Kiểm tra kiến thức",
+  "settings": {
+    "passPercent": 70
+  },
+  "sections": [
+    {
+      "id": "phan-1",
+      "title": "Trắc nghiệm",
+      "questions": [
+        {
+          "id": "cau-1",
+          "type": "true_false",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "AI có thể hỗ trợ nhận diện hình ảnh."
+                  }
+                ]
+              }
+            ]
+          },
+          "correctAnswer": true,
+          "explanation": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Nhận diện hình ảnh là một ứng dụng của AI."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

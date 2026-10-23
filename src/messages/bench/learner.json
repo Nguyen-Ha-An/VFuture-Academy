@@ -1,0 +1,322 @@
+{
+  "en": {
+    "shell": {
+      "brand": "Academy",
+      "handle": "@{handle}",
+      "search": "Search or jump to…"
+    },
+    "command": {
+      "title": "Command menu",
+      "description": "Jump to a section, or change theme or language.",
+      "input": "Type a page or action…",
+      "empty": "No matches.",
+      "results": "Results",
+      "groups": {
+        "goTo": "Go to",
+        "explore": "Explore",
+        "account": "Account",
+        "workspaces": "Workspaces",
+        "preferences": "Preferences"
+      },
+      "shortcut": "g then {key}",
+      "current": "Current",
+      "propose": "Propose a project",
+      "hint": "↑↓ to move · Enter to open · Esc to close",
+      "theme": {
+        "system": "Automatic theme",
+        "light": "Light theme",
+        "dark": "Dark theme"
+      },
+      "keywords": {
+        "learning": "Học tập home dashboard trang chủ",
+        "courses": "Khoá học Khóa học catalog",
+        "explore": "Khám phá discover",
+        "resources": "Tài nguyên guides templates",
+        "opportunities": "Cơ hội programs events",
+        "projects": "Dự án community",
+        "propose": "Đề xuất dự án new proposal idea",
+        "profile": "Hồ sơ account",
+        "certificates": "Chứng chỉ",
+        "xp": "Điểm kinh nghiệm points",
+        "leaderboard": "Bảng xếp hạng rank",
+        "studio": "Studio",
+        "grading": "Khảo thí đánh giá assessment",
+        "admin": "Quản trị administration",
+        "theme": "Giao diện appearance",
+        "language": "Ngôn ngữ Tiếng Việt English"
+      }
+    },
+    "dashboard": {
+      "kicker": "A1 / Learning",
+      "greeting": "Hi {name}",
+      "greetingAnonymous": "Hi",
+      "week": "WK {week}",
+      "firstRunTitle": "Start your first course",
+      "firstRunBody": "Pick a course from the catalog. Your first lesson starts the trace.",
+      "caughtUpTitle": "You're caught up",
+      "completedTitle": "All enrolled courses complete",
+      "progressLabel": "{course}: {completed} of {total} items complete, {percent}%",
+      "progressTarget": "{label}. Target {from} to {to}% by {date}",
+      "progressUnknown": "Progress unavailable",
+      "minutes": "{count} min",
+      "items": "{count, plural, one {# item} other {# items}}",
+      "columns": {
+        "part": "Part",
+        "course": "Course",
+        "dependsOn": "Depends on",
+        "progress": "Progress",
+        "next": "Next"
+      },
+      "nextLabel": "Next: {item}",
+      "nextExam": "Exam",
+      "nextAssignment": "Assignment",
+      "examOpen": "Open now",
+      "examScheduled": "Scheduled",
+      "deadlineOpens": "Opens {countdown}",
+      "deadlineCloses": "Closes {countdown}",
+      "calibrated": "Calibrated",
+      "completionStrip": "{part} {course} calibrated · certificate issued",
+      "viewCertificate": "View certificate",
+      "traceLabel": "Trace",
+      "readoutLabel": "Readout"
+    },
+    "readout": {
+      "xp": "XP · this week",
+      "xpDetail": "vs the same days last week",
+      "xpSpark": "XP per day over the last 14 days: {total} in total, best day {max}, today {today}",
+      "deadline": "Next deadline",
+      "deadlineNone": "None scheduled",
+      "deadlineExam": "Exam · {part}",
+      "opens": "Opens in",
+      "closes": "Closes in",
+      "rank": "Rank · branch",
+      "rankOf": "/ {total}",
+      "rankNone": "Earn XP to enter",
+      "rankNoBranch": "No branch assigned yet",
+      "openLeaderboard": "Leaderboard",
+      "skills": "Skills · top 3",
+      "skillsEmpty": "No skill evidence yet",
+      "skillLevel": "{skill}: level {level} of {max}, {name}",
+      "levels": {
+        "exposed": "exposed",
+        "applied": "applied",
+        "demonstrated": "demonstrated"
+      },
+      "rankNew": "new",
+      "rankSinceLastWeek": "since last week"
+    },
+    "trace": {
+      "points": "+{points} XP",
+      "kinds": {
+        "exam_passed": "Exam passed",
+        "assignment_approved": "Assignment approved",
+        "course_completed": "Course completed"
+      },
+      "examMarker": "Exam · {title}"
+    },
+    "catalog": {
+      "kicker": "A2 / Courses",
+      "columns": {
+        "part": "Part",
+        "course": "Course",
+        "dependsOn": "Depends on",
+        "status": "Status",
+        "next": "Next"
+      },
+      "open": "Open",
+      "needs": "Needs {parts}",
+      "noMatchTitle": "No courses match these filters",
+      "noMatchBody": "Try fewer filters, or clear them to see every course."
+    },
+    "explore": {
+      "kicker": "A3 / Explore"
+    },
+    "activity": {
+      "bar": "Activity",
+      "backTo": "Back to course: {course}",
+      "more": "More options",
+      "progress": "{completed} of {total} items complete",
+      "outlineProgress": "{completed} of {total} complete",
+      "minutes": "{count} min",
+      "state": {
+        "notStarted": "Not started",
+        "inProgress": "In progress",
+        "completed": "Completed",
+        "submitted": "Submitted",
+        "inReview": "In review",
+        "approved": "Approved",
+        "changesRequested": "Changes requested",
+        "saving": "Saving",
+        "notSaved": "Not saved"
+      },
+      "viewedComplete": "Viewed · complete",
+      "activitiesRequired": "Complete the activities to finish",
+      "next": "Next: {title}",
+      "backToCourse": "Back to course",
+      "prevKicker": "Previous · {kind}",
+      "nextKicker": "Next · {kind}",
+      "pager": "Previous and next",
+      "notebook": "Notebook"
+    }
+  },
+  "vi": {
+    "shell": {
+      "brand": "Academy",
+      "handle": "@{handle}",
+      "search": "Tìm hoặc chuyển tới…"
+    },
+    "command": {
+      "title": "Bảng lệnh",
+      "description": "Chuyển tới một mục, hoặc đổi giao diện hay ngôn ngữ.",
+      "input": "Nhập trang hoặc thao tác…",
+      "empty": "Không có kết quả.",
+      "results": "Kết quả",
+      "groups": {
+        "goTo": "Đi tới",
+        "explore": "Khám phá",
+        "account": "Tài khoản",
+        "workspaces": "Không gian làm việc",
+        "preferences": "Tuỳ chọn"
+      },
+      "shortcut": "g rồi {key}",
+      "current": "Đang dùng",
+      "propose": "Đề xuất dự án",
+      "hint": "↑↓ di chuyển · Enter mở · Esc đóng",
+      "theme": {
+        "system": "Giao diện tự động",
+        "light": "Giao diện sáng",
+        "dark": "Giao diện tối"
+      },
+      "keywords": {
+        "learning": "Learning home dashboard",
+        "courses": "Courses Khoá học catalog",
+        "explore": "Explore discover",
+        "resources": "Resources guides templates",
+        "opportunities": "Opportunities programs events",
+        "projects": "Projects community",
+        "propose": "Propose a project new proposal ý tưởng",
+        "profile": "Profile account",
+        "certificates": "Certificates",
+        "xp": "XP experience points",
+        "leaderboard": "Leaderboard rank",
+        "studio": "Studio",
+        "grading": "Assessment grading",
+        "admin": "Administration admin",
+        "theme": "Theme appearance",
+        "language": "Language English Tiếng Việt"
+      }
+    },
+    "dashboard": {
+      "kicker": "A1 / Học tập",
+      "greeting": "Chào {name}",
+      "greetingAnonymous": "Chào bạn",
+      "week": "Tuần {week}",
+      "firstRunTitle": "Bắt đầu khóa học đầu tiên",
+      "firstRunBody": "Chọn một khóa học trong danh mục. Bài học đầu tiên sẽ vẽ nên đường hoạt động của bạn.",
+      "caughtUpTitle": "Bạn đã theo kịp tiến độ",
+      "completedTitle": "Bạn đã hoàn thành mọi khóa học đã đăng ký",
+      "progressLabel": "{course}: đã hoàn thành {completed}/{total} mục, {percent}%",
+      "progressTarget": "{label}. Mục tiêu {from} đến {to}% trước {date}",
+      "progressUnknown": "Chưa có dữ liệu tiến độ",
+      "minutes": "{count} phút",
+      "items": "{count} mục",
+      "columns": {
+        "part": "Mã",
+        "course": "Khóa học",
+        "dependsOn": "Cần học trước",
+        "progress": "Tiến độ",
+        "next": "Tiếp theo"
+      },
+      "nextLabel": "Tiếp theo: {item}",
+      "nextExam": "Bài thi",
+      "nextAssignment": "Bài tập",
+      "examOpen": "Đang mở",
+      "examScheduled": "Đã lên lịch",
+      "deadlineOpens": "Mở sau {countdown}",
+      "deadlineCloses": "Đóng sau {countdown}",
+      "calibrated": "Đạt chuẩn",
+      "completionStrip": "{part} {course} đã đạt chuẩn · chứng chỉ đã được cấp",
+      "viewCertificate": "Xem chứng chỉ",
+      "traceLabel": "Đường hoạt động",
+      "readoutLabel": "Chỉ số"
+    },
+    "readout": {
+      "xp": "XP · tuần này",
+      "xpDetail": "so với cùng kỳ tuần trước",
+      "xpSpark": "XP mỗi ngày trong 14 ngày qua: tổng {total}, ngày cao nhất {max}, hôm nay {today}",
+      "deadline": "Hạn sắp tới",
+      "deadlineNone": "Chưa có lịch",
+      "deadlineExam": "Bài thi · {part}",
+      "opens": "Mở sau",
+      "closes": "Đóng sau",
+      "rank": "Hạng · chi nhánh",
+      "rankOf": "/ {total}",
+      "rankNone": "Nhận XP để có thứ hạng",
+      "rankNoBranch": "Bạn chưa thuộc chi nhánh nào",
+      "openLeaderboard": "Bảng xếp hạng",
+      "skills": "Kỹ năng · top 3",
+      "skillsEmpty": "Chưa có minh chứng kỹ năng",
+      "skillLevel": "{skill}: cấp {level}/{max}, {name}",
+      "levels": {
+        "exposed": "đã tiếp cận",
+        "applied": "đã vận dụng",
+        "demonstrated": "đã chứng minh"
+      },
+      "rankNew": "mới",
+      "rankSinceLastWeek": "so với tuần trước"
+    },
+    "trace": {
+      "points": "+{points} XP",
+      "kinds": {
+        "exam_passed": "Đạt bài thi",
+        "assignment_approved": "Bài tập được duyệt",
+        "course_completed": "Hoàn thành khóa học"
+      },
+      "examMarker": "Bài thi · {title}"
+    },
+    "catalog": {
+      "kicker": "A2 / Khóa học",
+      "columns": {
+        "part": "Mã",
+        "course": "Khóa học",
+        "dependsOn": "Cần học trước",
+        "status": "Trạng thái",
+        "next": "Tiếp theo"
+      },
+      "open": "Mở",
+      "needs": "Cần {parts}",
+      "noMatchTitle": "Không có khóa học phù hợp với bộ lọc",
+      "noMatchBody": "Hãy bớt bộ lọc, hoặc xóa hết để xem mọi khóa học."
+    },
+    "explore": {
+      "kicker": "A3 / Khám phá"
+    },
+    "activity": {
+      "bar": "Hoạt động",
+      "backTo": "Quay lại khoá học: {course}",
+      "more": "Tuỳ chọn khác",
+      "progress": "Đã hoàn thành {completed}/{total} mục",
+      "outlineProgress": "Đã hoàn thành {completed}/{total}",
+      "minutes": "{count} phút",
+      "state": {
+        "notStarted": "Chưa bắt đầu",
+        "inProgress": "Đang học",
+        "completed": "Đã hoàn thành",
+        "submitted": "Đã nộp",
+        "inReview": "Đang chấm",
+        "approved": "Đã duyệt",
+        "changesRequested": "Cần chỉnh sửa",
+        "saving": "Đang lưu",
+        "notSaved": "Chưa lưu"
+      },
+      "viewedComplete": "Đã xem · hoàn thành",
+      "activitiesRequired": "Hoàn thành các hoạt động để kết thúc",
+      "next": "Tiếp: {title}",
+      "backToCourse": "Quay lại khoá học",
+      "prevKicker": "Trước · {kind}",
+      "nextKicker": "Tiếp · {kind}",
+      "pager": "Bài trước và bài tiếp",
+      "notebook": "Notebook"
+    }
+  }
+}

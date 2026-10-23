@@ -1,0 +1,140 @@
+{
+  "vi": {
+    "command": {
+      "trigger": "Tìm kiếm",
+      "placeholder": "Tìm kiếm…",
+      "title": "Bảng lệnh",
+      "description": "Tìm trang, không gian làm việc và thao tác nhanh",
+      "input": "Nhập tên trang hoặc thao tác…",
+      "empty": "Không có kết quả phù hợp",
+      "results": "Kết quả",
+      "loading": "Đang mở bảng lệnh…",
+      "groups": {
+        "goTo": "Đi đến",
+        "actions": "Thao tác nhanh",
+        "preferences": "Tùy chọn"
+      },
+      "actions": {
+        "newCourse": "Tạo khóa học mới",
+        "inviteMember": "Mời thành viên",
+        "gradeNext": "Chấm bài tiếp theo"
+      },
+      "theme": {
+        "system": "Giao diện theo hệ thống",
+        "light": "Giao diện sáng",
+        "dark": "Giao diện tối",
+        "current": "Đang dùng"
+      },
+      "keywords": {
+        "home": "Tổng quan Bảng điều khiển Overview Dashboard Home",
+        "overview": "Tổng quan Bảng điều khiển Overview Dashboard Home",
+        "courses": "Khoá học Courses",
+        "library": "Thư viện nội dung Content library",
+        "resources": "Tài nguyên Resources",
+        "opportunities": "Cơ hội Opportunities",
+        "projects": "Dự án Projects",
+        "media": "Thư viện media Media",
+        "questionBank": "Ngân hàng câu hỏi Question bank",
+        "reviews": "Hàng đợi duyệt Duyệt nội dung Review queue Reviews",
+        "mcp": "Thêm MCP Kết nối MCP Quyền truy cập MCP Chặn MCP Add MCP Connect MCP MCP access Block MCP",
+        "assessments": "Đánh giá Kỳ thi Assessments Exams",
+        "queue": "Hàng đợi chấm điểm Chấm bài Bài nộp Grading queue Submissions",
+        "reports": "Báo cáo học tập Learning reports Analytics",
+        "users": "Thành viên Người dùng Members Users",
+        "branches": "Điểm trường Chi nhánh Schools Branches",
+        "roles": "Vai trò & quyền Phân quyền Roles & permissions",
+        "enrollmentMigration": "Phiên bản học viên Enrollment versions",
+        "audit": "Nhật ký quản trị Audit log",
+        "studio": "Studio Soạn nội dung Authoring",
+        "grading": "Khảo thí & đánh giá Chấm điểm Assessment & grading",
+        "admin": "Quản trị Administration Admin",
+        "newCourse": "Tạo khóa học mới New course Create course",
+        "inviteMember": "Mời thành viên Invite member",
+        "gradeNext": "Chấm bài tiếp theo Grade next submission",
+        "themeSystem": "Giao diện theo hệ thống Chủ đề System theme Auto",
+        "themeLight": "Giao diện sáng Chế độ sáng Light theme Light mode",
+        "themeDark": "Giao diện tối Chế độ tối Dark theme Dark mode"
+      },
+      "attention": {
+        "label": "Cần xử lý",
+        "labelWithCount": "Cần xử lý: {count}",
+        "title": "Cần xử lý",
+        "pendingReviews": "Nội dung chờ duyệt",
+        "waitingSubmissions": "Bài nộp chờ chấm",
+        "countMore": "{count}+",
+        "loading": "Đang tải…",
+        "unavailable": "Không khả dụng",
+        "empty": "Hiện không có việc cần xử lý."
+      }
+    }
+  },
+  "en": {
+    "command": {
+      "trigger": "Search",
+      "placeholder": "Search…",
+      "title": "Command menu",
+      "description": "Find pages, workspaces and quick actions",
+      "input": "Type a page or action…",
+      "empty": "No matching results",
+      "results": "Results",
+      "loading": "Opening the command menu…",
+      "groups": {
+        "goTo": "Go to",
+        "actions": "Quick actions",
+        "preferences": "Preferences"
+      },
+      "actions": {
+        "newCourse": "New course",
+        "inviteMember": "Invite member",
+        "gradeNext": "Grade next submission"
+      },
+      "theme": {
+        "system": "Use system theme",
+        "light": "Light theme",
+        "dark": "Dark theme",
+        "current": "Current"
+      },
+      "keywords": {
+        "home": "Overview Dashboard Home Tổng quan Bảng điều khiển",
+        "overview": "Overview Dashboard Home Tổng quan Bảng điều khiển",
+        "courses": "Courses Khoá học",
+        "library": "Content library Thư viện nội dung",
+        "resources": "Resources Tài nguyên",
+        "opportunities": "Opportunities Cơ hội",
+        "projects": "Projects Dự án",
+        "media": "Media Thư viện media",
+        "questionBank": "Question bank Ngân hàng câu hỏi",
+        "reviews": "Review queue Reviews Hàng đợi duyệt Duyệt nội dung",
+        "mcp": "Add MCP Connect MCP MCP access Block MCP Thêm MCP Kết nối MCP Quyền truy cập MCP Chặn MCP",
+        "assessments": "Assessments Exams Đánh giá Kỳ thi",
+        "queue": "Grading queue Submissions Hàng đợi chấm điểm Chấm bài Bài nộp",
+        "reports": "Learning reports Analytics Báo cáo học tập",
+        "users": "Members Users Thành viên Người dùng",
+        "branches": "Schools Branches Điểm trường Chi nhánh",
+        "roles": "Roles & permissions Vai trò & quyền Phân quyền",
+        "enrollmentMigration": "Enrollment versions Phiên bản học viên",
+        "audit": "Audit log Nhật ký quản trị",
+        "studio": "Studio Authoring Soạn nội dung",
+        "grading": "Assessment & grading Khảo thí & đánh giá Chấm điểm",
+        "admin": "Administration Admin Quản trị",
+        "newCourse": "New course Create course Tạo khóa học mới",
+        "inviteMember": "Invite member Mời thành viên",
+        "gradeNext": "Grade next submission Chấm bài tiếp theo",
+        "themeSystem": "System theme Auto Giao diện theo hệ thống Chủ đề",
+        "themeLight": "Light theme Light mode Giao diện sáng Chế độ sáng",
+        "themeDark": "Dark theme Dark mode Giao diện tối Chế độ tối"
+      },
+      "attention": {
+        "label": "Needs attention",
+        "labelWithCount": "Needs attention: {count}",
+        "title": "Needs attention",
+        "pendingReviews": "Reviews waiting",
+        "waitingSubmissions": "Submissions to grade",
+        "countMore": "{count}+",
+        "loading": "Loading…",
+        "unavailable": "Unavailable",
+        "empty": "Nothing needs your attention right now."
+      }
+    }
+  }
+}

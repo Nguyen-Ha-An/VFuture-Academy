@@ -1,0 +1,110 @@
+{
+  "vi": {
+    "unavailable": "Không khả dụng",
+    "stat": {
+      "up": "Tăng {value}",
+      "down": "Giảm {value}",
+      "flat": "Không đổi"
+    },
+    "pipeline": {
+      "label": "Quy trình"
+    },
+    "activity": {
+      "title": "Hoạt động gần đây",
+      "empty": "Chưa có hoạt động nào.",
+      "viewAll": "Xem tất cả"
+    },
+    "timeline": {
+      "title": "Lịch sử",
+      "empty": "Chưa có sự kiện nào.",
+      "by": "bởi {actor}"
+    },
+    "readiness": {
+      "title": "Mức sẵn sàng",
+      "count": "{done}/{total}",
+      "progress": "{done} trên {total} mục đã đạt",
+      "status": {
+        "pass": "Đạt",
+        "fail": "Chưa đạt",
+        "warn": "Cần xem lại",
+        "manual": "Kiểm tra thủ công",
+        "unverified": "Chưa xác minh"
+      }
+    },
+    "chart": {
+      "loading": "Đang tải biểu đồ",
+      "empty": "Chưa có dữ liệu trong khoảng thời gian này.",
+      "unavailable": "Không tải được dữ liệu biểu đồ.",
+      "category": "Mục"
+    },
+    "files": {
+      "label": "Tệp",
+      "empty": "Chưa có tệp nào.",
+      "select": "Chọn {name}",
+      "open": "Mở {name}",
+      "selected": "Đã chọn {count} tệp",
+      "kind": {
+        "image": "Hình ảnh",
+        "video": "Video",
+        "audio": "Âm thanh",
+        "pdf": "PDF",
+        "doc": "Tài liệu",
+        "other": "Tệp"
+      }
+    }
+  },
+  "en": {
+    "unavailable": "Unavailable",
+    "stat": {
+      "up": "Up {value}",
+      "down": "Down {value}",
+      "flat": "No change"
+    },
+    "pipeline": {
+      "label": "Pipeline"
+    },
+    "activity": {
+      "title": "Recent activity",
+      "empty": "No activity yet.",
+      "viewAll": "View all"
+    },
+    "timeline": {
+      "title": "History",
+      "empty": "No events yet.",
+      "by": "by {actor}"
+    },
+    "readiness": {
+      "title": "Readiness",
+      "count": "{done}/{total}",
+      "progress": "{done} of {total} checks passing",
+      "status": {
+        "pass": "Passing",
+        "fail": "Failing",
+        "warn": "Needs attention",
+        "manual": "Check manually",
+        "unverified": "Unverified"
+      }
+    },
+    "chart": {
+      "loading": "Loading chart",
+      "empty": "No data for this period yet.",
+      "unavailable": "Chart data could not be loaded.",
+      "category": "Item"
+    },
+    "files": {
+      "label": "Files",
+      "empty": "No files yet.",
+      "select": "Select {name}",
+      "open": "Open {name}",
+      "selected": "{count, plural, one {# file selected} other {# files selected}}",
+      "kind": {
+        "image": "Image",
+        "video": "Video",
+        "audio": "Audio",
+        "pdf": "PDF",
+        "doc": "Document",
+        "other": "File"
+      }
+    }
+  }
+}

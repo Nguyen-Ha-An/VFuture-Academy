@@ -1,0 +1,4730 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Optional URL of the published schema for editor tooling; has no effect on validation.",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1,
+      "description": "Always the number 1."
+    },
+    "kind": {
+      "type": "string",
+      "const": "course",
+      "description": "Always \"course\"."
+    },
+    "id": {
+      "$ref": "#/$defs/Id"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,80}$"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9-]{1,23}$"
+    },
+    "title": {
+      "$ref": "#/$defs/L10nString"
+    },
+    "summary": {
+      "$ref": "#/$defs/L10nString"
+    },
+    "description": {
+      "$ref": "#/$defs/L10nRichContent"
+    },
+    "cover": {
+      "$ref": "#/$defs/MediaRef"
+    },
+    "languages": {
+      "minItems": 1,
+      "maxItems": 2,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Locale"
+      },
+      "description": "Content languages actually provided in this course (1–2 of \"vi\", \"en\"). This is not the learner interface language."
+    },
+    "defaultLanguage": {
+      "$ref": "#/$defs/Locale"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "foundation",
+        "specialization"
+      ]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "pathway": {
+      "type": "string",
+      "enum": [
+        "ai-emerging-technology",
+        "research-innovation",
+        "entrepreneurship-product",
+        "fintech-economics",
+        "core-future-skills"
+      ]
+    },
+    "tags": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+      }
+    },
+    "estimatedMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "learningOutcomes": {
+      "minItems": 1,
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/L10nString"
+      }
+    },
+    "access": {
+      "$ref": "#/$defs/CourseAccess"
+    },
+    "enrollment": {
+      "type": "string",
+      "enum": [
+        "open",
+        "invite"
+      ]
+    },
+    "prerequisites": {
+      "maxItems": 10,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "course_completion"
+          },
+          "courseId": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "required": [
+          "type",
+          "courseId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "skills": {
+      "maxItems": 30,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/Id"
+          },
+          "name": {
+            "$ref": "#/$defs/L10nString"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "completion": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "minItems": 1,
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CompletionRule"
+          }
+        },
+        "certificate": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rules"
+      ],
+      "additionalProperties": false
+    },
+    "modules": {
+      "minItems": 1,
+      "maxItems": 60,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Module"
+      },
+      "description": "1–60 modules, each holding the course items in order."
+    },
+    "relatedOpportunities": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Id"
+      }
+    },
+    "instructors": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "id",
+    "title",
+    "summary",
+    "languages",
+    "defaultLanguage",
+    "level",
+    "difficulty",
+    "pathway",
+    "learningOutcomes",
+    "access",
+    "modules"
+  ],
+  "additionalProperties": false,
+  "description": "A whole course: schemaVersion 1, kind \"course\", id, title, summary, languages, defaultLanguage, level, difficulty, pathway, learningOutcomes, access and modules. \"languages\" lists the content languages actually provided and must include defaultLanguage.",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+      "description": "Identifier: lowercase a-z, 0-9 and \"-\", 1–64 characters, starting with a letter or digit, e.g. \"cau-1\". Uppercase, spaces and underscores are rejected. Ids must be unique within their own list."
+    },
+    "L10nString": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 2000
+        },
+        {
+          "type": "object",
+          "properties": {
+            "vi": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "en": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "A short text: either a plain string, or a map with \"vi\" and/or \"en\" keys when the content is bilingual, e.g. \"Phân số\" or {\"vi\":\"Phân số\",\"en\":\"Fractions\"}."
+    },
+    "L10nRichContent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RichContent"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "vi": {
+              "$ref": "#/$defs/RichContent"
+            },
+            "en": {
+              "$ref": "#/$defs/RichContent"
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "RichContent, either directly ({\"blocks\":[{\"type\":\"paragraph\",\"content\":[{\"text\":\"…\"}]}]}) or as a bilingual map {\"vi\":{\"blocks\":[…]},\"en\":{\"blocks\":[…]}}. This is the type of every \"content\", \"explanation\", \"hint\", \"intro\", \"instructions\" and \"description\" field — a plain string is rejected."
+    },
+    "RichContent": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "minItems": 1,
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContentBlock"
+          }
+        }
+      },
+      "required": [
+        "blocks"
+      ],
+      "additionalProperties": false,
+      "description": "Formatted text, always an object with a \"blocks\" array. The minimal form is {\"blocks\":[{\"type\":\"paragraph\",\"content\":[{\"text\":\"…\"}]}]}. Used for question stems, options, explanations, hints, lesson paragraphs and instructions — none of these accept a plain string."
+    },
+    "ContentBlock": {
+      "description": "One block of formatted content, chosen by \"type\": paragraph, heading, list, quote, image, video, audio, table, code, divider, embed, pdf, callout, math or diagram. Every block type has its own required fields; a paragraph needs \"content\" (Runs).",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "paragraph"
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "heading"
+            },
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "const": 1
+                },
+                {
+                  "type": "number",
+                  "const": 2
+                },
+                {
+                  "type": "number",
+                  "const": 3
+                },
+                {
+                  "type": "number",
+                  "const": 4
+                }
+              ]
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "level",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "list"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ListItem"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "ordered",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "quote"
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "author": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "image"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "alt": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "caption": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "width": {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "full"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "type": {
+                  "type": "string",
+                  "const": "video"
+                },
+                "src": {
+                  "$ref": "#/$defs/MediaRef"
+                },
+                "poster": {
+                  "$ref": "#/$defs/MediaRef"
+                },
+                "caption": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "required": [
+                "type",
+                "src"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "type": {
+                  "type": "string",
+                  "const": "video"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "youtube",
+                    "vimeo"
+                  ]
+                },
+                "url": {
+                  "$ref": "#/$defs/HttpsUrl"
+                },
+                "caption": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "required": [
+                "type",
+                "provider",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "audio"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "label": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "src"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "table"
+            },
+            "headers": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "$ref": "#/$defs/Runs"
+                  },
+                  "align": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "center",
+                      "right",
+                      "justify"
+                    ]
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "rows": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "minItems": 1,
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "$ref": "#/$defs/Runs"
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right",
+                        "justify"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "content"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "caption": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "code"
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "tsx",
+                "jsx",
+                "html",
+                "css",
+                "json",
+                "sql",
+                "bash",
+                "markdown",
+                "yaml",
+                "plaintext",
+                "java",
+                "c",
+                "cpp",
+                "csharp",
+                "go",
+                "rust",
+                "swift",
+                "kotlin",
+                "r"
+              ]
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "filename": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "highlightLines": {
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            },
+            "showLineNumbers": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "language",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "divider"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "embed"
+            },
+            "url": {
+              "$ref": "#/$defs/HttpsUrl"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "aspectRatio": {
+              "type": "string",
+              "enum": [
+                "16:9",
+                "4:3",
+                "1:1"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "url",
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "pdf"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 2000
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "callout"
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "info",
+                "tip",
+                "warning",
+                "danger",
+                "note"
+              ]
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "blocks": {
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ContentBlock"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "variant",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "math"
+            },
+            "latex": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "type",
+            "latex"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "diagram"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "alt": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Runs": {
+      "minItems": 1,
+      "maxItems": 500,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TextRun"
+          },
+          {
+            "$ref": "#/$defs/BlankRun"
+          }
+        ]
+      },
+      "description": "The inline content of a paragraph, heading, quote, list item or table cell: an array of TextRun (and, in fill_blank stems only, BlankRun). It is an array of objects, never a bare string."
+    },
+    "TextRun": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 5000
+            },
+            {
+              "type": "object",
+              "properties": {
+                "vi": {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 5000
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "annotations": {
+          "$ref": "#/$defs/Annotations"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "One run of inline text: {\"text\":\"…\"} with optional \"annotations\" (bold, italic, link…). \"text\" may be a bilingual map. There is no other inline shape for plain words."
+    },
+    "Annotations": {
+      "type": "object",
+      "properties": {
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "underline": {
+          "type": "boolean"
+        },
+        "strike": {
+          "type": "boolean"
+        },
+        "code": {
+          "type": "boolean"
+        },
+        "sub": {
+          "type": "boolean"
+        },
+        "sup": {
+          "type": "boolean"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,24})$"
+        },
+        "link": {
+          "type": "object",
+          "properties": {
+            "href": {
+              "type": "string",
+              "pattern": "^(https:\\/\\/|mailto:)\\S+$"
+            },
+            "target": {
+              "type": "string",
+              "const": "_blank"
+            }
+          },
+          "required": [
+            "href"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline formatting flags for one TextRun. Omit when the text is plain."
+    },
+    "BlankRun": {
+      "type": "object",
+      "properties": {
+        "blank": {
+          "$ref": "#/$defs/Id"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
+        }
+      },
+      "required": [
+        "blank"
+      ],
+      "additionalProperties": false,
+      "description": "A blank inside a fill_blank question stem: {\"blank\":\"<blank id>\"}. The id must appear in the question's \"blanks\" list and in its \"correctAnswer\"."
+    },
+    "ListItem": {
+      "description": "One list entry: {\"content\":<Runs>} with optional nested \"items\" for a sub-list. \"content\" is an array of TextRun objects, not a string.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/Runs"
+        },
+        "items": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ListItem"
+          }
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "MediaRef": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "assetId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "assetId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "url": {
+              "$ref": "#/$defs/HttpsUrl"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "A media reference: {\"assetId\":\"…\"} for an uploaded asset in the media library, or {\"url\":\"https://…\"} for an allowlisted host. Never invent an assetId."
+    },
+    "HttpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "An absolute https:// URL."
+    },
+    "Locale": {
+      "type": "string",
+      "enum": [
+        "vi",
+        "en"
+      ],
+      "description": "Content language code: \"vi\" or \"en\"."
+    },
+    "CourseAccess": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "const": "global"
+            }
+          },
+          "required": [
+            "scope"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "const": "branches"
+            },
+            "branchIds": {
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "required": [
+            "scope",
+            "branchIds"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "Who may see the course: {\"scope\":\"global\"} or {\"scope\":\"branches\",\"branchIds\":[…]}."
+    },
+    "CompletionRule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "all_items"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "lessons_completed"
+            },
+            "lessonIds": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "all"
+                },
+                {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/Id"
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "lessonIds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "exam_passed"
+            },
+            "examId": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "required": [
+            "type",
+            "examId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "assignment_approved"
+            },
+            "assignmentId": {
+              "$ref": "#/$defs/Id"
+            }
+          },
+          "required": [
+            "type",
+            "assignmentId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "quiz_min_score"
+            },
+            "lessonId": {
+              "$ref": "#/$defs/Id"
+            },
+            "quizId": {
+              "$ref": "#/$defs/Id"
+            },
+            "percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "type",
+            "lessonId",
+            "quizId",
+            "percent"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "One course completion rule, chosen by \"type\": all_items, lessons_completed, exam_passed, assignment_approved or quiz_min_score."
+    },
+    "Module": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "summary": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "items": {
+          "minItems": 1,
+          "maxItems": 60,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ManifestItem"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "items"
+      ],
+      "additionalProperties": false,
+      "description": "A course module: {\"id\",\"title\",\"summary\"?,\"items\":[ManifestItem…]} with 1–60 items."
+    },
+    "ManifestItem": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "lesson"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "summary": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "estimatedMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "objectives": {
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/L10nString"
+              }
+            },
+            "completion": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "view",
+                    "activities"
+                  ]
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            "blocks": {
+              "minItems": 1,
+              "maxItems": 400,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/LessonBlock"
+              },
+              "description": "1–400 LessonBlock entries in reading order."
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "exam"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "summary": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "estimatedMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "description": {
+              "$ref": "#/$defs/L10nRichContent"
+            },
+            "settings": {
+              "$ref": "#/$defs/ExamSettings"
+            },
+            "sections": {
+              "minItems": 1,
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ExamSection"
+              },
+              "description": "1–20 ExamSection entries; the whole exam may hold at most 200 questions."
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "title",
+            "sections"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "assignment"
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "summary": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "estimatedMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "instructions": {
+              "$ref": "#/$defs/L10nRichContent"
+            },
+            "submission": {
+              "$ref": "#/$defs/SubmissionSpec"
+            },
+            "rubric": {
+              "$ref": "#/$defs/Rubric"
+            },
+            "passPoints": {
+              "type": "number",
+              "minimum": 0
+            },
+            "skills": {
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Id"
+              }
+            },
+            "resubmission": {
+              "type": "string",
+              "enum": [
+                "until_approved",
+                "once",
+                "never"
+              ]
+            },
+            "notebook": {
+              "$ref": "#/$defs/NotebookAssignment"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "title",
+            "instructions",
+            "submission"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "lesson",
+                "exam",
+                "assignment"
+              ]
+            },
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "summary": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "estimatedMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "An entry in a course module. Either a complete inline item — {\"type\":\"lesson\",…blocks} / {\"type\":\"exam\",…sections} / {\"type\":\"assignment\",…instructions,submission} — or a stub {\"type\",\"id\",\"title\"?} whose document is supplied separately. Inline items use \"type\", not \"kind\", and carry no schemaVersion or $schema. A course JSON meant to be imported on its own must inline every item."
+    },
+    "LessonBlock": {
+      "description": "One block of a lesson, chosen by \"type\": any ContentBlock type, or an activity — quiz, assignment, reflection, flashcards, accordion, tabs, reveal, stepper, resource_link, opportunity_link, next_step.",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "paragraph"
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "heading"
+            },
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "const": 1
+                },
+                {
+                  "type": "number",
+                  "const": 2
+                },
+                {
+                  "type": "number",
+                  "const": 3
+                },
+                {
+                  "type": "number",
+                  "const": 4
+                }
+              ]
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "level",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "list"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ListItem"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "ordered",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "quote"
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "author": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "image"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "alt": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "caption": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "width": {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "full"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "type": {
+                  "type": "string",
+                  "const": "video"
+                },
+                "src": {
+                  "$ref": "#/$defs/MediaRef"
+                },
+                "poster": {
+                  "$ref": "#/$defs/MediaRef"
+                },
+                "caption": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "required": [
+                "type",
+                "src"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "type": {
+                  "type": "string",
+                  "const": "video"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "youtube",
+                    "vimeo"
+                  ]
+                },
+                "url": {
+                  "$ref": "#/$defs/HttpsUrl"
+                },
+                "caption": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "required": [
+                "type",
+                "provider",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "audio"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "label": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "src"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "table"
+            },
+            "headers": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "$ref": "#/$defs/Runs"
+                  },
+                  "align": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "center",
+                      "right",
+                      "justify"
+                    ]
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "rows": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "minItems": 1,
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "$ref": "#/$defs/Runs"
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right",
+                        "justify"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "content"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "caption": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "code"
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "tsx",
+                "jsx",
+                "html",
+                "css",
+                "json",
+                "sql",
+                "bash",
+                "markdown",
+                "yaml",
+                "plaintext",
+                "java",
+                "c",
+                "cpp",
+                "csharp",
+                "go",
+                "rust",
+                "swift",
+                "kotlin",
+                "r"
+              ]
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "filename": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "highlightLines": {
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            },
+            "showLineNumbers": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "language",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "divider"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "embed"
+            },
+            "url": {
+              "$ref": "#/$defs/HttpsUrl"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "aspectRatio": {
+              "type": "string",
+              "enum": [
+                "16:9",
+                "4:3",
+                "1:1"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "url",
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "pdf"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 2000
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "callout"
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "info",
+                "tip",
+                "warning",
+                "danger",
+                "note"
+              ]
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "blocks": {
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/LessonBlock"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "variant",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "math"
+            },
+            "latex": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "type",
+            "latex"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "diagram"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "alt": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/QuizBlock"
+        },
+        {
+          "$ref": "#/$defs/AssignmentBlock"
+        },
+        {
+          "$ref": "#/$defs/ReflectionBlock"
+        },
+        {
+          "$ref": "#/$defs/FlashcardsBlock"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "accordion"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 30,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/$defs/Id"
+                  },
+                  "title": {
+                    "$ref": "#/$defs/L10nString"
+                  },
+                  "blocks": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/LessonBlock"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "blocks"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "allowMultipleOpen": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "tabs"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/$defs/Id"
+                  },
+                  "title": {
+                    "$ref": "#/$defs/L10nString"
+                  },
+                  "blocks": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/LessonBlock"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "blocks"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "reveal"
+            },
+            "label": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "blocks": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/LessonBlock"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "label",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "stepper"
+            },
+            "steps": {
+              "minItems": 1,
+              "maxItems": 30,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/$defs/Id"
+                  },
+                  "title": {
+                    "$ref": "#/$defs/L10nString"
+                  },
+                  "blocks": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/LessonBlock"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "blocks"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "linear": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "steps"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/ResourceLinkBlock"
+        },
+        {
+          "$ref": "#/$defs/OpportunityLinkBlock"
+        },
+        {
+          "$ref": "#/$defs/NextStepBlock"
+        }
+      ]
+    },
+    "QuizBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "const": "quiz"
+        },
+        "title": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "intro": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "questions": {
+          "minItems": 1,
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QuizQuestionEntry"
+          }
+        },
+        "settings": {
+          "$ref": "#/$defs/QuizSettings"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "questions"
+      ],
+      "additionalProperties": false,
+      "description": "A quiz inside a lesson: {\"id\",\"type\":\"quiz\",\"title\"?,\"intro\"?,\"settings\"?,\"questions\":[…]} with 1–50 entries. Only auto-graded question types are allowed (single_choice, multiple_choice, true_false, fill_blank, short_answer, numeric, matching, ordering, classification); essay, upload_answer and code_answer must go in an exam or assignment, or carry selfAssessment true."
+    },
+    "QuizQuestionEntry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QuestionRef"
+        },
+        {
+          "$ref": "#/$defs/Question"
+        }
+      ],
+      "description": "One entry of a lesson quiz: an inline Question or a QuestionRef."
+    },
+    "QuestionRef": {
+      "type": "object",
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "pattern": "^bank:([a-z0-9][a-z0-9-]{0,63})$"
+        }
+      },
+      "required": [
+        "$ref"
+      ],
+      "additionalProperties": false,
+      "description": "A reference to a published question-bank item: {\"$ref\":\"bank:<question-id>\"}. Only for ids that already exist in the bank; never invent one."
+    },
+    "Question": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SingleChoiceQuestion"
+        },
+        {
+          "$ref": "#/$defs/MultipleChoiceQuestion"
+        },
+        {
+          "$ref": "#/$defs/TrueFalseQuestion"
+        },
+        {
+          "$ref": "#/$defs/FillBlankQuestion"
+        },
+        {
+          "$ref": "#/$defs/ShortAnswerQuestion"
+        },
+        {
+          "$ref": "#/$defs/NumericQuestion"
+        },
+        {
+          "$ref": "#/$defs/MatchingQuestion"
+        },
+        {
+          "$ref": "#/$defs/OrderingQuestion"
+        },
+        {
+          "$ref": "#/$defs/ClassificationQuestion"
+        },
+        {
+          "$ref": "#/$defs/EssayQuestion"
+        },
+        {
+          "$ref": "#/$defs/UploadAnswerQuestion"
+        },
+        {
+          "$ref": "#/$defs/CodeAnswerQuestion"
+        },
+        {
+          "$ref": "#/$defs/QuestionGroup"
+        }
+      ],
+      "description": "Any question, chosen by its \"type\": single_choice, multiple_choice, true_false, fill_blank, short_answer, numeric, matching, ordering, classification, essay, upload_answer, code_answer or question_group. There is no \"mcq\", \"multiple_select\" or free-form type."
+    },
+    "SingleChoiceQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "single_choice",
+          "description": "Always \"single_choice\"."
+        },
+        "options": {
+          "minItems": 2,
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Option"
+          },
+          "description": "2–10 Option objects with unique ids; the correct one is named by correctAnswer."
+        },
+        "correctAnswer": {
+          "description": "The id of the correct Option, e.g. \"b\" — an existing option id, never a position number or the option text.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "options"
+      ],
+      "additionalProperties": false,
+      "description": "One correct option among 2–10 \"options\". Required: id, type \"single_choice\", content (L10nRichContent), options. correctAnswer is the id of the correct Option, e.g. \"b\"."
+    },
+    "QuestionSettings": {
+      "type": "object",
+      "properties": {
+        "shuffleOptions": {
+          "type": "boolean"
+        },
+        "partialScoring": {
+          "type": "boolean"
+        },
+        "caseSensitive": {
+          "type": "boolean"
+        },
+        "ignoreAccents": {
+          "type": "boolean"
+        },
+        "decimalComma": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Optional per-question behaviour flags (shuffleOptions, partialScoring, caseSensitive, ignoreAccents, decimalComma). Omit unless the author asked for one."
+    },
+    "Display": {
+      "type": "object",
+      "properties": {
+        "interactionType": {
+          "type": "string",
+          "pattern": "^[a-z_]{2,32}$"
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "list",
+            "grid_2",
+            "inline",
+            "tabs"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Optional rendering hints. Do not set \"interactionType\" unless a specific player was requested; the default renderer is chosen automatically."
+    },
+    "Option": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "feedback": {
+          "$ref": "#/$defs/L10nRichContent"
+        }
+      },
+      "required": [
+        "id",
+        "content"
+      ],
+      "additionalProperties": false,
+      "description": "One answer option: {\"id\":\"a\",\"content\":<L10nRichContent>} plus optional per-option \"feedback\". \"content\" is RichContent, not a string; there is no \"text\", \"label\" or \"isCorrect\" field — correctness lives in the question's \"correctAnswer\"."
+    },
+    "MultipleChoiceQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "multiple_choice",
+          "description": "Always \"multiple_choice\"."
+        },
+        "options": {
+          "minItems": 2,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Option"
+          },
+          "description": "2–12 Option objects with unique ids."
+        },
+        "minSelections": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "maxSelections": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "correctAnswer": {
+          "description": "Array of the correct Option ids, e.g. [\"a\",\"c\"] — existing ids, no duplicates, never positions.",
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "options"
+      ],
+      "additionalProperties": false,
+      "description": "Several correct options among 2–12 \"options\". correctAnswer is an array of Option ids, e.g. [\"a\",\"c\"]. Optional minSelections/maxSelections bound how many the learner may pick."
+    },
+    "TrueFalseQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "true_false",
+          "description": "Always \"true_false\"."
+        },
+        "labels": {
+          "type": "object",
+          "properties": {
+            "true": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "false": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ],
+          "additionalProperties": false
+        },
+        "correctAnswer": {
+          "description": "The boolean true or false — not a string.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A true/false statement in \"content\". correctAnswer is the boolean true or false (not the string \"true\"). Optional \"labels\" rename the two choices."
+    },
+    "FillBlankQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "fill_blank",
+          "description": "Always \"fill_blank\"."
+        },
+        "blanks": {
+          "minItems": 1,
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "options": {
+                "minItems": 2,
+                "maxItems": 10,
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "width": {
+                "type": "string",
+                "enum": [
+                  "sm",
+                  "md",
+                  "lg"
+                ]
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Every blank used in the stem, as {\"id\":\"blank-1\"}; ids must match the {\"blank\":…} runs and the correctAnswer keys."
+        },
+        "wordBank": {
+          "minItems": 2,
+          "maxItems": 40,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "text": {
+                "$ref": "#/$defs/L10nString"
+              }
+            },
+            "required": [
+              "id",
+              "text"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "correctAnswer": {
+          "description": "Object mapping each blank id to one accepted string or an array of accepted strings.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              {
+                "minItems": 1,
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "blanks"
+      ],
+      "additionalProperties": false,
+      "description": "A stem whose Runs include {\"blank\":\"<id>\"} entries, one per blank declared in \"blanks\". correctAnswer maps each blank id to an accepted string or array of accepted strings, e.g. {\"blank-1\":[\"Hà Nội\",\"Ha Noi\"]}."
+    },
+    "ShortAnswerQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "short_answer",
+          "description": "Always \"short_answer\"."
+        },
+        "matchMode": {
+          "description": "\"exact\" (default), \"contains\" or \"regex\".",
+          "type": "string",
+          "enum": [
+            "exact",
+            "contains",
+            "regex"
+          ]
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "correctAnswer": {
+          "description": "Array of accepted answers (1–50 strings).",
+          "minItems": 1,
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A typed short answer compared with \"correctAnswer\": an array of accepted strings, e.g. [\"Hà Nội\",\"Ha Noi\"]. matchMode defaults to \"exact\"; \"regex\" patterns must be simple and bounded."
+    },
+    "NumericQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "numeric",
+          "description": "Always \"numeric\"."
+        },
+        "tolerance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tolerancePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unit": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "precision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "correctAnswer": {
+          "description": "The correct value as a JSON number, e.g. 12.5.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A numeric answer. correctAnswer is a JSON number, e.g. 12.5 — no unit inside it; put the unit in \"unit\". Use at most one of \"tolerance\" or \"tolerancePercent\"."
+    },
+    "MatchingQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "matching",
+          "description": "Always \"matching\"."
+        },
+        "left": {
+          "minItems": 2,
+          "maxItems": 15,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PairItem"
+          }
+        },
+        "right": {
+          "minItems": 2,
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PairItem"
+          }
+        },
+        "allowManyToOne": {
+          "type": "boolean"
+        },
+        "correctAnswer": {
+          "description": "Array of {\"left\",\"right\"} id pairs covering every left item.",
+          "minItems": 1,
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": "string"
+              },
+              "right": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "left",
+              "right"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "left",
+        "right"
+      ],
+      "additionalProperties": false,
+      "description": "Match every \"left\" item to a \"right\" item. correctAnswer is an array of {\"left\":\"<left id>\",\"right\":\"<right id>\"} covering every left item; a right item may repeat only when allowManyToOne is true."
+    },
+    "PairItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        }
+      },
+      "required": [
+        "id",
+        "content"
+      ],
+      "additionalProperties": false,
+      "description": "One item in a matching, ordering or classification list: {\"id\":\"…\",\"content\":<L10nRichContent>}."
+    },
+    "OrderingQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "ordering",
+          "description": "Always \"ordering\"."
+        },
+        "items": {
+          "minItems": 2,
+          "maxItems": 15,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PairItem"
+          }
+        },
+        "slots": {
+          "minItems": 2,
+          "maxItems": 15,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "label": {
+                "$ref": "#/$defs/L10nString"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "correctAnswer": {
+          "description": "The item ids in correct order — every item exactly once.",
+          "minItems": 2,
+          "maxItems": 15,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "items"
+      ],
+      "additionalProperties": false,
+      "description": "Put \"items\" in the correct order. correctAnswer is the array of item ids in the correct order, containing every item exactly once."
+    },
+    "ClassificationQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "classification",
+          "description": "Always \"classification\"."
+        },
+        "categories": {
+          "minItems": 2,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "label": {
+                "$ref": "#/$defs/L10nString"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "items": {
+          "minItems": 2,
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PairItem"
+          }
+        },
+        "correctAnswer": {
+          "description": "Object mapping every item id to a category id.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "categories",
+        "items"
+      ],
+      "additionalProperties": false,
+      "description": "Sort \"items\" into \"categories\". correctAnswer maps every item id to a category id, e.g. {\"i1\":\"cat-a\",\"i2\":\"cat-b\"}."
+    },
+    "EssayQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "essay",
+          "description": "Always \"essay\"."
+        },
+        "prompts": {
+          "minItems": 1,
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/L10nString"
+          }
+        },
+        "minWords": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "maxWords": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "rubric": {
+          "$ref": "#/$defs/Rubric"
+        },
+        "sampleAnswer": {
+          "$ref": "#/$defs/L10nRichContent"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "A free-text answer graded by a teacher with a \"rubric\". There is no correctAnswer field — including one is rejected. Not allowed inside a lesson quiz unless selfAssessment is true."
+    },
+    "Rubric": {
+      "type": "object",
+      "properties": {
+        "criteria": {
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "$ref": "#/$defs/L10nString"
+              },
+              "description": {
+                "$ref": "#/$defs/L10nString"
+              },
+              "maxPoints": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "levels": {
+                "minItems": 2,
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "points": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "label": {
+                      "$ref": "#/$defs/L10nString"
+                    },
+                    "description": {
+                      "$ref": "#/$defs/L10nString"
+                    }
+                  },
+                  "required": [
+                    "points",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "maxPoints"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "criteria"
+      ],
+      "additionalProperties": false,
+      "description": "Grading rubric for manually graded questions and assignments: {\"criteria\":[{\"id\",\"name\",\"maxPoints\"…}]} with 1–12 criteria. Each criterion has an Id, an L10nString \"name\", an optional \"description\", \"maxPoints\" 0–100 and optional scoring \"levels\". The criteria maxPoints normally add up to the question's \"points\"."
+    },
+    "UploadAnswerQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "upload_answer",
+          "description": "Always \"upload_answer\"."
+        },
+        "accepts": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "file",
+              "link",
+              "text"
+            ]
+          },
+          "description": "Allowed submission kinds: any of \"file\", \"link\", \"text\"."
+        },
+        "allowedMimeTypes": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]+\\/[a-z0-9.+-]+$"
+          }
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "maxFileSizeMB": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "linkHosts": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          }
+        },
+        "rubric": {
+          "$ref": "#/$defs/Rubric"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "accepts"
+      ],
+      "additionalProperties": false,
+      "description": "A file, link or text submission graded by a teacher with a \"rubric\". \"accepts\" lists the allowed submission kinds. No correctAnswer field. Not allowed inside a lesson quiz unless selfAssessment is true."
+    },
+    "CodeAnswerQuestion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "code_answer",
+          "description": "Always \"code_answer\"."
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "python",
+            "javascript",
+            "typescript",
+            "html",
+            "css",
+            "sql",
+            "json",
+            "markdown",
+            "plaintext"
+          ],
+          "description": "Programming language of the expected answer; one of the listed values only."
+        },
+        "starterCode": {
+          "description": "Optional code the learner starts from, as a plain string (use \\n for line breaks).",
+          "type": "string",
+          "maxLength": 20000
+        },
+        "minLines": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "rubric": {
+          "$ref": "#/$defs/Rubric"
+        },
+        "sampleSolution": {
+          "description": "Optional reference solution for the grader, as a plain string. Not shown to learners.",
+          "type": "string",
+          "maxLength": 20000
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "type",
+        "language"
+      ],
+      "additionalProperties": false,
+      "description": "Source code submitted for manual grading with a \"rubric\". \"language\" must be one of the listed values; optional \"starterCode\" and \"sampleSolution\" are plain strings. No correctAnswer field and no test-case fields. Not allowed inside a lesson quiz unless selfAssessment is true."
+    },
+    "QuestionGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "points": {
+          "description": "Points for this question, 0–1000. Defaults to 1 when omitted; the guide convention is to always set it.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "content": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "explanation": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "hint": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "settings": {
+          "$ref": "#/$defs/QuestionSettings"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "selfAssessment": {
+          "description": "true marks an unscored self-check question. It is the only way a manually graded type (essay, upload_answer, code_answer) may appear inside a lesson quiz; do not use it to skip writing a correctAnswer on an auto-graded type.",
+          "type": "boolean"
+        },
+        "difficulty": {
+          "description": "Optional difficulty: exactly \"easy\", \"medium\" or \"hard\" (lowercase).",
+          "type": "string",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ]
+        },
+        "tags": {
+          "description": "Optional free-text tags, each 1–40 characters.",
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "skills": {
+          "description": "Optional skill ids declared by the course. Do not invent skill ids.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "transcript": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "additionalProperties": false
+        },
+        "type": {
+          "type": "string",
+          "const": "question_group"
+        },
+        "sharedContent": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "questions": {
+          "minItems": 1,
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LeafQuestion"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "sharedContent",
+        "questions"
+      ],
+      "additionalProperties": false,
+      "description": "A shared passage (\"sharedContent\", L10nRichContent) followed by 1–20 sub-questions in \"questions\". Answers and points belong to each sub-question; a group cannot contain another group."
+    },
+    "LeafQuestion": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SingleChoiceQuestion"
+        },
+        {
+          "$ref": "#/$defs/MultipleChoiceQuestion"
+        },
+        {
+          "$ref": "#/$defs/TrueFalseQuestion"
+        },
+        {
+          "$ref": "#/$defs/FillBlankQuestion"
+        },
+        {
+          "$ref": "#/$defs/ShortAnswerQuestion"
+        },
+        {
+          "$ref": "#/$defs/NumericQuestion"
+        },
+        {
+          "$ref": "#/$defs/MatchingQuestion"
+        },
+        {
+          "$ref": "#/$defs/OrderingQuestion"
+        },
+        {
+          "$ref": "#/$defs/ClassificationQuestion"
+        },
+        {
+          "$ref": "#/$defs/EssayQuestion"
+        },
+        {
+          "$ref": "#/$defs/UploadAnswerQuestion"
+        },
+        {
+          "$ref": "#/$defs/CodeAnswerQuestion"
+        }
+      ],
+      "description": "Any question type except question_group, chosen by \"type\"."
+    },
+    "QuizSettings": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "practice",
+            "graded"
+          ]
+        },
+        "attemptsAllowed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "feedback": {
+          "type": "string",
+          "enum": [
+            "per_question",
+            "after_submit",
+            "none"
+          ]
+        },
+        "showExplanations": {
+          "type": "boolean"
+        },
+        "shuffleQuestions": {
+          "type": "boolean"
+        },
+        "passPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Behaviour of a lesson quiz block. For a practice quiz the guide uses {\"mode\":\"practice\",\"feedback\":\"after_submit\",\"showExplanations\":true}. These keys are not valid in exam settings."
+    },
+    "AssignmentBlock": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "assignment"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "instructions": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "submission": {
+          "$ref": "#/$defs/SubmissionSpec"
+        },
+        "rubric": {
+          "$ref": "#/$defs/Rubric"
+        },
+        "passPoints": {
+          "type": "number",
+          "minimum": 0
+        },
+        "skills": {
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "resubmission": {
+          "type": "string",
+          "enum": [
+            "until_approved",
+            "once",
+            "never"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "notebook": {
+          "$ref": "#/$defs/NotebookAssignment"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "title",
+        "instructions",
+        "submission"
+      ],
+      "additionalProperties": false,
+      "description": "An assignment embedded in a lesson, with \"instructions\" (L10nRichContent), \"submission\" (SubmissionSpec) and an optional \"rubric\"."
+    },
+    "SubmissionSpec": {
+      "type": "object",
+      "properties": {
+        "accepts": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "text",
+              "link",
+              "file",
+              "code"
+            ]
+          }
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "maxFileSizeMB": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "allowedMimeTypes": {
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]+\\/[a-z0-9.+-]+$"
+          }
+        },
+        "linkHosts": {
+          "maxItems": 30,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          }
+        },
+        "codeLanguage": {
+          "type": "string",
+          "enum": [
+            "python",
+            "javascript",
+            "typescript",
+            "html",
+            "css",
+            "sql",
+            "json",
+            "markdown",
+            "plaintext"
+          ]
+        }
+      },
+      "required": [
+        "accepts"
+      ],
+      "additionalProperties": false,
+      "description": "What an assignment accepts: \"accepts\" is a non-empty array of \"text\", \"link\", \"file\", \"code\"; optional file/link limits."
+    },
+    "NotebookAssignment": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "templateAssetId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "templateChecksum": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "datasets": {
+              "default": [],
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NotebookDataset"
+              }
+            },
+            "runtimeMode": {
+              "default": "jupyterlite",
+              "type": "string",
+              "const": "jupyterlite"
+            },
+            "runtimeProfileId": {
+              "default": "python-data-v1",
+              "type": "string",
+              "const": "python-data-v1"
+            },
+            "runtimeProfileVersion": {
+              "default": "1",
+              "type": "string",
+              "const": "1"
+            },
+            "colabReason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "templateAssetId",
+            "templateChecksum"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "templateAssetId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "templateChecksum": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "datasets": {
+              "default": [],
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NotebookDataset"
+              }
+            },
+            "runtimeMode": {
+              "type": "string",
+              "const": "colab_external"
+            },
+            "runtimeProfileId": {
+              "default": "colab-python-data-v1",
+              "type": "string",
+              "const": "colab-python-data-v1"
+            },
+            "runtimeProfileVersion": {
+              "default": "1",
+              "type": "string",
+              "const": "1"
+            },
+            "colabReason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "templateAssetId",
+            "templateChecksum",
+            "runtimeMode",
+            "colabReason"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "Optional notebook configuration for a coding assignment; requires uploaded template and dataset assets."
+    },
+    "NotebookDataset": {
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^/\\\\]+\\.(csv|json)$"
+        }
+      },
+      "required": [
+        "assetId",
+        "checksum",
+        "filename"
+      ],
+      "additionalProperties": false,
+      "description": "One dataset file attached to a notebook assignment."
+    },
+    "ReflectionBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "const": "reflection"
+        },
+        "prompt": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "minChars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "prompt"
+      ],
+      "additionalProperties": false,
+      "description": "An unscored written reflection prompt inside a lesson."
+    },
+    "FlashcardsBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "const": "flashcards"
+        },
+        "cards": {
+          "minItems": 1,
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "front": {
+                "$ref": "#/$defs/L10nRichContent"
+              },
+              "back": {
+                "$ref": "#/$defs/L10nRichContent"
+              }
+            },
+            "required": [
+              "id",
+              "front",
+              "back"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "shuffle": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "cards"
+      ],
+      "additionalProperties": false,
+      "description": "A deck of flashcards, each with \"front\" and \"back\" L10nRichContent."
+    },
+    "ResourceLinkBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "const": "resource_link"
+        },
+        "resourceId": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "resourceId"
+      ],
+      "additionalProperties": false,
+      "description": "A link to an existing published resource by id. Do not invent resource ids."
+    },
+    "OpportunityLinkBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "const": "opportunity_link"
+        },
+        "opportunityId": {
+          "$ref": "#/$defs/Id"
+        },
+        "relationship": {
+          "type": "string",
+          "enum": [
+            "recommended_next_step",
+            "related",
+            "prerequisite_for"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "opportunityId",
+        "relationship"
+      ],
+      "additionalProperties": false,
+      "description": "A link to an existing opportunity by id."
+    },
+    "NextStepBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "const": "next_step"
+        },
+        "title": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "description": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "lesson",
+                    "exam",
+                    "course",
+                    "opportunity"
+                  ]
+                },
+                "id": {
+                  "$ref": "#/$defs/Id"
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "url"
+                },
+                "url": {
+                  "$ref": "#/$defs/HttpsUrl"
+                }
+              },
+              "required": [
+                "kind",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "target"
+      ],
+      "additionalProperties": false,
+      "description": "A \"what next\" pointer to a lesson, exam, course, opportunity or URL."
+    },
+    "ExamSettings": {
+      "type": "object",
+      "properties": {
+        "timeLimitMinutes": {
+          "description": "Whole exam time limit in minutes, 1–600.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "attemptsAllowed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "scoringPolicy": {
+          "type": "string",
+          "enum": [
+            "best",
+            "latest",
+            "first",
+            "average"
+          ]
+        },
+        "availability": {
+          "description": "Optional open/close window as ISO 8601 date-times. Omit unless the author gave concrete dates.",
+          "type": "object",
+          "properties": {
+            "openAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "closeAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "lateSubmission": {
+              "type": "string",
+              "enum": [
+                "reject",
+                "accept_flagged"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "passPercent": {
+          "description": "Passing threshold in percent, 0–100.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "review": {
+          "description": "When learners may see score, correct answers and explanations: each of showScore, showCorrectAnswers, showExplanations is \"immediately\", \"on_release\" or \"never\".",
+          "type": "object",
+          "properties": {
+            "showScore": {
+              "type": "string",
+              "enum": [
+                "immediately",
+                "on_release",
+                "never"
+              ]
+            },
+            "showCorrectAnswers": {
+              "type": "string",
+              "enum": [
+                "immediately",
+                "on_release",
+                "never"
+              ]
+            },
+            "showExplanations": {
+              "type": "string",
+              "enum": [
+                "immediately",
+                "on_release",
+                "never"
+              ]
+            },
+            "releaseAt": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "shuffleQuestions": {
+          "type": "boolean"
+        },
+        "shuffleOptions": {
+          "type": "boolean"
+        },
+        "navigation": {
+          "type": "string",
+          "enum": [
+            "free",
+            "sequential"
+          ]
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "one_per_page",
+            "section_per_page",
+            "single_page"
+          ]
+        },
+        "integrity": {
+          "type": "object",
+          "properties": {
+            "logFocusLoss": {
+              "type": "boolean"
+            },
+            "logPaste": {
+              "type": "boolean"
+            },
+            "requireFullscreen": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Exam-level behaviour: timeLimitMinutes 1–600, attemptsAllowed 1–20, passPercent 0–100, navigation \"free\"|\"sequential\", layout, review visibility, optional availability window. Only set what the author asked for; never invent dates."
+    },
+    "ExamSection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "$ref": "#/$defs/L10nString"
+        },
+        "instructions": {
+          "$ref": "#/$defs/L10nRichContent"
+        },
+        "timeLimitMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "questions": {
+          "minItems": 1,
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExamQuestionEntry"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "questions"
+      ],
+      "additionalProperties": false,
+      "description": "A section of an exam: {\"id\",\"title\",\"instructions\"?,\"timeLimitMinutes\"?,\"questions\":[…]} with 1–200 entries. If any section has timeLimitMinutes, every section must."
+    },
+    "ExamQuestionEntry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QuestionRef"
+        },
+        {
+          "$ref": "#/$defs/PoolDraw"
+        },
+        {
+          "$ref": "#/$defs/Question"
+        }
+      ],
+      "description": "One entry of an exam section: an inline Question, a QuestionRef or a PoolDraw."
+    },
+    "PoolDraw": {
+      "type": "object",
+      "properties": {
+        "$pool": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "pointsEach": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "from": {
+              "minItems": 1,
+              "maxItems": 500,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^bank:([a-z0-9][a-z0-9-]{0,63})$"
+              }
+            },
+            "filter": {
+              "type": "object",
+              "properties": {
+                "tags": {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "difficulty": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "easy",
+                      "medium",
+                      "hard"
+                    ]
+                  }
+                },
+                "types": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "single_choice",
+                      "multiple_choice",
+                      "true_false",
+                      "fill_blank",
+                      "short_answer",
+                      "numeric",
+                      "matching",
+                      "ordering",
+                      "classification",
+                      "essay",
+                      "upload_answer",
+                      "code_answer",
+                      "question_group"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "count"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "$pool"
+      ],
+      "additionalProperties": false,
+      "description": "Draws \"count\" questions at random from the question bank, by explicit \"from\" ids or by \"filter\". Only for existing bank content."
+    }
+  },
+  "$id": "https://academy.vfuturelabs.org/schemas/v1/course.json",
+  "title": "VFuture Academy course document v1"
+}

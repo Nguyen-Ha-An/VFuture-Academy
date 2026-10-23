@@ -1,0 +1,45 @@
+{
+  "name": "@vfuture/notebook-bridge",
+  "version": "1.0.0",
+  "description": "Origin-bound fixed-action bridge for the VFuture JupyterLite runtime",
+  "license": "UNLICENSED",
+  "private": true,
+  "files": [
+    "lib/**/*.js",
+    "style/*.css"
+  ],
+  "main": "lib/index.js",
+  "style": "style/index.css",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build:lib": "tsc",
+    "build": "npm run build:lib && ../.venv/bin/jupyter labextension build --development True ."
+  },
+  "dependencies": {
+    "@jupyterlab/application": "4.4.5",
+    "@jupyterlab/docmanager": "4.4.5",
+    "@jupyterlab/notebook": "4.4.5",
+    "@jupyterlab/services": "7.4.5"
+  },
+  "devDependencies": {
+    "@jupyterlab/builder": "4.4.10",
+    "typescript": "5.8.3"
+  },
+  "jupyterlab": {
+    "extension": true,
+    "outputDir": "labextension",
+    "sharedPackages": {
+      "@jupyterlab/docmanager": {
+        "singleton": true,
+        "requiredVersion": "^4.4.5"
+      },
+      "@jupyterlab/notebook": {
+        "singleton": true,
+        "requiredVersion": "^4.4.5"
+      }
+    }
+  },
+  "overrides": {
+    "sanitize-html": "2.17.7"
+  }
+}

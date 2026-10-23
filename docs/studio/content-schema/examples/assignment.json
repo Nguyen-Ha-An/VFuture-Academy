@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "assignment",
+  "id": "bai-thuc-hanh",
+  "title": "Tìm ứng dụng AI",
+  "instructions": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Mô tả một ứng dụng AI bạn đã sử dụng."
+          }
+        ]
+      }
+    ]
+  },
+  "submission": {
+    "accepts": [
+      "text"
+    ]
+  }
+}

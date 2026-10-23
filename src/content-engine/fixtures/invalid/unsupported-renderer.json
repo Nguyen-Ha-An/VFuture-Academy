@@ -1,0 +1,11 @@
+{
+  "manifest": { "schemaVersion": 1, "kind": "course", "id": "unsupported-renderer", "title": "Reserved block types", "summary": "Blocks that parse but have no renderer yet.", "languages": ["en"], "defaultLanguage": "en", "level": "foundation", "difficulty": "beginner", "pathway": "core-future-skills", "learningOutcomes": ["Trip the renderer support check."], "access": { "scope": "global" }, "skills": [{ "id": "qa", "name": "QA" }], "modules": [{ "id": "m1", "title": "Module", "items": [{ "type": "lesson", "id": "l1" }] }] },
+  "items": {
+    "l1": { "schemaVersion": 1, "kind": "lesson", "id": "l1", "title": "Reserved blocks", "objectives": ["Use a block with no renderer."], "blocks": [
+      { "type": "paragraph", "content": [{ "text": "Both blocks below are reserved." }] },
+      { "id": "math-1", "type": "math", "latex": "E = mc^2" },
+      { "id": "diagram-1", "type": "diagram", "src": { "assetId": "asset_ai_map" }, "alt": "A flow diagram" }
+    ] }
+  },
+  "expect": ["E_RENDERER_UNSUPPORTED"]
+}

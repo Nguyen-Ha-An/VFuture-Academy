@@ -1,0 +1,47 @@
+{
+  "id": "cau-4",
+  "type": "fill_blank",
+  "points": 1,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Rút gọn 4/8 ta được "
+          },
+          {
+            "blank": "cho-trong-1"
+          },
+          {
+            "text": "."
+          }
+        ]
+      }
+    ]
+  },
+  "blanks": [
+    {
+      "id": "cho-trong-1"
+    }
+  ],
+  "correctAnswer": {
+    "cho-trong-1": [
+      "1/2",
+      "một phần hai"
+    ]
+  },
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Chia cả tử số và mẫu số của 4/8 cho 4 được 1/2."
+          }
+        ]
+      }
+    ]
+  }
+}

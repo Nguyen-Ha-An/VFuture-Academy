@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VFuture staff — Local verification</title>
+    <!-- The Vite dev server serves every module as its own request (275+ before the analysis worker);
+         studio.spec.ts finds the worker in resource timing, whose default buffer keeps only 250. -->
+    <script>performance.setResourceTimingBufferSize(1000);</script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,977 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Optional URL of the published schema for editor tooling; has no effect on validation.",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1,
+      "description": "Always the number 1."
+    },
+    "kind": {
+      "type": "string",
+      "const": "resource",
+      "description": "Always \"resource\"."
+    },
+    "id": {
+      "$ref": "#/$defs/Id"
+    },
+    "languages": {
+      "description": "Optional list of content languages a standalone item provides. Leave it out unless the target course configuration is known; the course settings win on import.",
+      "minItems": 1,
+      "maxItems": 2,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Locale"
+      }
+    },
+    "defaultLanguage": {
+      "description": "Optional default language for a standalone item; must be in \"languages\".",
+      "$ref": "#/$defs/Locale"
+    },
+    "title": {
+      "$ref": "#/$defs/L10nString"
+    },
+    "summary": {
+      "$ref": "#/$defs/L10nString"
+    },
+    "resourceType": {
+      "type": "string",
+      "enum": [
+        "guide",
+        "cheat_sheet",
+        "template",
+        "recording",
+        "reading",
+        "tool",
+        "competition_breakdown",
+        "opportunity_guide",
+        "student_note",
+        "mentor_note",
+        "project_walkthrough"
+      ]
+    },
+    "tags": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      }
+    },
+    "skills": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Id"
+      }
+    },
+    "pathways": {
+      "maxItems": 5,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ai-emerging-technology",
+          "research-innovation",
+          "entrepreneurship-product",
+          "fintech-economics",
+          "core-future-skills"
+        ]
+      }
+    },
+    "branchScope": {
+      "$ref": "#/$defs/CourseAccess"
+    },
+    "body": {
+      "$ref": "#/$defs/L10nRichContent"
+    },
+    "attachments": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "src": {
+            "$ref": "#/$defs/MediaRef"
+          },
+          "label": {
+            "$ref": "#/$defs/L10nString"
+          }
+        },
+        "required": [
+          "src",
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "id",
+    "title",
+    "summary",
+    "resourceType",
+    "body"
+  ],
+  "additionalProperties": false,
+  "description": "A library resource with a content-only \"body\" (no activities).",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+      "description": "Identifier: lowercase a-z, 0-9 and \"-\", 1–64 characters, starting with a letter or digit, e.g. \"cau-1\". Uppercase, spaces and underscores are rejected. Ids must be unique within their own list."
+    },
+    "Locale": {
+      "type": "string",
+      "enum": [
+        "vi",
+        "en"
+      ],
+      "description": "Content language code: \"vi\" or \"en\"."
+    },
+    "L10nString": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 2000
+        },
+        {
+          "type": "object",
+          "properties": {
+            "vi": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "en": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "A short text: either a plain string, or a map with \"vi\" and/or \"en\" keys when the content is bilingual, e.g. \"Phân số\" or {\"vi\":\"Phân số\",\"en\":\"Fractions\"}."
+    },
+    "CourseAccess": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "const": "global"
+            }
+          },
+          "required": [
+            "scope"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "const": "branches"
+            },
+            "branchIds": {
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "required": [
+            "scope",
+            "branchIds"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "Who may see the course: {\"scope\":\"global\"} or {\"scope\":\"branches\",\"branchIds\":[…]}."
+    },
+    "L10nRichContent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RichContent"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "vi": {
+              "$ref": "#/$defs/RichContent"
+            },
+            "en": {
+              "$ref": "#/$defs/RichContent"
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "RichContent, either directly ({\"blocks\":[{\"type\":\"paragraph\",\"content\":[{\"text\":\"…\"}]}]}) or as a bilingual map {\"vi\":{\"blocks\":[…]},\"en\":{\"blocks\":[…]}}. This is the type of every \"content\", \"explanation\", \"hint\", \"intro\", \"instructions\" and \"description\" field — a plain string is rejected."
+    },
+    "RichContent": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "minItems": 1,
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContentBlock"
+          }
+        }
+      },
+      "required": [
+        "blocks"
+      ],
+      "additionalProperties": false,
+      "description": "Formatted text, always an object with a \"blocks\" array. The minimal form is {\"blocks\":[{\"type\":\"paragraph\",\"content\":[{\"text\":\"…\"}]}]}. Used for question stems, options, explanations, hints, lesson paragraphs and instructions — none of these accept a plain string."
+    },
+    "ContentBlock": {
+      "description": "One block of formatted content, chosen by \"type\": paragraph, heading, list, quote, image, video, audio, table, code, divider, embed, pdf, callout, math or diagram. Every block type has its own required fields; a paragraph needs \"content\" (Runs).",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "paragraph"
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "heading"
+            },
+            "level": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "const": 1
+                },
+                {
+                  "type": "number",
+                  "const": 2
+                },
+                {
+                  "type": "number",
+                  "const": 3
+                },
+                {
+                  "type": "number",
+                  "const": 4
+                }
+              ]
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "level",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "list"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "items": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ListItem"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "ordered",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "quote"
+            },
+            "content": {
+              "$ref": "#/$defs/Runs"
+            },
+            "author": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "image"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "alt": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "caption": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "width": {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "full"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "type": {
+                  "type": "string",
+                  "const": "video"
+                },
+                "src": {
+                  "$ref": "#/$defs/MediaRef"
+                },
+                "poster": {
+                  "$ref": "#/$defs/MediaRef"
+                },
+                "caption": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "required": [
+                "type",
+                "src"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "type": {
+                  "type": "string",
+                  "const": "video"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "youtube",
+                    "vimeo"
+                  ]
+                },
+                "url": {
+                  "$ref": "#/$defs/HttpsUrl"
+                },
+                "caption": {
+                  "$ref": "#/$defs/L10nString"
+                }
+              },
+              "required": [
+                "type",
+                "provider",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "audio"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "label": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "src"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "table"
+            },
+            "headers": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "$ref": "#/$defs/Runs"
+                  },
+                  "align": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "center",
+                      "right",
+                      "justify"
+                    ]
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "rows": {
+              "minItems": 1,
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "minItems": 1,
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "$ref": "#/$defs/Runs"
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right",
+                        "justify"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "content"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "caption": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "rows"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "code"
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "python",
+                "javascript",
+                "typescript",
+                "tsx",
+                "jsx",
+                "html",
+                "css",
+                "json",
+                "sql",
+                "bash",
+                "markdown",
+                "yaml",
+                "plaintext",
+                "java",
+                "c",
+                "cpp",
+                "csharp",
+                "go",
+                "rust",
+                "swift",
+                "kotlin",
+                "r"
+              ]
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "filename": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "highlightLines": {
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            },
+            "showLineNumbers": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "language",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "divider"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "embed"
+            },
+            "url": {
+              "$ref": "#/$defs/HttpsUrl"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "aspectRatio": {
+              "type": "string",
+              "enum": [
+                "16:9",
+                "4:3",
+                "1:1"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "url",
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "pdf"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 2000
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "title"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "callout"
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "info",
+                "tip",
+                "warning",
+                "danger",
+                "note"
+              ]
+            },
+            "title": {
+              "$ref": "#/$defs/L10nString"
+            },
+            "blocks": {
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ContentBlock"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "variant",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "math"
+            },
+            "latex": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "type",
+            "latex"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "type": {
+              "type": "string",
+              "const": "diagram"
+            },
+            "src": {
+              "$ref": "#/$defs/MediaRef"
+            },
+            "alt": {
+              "$ref": "#/$defs/L10nString"
+            }
+          },
+          "required": [
+            "type",
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Runs": {
+      "minItems": 1,
+      "maxItems": 500,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TextRun"
+          },
+          {
+            "$ref": "#/$defs/BlankRun"
+          }
+        ]
+      },
+      "description": "The inline content of a paragraph, heading, quote, list item or table cell: an array of TextRun (and, in fill_blank stems only, BlankRun). It is an array of objects, never a bare string."
+    },
+    "TextRun": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 5000
+            },
+            {
+              "type": "object",
+              "properties": {
+                "vi": {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 5000
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "annotations": {
+          "$ref": "#/$defs/Annotations"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "One run of inline text: {\"text\":\"…\"} with optional \"annotations\" (bold, italic, link…). \"text\" may be a bilingual map. There is no other inline shape for plain words."
+    },
+    "Annotations": {
+      "type": "object",
+      "properties": {
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "underline": {
+          "type": "boolean"
+        },
+        "strike": {
+          "type": "boolean"
+        },
+        "code": {
+          "type": "boolean"
+        },
+        "sub": {
+          "type": "boolean"
+        },
+        "sup": {
+          "type": "boolean"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,24})$"
+        },
+        "link": {
+          "type": "object",
+          "properties": {
+            "href": {
+              "type": "string",
+              "pattern": "^(https:\\/\\/|mailto:)\\S+$"
+            },
+            "target": {
+              "type": "string",
+              "const": "_blank"
+            }
+          },
+          "required": [
+            "href"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline formatting flags for one TextRun. Omit when the text is plain."
+    },
+    "BlankRun": {
+      "type": "object",
+      "properties": {
+        "blank": {
+          "$ref": "#/$defs/Id"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
+        }
+      },
+      "required": [
+        "blank"
+      ],
+      "additionalProperties": false,
+      "description": "A blank inside a fill_blank question stem: {\"blank\":\"<blank id>\"}. The id must appear in the question's \"blanks\" list and in its \"correctAnswer\"."
+    },
+    "ListItem": {
+      "description": "One list entry: {\"content\":<Runs>} with optional nested \"items\" for a sub-list. \"content\" is an array of TextRun objects, not a string.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/Runs"
+        },
+        "items": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ListItem"
+          }
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "MediaRef": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "assetId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "assetId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "url": {
+              "$ref": "#/$defs/HttpsUrl"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "A media reference: {\"assetId\":\"…\"} for an uploaded asset in the media library, or {\"url\":\"https://…\"} for an allowlisted host. Never invent an assetId."
+    },
+    "HttpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "An absolute https:// URL."
+    }
+  },
+  "$id": "https://academy.vfuturelabs.org/schemas/v1/resource.json",
+  "title": "VFuture Academy resource document v1"
+}

@@ -1,0 +1,202 @@
+{
+  "vi": {
+    "content": {
+      "list": {
+        "titles": {
+          "resource": "Tất cả tài nguyên",
+          "opportunity": "Tất cả cơ hội",
+          "project": "Tất cả dự án"
+        },
+        "search": "Tìm theo tiêu đề hoặc mã",
+        "status": "Trạng thái",
+        "type": "Loại",
+        "approval": "Phê duyệt",
+        "columns": {
+          "title": "Tiêu đề",
+          "type": "Loại",
+          "status": "Trạng thái",
+          "approval": "Phê duyệt",
+          "updated": "Cập nhật",
+          "actions": "Thao tác"
+        },
+        "noMatches": "Không có mục nào khớp với bộ lọc này.",
+        "pageNote": "Tìm kiếm và bộ lọc chỉ áp dụng cho các mục trên trang này.",
+        "actionsFor": "Thao tác cho {title}",
+        "edit": "Chỉnh sửa",
+        "copyId": "Sao chép mã",
+        "copied": "Đã sao chép {id}.",
+        "copyError": "Không sao chép được mã.",
+        "resourceTypes": {
+          "guide": "Hướng dẫn",
+          "cheat_sheet": "Bảng tóm tắt",
+          "template": "Mẫu",
+          "recording": "Bản ghi",
+          "reading": "Bài đọc",
+          "tool": "Công cụ",
+          "competition_breakdown": "Phân tích cuộc thi",
+          "opportunity_guide": "Hướng dẫn cơ hội",
+          "student_note": "Ghi chú học viên",
+          "mentor_note": "Ghi chú người hướng dẫn",
+          "project_walkthrough": "Hướng dẫn dự án"
+        },
+        "pastEnd": "Không còn mục nào ở trang này.",
+        "backToFirst": "Về trang đầu"
+      },
+      "bank": {
+        "title": "Câu hỏi",
+        "filtersLabel": "Bộ lọc câu hỏi"
+      },
+      "media": {
+        "filesTitle": "Tệp",
+        "search": "Tìm theo tên tệp hoặc mã",
+        "typeFilter": "Loại tệp",
+        "types": {
+          "image": "Hình ảnh",
+          "video": "Video",
+          "audio": "Âm thanh",
+          "pdf": "PDF",
+          "doc": "Tài liệu",
+          "other": "Khác"
+        },
+        "altFilter": "Văn bản thay thế",
+        "altOptions": {
+          "missing": "Thiếu văn bản thay thế",
+          "complete": "Đã có văn bản thay thế"
+        },
+        "missingAlt": "Thiếu văn bản thay thế",
+        "noMatches": "Không có tệp nào khớp với bộ lọc này.",
+        "openDetails": "Mở chi tiết {name}",
+        "details": "Thông tin",
+        "fields": {
+          "type": "Định dạng",
+          "size": "Dung lượng",
+          "dimensions": "Kích thước",
+          "created": "Ngày tải lên"
+        },
+        "usagesTitle": "Nơi sử dụng",
+        "notUsed": "Chưa được dùng ở đâu.",
+        "altTitle": "Văn bản thay thế",
+        "altDescription": "Mô tả hình ảnh cho người dùng trình đọc màn hình, bằng cả hai ngôn ngữ.",
+        "close": "Đóng",
+        "allTypes": "Tất cả loại",
+        "allAlt": "Tất cả trạng thái",
+        "stats": {
+          "label": "Tổng quan tệp",
+          "total": "Tổng số tệp",
+          "storage": "Dung lượng đã dùng",
+          "missingAlt": "Thiếu văn bản thay thế"
+        }
+      },
+      "editor": {
+        "sections": {
+          "details": "Thông tin chính",
+          "schedule": "Thời gian",
+          "audience": "Đối tượng và học tập",
+          "content": "Nội dung",
+          "statusAudience": "Trạng thái và phạm vi",
+          "team": "Liên kết và nhóm"
+        }
+      }
+    }
+  },
+  "en": {
+    "content": {
+      "list": {
+        "titles": {
+          "resource": "All resources",
+          "opportunity": "All opportunities",
+          "project": "All projects"
+        },
+        "search": "Search by title or ID",
+        "status": "Status",
+        "type": "Type",
+        "approval": "Approval",
+        "columns": {
+          "title": "Title",
+          "type": "Type",
+          "status": "Status",
+          "approval": "Approval",
+          "updated": "Updated",
+          "actions": "Actions"
+        },
+        "noMatches": "No items match these filters.",
+        "pageNote": "Search and filters apply to the items on this page.",
+        "actionsFor": "Actions for {title}",
+        "edit": "Edit",
+        "copyId": "Copy ID",
+        "copied": "Copied {id}.",
+        "copyError": "The ID could not be copied.",
+        "resourceTypes": {
+          "guide": "Guide",
+          "cheat_sheet": "Cheat sheet",
+          "template": "Template",
+          "recording": "Recording",
+          "reading": "Reading",
+          "tool": "Tool",
+          "competition_breakdown": "Competition breakdown",
+          "opportunity_guide": "Opportunity guide",
+          "student_note": "Student note",
+          "mentor_note": "Mentor note",
+          "project_walkthrough": "Project walkthrough"
+        },
+        "pastEnd": "No more items on this page.",
+        "backToFirst": "Back to page 1"
+      },
+      "bank": {
+        "title": "Questions",
+        "filtersLabel": "Question filters"
+      },
+      "media": {
+        "filesTitle": "Files",
+        "search": "Search by file name or ID",
+        "typeFilter": "File type",
+        "types": {
+          "image": "Images",
+          "video": "Video",
+          "audio": "Audio",
+          "pdf": "PDF",
+          "doc": "Documents",
+          "other": "Other"
+        },
+        "altFilter": "Alt text",
+        "altOptions": {
+          "missing": "Missing alt text",
+          "complete": "Has alt text"
+        },
+        "missingAlt": "Missing alt text",
+        "noMatches": "No files match these filters.",
+        "openDetails": "Open details for {name}",
+        "details": "Details",
+        "fields": {
+          "type": "Format",
+          "size": "Size",
+          "dimensions": "Dimensions",
+          "created": "Uploaded"
+        },
+        "usagesTitle": "Where it is used",
+        "notUsed": "Not used anywhere yet.",
+        "altTitle": "Alt text",
+        "altDescription": "Describe the image for screen reader users, in both languages.",
+        "close": "Close",
+        "allTypes": "All types",
+        "allAlt": "All states",
+        "stats": {
+          "label": "Files overview",
+          "total": "Files",
+          "storage": "Storage used",
+          "missingAlt": "Missing alt text"
+        }
+      },
+      "editor": {
+        "sections": {
+          "details": "Details",
+          "schedule": "Schedule",
+          "audience": "Audience and learning",
+          "content": "Content",
+          "statusAudience": "Status and audience",
+          "team": "Links and team"
+        }
+      }
+    }
+  }
+}

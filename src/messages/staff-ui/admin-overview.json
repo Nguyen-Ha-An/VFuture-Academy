@@ -1,0 +1,102 @@
+{
+  "vi": {
+    "overview": {
+      "inviteMember": "Mời thành viên",
+      "kpi": {
+        "members": "Thành viên",
+        "activeLearners": "Học viên hoạt động",
+        "pendingGrading": "Chờ chấm bài",
+        "pendingReview": "Chờ duyệt",
+        "schools": "Trường",
+        "enrollments": "Lượt ghi danh",
+        "publishedContent": "Nội dung đã xuất bản",
+        "pendingInvitations": "{count, plural, other {# lời mời đang chờ}}",
+        "pendingInvitationsUnavailable": "Không tải được số lời mời đang chờ",
+        "previousWindow": "so với 30 ngày trước",
+        "activeLearnersHint": "30 ngày qua",
+        "pendingGradingHint": "Đã nộp hoặc đang chấm",
+        "pendingReviewHint": "Yêu cầu đang chờ quyết định"
+      },
+      "activity": {
+        "title": "Hoạt động học tập, 30 ngày",
+        "description": "Tổng theo ngày (giờ UTC) trong phạm vi quản lý.",
+        "day": "Ngày",
+        "lessons": "Bài học đã hoàn thành",
+        "attempts": "Lượt làm bài kiểm tra và bài thi",
+        "summary": "Trong 30 ngày qua: {lessons, number} bài học đã hoàn thành và {attempts, number} lượt làm bài kiểm tra và bài thi."
+      },
+      "schools": {
+        "title": "Trường theo số học viên hoạt động",
+        "description": "5 trường dẫn đầu trong 30 ngày qua.",
+        "empty": "Chưa có trường nào trong phạm vi này.",
+        "label": "Xếp hạng trường theo số học viên hoạt động",
+        "value": "{count, plural, other {# học viên}}"
+      },
+      "pipeline": {
+        "title": "Công việc đang chờ",
+        "description": "Yêu cầu duyệt nội dung và bài nộp cần xử lý.",
+        "pending": "Chờ duyệt",
+        "changesRequested": "Cần chỉnh sửa",
+        "approved": "Đã duyệt, chưa xuất bản",
+        "pendingGrading": "Chờ chấm bài"
+      },
+      "recent": {
+        "title": "Hoạt động gần đây",
+        "empty": "Chưa có hoạt động nào trong phạm vi này.",
+        "viewAll": "Xem nhật ký hoạt động",
+        "system": "Hệ thống",
+        "unknownActor": "Người dùng không xác định"
+      }
+    }
+  },
+  "en": {
+    "overview": {
+      "inviteMember": "Invite member",
+      "kpi": {
+        "members": "Members",
+        "activeLearners": "Active learners",
+        "pendingGrading": "Waiting to grade",
+        "pendingReview": "Waiting for review",
+        "schools": "Schools",
+        "enrollments": "Enrollments",
+        "publishedContent": "Published content",
+        "pendingInvitations": "{count, plural, =0 {No pending invitations} one {# pending invitation} other {# pending invitations}}",
+        "pendingInvitationsUnavailable": "Pending invitations unavailable",
+        "previousWindow": "vs previous 30 days",
+        "activeLearnersHint": "Last 30 days",
+        "pendingGradingHint": "Submitted or in review",
+        "pendingReviewHint": "Requests awaiting a decision"
+      },
+      "activity": {
+        "title": "Learning activity, 30 days",
+        "description": "Daily totals (UTC days) across your management scope.",
+        "day": "Day",
+        "lessons": "Lessons completed",
+        "attempts": "Quiz and exam attempts",
+        "summary": "In the last 30 days: {lessons, number} lessons completed and {attempts, number} quiz and exam attempts."
+      },
+      "schools": {
+        "title": "Schools by active learners",
+        "description": "Top 5 over the last 30 days.",
+        "empty": "No schools in this scope yet.",
+        "label": "Schools ranked by active learners",
+        "value": "{count, plural, one {# learner} other {# learners}}"
+      },
+      "pipeline": {
+        "title": "Work waiting",
+        "description": "Content review requests and submissions that need attention.",
+        "pending": "Waiting for review",
+        "changesRequested": "Changes requested",
+        "approved": "Approved, not yet published",
+        "pendingGrading": "Waiting to grade"
+      },
+      "recent": {
+        "title": "Recent activity",
+        "empty": "No recent activity in this scope.",
+        "viewAll": "View audit log",
+        "system": "System",
+        "unknownActor": "Unknown user"
+      }
+    }
+  }
+}

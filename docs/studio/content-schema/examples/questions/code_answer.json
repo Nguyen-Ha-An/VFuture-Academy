@@ -1,0 +1,35 @@
+{
+  "id": "cau-12",
+  "type": "code_answer",
+  "points": 10,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Viết hàm rut_gon(tu, mau) trả về tuple (tử, mẫu) đã rút gọn. Ví dụ: rut_gon(6, 8) = (3, 4). Dùng return, không in kết quả."
+          }
+        ]
+      }
+    ]
+  },
+  "language": "python",
+  "starterCode": "def rut_gon(tu, mau):\n    # Viết lời giải tại đây\n    pass\n",
+  "sampleSolution": "from math import gcd\n\ndef rut_gon(tu, mau):\n    d = gcd(tu, mau)\n    return (tu // d, mau // d)\n",
+  "rubric": {
+    "criteria": [
+      {
+        "id": "dung-ket-qua",
+        "name": "Trả về đúng phân số tối giản",
+        "maxPoints": 6
+      },
+      {
+        "id": "dung-chu-ky",
+        "name": "Đúng tên hàm, tham số và dùng return",
+        "maxPoints": 4
+      }
+    ]
+  }
+}

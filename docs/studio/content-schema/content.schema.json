@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VFuture Studio content payload v1",
+  "description": "One complete course or a standalone lesson, exam, or assignment. Course items can be inline.",
+  "oneOf": [
+    {
+      "$ref": "./course.json"
+    },
+    {
+      "$ref": "./lesson.json"
+    },
+    {
+      "$ref": "./exam.json"
+    },
+    {
+      "$ref": "./assignment.json"
+    }
+  ]
+}

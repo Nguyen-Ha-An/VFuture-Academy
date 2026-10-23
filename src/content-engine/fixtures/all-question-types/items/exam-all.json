@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1, "kind": "exam", "id": "exam-all", "title": "Bank refs and pools",
+  "description": { "blocks": [{ "type": "paragraph", "content": [{ "text": "One bank reference, one inline question and one pool draw." }] }] },
+  "settings": { "timeLimitMinutes": 20, "attemptsAllowed": 1, "scoringPolicy": "latest", "passPercent": 50, "availability": { "lateSubmission": "accept_flagged" }, "review": { "showScore": "immediately", "showCorrectAnswers": "never", "showExplanations": "never" }, "navigation": "sequential", "layout": "single_page", "integrity": { "logFocusLoss": true, "logPaste": true, "requireFullscreen": false } },
+  "sections": [
+    { "id": "s1", "title": "Mixed entries", "instructions": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Answer every question." }] }] }, "questions": [
+      { "$ref": "bank:ai-basics-003" },
+      { "id": "x1", "type": "multiple_choice", "points": 2, "settings": { "partialScoring": true }, "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Which entries may appear in an exam section?" }] }] },
+        "options": [{ "id": "inline", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "An inline question" }] }] } }, { "id": "ref", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "A bank reference" }] }] } }, { "id": "lesson", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "A lesson block" }] }] } }, { "id": "pool", "content": { "blocks": [{ "type": "paragraph", "content": [{ "text": "A pool draw" }] }] } }],
+        "correctAnswer": ["inline", "ref", "pool"], "explanation": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Lesson blocks belong to lessons, not exam sections." }] }] } },
+      { "$pool": { "id": "p-all", "count": 3, "from": ["bank:ai-basics-004", "bank:ai-basics-005", "bank:ai-basics-006", "bank:ai-basics-001"] } }
+    ] }
+  ]
+}

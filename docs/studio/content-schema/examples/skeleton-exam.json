@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "exam",
+  "id": "ten-de-kiem-tra",
+  "title": "Tên đề kiểm tra",
+  "settings": {
+    "passPercent": 70
+  },
+  "sections": [
+    {
+      "id": "phan-1",
+      "title": "Phần 1",
+      "questions": [
+        {
+          "id": "cau-1",
+          "type": "true_false",
+          "points": 1,
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Phát biểu cần đánh giá."
+                  }
+                ]
+              }
+            ]
+          },
+          "correctAnswer": true,
+          "explanation": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Vì sao phát biểu đúng."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

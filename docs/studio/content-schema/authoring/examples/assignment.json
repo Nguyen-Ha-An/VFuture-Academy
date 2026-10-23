@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "assignment",
+  "id": "solar-system-project",
+  "title": "Solar system project",
+  "instructions": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Write a short explanation of the solar system."
+          }
+        ]
+      }
+    ]
+  },
+  "submission": {
+    "accepts": [
+      "text"
+    ]
+  },
+  "rubric": {
+    "criteria": [
+      {
+        "id": "accuracy",
+        "name": "Accuracy",
+        "maxPoints": 5
+      }
+    ]
+  },
+  "passPoints": 3
+}

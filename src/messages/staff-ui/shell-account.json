@@ -1,0 +1,24 @@
+{
+  "vi": {
+    "account": {
+      "fallbackName": "Tài khoản",
+      "theme": {
+        "label": "Giao diện",
+        "system": "Theo hệ thống",
+        "light": "Sáng",
+        "dark": "Tối"
+      }
+    }
+  },
+  "en": {
+    "account": {
+      "fallbackName": "Account",
+      "theme": {
+        "label": "Theme",
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    }
+  }
+}

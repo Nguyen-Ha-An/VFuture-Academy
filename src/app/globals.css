@@ -1,0 +1,123 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * `dark:` utilities only ever apply inside a staff document (DESIGN.md staff spec): the OS
+ * preference unless the `.vf-staff` shell carries an explicit `data-theme` from `vf-theme`.
+ * Learner and public surfaces never match, so nothing outside staff can pick it up.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:has(.vf-staff:not([data-theme="light"])) *) { @slot; }
+  }
+  &:where(:root:has(.vf-staff[data-theme="dark"]) *) { @slot; }
+}
+
+:root {
+  --background: oklch(0.985 0.004 85); --foreground: oklch(0.23 0.02 255); --card: oklch(1 0 0); --card-foreground: oklch(0.23 0.02 255); --popover: oklch(1 0 0); --popover-foreground: oklch(0.23 0.02 255); --primary: oklch(0.47 0.11 215); --primary-foreground: oklch(0.99 0 0); --secondary: oklch(0.94 0.012 215); --secondary-foreground: oklch(0.28 0.03 255); --muted: oklch(0.95 0.006 85); --muted-foreground: oklch(0.48 0.02 255); --accent: oklch(0.91 0.035 215); --accent-foreground: oklch(0.26 0.04 215); --destructive: oklch(0.56 0.2 28); --border: oklch(0.87 0.01 255); --input: oklch(0.82 0.012 255); --ring: oklch(0.47 0.11 215); --radius: 0.5rem;
+  --app-font-sans: "Be Vietnam Pro", sans-serif;
+}
+
+/*
+ * App defaults for tokens only the staff workspaces style with (staff-ui/staff-tokens.css
+ * overrides them); defined here so no utility ever resolves an undefined variable.
+ */
+:root {
+  --destructive-foreground: oklch(0.99 0 0);
+  --brand: oklch(0.47 0.11 215); --brand-foreground: oklch(0.99 0 0);
+  --sidebar: var(--card); --sidebar-foreground: var(--foreground); --sidebar-primary: var(--primary); --sidebar-primary-foreground: var(--primary-foreground); --sidebar-accent: var(--accent); --sidebar-accent-foreground: var(--accent-foreground); --sidebar-border: var(--border); --sidebar-ring: var(--ring);
+  --chart-1: oklch(0.47 0.11 215); --chart-2: oklch(0.62 0.09 215); --chart-3: oklch(0.48 0.02 255); --chart-4: oklch(0.7 0.015 255); --chart-5: oklch(0.87 0.01 255);
+}
+
+/* Semantic feedback colors shared by notices, overridden within learner dark mode. */
+:root {
+  --success: #ecfdf5; --success-foreground: #064e3b; --success-border: #a7f3d0;
+  --warning: #fffbeb; --warning-foreground: #451a03; --warning-border: #fde68a;
+  --info: #eff6ff; --info-foreground: #1e3a8a; --info-border: #bfdbfe;
+}
+
+@theme inline {
+  --color-success: var(--success); --color-success-foreground: var(--success-foreground); --color-success-border: var(--success-border);
+  --color-warning: var(--warning); --color-warning-foreground: var(--warning-foreground); --color-warning-border: var(--warning-border);
+  --color-info: var(--info); --color-info-foreground: var(--info-foreground); --color-info-border: var(--info-border);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --font-sans: var(--app-font-sans); --font-mono: "IBM Plex Mono", monospace;
+  --color-brand: var(--brand); --color-brand-foreground: var(--brand-foreground);
+  /* Staff-only token with no :root default on purpose: elsewhere the fallback reads --destructive on the element, so learner and workspace overrides still win. */
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground, var(--destructive));
+  --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-primary: var(--sidebar-primary); --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5);
+}
+
+/*
+ * Plain (non-inline) so `rounded-md` reads `var(--radius-md)` and the staff tokens can set
+ * 6px on :root. Every `--radius` override sits on :root (globals, workspace.css) or repeats
+ * 0.5rem (staff.css), so outside staff this still resolves to 0.5rem. `rounded-sm/lg/xl`
+ * keep Tailwind's defaults (.25rem/.5rem/.75rem) outside staff.
+ */
+@theme {
+  --radius-md: var(--radius);
+}
+
+/*
+ * Token-aware defaults under Tailwind's preflight, so every utility still wins. They read the
+ * shadcn variables on the element (never --color-*, which resolve once at :root), so the learner
+ * surface, its portals and public prose each get their own palette. Specificity beats preflight
+ * (`*` 0,0,0, `::before` 0,0,1, `input, select` 0,0,1) whatever the order inside the layer:
+ * - learner and public prose: a bare `border` draws the hairline, not currentColor;
+ * - workspace fields sit on the surface colour with the strong line (DESIGN.md colour table).
+ */
+@layer base {
+  :where(:root:has(.vf-learner-refined), .public-site .public-prose) :not(:root),
+  :where(:root:has(.vf-learner-refined), .public-site .public-prose) :not(:root)::before,
+  :where(:root:has(.vf-learner-refined), .public-site .public-prose) :not(:root)::after { border-color: var(--border); }
+  :where(:root:has(.vf-workspace)) :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) { background-color: var(--card); border-color: var(--input); color: var(--foreground); }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-width: 320px; font-family: var(--app-font-sans);
+}
+
+/*
+ * Unlayered, so it beats text-* utilities on controls: kept as-is everywhere except the Catmin
+ * staff shell, where Tailwind's preflight (layer base) inherits instead and control utilities
+ * apply. The shell's learner preview island keeps the app behaviour. :where() keeps the
+ * specificity of a bare element selector, as before.
+ */
+:where(:root:not(:has(.vf-staff)), .vf-staff-preview-island) :is(button, input, select, textarea) { font: inherit; }
+
+:focus-visible { scroll-margin-block: 6rem; }
+
+code, pre { font-family: "IBM Plex Mono", monospace; }
+
+/*
+ * Code blocks (content-engine Code.tsx): Shiki writes github-light as the inline colour and
+ * github-dark as `--shiki-dark`. Only the dark learner and staff themes switch; public prose and
+ * the Studio preview island keep the inline light colours. `!important` on colour alone beats
+ * the inline style; never `revert-layer`, which would drop the inline light colours as well.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:has(.vf-workspace.vf-learner-refined:not([data-theme="light"])) [data-code-block] :is(.shiki, .shiki span),
+  :root:has(.vf-staff:not([data-theme="light"])) [data-code-block]:not(.vf-staff-preview-island *) :is(.shiki, .shiki span) { color: var(--shiki-dark) !important; }
+}
+:root:has(.vf-workspace.vf-learner-refined[data-theme="dark"]) [data-code-block] :is(.shiki, .shiki span),
+:root:has(.vf-staff[data-theme="dark"]) [data-code-block]:not(.vf-staff-preview-island *) :is(.shiki, .shiki span) { color: var(--shiki-dark) !important; }
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marketing-fade {
+    animation: marketing-fade 420ms ease-out both;
+  }
+}
+
+@keyframes marketing-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

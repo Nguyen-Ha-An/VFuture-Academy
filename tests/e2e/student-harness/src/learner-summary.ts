@@ -1,0 +1,3 @@
+export async function readLearnerHome() { return { continueLearning: { courseId: 'ai-basics', itemId: 'lesson-1', itemTitle: 'First lesson', courseTitle: 'AI foundations', kind: 'lesson' }, nextRequired: null, upcomingExam: null, feedback: null, rewards: { profile: { displayName: 'A very long learner name used to verify account menu geometry and truncation behavior', handle: null }, xpTotal: 220, streak: { current: 3 }, certificates: [] } }; }
+
+export async function readLearnerRewards() { return {profile:{displayName:'Fixture Student',handle:'fixture-student',locale:'en',avatarUrl:null},xpTotal:220,certificates:[]}; }

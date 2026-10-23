@@ -1,0 +1,18 @@
+{
+  "$schema": "https://academy.vfuturelabs.org/schemas/v1/course.json", "schemaVersion": 1, "kind": "course", "id": "ai-foundations", "slug": "ai-foundations",
+  "title": { "vi": "Nền tảng AI", "en": "AI Foundations" },
+  "summary": { "vi": "Hiểu AI hiện đại và sử dụng có trách nhiệm.", "en": "Understand modern AI and use it responsibly." },
+  "description": { "vi": { "blocks": [{ "type": "paragraph", "content": [{ "text": "Khoá học nền tảng cho học sinh THPT về AI, học máy và AI tạo sinh." }] }] }, "en": { "blocks": [{ "type": "paragraph", "content": [{ "text": "A foundation course for high-school students on AI, machine learning and generative AI." }] }] } },
+  "cover": { "assetId": "asset_cover_ai" },
+  "languages": ["vi", "en"], "defaultLanguage": "vi",
+  "level": "foundation", "difficulty": "beginner", "pathway": "ai-emerging-technology", "tags": ["ai", "foundation"], "estimatedMinutes": 120,
+  "learningOutcomes": [ { "vi": "Giải thích khái niệm AI cốt lõi.", "en": "Explain core AI concepts." }, { "vi": "Nhận biết điểm mạnh và giới hạn của AI tạo sinh.", "en": "Recognise strengths and limits of generative AI." }, { "vi": "Đề xuất một ứng dụng AI có trách nhiệm.", "en": "Propose a responsible AI use case." } ],
+  "access": { "scope": "global" }, "enrollment": "open",
+  "skills": [ { "id": "ai-literacy", "name": { "vi": "Hiểu biết về AI", "en": "AI literacy" } }, { "id": "problem-framing", "name": { "vi": "Xác định vấn đề", "en": "Problem framing" } } ],
+  "completion": { "rules": [{ "type": "all_items" }, { "type": "exam_passed", "examId": "exam-m1" }], "certificate": true },
+  "modules": [
+    { "id": "m1", "title": { "vi": "Toàn cảnh AI", "en": "The AI landscape" }, "items": [ { "type": "lesson", "id": "what-is-ai" }, { "type": "lesson", "id": "ml-vs-rules" }, { "type": "exam", "id": "exam-m1" } ] },
+    { "id": "m2", "title": { "vi": "Sản phẩm cuối khoá", "en": "Final product" }, "items": [ { "type": "assignment", "id": "final-product" } ] }
+  ],
+  "relatedOpportunities": ["ai-build-sprint-01"]
+}

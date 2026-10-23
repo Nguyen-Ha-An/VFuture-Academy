@@ -1,0 +1,92 @@
+{
+  "id": "cau-9",
+  "type": "classification",
+  "points": 2,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Phân loại các phân số sau."
+          }
+        ]
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "bang-mot-nua",
+      "label": "Bằng 1/2"
+    },
+    {
+      "id": "khac-mot-nua",
+      "label": "Khác 1/2"
+    }
+  ],
+  "items": [
+    {
+      "id": "ps-1",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "3/6"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ps-2",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "2/3"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ps-3",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "5/10"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "correctAnswer": {
+    "ps-1": "bang-mot-nua",
+    "ps-2": "khac-mot-nua",
+    "ps-3": "bang-mot-nua"
+  },
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "3/6 và 5/10 đều rút gọn về 1/2; 2/3 không rút gọn về 1/2."
+          }
+        ]
+      }
+    ]
+  }
+}

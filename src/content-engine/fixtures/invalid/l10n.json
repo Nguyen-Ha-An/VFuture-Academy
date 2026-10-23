@@ -1,0 +1,9 @@
+{
+  "manifest": { "schemaVersion": 1, "kind": "course", "id": "l10n", "title": "Localization gaps", "summary": "A missing default locale and a missing translation.", "languages": ["vi", "en"], "defaultLanguage": "vi", "level": "foundation", "difficulty": "beginner", "pathway": "core-future-skills", "learningOutcomes": ["Trip the localization checks."], "access": { "scope": "global" }, "skills": [{ "id": "qa", "name": "QA" }], "modules": [{ "id": "m1", "title": "Module", "items": [{ "type": "lesson", "id": "l1" }] }] },
+  "items": {
+    "l1": { "schemaVersion": 1, "kind": "lesson", "id": "l1", "title": { "en": "only" }, "objectives": ["Fail the locale checks."], "blocks": [
+      { "type": "paragraph", "content": [{ "text": { "vi": "Đoạn này chỉ có tiếng Việt." } }] }
+    ] }
+  },
+  "expect": ["E_L10N_MISSING_DEFAULT", "W_L10N_MISSING_TRANSLATION"]
+}

@@ -1,0 +1,173 @@
+{
+  "$id": "https://academy.vfuturelabs.org/schemas/v1/authoring/index.json",
+  "profileVersion": "mcp-authoring-v1+b265f4415a04",
+  "storageBaseline": "6fc10dd988ac",
+  "implementationBaseline": "994eb0a20622",
+  "artifacts": [
+    {
+      "path": "mono/lesson.json",
+      "fingerprint": "580f61fdf0f5",
+      "bytes": 76201
+    },
+    {
+      "path": "mono/exam.json",
+      "fingerprint": "e79514de4513",
+      "bytes": 55953
+    },
+    {
+      "path": "mono/assignment.json",
+      "fingerprint": "799261fdedec",
+      "bytes": 24062
+    },
+    {
+      "path": "mono/single_choice.json",
+      "fingerprint": "833eee5044f2",
+      "bytes": 14671
+    },
+    {
+      "path": "mono/multiple_choice.json",
+      "fingerprint": "c1f212a6373b",
+      "bytes": 15054
+    },
+    {
+      "path": "mono/true_false.json",
+      "fingerprint": "2ef6e449f2c5",
+      "bytes": 14230
+    },
+    {
+      "path": "mono/fill_blank.json",
+      "fingerprint": "48dc2378327c",
+      "bytes": 20003
+    },
+    {
+      "path": "mono/short_answer.json",
+      "fingerprint": "14cb13d6f35d",
+      "bytes": 14592
+    },
+    {
+      "path": "mono/numeric.json",
+      "fingerprint": "4b255f960dda",
+      "bytes": 14687
+    },
+    {
+      "path": "mono/matching.json",
+      "fingerprint": "64fe617a368b",
+      "bytes": 15204
+    },
+    {
+      "path": "mono/ordering.json",
+      "fingerprint": "4f0631ee35a3",
+      "bytes": 14701
+    },
+    {
+      "path": "mono/classification.json",
+      "fingerprint": "be611b84ff6e",
+      "bytes": 15217
+    },
+    {
+      "path": "mono/essay.json",
+      "fingerprint": "cfda461b193b",
+      "bytes": 15708
+    },
+    {
+      "path": "mono/upload_answer.json",
+      "fingerprint": "e6179efb356c",
+      "bytes": 17410
+    },
+    {
+      "path": "mono/code_answer.json",
+      "fingerprint": "46115c76b9bd",
+      "bytes": 15828
+    },
+    {
+      "path": "mono/question_group.json",
+      "fingerprint": "c25b2bd1ce70",
+      "bytes": 48656
+    },
+    {
+      "path": "bilingual/lesson.json",
+      "fingerprint": "49b3f7387247",
+      "bytes": 77730
+    },
+    {
+      "path": "bilingual/exam.json",
+      "fingerprint": "3727fd938d35",
+      "bytes": 57176
+    },
+    {
+      "path": "bilingual/assignment.json",
+      "fingerprint": "07102ba8ddb1",
+      "bytes": 24677
+    },
+    {
+      "path": "bilingual/single_choice.json",
+      "fingerprint": "5ff7e3e49384",
+      "bytes": 15285
+    },
+    {
+      "path": "bilingual/multiple_choice.json",
+      "fingerprint": "f88f68a23a6d",
+      "bytes": 15668
+    },
+    {
+      "path": "bilingual/true_false.json",
+      "fingerprint": "0c48177cb09f",
+      "bytes": 14844
+    },
+    {
+      "path": "bilingual/fill_blank.json",
+      "fingerprint": "8784f46c526c",
+      "bytes": 20923
+    },
+    {
+      "path": "bilingual/short_answer.json",
+      "fingerprint": "27a85e0d8de0",
+      "bytes": 15206
+    },
+    {
+      "path": "bilingual/numeric.json",
+      "fingerprint": "ebf7c209d780",
+      "bytes": 15301
+    },
+    {
+      "path": "bilingual/matching.json",
+      "fingerprint": "c3a9507b6dd6",
+      "bytes": 15818
+    },
+    {
+      "path": "bilingual/ordering.json",
+      "fingerprint": "ae4a696e320f",
+      "bytes": 15315
+    },
+    {
+      "path": "bilingual/classification.json",
+      "fingerprint": "a5fe9e2fbcc5",
+      "bytes": 15831
+    },
+    {
+      "path": "bilingual/essay.json",
+      "fingerprint": "28324aa0a866",
+      "bytes": 16322
+    },
+    {
+      "path": "bilingual/upload_answer.json",
+      "fingerprint": "275f968e7332",
+      "bytes": 18024
+    },
+    {
+      "path": "bilingual/code_answer.json",
+      "fingerprint": "2c0fc8156959",
+      "bytes": 16442
+    },
+    {
+      "path": "bilingual/question_group.json",
+      "fingerprint": "fba29d31af0a",
+      "bytes": 49568
+    },
+    {
+      "path": "rules.json",
+      "fingerprint": "b784bee300f3",
+      "bytes": 7009
+    }
+  ]
+}

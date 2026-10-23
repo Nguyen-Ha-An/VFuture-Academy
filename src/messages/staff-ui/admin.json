@@ -1,0 +1,40 @@
+{
+  "vi": {
+    "boundary": {
+      "forbidden": {
+        "code": "403",
+        "title": "Cần quyền truy cập trang quản trị",
+        "description": "Vai trò hiện tại của bạn không có quyền mở trang quản trị này.",
+        "back": "Quay lại trang học"
+      },
+      "error": {
+        "title": "Không tải được trang quản trị",
+        "description": "Vui lòng thử lại. Nếu lỗi vẫn tiếp diễn, hãy liên hệ quản trị viên.",
+        "retry": "Thử lại"
+      },
+      "loading": {
+        "title": "Quản trị",
+        "status": "Đang tải trang quản trị…"
+      }
+    }
+  },
+  "en": {
+    "boundary": {
+      "forbidden": {
+        "code": "403",
+        "title": "Administration access required",
+        "description": "Your current role cannot open this Administration page.",
+        "back": "Back to learning"
+      },
+      "error": {
+        "title": "Administration could not be loaded",
+        "description": "Try again. If the problem continues, contact an administrator.",
+        "retry": "Try again"
+      },
+      "loading": {
+        "title": "Administration",
+        "status": "Loading administration…"
+      }
+    }
+  }
+}

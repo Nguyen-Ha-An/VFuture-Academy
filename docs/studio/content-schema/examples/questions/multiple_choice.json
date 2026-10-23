@@ -1,0 +1,96 @@
+{
+  "id": "cau-2",
+  "type": "multiple_choice",
+  "points": 2,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Chọn tất cả phân số bằng 3/4."
+          }
+        ]
+      }
+    ]
+  },
+  "options": [
+    {
+      "id": "a",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "6/8"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "3/8"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "c",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "9/12"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "d",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "4/3"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "correctAnswer": [
+    "a",
+    "c"
+  ],
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "6/8 và 9/12 đều rút gọn về 3/4. 3/8 nhỏ hơn 3/4, còn 4/3 lớn hơn 1."
+          }
+        ]
+      }
+    ]
+  }
+}

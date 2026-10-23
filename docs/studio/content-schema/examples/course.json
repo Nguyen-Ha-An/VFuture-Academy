@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "kind": "course",
+  "id": "nhap-mon-ai",
+  "title": "Nhập môn AI",
+  "summary": "Khóa học làm quen với AI.",
+  "languages": [
+    "vi"
+  ],
+  "defaultLanguage": "vi",
+  "level": "foundation",
+  "difficulty": "beginner",
+  "pathway": "ai-emerging-technology",
+  "learningOutcomes": [
+    "Nhận biết ứng dụng AI trong cuộc sống."
+  ],
+  "access": {
+    "scope": "global"
+  },
+  "modules": [
+    {
+      "id": "chuong-1",
+      "title": "Bắt đầu",
+      "items": [
+        {
+          "type": "lesson",
+          "id": "bai-mo-dau",
+          "title": "Làm quen với AI",
+          "objectives": [
+            "Nhận biết một ứng dụng AI."
+          ],
+          "estimatedMinutes": 5,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "AI có thể hỗ trợ nhận diện hình ảnh và xử lý ngôn ngữ."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "exam",
+          "id": "kiem-tra",
+          "title": "Kiểm tra kiến thức",
+          "settings": {
+            "passPercent": 70
+          },
+          "sections": [
+            {
+              "id": "phan-1",
+              "title": "Trắc nghiệm",
+              "questions": [
+                {
+                  "id": "cau-1",
+                  "type": "true_false",
+                  "content": {
+                    "blocks": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "AI có thể hỗ trợ nhận diện hình ảnh."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "correctAnswer": true,
+                  "explanation": {
+                    "blocks": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Nhận diện hình ảnh là một ứng dụng của AI."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "assignment",
+          "id": "bai-thuc-hanh",
+          "title": "Tìm ứng dụng AI",
+          "instructions": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Mô tả một ứng dụng AI bạn đã sử dụng."
+                  }
+                ]
+              }
+            ]
+          },
+          "submission": {
+            "accepts": [
+              "text"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

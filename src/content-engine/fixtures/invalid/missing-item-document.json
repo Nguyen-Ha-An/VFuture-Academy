@@ -1,0 +1,7 @@
+{
+  "manifest": { "schemaVersion": 1, "kind": "course", "id": "missing-item-document", "title": "Missing item document", "summary": "A stub with no document, and a document nothing points at.", "languages": ["en"], "defaultLanguage": "en", "level": "foundation", "difficulty": "beginner", "pathway": "core-future-skills", "learningOutcomes": ["Trip the missing document check."], "access": { "scope": "global" }, "skills": [{ "id": "qa", "name": "QA" }], "modules": [{ "id": "m1", "title": "Module", "items": [{ "type": "lesson", "id": "l-missing" }] }] },
+  "items": {
+    "orphan": { "schemaVersion": 1, "kind": "lesson", "id": "orphan", "title": "Nobody references me", "objectives": ["Be an orphan."], "blocks": [{ "type": "paragraph", "content": [{ "text": "No manifest item points at this document." }] }] }
+  },
+  "expect": ["E_MISSING_ITEM_DOCUMENT", "E_ORPHAN_ITEM_DOCUMENT"]
+}

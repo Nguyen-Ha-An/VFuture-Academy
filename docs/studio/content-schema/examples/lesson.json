@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "lesson",
+  "id": "bai-mo-dau",
+  "title": "Làm quen với AI",
+  "objectives": [
+    "Nhận biết một ứng dụng AI."
+  ],
+  "estimatedMinutes": 5,
+  "blocks": [
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "text": "AI có thể hỗ trợ nhận diện hình ảnh và xử lý ngôn ngữ."
+        }
+      ]
+    }
+  ]
+}

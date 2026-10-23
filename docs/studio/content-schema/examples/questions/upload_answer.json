@@ -1,0 +1,36 @@
+{
+  "id": "cau-11",
+  "type": "upload_answer",
+  "points": 10,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Vẽ hình minh hoạ hai phân số bằng nhau rồi nộp ảnh chụp hoặc mô tả bằng chữ."
+          }
+        ]
+      }
+    ]
+  },
+  "accepts": [
+    "file",
+    "text"
+  ],
+  "rubric": {
+    "criteria": [
+      {
+        "id": "hinh-ve",
+        "name": "Hình vẽ thể hiện đúng hai phần bằng nhau",
+        "maxPoints": 6
+      },
+      {
+        "id": "chu-thich",
+        "name": "Chú thích rõ phân số tương ứng",
+        "maxPoints": 4
+      }
+    ]
+  }
+}

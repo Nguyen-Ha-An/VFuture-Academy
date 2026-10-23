@@ -1,0 +1,88 @@
+{
+  "vi": {
+    "members": {
+      "stats": {
+        "label": "Tổng quan thành viên",
+        "members": "Thành viên",
+        "learners": "Học viên",
+        "suspended": "Tạm ngưng",
+        "pendingInvitations": "Lời mời đang chờ"
+      },
+      "member": "Thành viên",
+      "actions": "Thao tác",
+      "actionsFor": "Thao tác cho {name}",
+      "viewProfile": "Xem hồ sơ",
+      "copyEmail": "Sao chép email",
+      "emailCopied": "Đã sao chép email.",
+      "inviteDescription": "Người được mời sẽ nhận một liên kết dùng một lần để tham gia trường.",
+      "oneTimeLink": "Liên kết mời dùng một lần",
+      "closeSheet": "Đóng",
+      "invitationsEmpty": "Chưa có lời mời nào.",
+      "expiresColumn": "Hết hạn",
+      "invitationActions": "Thao tác với lời mời",
+      "profile": {
+        "statsLabel": "Tóm tắt hồ sơ",
+        "schools": "Trường",
+        "roles": "Vai trò",
+        "courses": "Khoá học",
+        "submissions": "Bài nộp",
+        "atLeast": "{count}+",
+        "latestOnly": "100 bài nộp gần nhất",
+        "openSubmission": "Mở trong khu chấm bài",
+        "item": "Mục",
+        "submitted": "Ngày nộp",
+        "score": "Điểm",
+        "course": "Khoá học",
+        "progress": "Tiến độ",
+        "unknownGrantor": "Người dùng không xác định",
+        "unavailableCourse": "Chưa có tiêu đề khoá học",
+        "unavailableItem": "Chưa có tiêu đề mục"
+      },
+      "searchPlaceholder": "Tìm theo tên hoặc email",
+      "invitationsDescription": "Lời mời đang chờ, đã hết hạn và đã thu hồi"
+    }
+  },
+  "en": {
+    "members": {
+      "stats": {
+        "label": "Member summary",
+        "members": "Members",
+        "learners": "Learners",
+        "suspended": "Suspended",
+        "pendingInvitations": "Pending invitations"
+      },
+      "member": "Member",
+      "actions": "Actions",
+      "actionsFor": "Actions for {name}",
+      "viewProfile": "View profile",
+      "copyEmail": "Copy email",
+      "emailCopied": "Email copied.",
+      "inviteDescription": "The person gets a one-time link to join the school.",
+      "oneTimeLink": "One-time invite link",
+      "closeSheet": "Close",
+      "invitationsEmpty": "No invitations yet.",
+      "expiresColumn": "Expires",
+      "invitationActions": "Invitation actions",
+      "profile": {
+        "statsLabel": "Profile summary",
+        "schools": "Schools",
+        "roles": "Roles",
+        "courses": "Courses",
+        "submissions": "Submissions",
+        "atLeast": "{count}+",
+        "latestOnly": "Latest 100 submissions",
+        "openSubmission": "Open in grading",
+        "item": "Item",
+        "submitted": "Submitted",
+        "score": "Score",
+        "course": "Course",
+        "progress": "Progress",
+        "unknownGrantor": "Unknown user",
+        "unavailableCourse": "Course title unavailable",
+        "unavailableItem": "Item title unavailable"
+      },
+      "searchPlaceholder": "Search by name or email",
+      "invitationsDescription": "Pending, expired and revoked invitations"
+    }
+  }
+}

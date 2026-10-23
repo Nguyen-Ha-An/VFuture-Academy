@@ -1,0 +1,82 @@
+{
+  "id": "cau-8",
+  "type": "ordering",
+  "points": 2,
+  "difficulty": "medium",
+  "content": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Sắp xếp các phân số theo thứ tự tăng dần."
+          }
+        ]
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "muc-1",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "3/4"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "muc-2",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "1/4"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "muc-3",
+      "content": {
+        "blocks": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "1/2"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "correctAnswer": [
+    "muc-2",
+    "muc-3",
+    "muc-1"
+  ],
+  "explanation": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Quy đồng về mẫu 4: 1/4 < 2/4 < 3/4."
+          }
+        ]
+      }
+    ]
+  }
+}

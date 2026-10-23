@@ -1,0 +1,142 @@
+{
+  "en": {
+    "kicker": "Learner profile",
+    "handle": "@{handle}",
+    "noHandle": "No handle yet",
+    "branch": "Branch {branch}",
+    "independent": "Independent learner",
+    "publicProfile": "View public profile",
+    "publicOff": "Public profile off",
+    "skills": {
+      "label": "Skills passport",
+      "level": "{name}: {level}, level {value} of {max}"
+    },
+    "completed": {
+      "label": "Completed courses",
+      "course": "Course",
+      "date": "Completed",
+      "state": "State",
+      "inSpec": "Complete · in spec"
+    },
+    "projects": {
+      "label": "Projects"
+    },
+    "certificates": {
+      "label": "Certificates",
+      "count": "{count, plural, one {# issued} other {# issued}}",
+      "kicker": "Certificate of completion · calibrated",
+      "holder": "Holder",
+      "part": "Part",
+      "issuedBy": "Issued by",
+      "issuer": "VFuture Labs",
+      "issued": "Issued",
+      "result": "Result",
+      "verifyUrl": "Verify",
+      "verify": "Verify",
+      "copy": "Copy verify link",
+      "copied": "Copied",
+      "copiedAnnouncement": "Verify link copied",
+      "copyFailed": "Copy failed · select the verify link above and copy it",
+      "inSpec": "In spec",
+      "qr": "Verification QR code for certificate {serial}",
+      "publicNote": "Public verification works without an account.",
+      "emptyKicker": "No readings yet",
+      "emptyBody": "Complete a course within spec and your certificate appears here with a public verification link.",
+      "browse": "Browse courses"
+    },
+    "xp": {
+      "label": "XP",
+      "unit": "XP total"
+    },
+    "leaderboard": {
+      "kicker": "Leaderboard · WK {week}",
+      "resets": "Resets Mon 00:00 ICT",
+      "learners": "{count, plural, one {# learner} other {# learners}} this week",
+      "yourRank": "You · #{rank}",
+      "board": "Leaderboard",
+      "loading": "leaderboard",
+      "you": "You",
+      "gap": "Rows between the top 10 and your position are hidden",
+      "noXp": "You · no XP this week",
+      "enter": "Complete any lesson to enter",
+      "private": "You · not listed",
+      "privateHint": "Your profile is private. Make it public in profile settings to appear.",
+      "emptyTitle": "No one has earned XP this week yet",
+      "emptyBody": "Complete any lesson to enter.",
+      "change": "Change",
+      "changeHint": " since last week",
+      "new": "new"
+    },
+    "traceLabel": "Activity trace"
+  },
+  "vi": {
+    "kicker": "Hồ sơ học viên",
+    "handle": "@{handle}",
+    "noHandle": "Chưa có tên người dùng",
+    "branch": "Chi nhánh {branch}",
+    "independent": "Học viên tự do",
+    "publicProfile": "Xem hồ sơ công khai",
+    "publicOff": "Hồ sơ công khai đang tắt",
+    "skills": {
+      "label": "Hộ chiếu kỹ năng",
+      "level": "{name}: {level}, cấp {value} trên {max}"
+    },
+    "completed": {
+      "label": "Khóa học đã hoàn thành",
+      "course": "Khóa học",
+      "date": "Hoàn thành",
+      "state": "Trạng thái",
+      "inSpec": "Hoàn thành · đạt chuẩn"
+    },
+    "projects": {
+      "label": "Dự án"
+    },
+    "certificates": {
+      "label": "Chứng chỉ",
+      "count": "{count, plural, other {Đã cấp #}}",
+      "kicker": "Chứng nhận hoàn thành · đạt chuẩn",
+      "holder": "Người nhận",
+      "part": "Mã khóa",
+      "issuedBy": "Đơn vị cấp",
+      "issuer": "VFuture Labs",
+      "issued": "Ngày cấp",
+      "result": "Kết quả",
+      "verifyUrl": "Xác minh",
+      "verify": "Xác minh",
+      "copy": "Sao chép liên kết xác minh",
+      "copied": "Đã sao chép",
+      "copiedAnnouncement": "Đã sao chép liên kết xác minh",
+      "copyFailed": "Không sao chép được · hãy chọn liên kết xác minh ở trên để sao chép",
+      "inSpec": "Đạt chuẩn",
+      "qr": "Mã QR xác minh chứng chỉ {serial}",
+      "publicNote": "Ai cũng có thể xác minh mà không cần tài khoản.",
+      "emptyKicker": "Chưa có dữ liệu",
+      "emptyBody": "Hoàn thành một khóa học đạt chuẩn, chứng chỉ của bạn sẽ xuất hiện ở đây kèm liên kết xác minh công khai.",
+      "browse": "Xem khóa học"
+    },
+    "xp": {
+      "label": "XP",
+      "unit": "Tổng XP"
+    },
+    "leaderboard": {
+      "kicker": "Bảng xếp hạng · Tuần {week}",
+      "resets": "Làm mới lúc 00:00 thứ Hai (ICT)",
+      "learners": "{count} học viên trong tuần",
+      "yourRank": "Bạn · #{rank}",
+      "board": "Bảng xếp hạng",
+      "loading": "bảng xếp hạng",
+      "you": "Bạn",
+      "gap": "Các hạng giữa top 10 và vị trí của bạn được ẩn",
+      "noXp": "Bạn · chưa có XP tuần này",
+      "enter": "Hoàn thành một bài học bất kỳ để có tên",
+      "private": "Bạn · không hiển thị",
+      "privateHint": "Hồ sơ của bạn đang ở chế độ riêng tư. Bật hồ sơ công khai trong phần cài đặt để xuất hiện.",
+      "emptyTitle": "Tuần này chưa có ai nhận XP",
+      "emptyBody": "Hoàn thành một bài học bất kỳ để có tên.",
+      "change": "Thay đổi",
+      "changeHint": " so với tuần trước",
+      "new": "mới"
+    },
+    "traceLabel": "Biểu đồ hoạt động"
+  }
+}
