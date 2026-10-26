@@ -303,6 +303,23 @@ describe('SupabaseExamRepo', () => {
     })]]);
   });
 
+  it('maps atomic capacity and maintenance refusals to retryable service-unavailable errors', async () => {
+    const row = attemptRow(1);
+    for (const code of ['P3002', 'P3003']) {
+      const database = new DatabaseStub({
+        'rpc:exam_attempts': [],
+        'rpc:exam_start_attempt': [{ data: null, error: { code } }],
+        exam_attempts: [{ data: row, error: null }],
+      });
+      const repo = new SupabaseExamRepo(database);
+      const attempt = await repo.getAttempt(row.id);
+      if (!attempt) throw new Error('Missing test attempt');
+      await expect(repo.insertAttempt(attempt, 2)).rejects.toMatchObject({
+        code: code === 'P3002' ? 'EXAM_CAPACITY' : 'EXAM_STARTS_PAUSED', httpStatus: 503,
+      });
+    }
+  });
+
   it('admits event batches through the atomic capped append procedure', async () => {
     const database = new DatabaseStub({ 'rpc:exam_append_attempt_events': [{ data: 1, error: null }] });
     mocks.supabaseService.mockReturnValue(database);

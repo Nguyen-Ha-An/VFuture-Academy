@@ -1,0 +1,52 @@
+{
+  "checkedOn": "2026-10-25",
+  "region": "southeastasia",
+  "currency": "USD",
+  "hoursPerAverageMonth": 730,
+  "backupCapacityGiB": 300,
+  "backupGiBToGB": 1.073741824,
+  "source": "Public Azure Retail Prices API; estimates, not an invoice",
+  "rates": {
+    "vmPerHour": 0.0472,
+    "p6PerMonth": 10.207,
+    "ipv4PerHour": 0.005,
+    "backupZrsPerGBMonth": 0.025,
+    "egressPerGB": 0.12,
+    "acrBasicPerDay": 0.1666,
+    "emailPerRecipient": 0.00025,
+    "emailPerMB": 0.00012
+  },
+  "assumptions": {
+    "grantCreditUserConfirmed": 2000,
+    "freeServicesEnd": "2027-10-23",
+    "grantStartAndEnd": "Must be verified separately; not inferred from free-service expiry",
+    "otherCommittedSpend": "Must be recorded before provisioning",
+    "monthlyEgressGB": 25,
+    "freeEgressGB": 15,
+    "monthlyEmails": 2000,
+    "emailMBEach": 0.1,
+    "monitoringAndSecretsAndOpsAndDrillAndGuardAllowance": 4.18,
+    "freeDiskMeterEligibility": "Must match managed-disk meter; unknown is paid",
+    "registry": "Basic by default; Standard only with verified applicable free meter"
+  },
+  "monthlyEstimates": {
+    "confirmedDisksAndStandardRegistryAnd15GBEgressFree": 52.06306368,
+    "paidDisksButConfirmedStandardRegistryAnd15GBEgressFree": 72.47706368,
+    "noTemporaryBenefitsBasicRegistry": 79.34448034666667
+  },
+  "forecasts": {
+    "withConfirmedBenefits": 65,
+    "withoutBenefits": 85
+  },
+  "spendingEnvelopes": {
+    "withConfirmedBenefits": 70,
+    "withoutBenefits": 90,
+    "academyAnnualMaximum": 1080,
+    "sharedReserveMinimum": 400
+  },
+  "notes": [
+    "Backup capacity increased from 50 GB to 300 GiB to preserve 7 daily / 4 weekly / 3 monthly bounded archives and account for soft deletion. At 12 GiB/archive, 14 retained + 7 soft-deleted archive-days can reach 252 GiB.",
+    "At the 50 GB transfer ceiling, add $3/month to the 25 GB scenarios.",
+    "No VM sizing change. Estimates exclude tax, paid SaaS and operator labor. Hard usage controls do not establish an exact-dollar spending guarantee."
+  ]
+}

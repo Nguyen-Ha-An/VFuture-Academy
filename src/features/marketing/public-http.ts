@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+
 import {
   SHARED_CONNECTION_IDENTITY,
   SHARED_IDENTITY_LIMIT_MULTIPLIER,
   createSignedPublicSessionCookie,
   requestRateLimitIdentity,
+  signedPublicSessionCookie,
   resetRequestRateLimitIdentityForTests,
 } from "@/lib/rate-limit";
 
@@ -24,6 +27,7 @@ let anonymousKeys = { count: 0, startedAt: 0 };
 export interface PublicRateLimitDecision {
   allowed: boolean;
   headers: Headers;
+  status?: 429 | 503;
 }
 
 function canIssueAnonymousKey(now: number) {
@@ -86,7 +90,7 @@ function makeRoomForBucket(key: string, now: number) {
   if (leastRecentlyUsed) requestBuckets.delete(leastRecentlyUsed);
 }
 
-export function checkPublicRateLimit(request: Request): PublicRateLimitDecision {
+function checkLocalPublicRateLimit(request: Request): PublicRateLimitDecision {
   const now = Date.now();
   const session = sessionIdentity(request, now);
   const { headers } = session;
@@ -109,6 +113,44 @@ export function checkPublicRateLimit(request: Request): PublicRateLimitDecision 
   return { allowed: decisions.every(Boolean), headers };
 }
 
+/**
+ * Gateway deployments use one database transaction for all public request claims.
+ * Hosted deployments without the gateway setting retain their existing local policy.
+ */
+export async function checkPublicRateLimit(request: Request): Promise<PublicRateLimitDecision> {
+  if (!process.env.SUPABASE_GATEWAY_KEY?.trim()) return checkLocalPublicRateLimit(request);
+  const headers = new Headers();
+  try {
+    const { supabaseService } = await import("@/lib/supabase/server");
+    // Verify the cookie directly: the legacy process-local 16-cookie connection cap
+    // is unsuitable for a school NAT with 25 learners. SQL bounds issuance globally.
+    const session = signedPublicSessionCookie(request);
+    const { connection } = requestRateLimitIdentity(request);
+    const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+    const { data, error } = await supabaseService().rpc("public_rate_limit", {
+      p_session: session ? digest(session) : null,
+      p_connection: digest(connection),
+    });
+    if (error || !data || typeof data !== "object" || Array.isArray(data)
+      || typeof data.allowed !== "boolean" || typeof data.issueSession !== "boolean") {
+      throw new Error("Shared public rate limiter unavailable");
+    }
+    if (!data.allowed) return { allowed: false, status: 429, headers };
+    if (!session && data.issueSession) {
+      const token = createSignedPublicSessionCookie();
+      if (token) {
+        const forwardedHttps = process.env.TRUSTED_PROXY === "1"
+          && request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase() === "https";
+        const secure = new URL(request.url).protocol === "https:" || forwardedHttps ? "; Secure" : "";
+        headers.set("Set-Cookie", `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${secure}`);
+      }
+    }
+    return { allowed: true, headers };
+  } catch {
+    return { allowed: false, status: 503, headers };
+  }
+}
+
 /** Clears process-local limiter state between isolated tests. */
 export function resetPublicRateLimitForTests() {
   requestBuckets.clear();
@@ -126,11 +168,11 @@ export function applyPublicResponseHeaders(
   // cache: replaying it would hand one visitor's token, and their limiter bucket, to
   // everyone who is served the cached copy.
   const mintsSession = response.headers.has("set-cookie");
-  if (mintsSession) response.headers.set("Cache-Control", PRIVATE_CACHE_CONTROL);
+  if (mintsSession || !decision.allowed) response.headers.set("Cache-Control", PRIVATE_CACHE_CONTROL);
   if (cache) {
     response.headers.set(
       "Cache-Control",
-      mintsSession ? PRIVATE_CACHE_CONTROL : PUBLIC_CACHE_CONTROL,
+      mintsSession || !decision.allowed ? PRIVATE_CACHE_CONTROL : PUBLIC_CACHE_CONTROL,
     );
   }
   return response;

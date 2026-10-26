@@ -137,8 +137,8 @@ describe('shared PostgreSQL rate limiter', () => {
       .toBe(trustedA);
   });
 
-  it('issues HMAC-signed session cookies and rejects a tampered signature', () => {
-    const decision = checkPublicRateLimit(new Request('https://academy.example/api'));
+  it('issues HMAC-signed session cookies and rejects a tampered signature', async () => {
+    const decision = await checkPublicRateLimit(new Request('https://academy.example/api'));
     const cookie = decision.headers.get('set-cookie')?.split(';')[0];
     expect(cookie).toMatch(/^vf_public_session=[A-Za-z0-9_-]{16,128}\.[A-Za-z0-9_-]{43}$/);
     if (!cookie) throw new Error('Expected a signed public session cookie');

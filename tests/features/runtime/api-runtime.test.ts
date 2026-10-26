@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+const uploads = vi.hoisted(() => ({ send: vi.fn() }));
+vi.mock('@/features/media/direct-upload-client', async (original) => ({ ...await original<typeof import('@/features/media/direct-upload-client')>(), directUploadFile: uploads.send }));
 import { createApiRuntime, RuntimeError } from '@/features/runtime';
 import type { RuntimeWriteTarget } from '@/features/runtime';
 import type { AssignmentSessionResult } from '@/features/submissions/contracts';
@@ -45,6 +47,7 @@ function makeRuntime(
 describe('createApiRuntime', () => {
   beforeEach(() => {
     activeRuntimes = [];
+    uploads.send.mockReset();
     vi.useFakeTimers();
   });
 
@@ -301,96 +304,37 @@ describe('createApiRuntime', () => {
     });
   });
 
-  it('uploads a standalone assignment file with the explicit null target', async () => {
+  it('uploads a standalone assignment through the direct client with its explicit null target', async () => {
     const uploaded = { assetId: 'asset-one', name: 'answer.pdf', size: 4, mime: 'application/pdf' };
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: uploaded }));
-    const runtime = makeRuntime(fetchMock);
+    uploads.send.mockResolvedValue(uploaded);
+    const fetchMock = vi.fn(); const runtime = makeRuntime(fetchMock);
     const file = new File(['work'], 'answer.pdf', { type: 'application/pdf' });
-
     await expect(runtime.uploadAssignmentFile({ blockId: null }, file)).resolves.toEqual(uploaded);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('/api/v1/uploads');
-    expect(init.method).toBe('POST');
-    expect(init.headers).toBeUndefined();
-    expect(init.body).toBeInstanceOf(FormData);
-    expect((init.body as FormData).get('file')).toBe(file);
-    expect((init.body as FormData).get('courseId')).toBe('course-one');
-    expect((init.body as FormData).get('itemId')).toBe('lesson-one');
-    expect((init.body as FormData).has('blockId')).toBe(false);
+    expect(uploads.send).toHaveBeenCalledWith(file, { purpose: 'submission', courseId: 'course-one', itemId: 'lesson-one', blockId: null }, { fetchImpl: fetchMock });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('includes an inline assignment block id in multipart uploads', async () => {
-    const uploaded = { assetId: 'asset-one', name: 'answer.pdf', size: 4, mime: 'application/pdf' };
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: uploaded }));
-    const runtime = makeRuntime(fetchMock);
+  it('carries inline context, progress and abort to the direct client', async () => {
+    uploads.send.mockResolvedValue({ assetId: 'asset-one' });
+    const fetchMock = vi.fn(); const runtime = makeRuntime(fetchMock);
     const file = new File(['work'], 'answer.pdf', { type: 'application/pdf' });
-
-    await runtime.uploadAssignmentFile({ blockId: 'inline-assignment' }, file);
-
-    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect((init.body as FormData).get('blockId')).toBe('inline-assignment');
+    const options = { signal: new AbortController().signal, onProgress: vi.fn() };
+    await runtime.uploadAssignmentFile({ blockId: 'inline-assignment' }, file, options);
+    expect(uploads.send).toHaveBeenCalledWith(file, { purpose: 'submission', courseId: 'course-one', itemId: 'lesson-one', blockId: 'inline-assignment' }, { fetchImpl: fetchMock, ...options });
   });
 
-  it('reports real XHR upload progress and carries the inline locator', async () => {
-    let sent: FormData | null = null;
-    class FakeXhr {
-      status = 200;
-      responseText = JSON.stringify({ data: { assetId: 'asset-one', name: 'answer.pdf', size: 4, mime: 'application/pdf' } });
-      withCredentials = false;
-      private listeners = new Map<string, () => void>();
-      upload = { addEventListener: (_name: string, listener: (event: ProgressEvent) => void) => {
-        this.progress = listener;
-      } };
-      private progress: ((event: ProgressEvent) => void) | null = null;
-      open = vi.fn();
-      addEventListener = (name: string, listener: () => void) => { this.listeners.set(name, listener); };
-      send = (body: FormData) => {
-        sent = body;
-        this.progress?.({ lengthComputable: true, loaded: 2, total: 4 } as ProgressEvent);
-        this.listeners.get('load')?.();
-      };
-      abort = () => this.listeners.get('abort')?.();
-    }
-    vi.stubGlobal('XMLHttpRequest', FakeXhr);
-    const runtime = makeRuntime(vi.fn());
-    const progress = vi.fn();
-
-    await runtime.uploadAssignmentFile(
-      { blockId: 'inline-assignment' },
-      new File(['work'], 'answer.pdf', { type: 'application/pdf' }),
-      { onProgress: progress },
-    );
-
-    expect(progress).toHaveBeenCalledWith({ loaded: 2, total: 4, percent: 50 });
-    expect(progress).toHaveBeenLastCalledWith({ loaded: 4, total: 4, percent: 100 });
-    expect(sent).not.toBeNull();
-    expect(sent!.get('blockId')).toBe('inline-assignment');
+  it('uses direct upload for the generic runtime file method too', async () => {
+    uploads.send.mockResolvedValue({ assetId: 'asset-one' });
+    const runtime = makeRuntime(vi.fn()); const file = new File(['work'], 'answer.pdf', { type: 'application/pdf' });
+    await runtime.uploadFile(file);
+    expect(uploads.send).toHaveBeenCalledWith(file, expect.objectContaining({ purpose: 'submission', blockId: null }), expect.any(Object));
   });
 
-  it('aborts an in-flight XHR assignment upload from the caller signal', async () => {
-    class PendingXhr {
-      status = 0;
-      responseText = '';
-      withCredentials = false;
-      private listeners = new Map<string, () => void>();
-      upload = { addEventListener: () => undefined };
-      open = vi.fn();
-      addEventListener = (name: string, listener: () => void) => { this.listeners.set(name, listener); };
-      send = vi.fn();
-      abort = () => this.listeners.get('abort')?.();
-    }
-    vi.stubGlobal('XMLHttpRequest', PendingXhr);
+  it('preserves upload cancellation as a RuntimeError', async () => {
+    const { DirectUploadError } = await import('@/features/media/direct-upload-client');
+    uploads.send.mockRejectedValue(new DirectUploadError('UPLOAD_CANCELLED', 'Upload cancelled'));
     const runtime = makeRuntime(vi.fn());
-    const controller = new AbortController();
-    const upload = runtime.uploadAssignmentFile(
-      { blockId: null },
-      new File(['work'], 'answer.pdf', { type: 'application/pdf' }),
-      { signal: controller.signal },
-    );
-
-    controller.abort();
-
-    await expect(upload).rejects.toMatchObject({ code: 'UPLOAD_CANCELLED', status: 0 });
+    await expect(runtime.uploadAssignmentFile({ blockId: null }, new File(['work'], 'answer.pdf'))).rejects.toMatchObject({ name: 'RuntimeError', code: 'UPLOAD_CANCELLED', status: 0 });
   });
 
   it('maps an API error envelope to RuntimeError with its HTTP status', async () => {

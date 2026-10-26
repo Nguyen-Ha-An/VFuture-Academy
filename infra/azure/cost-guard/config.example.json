@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "enabled": true,
+  "dryRun": true,
+  "allowOperatorCostFallback": false,
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "rg-vfuture-academy-sg",
+  "vmResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vfuture-academy-sg/providers/Microsoft.Compute/virtualMachines/academy-sg-vm",
+  "expectedTags": {
+    "project": "vfuture-academy",
+    "environment": "production",
+    "costScope": "academy-only"
+  },
+  "rates": {
+    "maximumHourlyUsd": 0.15,
+    "retainedDailyUsd": 1.5,
+    "retainedDays": 30,
+    "operatingMonthlyUsdNoBenefits": 85,
+    "operatingMonthlyUsdWithBenefits": 65
+  },
+  "benefits": {
+    "confirmed": false,
+    "meterIds": [],
+    "expiresAt": null
+  },
+  "storage": {
+    "account": "replaceguardaccount",
+    "controlContainer": "control",
+    "stateContainer": "guard-state",
+    "snapshotContainer": "financial-input",
+    "telemetryContainer": "telemetry"
+  },
+  "grant": {
+    "startsAt": "REPLACE_WITH_VERIFIED_GRANT_START_ISO",
+    "endsAt": "REPLACE_WITH_VERIFIED_GRANT_END_ISO"
+  },
+  "accountingMode": "automated-baseline",
+  "baselineId": "REPLACE_WITH_VERIFIED_BASELINE_ID"
+}

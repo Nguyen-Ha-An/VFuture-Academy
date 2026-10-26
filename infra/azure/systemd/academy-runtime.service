@@ -1,0 +1,16 @@
+[Unit]
+Description=Academy private Supabase runtime
+After=docker.service network-online.target srv-academy.mount srv-academy-objects.mount
+Requires=docker.service
+BindsTo=srv-academy.mount srv-academy-objects.mount
+RequiresMountsFor=/srv/academy /srv/academy/objects
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/vfuture-academy/infra/azure
+ExecStart=/opt/vfuture-academy/infra/azure/scripts/start-runtime.sh
+ExecStop=/usr/bin/docker compose --env-file /etc/vfuture-academy/runtime.env -f runtime/compose.json stop -t 130
+TimeoutStartSec=600
+TimeoutStopSec=300
+[Install]
+WantedBy=multi-user.target

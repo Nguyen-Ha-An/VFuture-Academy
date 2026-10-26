@@ -20,7 +20,7 @@ const loadPublicProfile = cache(async (handle: string) => {
     new URL(`/u/${encodeURIComponent(handle)}`, env.NEXT_PUBLIC_APP_URL),
     { headers: requestHeaders },
   );
-  const rateLimit = checkPublicRateLimit(request);
+  const rateLimit = await checkPublicRateLimit(request);
   if (!rateLimit.allowed) return { profile: null, rateLimited: true } as const;
   return { profile: await getPublicProfile(handle), rateLimited: false } as const;
 });

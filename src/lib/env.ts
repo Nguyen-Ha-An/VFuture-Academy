@@ -1,11 +1,17 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { SUPABASE_GATEWAY_KEY_PATTERN } from '@/lib/backend-gateway';
 
 const environmentSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Optional self-hosted gateway credential; server-only, same validator as the clients use.
+  SUPABASE_GATEWAY_KEY: z.preprocess(
+    (value) => value === '' ? undefined : value,
+    z.string().regex(SUPABASE_GATEWAY_KEY_PATTERN).optional(),
+  ),
   NEXT_PUBLIC_APP_URL: z.string().url(),
   NEXT_PUBLIC_CONTACT_EMAIL: z.preprocess(
     (value) => value === '' ? undefined : value,
@@ -25,7 +31,7 @@ function formatEnvironmentError(error: z.ZodError) {
  * an error message. Browser code must use env-client.ts; scripts validate
  * their direct-database credential in scripts/env.ts.
  */
-export function readEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
+export function readEnvironment(source: Readonly<Record<string, string | undefined>> = process.env): Environment {
   const result = environmentSchema.safeParse(source);
   if (!result.success) throw new Error(formatEnvironmentError(result.error));
   return result.data;

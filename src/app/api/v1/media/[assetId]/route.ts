@@ -1,3 +1,4 @@
+import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
 import { ApiError, withHandler } from '@/lib/api';
 import { isEligibleResourceAsset, isEnrolledForAsset } from '@/features/media/access';
 import { canReviewProjectCover, canViewProjectCover } from '@/features/projects/service';
@@ -52,7 +53,7 @@ export const GET = withHandler(async (_request, context) => {
     const { assetId } = await params;
     const database = supabaseService();
     const { data, error } = await database.from('media_assets')
-      .select('owner_id,bucket,path,mime,ownership_kind,owner_branch_id')
+      .select('owner_id,bucket,path,mime,ownership_kind,owner_branch_id,size_bytes')
       .eq('id', assetId)
       .maybeSingle();
     if (error) throw new Error('Media lookup failed');
@@ -100,7 +101,10 @@ export const GET = withHandler(async (_request, context) => {
     return new Response(null, {
       status: 302,
       headers: {
-        Location: signed.signedUrl,
+        Location: grantStorageTransferUrl(signed.signedUrl, {
+          subject: actor.userId, method: 'GET', bucket: data.bucket, path: data.path,
+          maxBytes: data.size_bytes, expiresIn: 900,
+        }),
         'Cache-Control': 'private, no-store',
         Vary: 'Cookie',
       },

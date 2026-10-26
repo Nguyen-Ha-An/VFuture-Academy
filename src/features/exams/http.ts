@@ -56,7 +56,8 @@ export async function examOperation<T>(operation: () => Promise<T>): Promise<T> 
     return await operation();
   } catch (error) {
     if (error instanceof ExamError) {
-      throw new ApiError(error.httpStatus, error.code, error.message);
+      throw new ApiError(error.httpStatus, error.code, error.message, undefined,
+        error.httpStatus === 503 ? { 'Retry-After': '60' } : undefined);
     }
     if (error instanceof RangeError) {
       throw new ApiError(400, 'INVALID_GRADE', error.message);

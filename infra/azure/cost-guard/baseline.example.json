@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "REPLACE_WITH_VERIFIED_BASELINE_ID",
+  "operatorVerified": false,
+  "completeCreditCoverage": false,
+  "coveredSubscriptionIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "rg-vfuture-academy-sg",
+  "grantStartsAt": "REPLACE_WITH_VERIFIED_GRANT_START_ISO",
+  "grantEndsAt": "REPLACE_WITH_VERIFIED_GRANT_END_ISO",
+  "observedAt": "REPLACE_WITH_VERIFIED_BASELINE_OBSERVATION_ISO",
+  "remainingCreditUsd": null,
+  "otherCommittedUsd": null,
+  "academyGrantToDateUsd": null,
+  "subscriptionGrantCostUsd": null,
+  "academyGrantCostUsd": null,
+  "sourceReference": "REPLACE_WITH_CONTROLLED_EVIDENCE_REFERENCE"
+}

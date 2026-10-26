@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 
 import type { DisposableAssignmentFixture } from './support/assignment-fixture';
@@ -13,6 +14,17 @@ type SubmitBody = {
   expectedLatestSubmissionId: string | null;
   payload: unknown;
 };
+
+function waitForUploadFinalization(page: Page) {
+  return page.waitForResponse((response) =>
+    /^\/api\/v1\/uploads\/[^/]+\/finalize$/.test(new URL(response.url()).pathname)
+    && response.request().method() === 'POST');
+}
+
+function waitForUploadReservation(page: Page) {
+  return page.waitForResponse((response) => new URL(response.url()).pathname === '/api/v1/uploads/reserve'
+    && response.request().method() === 'POST');
+}
 
 async function signInAndEnroll(page: Page, fixture: DisposableAssignmentFixture) {
   await page.goto('/login');
@@ -100,7 +112,7 @@ test.describe('@recovery-09 guarded assignment lifecycle', () => {
         await expect(assignment).toBeVisible();
 
         let failUpload = true;
-        await learnerPage.route('**/api/v1/uploads', async (route) => {
+        await learnerPage.route('**/api/v1/uploads/reserve', async (route) => {
           if (failUpload && route.request().method() === 'POST') await route.abort('internetdisconnected');
           else await route.continue();
         });
@@ -111,10 +123,17 @@ test.describe('@recovery-09 guarded assignment lifecycle', () => {
         });
         await expect(assignment.getByText(`Upload failed for ${fixture.fileName}`, { exact: true })).toBeVisible();
         failUpload = false;
-        const uploaded = learnerPage.waitForResponse((response) => response.url().endsWith('/api/v1/uploads')
-          && response.request().method() === 'POST');
+        const reserved = waitForUploadReservation(learnerPage);
+        const uploaded = waitForUploadFinalization(learnerPage);
         await assignment.getByRole('button', { name: `Retry ${fixture.fileName}`, exact: true }).click();
+        const reservationResponse = await reserved;
+        expect(reservationResponse.ok(), `Upload reservation failed with HTTP ${reservationResponse.status()}`).toBeTruthy();
+        const reservationBody = await reservationResponse.json() as { data?: { uploadId?: string } };
+        expect(reservationResponse.request().postDataJSON()).toMatchObject({
+          purpose: 'submission', courseId: fixture.courseId, itemId: fixture.itemId, blockId: null,
+        });
         const uploadResponse = await uploaded;
+        expect(new URL(uploadResponse.url()).pathname).toBe(`/api/v1/uploads/${reservationBody.data?.uploadId}/finalize`);
         expect(uploadResponse.ok(), `Assignment upload retry failed with HTTP ${uploadResponse.status()}`).toBeTruthy();
         const uploadBody = await uploadResponse.json() as { data?: { assetId?: string } };
         if (!uploadBody.data?.assetId) throw new Error('Successful assignment upload returned no asset ID.');
@@ -200,9 +219,12 @@ test.describe('@recovery-09 guarded assignment lifecycle', () => {
       await setEnglishLocale(learnerContext, baseURL);
       const learnerPage = await learnerContext.newPage();
       const { context: instructorContext, page: instructorPage } = await openRolePage(browser, 'instructor', new URL(baseURL).origin);
-      const observed = { submitTarget: false, historyTarget: false };
+      const observed = { uploadTarget: false, submitTarget: false, historyTarget: false };
       learnerPage.on('request', (request) => {
         const url = new URL(request.url());
+        if (url.pathname === '/api/v1/uploads/reserve' && request.method() === 'POST') {
+          observed.uploadTarget ||= request.postDataJSON()?.blockId === fixture.assignmentId;
+        }
         if (url.pathname === '/api/v1/assignments/submit' && request.method() === 'POST') {
           observed.submitTarget ||= request.postDataJSON()?.blockId === fixture.assignmentId;
         }
@@ -216,27 +238,40 @@ test.describe('@recovery-09 guarded assignment lifecycle', () => {
         await learnerPage.goto(itemUrl);
         const assignment = learnerPage.getByRole('region', { name: fixture.assignmentTitle });
         await assignment.getByLabel('Notes').fill('Inline identity remains explicit.');
-        const uploaded = learnerPage.waitForResponse((response) => response.url().endsWith('/api/v1/uploads')
-          && response.request().method() === 'POST');
+        const reserved = waitForUploadReservation(learnerPage);
+        const uploaded = waitForUploadFinalization(learnerPage);
         await assignment.getByLabel('Upload files').setInputFiles({
           name: fixture.fileName, mimeType: 'text/plain', buffer: Buffer.from('inline owned upload'),
         });
+        const reservationResponse = await reserved;
+        expect(reservationResponse.ok(), `Upload reservation failed with HTTP ${reservationResponse.status()}`).toBeTruthy();
+        const reservationBody = await reservationResponse.json() as { data?: { uploadId?: string } };
+        expect(reservationResponse.request().postDataJSON()).toMatchObject({
+          purpose: 'submission', courseId: fixture.courseId, itemId: fixture.itemId, blockId: fixture.assignmentId,
+        });
         const uploadResponse = await uploaded;
+        expect(new URL(uploadResponse.url()).pathname).toBe(`/api/v1/uploads/${reservationBody.data?.uploadId}/finalize`);
         expect(uploadResponse.ok()).toBeTruthy();
         const uploadBody = await uploadResponse.json() as { data?: { assetId?: string } };
         if (!uploadBody.data?.assetId) throw new Error('Inline upload returned no asset ID.');
         fixture.trackUpload(uploadBody.data.assetId);
-        // Chromium can omit multipart file bodies from request.postData(). Prove
-        // the locator through the server: the same lesson upload without its
-        // explicit inline target must fail before storing an object.
-        const missingTarget = await learnerPage.request.post('/api/v1/uploads', {
-          multipart: {
+        // Prove server-side locator enforcement at reservation time: omitting
+        // the inline target must fail before a signed URL or object is created.
+        const missingTargetBytes = Buffer.from('missing inline target');
+        const missingTarget = await learnerPage.request.post('/api/v1/uploads/reserve', {
+          data: {
+            uploadId: randomUUID(), purpose: 'submission',
             courseId: fixture.courseId, itemId: fixture.itemId,
-            file: { name: fixture.fileName, mimeType: 'text/plain', buffer: Buffer.from('missing inline target') },
+            name: fixture.fileName, mime: 'text/plain', size: missingTargetBytes.byteLength,
+            checksum: createHash('sha256').update(missingTargetBytes).digest('hex'),
           },
         });
-        const missingBody = await missingTarget.json() as { data?: { assetId?: string }; error?: { code?: string } };
-        if (missingBody.data?.assetId) fixture.trackUpload(missingBody.data.assetId);
+        const missingBody = await missingTarget.json() as { data?: { uploadId?: string }; error?: { code?: string } };
+        if (missingBody.data?.uploadId) {
+          // A regressed authorization check must not leave an active fixture
+          // reservation; cancellation preserves any required token quarantine.
+          await learnerPage.request.delete(`/api/v1/uploads/${missingBody.data.uploadId}`);
+        }
         expect(missingTarget.status()).toBe(404);
         expect(missingBody.error?.code).toBe('ASSIGNMENT_NOT_FOUND');
         const submitted = await submitFromUi(learnerPage, 'Submit assignment');
@@ -249,7 +284,7 @@ test.describe('@recovery-09 guarded assignment lifecycle', () => {
           return (await fetch(`/api/v1/assignments/${itemId}/submissions?${params}`)).status;
         }, { courseId: fixture.courseId, itemId: fixture.itemId, blockId: fixture.assignmentId });
         expect(historyStatus).toBe(200);
-        expect(observed).toEqual({ submitTarget: true, historyTarget: true });
+        expect(observed).toEqual({ uploadTarget: true, submitTarget: true, historyTarget: true });
         await fixture.expectCompletion(false);
 
         const feedback = { vi: `Nội tuyến ${fixture.courseId}`, en: `Inline approved ${fixture.courseId}` };

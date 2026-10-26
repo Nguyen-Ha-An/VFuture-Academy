@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   supabaseUser: vi.fn(),
   supabaseBrowser: vi.fn(),
   searchParams: vi.fn(() => new URLSearchParams()),
+  fetch: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -31,7 +32,7 @@ vi.mock('@/lib/supabase/client', () => ({ supabaseBrowser: mocks.supabaseBrowser
 vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://academy.example' } }));
 
 import { getSessionUser, requireApiUser, requireUser } from '@/lib/auth';
-import { AuthForm, LOGIN_COOLDOWN_MS } from '@/components/AuthForm';
+import { AuthForm, LOGIN_COOLDOWN_MS, PROFILE_STATE_TIMEOUT_MS } from '@/components/AuthForm';
 import { GET as callback } from '@/app/auth/callback/route';
 import { POST as signout } from '@/app/auth/signout/route';
 import { profileState } from '@/lib/profile-state';
@@ -60,15 +61,37 @@ function authenticatedClient(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function profileStateResponse(state: unknown, init: ResponseInit = {}) {
+  return new Response(JSON.stringify({ data: { state } }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+    ...init,
+  });
+}
+
+/** AuthForm learns the destination from the authenticated same-origin endpoint, not a browser REST read. */
+function stubProfileState(respond: () => Response | Promise<Response>) {
+  mocks.fetch.mockReset().mockImplementation(async () => respond());
+}
+
+async function signInAsLearner(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Email'), 'learner@example.com');
+  await user.type(screen.getByLabelText('Password'), 'correct horse battery staple');
+  await user.click(screen.getByRole('button', { name: 'Sign in' }));
+}
+
 describe('authentication and onboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams.mockReturnValue(new URLSearchParams());
+    stubProfileState(() => profileStateResponse('complete'));
+    vi.stubGlobal('fetch', mocks.fetch);
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     cleanup();
   });
@@ -284,12 +307,9 @@ describe('authentication and onboarding', () => {
     await waitFor(() => expect(document.activeElement).toBe(email));
   });
 
-  it('shows a generic retryable error instead of routing to welcome when the post-login profile read fails', async () => {
-    const client = authenticatedClient({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: null, error: new Error('RLS') }) })) })),
-      })),
-    });
+  it('shows a generic retryable error instead of routing to welcome when the post-login profile state is unavailable', async () => {
+    const client = authenticatedClient();
+    stubProfileState(() => profileStateResponse('unavailable'));
     mocks.supabaseBrowser.mockReturnValue(client);
     const user = userEvent.setup();
 
@@ -354,11 +374,8 @@ describe('authentication and onboarding', () => {
 
   it('preserves the same next path when password sign-in requires onboarding', async () => {
     mocks.searchParams.mockReturnValue(new URLSearchParams('next=%2Fapp%2Fprofile%3Ftab%3Dskills'));
-    const client = authenticatedClient({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: { handle: null }, error: null }) })) })),
-      })),
-    });
+    const client = authenticatedClient();
+    stubProfileState(() => profileStateResponse('incomplete'));
     mocks.supabaseBrowser.mockReturnValue(client);
     const user = userEvent.setup();
 
@@ -412,10 +429,8 @@ describe('authentication and onboarding', () => {
         ...authenticatedClient().auth,
         signUp: vi.fn().mockResolvedValue({ data: { session: { access_token: 'session' }, user: { id: 'user-1' } }, error: null }),
       },
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: { handle: null }, error: null }) })) })),
-      })),
     });
+    stubProfileState(() => profileStateResponse('incomplete'));
     mocks.supabaseBrowser.mockReturnValue(client);
     const user = userEvent.setup();
 
@@ -451,6 +466,115 @@ describe('authentication and onboarding', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The email or password is incorrect.');
+  });
+
+  it('reads the post-login profile state from the same-origin endpoint and never queries profiles from the browser', async () => {
+    const client = authenticatedClient();
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await signInAsLearner(user);
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/app'));
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    const [url, init] = mocks.fetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/v1/auth/profile-state');
+    expect(init).toMatchObject({
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it('continues an immediate signup session with the endpoint state and no browser profile query', async () => {
+    mocks.searchParams.mockReturnValue(new URLSearchParams('next=%2Fapp%2Fprojects%3Fstatus%3Dopen'));
+    const client = authenticatedClient({
+      auth: {
+        ...authenticatedClient().auth,
+        signUp: vi.fn().mockResolvedValue({ data: { session: { access_token: 'session' }, user: { id: 'user-1' } }, error: null }),
+      },
+    });
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="signup" /></Provider>);
+    await user.type(screen.getByLabelText('Email'), 'new@example.com');
+    await user.type(screen.getByLabelText('Password'), 'correct horse battery staple');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/app/projects?status=open'));
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an unauthenticated response', () => new Response(JSON.stringify({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } }), { status: 401, headers: { 'content-type': 'application/json' } })],
+    ['a server error', () => new Response(JSON.stringify({ error: { code: 'INTERNAL', message: 'Internal error' } }), { status: 500, headers: { 'content-type': 'application/json' } })],
+    ['a gateway error page', () => new Response('<html>Bad gateway</html>', { status: 502, headers: { 'content-type': 'text/html' } })],
+    ['a malformed JSON body', () => new Response('not json', { status: 200, headers: { 'content-type': 'application/json' } })],
+    ['a body without a state', () => new Response(JSON.stringify({ data: {} }), { status: 200, headers: { 'content-type': 'application/json' } })],
+    ['an unknown state', () => profileStateResponse('suspended')],
+    ['a non-object body', () => new Response('null', { status: 200, headers: { 'content-type': 'application/json' } })],
+  ])('shows the retryable profile error instead of navigating after %s', async (_case, respond) => {
+    const client = authenticatedClient();
+    stubProfileState(respond);
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await signInAsLearner(user);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your profile could not be loaded. Please try again.');
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows the retryable profile error when the profile-state request fails at the network', async () => {
+    const client = authenticatedClient();
+    mocks.fetch.mockReset().mockRejectedValue(new TypeError('Failed to fetch'));
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await signInAsLearner(user);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your profile could not be loaded. Please try again.');
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('aborts a hung profile-state request after the bounded timeout and reports the profile error', async () => {
+    const client = authenticatedClient();
+    mocks.fetch.mockReset().mockImplementation((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await user.type(screen.getByLabelText('Email'), 'learner@example.com');
+    await user.type(screen.getByLabelText('Password'), 'correct horse battery staple');
+    const realSetTimeout = window.setTimeout.bind(window);
+    let fireTimeout: (() => void) | undefined;
+    vi.spyOn(window, 'setTimeout').mockImplementation(((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+      if (delay === PROFILE_STATE_TIMEOUT_MS) {
+        fireTimeout = () => (handler as () => void)();
+        return 1 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return realSetTimeout(handler, delay, ...args);
+    }) as typeof window.setTimeout);
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => expect(fireTimeout).toBeDefined());
+    expect(PROFILE_STATE_TIMEOUT_MS).toBeGreaterThanOrEqual(10_000);
+    expect(PROFILE_STATE_TIMEOUT_MS).toBeLessThanOrEqual(30_000);
+    expect(screen.queryByRole('alert')).toBeNull();
+    act(() => fireTimeout?.());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your profile could not be loaded. Please try again.');
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
 });

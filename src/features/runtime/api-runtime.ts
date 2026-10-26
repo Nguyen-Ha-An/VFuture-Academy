@@ -1,3 +1,4 @@
+import { directUploadFile, DirectUploadError } from '@/features/media/direct-upload-client';
 import type { Locale, MediaRef } from '@/content-engine/schema/common';
 import type { NextStepTarget } from '@/content-engine/schema/types';
 import type {
@@ -170,70 +171,15 @@ export function createApiRuntime(ctx: ApiRuntimeContext): ApiRuntime {
     ...init,
   });
 
-  const assignmentForm = (target: AssignmentTarget, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('courseId', ctx.courseId);
-    form.append('itemId', ctx.itemId);
-    if (target.blockId !== null) form.append('blockId', target.blockId);
-    return form;
-  };
-
-  const uploadWithProgress = (
-    form: FormData,
+  const uploadAssignment = (
+    target: AssignmentTarget,
     file: File,
-    options: { signal?: AbortSignal; onProgress?: (progress: UploadProgress) => void },
-  ): Promise<UploadedFile> => new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const abort = () => xhr.abort();
-    const cleanup = () => options.signal?.removeEventListener('abort', abort);
-    xhr.open('POST', '/api/v1/uploads');
-    xhr.withCredentials = true;
-    xhr.upload.addEventListener('progress', (event) => {
-      const total = event.lengthComputable && event.total > 0 ? event.total : file.size;
-      const loaded = Math.min(event.loaded, total);
-      options.onProgress?.({ loaded, total, percent: total > 0 ? Math.round((loaded / total) * 100) : 0 });
-    });
-    xhr.addEventListener('load', () => {
-      cleanup();
-      let envelope: unknown;
-      try {
-        envelope = JSON.parse(xhr.responseText);
-      } catch {
-        reject(new RuntimeError('INVALID_RESPONSE', 'Upload response was not valid JSON', xhr.status));
-        return;
-      }
-      const body = isRecord(envelope) ? envelope : null;
-      if (xhr.status < 200 || xhr.status >= 300) {
-        const error = isRecord(body?.error) ? body.error : null;
-        reject(new RuntimeError(
-          typeof error?.code === 'string' ? error.code : 'UPLOAD_FAILED',
-          typeof error?.message === 'string' ? error.message : 'Upload failed',
-          xhr.status,
-        ));
-        return;
-      }
-      if (!body || !isRecord(body.data)) {
-        reject(new RuntimeError('INVALID_RESPONSE', 'Upload response did not contain data', xhr.status));
-        return;
-      }
-      options.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
-      resolve(body.data as unknown as UploadedFile);
-    });
-    xhr.addEventListener('error', () => {
-      cleanup();
-      reject(new RuntimeError('NETWORK_ERROR', 'Upload failed', 0));
-    });
-    xhr.addEventListener('abort', () => {
-      cleanup();
-      reject(new RuntimeError('UPLOAD_CANCELLED', 'Upload cancelled', 0));
-    });
-    if (options.signal?.aborted) {
-      reject(new RuntimeError('UPLOAD_CANCELLED', 'Upload cancelled', 0));
-      return;
-    }
-    options.signal?.addEventListener('abort', abort, { once: true });
-    xhr.send(form);
+    options?: { signal?: AbortSignal; onProgress?: (progress: UploadProgress) => void },
+  ): Promise<UploadedFile> => directUploadFile(file, {
+    purpose: 'submission', courseId: ctx.courseId, itemId: ctx.itemId, blockId: target.blockId,
+  }, { fetchImpl, ...options }).catch((error: unknown) => {
+    if (error instanceof DirectUploadError) throw new RuntimeError(error.code, error.message, error.status);
+    throw error;
   });
 
   const blockPayload = (blockState: unknown) => ({
@@ -491,19 +437,8 @@ export function createApiRuntime(ctx: ApiRuntimeContext): ApiRuntime {
       assignmentSessions.set(assignmentKey(target), result.session);
       return result;
     },
-    uploadAssignmentFile: (target, file, options) => {
-      const form = assignmentForm(target, file);
-      return options
-        ? uploadWithProgress(form, file, options)
-        : request<UploadedFile>('/api/v1/uploads', { method: 'POST', body: form });
-    },
-    uploadFile: (file: File) => {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('courseId', ctx.courseId);
-      form.append('itemId', ctx.itemId);
-      return request<UploadedFile>('/api/v1/uploads', { method: 'POST', body: form });
-    },
+    uploadAssignmentFile: uploadAssignment,
+    uploadFile: (file: File) => uploadAssignment({ blockId: null }, file),
     resolveMedia: (ref: MediaRef) => ('url' in ref ? ref.url : mediaHref(ref.assetId)),
     hrefFor: (target: NextStepTarget | { kind: 'resource' | 'opportunity'; id: string }) => {
       if ('url' in target) return target.url;

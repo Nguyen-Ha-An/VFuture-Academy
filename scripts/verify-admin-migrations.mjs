@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPGlite, repositoryRoot } from './lib/admin-db-harness.mjs';
 
-export async function createFullAdminDatabase(PGlite, {until,seedLegacyFixtures=false}={}) {
+export async function createFullAdminDatabase(PGlite, {until,seedLegacyFixtures=false,hostedFunctionDefaults=false}={}) {
   const db=new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role bypassrls;
@@ -20,6 +20,9 @@ export async function createFullAdminDatabase(PGlite, {until,seedLegacyFixtures=
     create function public.digest(value text,algorithm text) returns bytea language plpgsql immutable as $$
     begin if algorithm<>'sha256' then raise exception 'Unsupported test algorithm'; end if; return sha256(convert_to(value,'UTF8')); end $$;
   `);
+  if (hostedFunctionDefaults) {
+    await db.exec('alter default privileges in schema public grant execute on functions to anon, authenticated, service_role');
+  }
   const files=readdirSync(resolve(repositoryRoot,'supabase/migrations')).filter(file=>file.endsWith('.sql')).sort();
   let seeded=false;
   for(const file of files) {

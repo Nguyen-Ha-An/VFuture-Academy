@@ -9,6 +9,7 @@ import {
   validateNotebookDependencies,
   type NotebookAssignment,
 } from "./contracts";
+import { grantStorageTransferUrl } from "@/features/storage-transfer/grants";
 import { checkUpload } from "./upload-contract";
 import type { NotebookContext } from "./access";
 
@@ -119,7 +120,14 @@ export async function beginNotebookUpload(
     .createSignedUploadUrl(path, { upsert: false });
   if (signed.error || !signed.data?.signedUrl)
     throw new Error("Unable to sign notebook upload");
-  return { id, url: signed.data.signedUrl, mime: file.mime };
+  return {
+    id,
+    url: grantStorageTransferUrl(signed.data.signedUrl, {
+      subject: actor.userId, method: "PUT", bucket: NOTEBOOK_BUCKET, path,
+      maxBytes: file.sizeBytes, expiresIn: 900,
+    }),
+    mime: file.mime,
+  };
 }
 export async function finalizeNotebookUpload(
   actor: Actor,
@@ -206,6 +214,7 @@ export async function finalizeNotebookUpload(
 }
 export async function signedArtifact(
   row: ArtifactRow,
+  actor: Actor,
   db: Database = supabaseService(),
 ) {
   if (row.status !== "ready")
@@ -225,7 +234,10 @@ export async function signedArtifact(
     filename: row.filename,
     mime: row.mime,
     sizeBytes: row.size_bytes,
-    url: data.signedUrl,
+    url: grantStorageTransferUrl(data.signedUrl, {
+      subject: actor.userId, method: "GET", bucket: NOTEBOOK_BUCKET,
+      path: row.storage_path, maxBytes: row.size_bytes, expiresIn: 300,
+    }),
   };
 }
 export async function resolveNotebookDependencies(
@@ -271,11 +283,12 @@ export async function resolveNotebookDependencies(
   return rows;
 }
 export async function notebookDependencies(
+  actor: Actor,
   context: NotebookContext,
   config: NotebookAssignment,
   db: Database = supabaseService(),
 ) {
   const rows = await resolveNotebookDependencies(context, config, db);
-  const signed = await Promise.all(rows.map((r) => signedArtifact(r, db)));
+  const signed = await Promise.all(rows.map((r) => signedArtifact(r, actor, db)));
   return { template: signed[0], datasets: signed.slice(1) };
 }

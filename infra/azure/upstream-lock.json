@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/supabase/supabase",
+  "commit": "831d6302c7361c0a5115a91e953bdf084eb85330",
+  "reviewedAt": "2026-10-25",
+  "files": {
+    "docker/docker-compose.yml": "8a75b7bdba9dec1f21814118431ca3469c1a43f4aed542379bb3d356602a67ea",
+    "docker/docker-compose.kong.yml": "267c18cea5e41b8549a2c7a09ebd1d4e3b6851f22bcbe8f94ff3d4d119a96446",
+    "docker/volumes/db/roles.sql": "3ad717b225daa38aa982da26750f35641eb404e1eb5e69a763c22236ab96c1b2",
+    "docker/volumes/db/jwt.sql": "c1d3f5c01e44646c2e533c5a1c111821cc49cb5a4c2534e08cddad61d8fb0339",
+    "docker/volumes/db/_supabase.sql": "9dce462adc04137d6afabcf28efa60a6c355270a4b32d7af58891ac4eb964c5f",
+    "docker/volumes/db/webhooks.sql": "05a61316b899374253891cbba66ce073d9273f33983c3f47961eda3aa26c2823"
+  },
+  "images": {
+    "db": "supabase/postgres:17.6.1.136@sha256:f371b5f3f2ac0a05703f33d6e6134515fb2498cab708fb948a0aeb7481467c00",
+    "auth": "supabase/gotrue:v2.197.0@sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+    "rest": "postgrest/postgrest:v14.18@sha256:c7cd7e265a85b05248abf53f4473fcec7e327c282d0bd0cf60f1551996d09fcf",
+    "storage": "supabase/storage-api:v1.81.0@sha256:98ffec5d0678803783c30e404c27f4ec65e97efbe014088f2a86b4b8b54b9f54",
+    "meta": "supabase/postgres-meta:v0.100.0@sha256:145325b7e39f8ef4931d6e8cfd3f6f4d655de09d72a2ccc96d9513542c2202bd",
+    "studio": "supabase/studio:2026.10.12-sha-3699278@sha256:948770ec467f00e6ae34c35018ef7cb23d7b30eb806b42c2cc0d7bcfdcf8a7a8",
+    "gateway": "library/node:24.15.0-alpine3.23@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f",
+    "tls": "library/nginx:1.29.6-alpine@sha256:f46cb72c7df02710e693e863a983ac42f6a9579058a59a35f1ae36c9958e4ce0"
+  },
+  "notes": "Direct Academy gateway replaces upstream Envoy. No Realtime, Edge Runtime, imgproxy, analytics or pooler. Legacy HS256 API keys only until separate JWKS/MCP gate."
+}

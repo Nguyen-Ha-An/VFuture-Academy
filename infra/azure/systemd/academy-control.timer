@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh Academy maintenance state every 30 seconds
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=30s
+AccuracySec=1s
+Persistent=true
+[Install]
+WantedBy=timers.target

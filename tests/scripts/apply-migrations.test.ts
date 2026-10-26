@@ -112,6 +112,9 @@ describe('applyMigrations', () => {
       '20261007101233_security_active_catalog_and_hidden_quiz_results.sql',
       '20261007101246_resource_create_ownership_guard.sql',
       '20261023120729_preserve_shared_content_destinations.sql',
+      '20261025135531_shared_public_and_exam_admission.sql',
+      '20261025140618_academy_media_upload_reservations.sql',
+      '20261026145220_restrict_internal_function_execution.sql',
     ];
     const files = migrationFiles(migrationsDir);
     const prefixes = files.map((filename) => filename.split('_')[0]);

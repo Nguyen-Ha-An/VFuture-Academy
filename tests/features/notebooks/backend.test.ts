@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn() }));
@@ -253,5 +253,46 @@ describe('submitted notebook viewer authorization',()=>{
     },'33333333-3333-4333-8333-333333333333',database as never)).rejects.toMatchObject({status:403,code:'ACCOUNT_INACTIVE'});
     expect(database.queries).toEqual([]);
     expect(database.storageCalls).toEqual([]);
+  });
+});
+
+
+describe('gateway notebook grants', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  function enableGateway(database: FakeDatabase) {
+    vi.stubEnv('SUPABASE_GATEWAY_KEY', 'gateway-test');
+    vi.stubEnv('SUPABASE_TRANSFER_GRANT_KEY', 'transfer-test-secret-'.repeat(3));
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://storage.example');
+    const original = database.storage.from;
+    database.storage.from = (bucket: string) => ({
+      ...original(bucket),
+      createSignedUrl: async (path: string) => ok({ signedUrl: `https://storage.example/storage/v1/object/sign/${bucket}/${path}?token=signed` }),
+      createSignedUploadUrl: async (path: string) => ok({ signedUrl: `https://storage.example/storage/v1/object/upload/sign/${bucket}/${path}?token=signed` }),
+    });
+  }
+  function claims(url: string) {
+    const grant = new URL(url).searchParams.get('gateway_grant');
+    expect(grant).toBeTruthy();
+    return JSON.parse(Buffer.from(grant!.split('.')[0], 'base64url').toString());
+  }
+  it('charges a shared template download to the learner viewer, not the author', async () => {
+    const template = artifact({ owner_id: '44444444-4444-4444-8444-444444444444', purpose: 'template', id: notebook.templateAssetId, checksum: notebook.templateChecksum, filename: 'template.ipynb' });
+    const database = new FakeDatabase({ notebook_artifacts: [ok(template)], notebook_drafts: [ok(null)] });
+    enableGateway(database);
+    const result = await notebookSession(actor, context, database as never);
+    expect(claims(result.template!.url)).toMatchObject({ sub: actor.userId, maxBytes: 100, method: 'GET' });
+  });
+  it('binds the upload grant to validated reservation bytes and uploader', async () => {
+    const database = new FakeDatabase(); enableGateway(database);
+    const result = await beginNotebookUpload(actor, context, { purpose: 'draft', filename: 'work.ipynb', sizeBytes: 1234, checksum: 'a'.repeat(64) }, database as never);
+    expect(claims(result.url)).toMatchObject({ sub: actor.userId, maxBytes: 1234, method: 'PUT', path: expect.stringMatching(/^\/storage\/v1\/object\/upload\/sign\/notebooks\/pending\//) });
+  });
+  it('charges an authorized grader rather than the submission owner', async () => {
+    const row = artifact({ purpose: 'submission' });
+    const database = new FakeDatabase({ assignment_submissions: [ok({ id: 'submission-1', user_id: actor.userId, course_version_id: row.course_version_id, item_id: row.item_id, block_id: row.block_id, branch_id: 'school-1', branch_scope_known: true, payload: { notebook: { assetId: row.id, checksum: row.checksum } } })], notebook_artifacts: [ok(row)] });
+    enableGateway(database);
+    const grader: Actor = { userId: '55555555-5555-4555-8555-555555555555', roles: [], authorization: { source: 'database', accountStatus: 'active', memberships: [{ branchId: 'school-1', status: 'active' }], assignments: [{ roleDefinitionId: 'grader', scope: { kind: 'branch', branchId: 'school-1' }, permissions: ['submission.grade'] }] } };
+    const result = await readSubmissionNotebook(grader, 'submission-1', database as never);
+    expect(claims(result.url).sub).toBe(grader.userId);
   });
 });

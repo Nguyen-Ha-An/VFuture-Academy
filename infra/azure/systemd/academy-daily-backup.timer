@@ -1,0 +1,8 @@
+[Unit]
+Description=Academy daily backup at 02:00 Vietnam time
+[Timer]
+OnCalendar=*-*-* 19:00:00 UTC
+Persistent=true
+AccuracySec=1min
+[Install]
+WantedBy=timers.target

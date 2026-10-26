@@ -326,6 +326,12 @@ export class SupabaseExamRepo implements ExamRepo {
     if (record(result.error)?.code === 'P3001') {
       throw new ExamError('NO_ATTEMPTS', 'No exam attempts remain.');
     }
+    if (record(result.error)?.code === 'P3002') {
+      throw new ExamError('EXAM_CAPACITY', 'All exam places are currently occupied. Please try again shortly.');
+    }
+    if (record(result.error)?.code === 'P3003') {
+      throw new ExamError('EXAM_STARTS_PAUSED', 'New exam starts are temporarily paused. Please try again shortly.');
+    }
     const data = assertDatabase(result, 'create exam attempt');
     return toAttempt(Array.isArray(data) ? data[0] : data, attempt.branchId);
   }

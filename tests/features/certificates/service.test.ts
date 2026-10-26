@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://academy.example' } }));
@@ -262,5 +262,29 @@ describe('certificate service', () => {
     await expect(service.verify('not-a-verification-code')).resolves.toBeNull();
     expect(database.queries).toHaveLength(0);
     expect(storage.createSignedUrl).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('certificate transfer grants', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it.each(['public', 'private'] as const)('binds the %s certificate download to its permitted audience and actual PDF size', async (visibility) => {
+    vi.stubEnv('SUPABASE_GATEWAY_KEY', 'gateway-test');
+    vi.stubEnv('SUPABASE_TRANSFER_GRANT_KEY', 'transfer-test-secret-'.repeat(3));
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://storage.example');
+    const viewer = '22222222-2222-4222-8222-222222222222';
+    const database = new SupabaseStub({
+      certificates: [successful(certificateRow({ user_id: viewer }))],
+      profiles: [successful({ display_name: 'Learner', locale: 'en' })],
+      course_version_outline: [successful({ meta: { title: { en: 'AI Foundations' } }, default_language: 'en' })],
+      media_assets: [successful({ owner_id: viewer, bucket: 'certificates', path: 'random/certificate.pdf', size_bytes: 9876 })],
+    });
+    const storage = storageDouble();
+    storage.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://storage.example/storage/v1/object/sign/certificates/random/certificate.pdf?token=signed' }, error: null });
+    const service = createCertificateService({ database: Object.assign(database, { storage: { from: () => storage } }), appUrl: 'https://academy.example', renderPdf: vi.fn() });
+    const url = visibility === 'public' ? (await service.verify('11111111-1111-4111-8111-111111111111'))!.pdfUrl : await service.downloadForUser(viewer, 'certificate-1');
+    const grant = new URL(url!).searchParams.get('gateway_grant');
+    expect(grant).toBeTruthy();
+    expect(JSON.parse(Buffer.from(grant!.split('.')[0], 'base64url').toString())).toMatchObject({ sub: visibility === 'public' ? 'public' : viewer, maxBytes: 9876, method: 'GET' });
   });
 });

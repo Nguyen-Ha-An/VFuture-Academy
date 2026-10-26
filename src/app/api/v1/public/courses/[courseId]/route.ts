@@ -14,11 +14,11 @@ function requestedLocale(request: Request): Locale | null {
 
 export const GET = withHandler(async (request: Request, context) => {
   const { params } = context as { params: Promise<{ courseId: string }> };
-  const rateLimit = checkPublicRateLimit(request);
+  const rateLimit = await checkPublicRateLimit(request);
   if (!rateLimit.allowed) {
     return applyPublicResponseHeaders(NextResponse.json(
-      { error: "rate_limited" },
-      { status: 429, headers: { "Retry-After": "60" } },
+      { error: rateLimit.status === 503 ? "rate_limit_unavailable" : "rate_limited" },
+      { status: rateLimit.status ?? 429, headers: { "Retry-After": "60" } },
     ), rateLimit);
   }
   const locale = requestedLocale(request);

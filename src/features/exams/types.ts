@@ -21,6 +21,8 @@ export type AttemptStatus =
 export type ExamErrorCode =
   | 'EXAM_CLOSED'
   | 'NO_ATTEMPTS'
+  | 'EXAM_CAPACITY'
+  | 'EXAM_STARTS_PAUSED'
   | 'ATTEMPT_NOT_ACTIVE'
   | 'DEADLINE_PASSED'
   | 'SECTION_DEADLINE_PASSED'
@@ -33,7 +35,7 @@ export type ExamErrorCode =
   | 'LEGACY_RESULT_UNRELEASED';
 
 export class ExamError extends Error {
-  readonly httpStatus: 403 | 409 | 422;
+  readonly httpStatus: 403 | 409 | 422 | 503;
 
   constructor(
     readonly code: ExamErrorCode,
@@ -42,11 +44,13 @@ export class ExamError extends Error {
   ) {
     super(message);
     this.name = 'ExamError';
-    this.httpStatus = code === 'FORBIDDEN'
-      ? 403
-      : code === 'POOL_UNSATISFIABLE' || code === 'INVALID_EXAM_CONFIGURATION'
-        ? 422
-        : 409;
+    this.httpStatus = code === 'EXAM_CAPACITY' || code === 'EXAM_STARTS_PAUSED'
+      ? 503
+      : code === 'FORBIDDEN'
+        ? 403
+        : code === 'POOL_UNSATISFIABLE' || code === 'INVALID_EXAM_CONFIGURATION'
+          ? 422
+          : 409;
   }
 }
 

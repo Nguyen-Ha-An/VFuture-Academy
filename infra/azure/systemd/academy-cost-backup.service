@@ -1,0 +1,13 @@
+[Unit]
+Description=Checkpoint Academy after a financial drain after the independent bounded save grace
+After=docker.service network-online.target
+Requires=docker.service
+RequiresMountsFor=/srv/academy /srv/academy/objects
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/vfuture-academy/infra/azure/scripts/backup-coordinator.py cost-drain
+MemoryMax=256M
+CPUQuota=50%
+Nice=10
+TimeoutStartSec=2700
+NoNewPrivileges=true

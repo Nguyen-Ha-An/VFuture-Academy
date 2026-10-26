@@ -3,6 +3,7 @@ import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { env } from '@/lib/env';
+import { gatewayClientOptions } from '@/lib/backend-gateway';
 import { createServiceClient } from '@/lib/supabase/service-client';
 
 /**
@@ -26,6 +27,7 @@ export async function supabaseUser() {
         }
       },
     },
+    ...gatewayClientOptions(process.env, env.NEXT_PUBLIC_SUPABASE_URL),
   });
 }
 

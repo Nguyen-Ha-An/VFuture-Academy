@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const verificationForPage = cache(async (code: string) => {
   const requestHeaders = await headers();
-  const decision = checkPublicRateLimit(new Request(
+  const decision = await checkPublicRateLimit(new Request(
     `https://academy.invalid/verify/${encodeURIComponent(code)}`,
     { headers: requestHeaders },
   ));

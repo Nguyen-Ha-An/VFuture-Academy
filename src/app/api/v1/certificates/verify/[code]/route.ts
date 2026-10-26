@@ -18,11 +18,12 @@ const handleVerification = withHandler(async (_request, context) => {
 });
 
 export async function GET(request: Request, context: RouteContext) {
-  const rateLimit = checkPublicRateLimit(request);
+  const rateLimit = await checkPublicRateLimit(request);
   if (!rateLimit.allowed) {
     return applyPublicResponseHeaders(NextResponse.json(
-      { error: { code: 'RATE_LIMITED', message: 'Too many verification requests' } },
-      { status: 429, headers: { 'Retry-After': '60' } },
+      { error: { code: rateLimit.status === 503 ? 'RATE_LIMIT_UNAVAILABLE' : 'RATE_LIMITED',
+        message: rateLimit.status === 503 ? 'Rate limit service is unavailable' : 'Too many verification requests' } },
+      { status: rateLimit.status ?? 429, headers: { 'Retry-After': '60' } },
     ), rateLimit);
   }
   return applyPublicResponseHeaders(await handleVerification(request, context), rateLimit);
