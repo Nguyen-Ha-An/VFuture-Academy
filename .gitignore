@@ -86,3 +86,7 @@ recovery-evidence/
 /tests/e2e/student-harness/.cache/
 /tests/e2e/student-harness/dist/
 .gstack/
+
+# Generated Azure runtime vendor files and Python syntax caches
+/infra/azure/runtime/upstream/
+/infra/azure/**/__pycache__/

@@ -1,0 +1,17 @@
+{
+  "allOf": [
+    {
+      "field": "type",
+      "notIn": [
+        "Microsoft.Authorization/roleAssignments",
+        "Microsoft.Authorization/roleDefinitions",
+        "Microsoft.Authorization/policyAssignments",
+        "Microsoft.Resources/deployments"
+      ]
+    },
+    {
+      "value": "[concat(toLower(field('type')), '|', toLower(field('fullName')))]",
+      "notIn": "[parameters('allowedResourcePairs')]"
+    }
+  ]
+}

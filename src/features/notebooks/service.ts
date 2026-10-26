@@ -23,7 +23,7 @@ export async function notebookSession(
 ) {
   const config = context.notebook;
   const dependencies = config
-    ? await notebookDependencies(context, config, db)
+    ? await notebookDependencies(actor, context, config, db)
     : { template: null, datasets: [] };
   let draft: {
     revision: number;
@@ -53,7 +53,7 @@ export async function notebookSession(
         );
       draft = {
         revision: result.data.revision,
-        artifact: await signedArtifact(row, db),
+        artifact: await signedArtifact(row, actor, db),
       };
     }
   }
@@ -135,7 +135,7 @@ export async function saveStudioNotebook(
       "Course draft changed. Reload before saving.",
     );
   const config = NotebookAssignmentSchema.parse(value);
-  await notebookDependencies(context, config);
+  await notebookDependencies(actor, context, config);
   const item = structuredClone(context.draft.items[context.itemId]);
   const assignment = findNotebookAssignment(item, context.blockId);
   if (!assignment)

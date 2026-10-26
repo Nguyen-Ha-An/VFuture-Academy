@@ -93,11 +93,11 @@ export const POST = withHandler(async (request: Request) => {
     return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
   }
 
-  const rateLimit = checkPublicRateLimit(request);
+  const rateLimit = await checkPublicRateLimit(request);
   if (!rateLimit.allowed) {
     return applyPublicResponseHeaders(NextResponse.json(
-      { error: "rate_limited" },
-      { status: 429, headers: { "Retry-After": "60" } },
+      { error: rateLimit.status === 503 ? "rate_limit_unavailable" : "rate_limited" },
+      { status: rateLimit.status ?? 429, headers: { "Retry-After": "60" } },
     ), rateLimit);
   }
 

@@ -1,0 +1,19 @@
+{
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "rg-vfuture-academy-sg",
+  "operatorCidr": "",
+  "sshPublicKey": "replace-with-an-actual-Ed25519-public-key",
+  "imageVersion": "replace-with-an-exact-available-ubuntu-24_04-lts-server-version",
+  "grantRemainingUsd": 0,
+  "committedOtherProjectsUsd": 0,
+  "months": 12,
+  "benefitsConfirmed": false,
+  "registrySku": "Basic",
+  "registryBenefitConfirmed": false,
+  "registryBenefitMeterId": "",
+  "budgetStartDate": "2026-11-01",
+  "notificationEmail": "replace-with-operator-email",
+  "acsResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vfuture-academy-sg/providers/Microsoft.Communication/communicationServices/academy-sg-acs",
+  "acsEmailDomainResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vfuture-academy-sg/providers/Microsoft.Communication/emailServices/academy-sg-email/domains/replace.example.com",
+  "acsSmtpUsernameResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vfuture-academy-sg/providers/Microsoft.Communication/communicationServices/academy-sg-acs/smtpUsernames/academy-runtime"
+}

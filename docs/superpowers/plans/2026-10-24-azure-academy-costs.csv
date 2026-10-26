@@ -1,0 +1,5 @@
+MAU,dynamic_requests,total_http_assumption,app_cpu_hours_assumption,egress_GB,egress_USD_after_100GB,B1_stack_month_USD,B1_stack_annual_USD,annual_cash_over_2000_USD,USD_per_MAU_month,ACA_scale_zero_active_replica_hours_assumption,ACA_app_compute_requests_USD_with_free_grants,ACA_app_compute_requests_USD_without_free_grants
+500,300000,500000,4.17,25.0,0.0,131.16,1573.89,0,0.2623,27.08,0.0,2.25
+2000,1200000,2000000,16.67,100.0,0.0,131.16,1573.89,0,0.0656,108.33,0.63,8.99
+5000,3000000,5000000,41.67,250.0,18.0,149.16,1789.89,0,0.0298,270.83,14.12,22.48
+10000,6000000,10000000,83.33,500.0,48.0,179.16,2149.89,149.89,0.0179,541.67,36.59,44.95

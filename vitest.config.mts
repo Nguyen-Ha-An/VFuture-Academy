@@ -12,7 +12,7 @@ export default defineConfig({
     projects: [
       { extends: true, test: { name: 'engine', environment: 'node', include: ['tests/content-engine/**/*.test.ts'] } },
       { extends: true, test: { name: 'render', environment: 'jsdom', include: ['tests/content-engine/render/**/*.test.tsx'], setupFiles: ['tests/setup.render.ts'] } },
-      { extends: true, test: { name: 'app', environment: 'node', include: ['tests/features/**/*.test.ts', 'tests/features/**/*.test.tsx', 'tests/lib/**/*.test.ts', 'tests/scripts/**/*.test.ts'] } },
+      { extends: true, test: { name: 'app', environment: 'node', include: ['tests/features/**/*.test.ts', 'tests/features/**/*.test.tsx', 'tests/lib/**/*.test.ts', 'tests/scripts/**/*.test.ts', 'tests/infra/**/*.test.ts'] } },
     ],
   },
 });

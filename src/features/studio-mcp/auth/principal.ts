@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api';
 import { env } from '@/lib/env';
 import { ActorResolutionError, getActorForUserId, type Actor } from '@/lib/permissions';
 import { enforceRateLimit, RATE_LIMITS, userRateLimitKey } from '@/lib/rate-limit';
+import { gatewayClientOptions, gatewayFetch } from '@/lib/backend-gateway';
 import { assertMcpSessionCheck, mcpTesterUserIds } from '../config';
 import type { ReadOnlyDatabase } from '../db/read-only-database';
 import { StudioMcpError } from '../errors';
@@ -24,6 +25,7 @@ function bearerToken(request: Request): string {
 function authClient(): McpAuthClient {
   return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    ...gatewayClientOptions(process.env, env.NEXT_PUBLIC_SUPABASE_URL),
   }).auth;
 }
 
@@ -35,8 +37,11 @@ export async function resolveMcpPrincipal(
 ): Promise<McpPrincipal> {
   const token = bearerToken(request);
   assertMcpSessionCheck();
+  // verifyMcpToken fetches the JWKS directly; route that call through the gateway key when configured.
+  const fetchJwks = gatewayFetch(process.env, undefined, env.NEXT_PUBLIC_SUPABASE_URL);
   const verified = await verifyMcpToken(token, options.auth ?? authClient(), {
     supabaseUrl: options.supabaseUrl ?? env.NEXT_PUBLIC_SUPABASE_URL,
+    ...(fetchJwks ? { fetchJwks } : {}),
   });
   await validateMcpClient(db, verified.clientId);
   const testers = mcpTesterUserIds();

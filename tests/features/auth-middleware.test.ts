@@ -31,6 +31,46 @@ describe('Supabase session middleware', () => {
     expect(response.cookies.get('sb-auth-token')?.value).toBe('rotated-token');
   });
 
+  it('keeps exactly the cookie options when no gateway key is configured', async () => {
+    vi.stubEnv('SUPABASE_GATEWAY_KEY', '');
+    mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    await updateSession(new NextRequest('https://academy.example/home'));
+
+    const options = mocks.createServerClient.mock.calls[0][2] as Record<string, unknown>;
+    expect(Object.keys(options)).toEqual(['cookies']);
+  });
+
+  it('sends the server-only gateway key with the middleware session verification', async () => {
+    const key = 'kT3vQ8n1Zp0xYw5uLr7sJc2bHd9eGf4aMi6oNq1VtXyAzBlCkD+EgFhIjKm/=';
+    vi.stubEnv('SUPABASE_GATEWAY_KEY', key);
+    mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    await updateSession(new NextRequest('https://academy.example/home'));
+
+    const options = mocks.createServerClient.mock.calls[0][2] as {
+      cookies: { getAll: unknown; setAll: unknown };
+      global: unknown;
+    };
+    expect(options.global).toEqual({ headers: { 'x-vfuture-gateway-key': key }, fetch: expect.any(Function) });
+    expect(typeof options.cookies.getAll).toBe('function');
+    expect(typeof options.cookies.setAll).toBe('function');
+  });
+
+  it('rejects a malformed gateway key without printing it', async () => {
+    vi.stubEnv('SUPABASE_GATEWAY_KEY', 'MALFORMED SECRET');
+    mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
+
+    const failure = await updateSession(new NextRequest('https://academy.example/home'))
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toBe('Invalid SUPABASE_GATEWAY_KEY');
+    expect(mocks.getUser).not.toHaveBeenCalled();
+  });
+
   it('persists a supported lang query as the locale cookie before rendering', async () => {
     mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });

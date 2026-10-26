@@ -1,0 +1,9 @@
+# Downloaded upstream runtime and generated deployment artifacts never belong in Git.
+runtime/upstream/
+*.parameters.json
+*.compiled.json
+*.local.json
+*.env
+*.pem
+__pycache__/
+*.pyc

@@ -51,6 +51,11 @@ function binaries() {
   }
 }
 
+/** Discover pinned native binaries for another isolated, socket-only fixture. */
+export function discoverStudioPostgresBinaries() {
+  return binaries();
+}
+
 /** Capture pg's environment fallbacks synchronously without ambient PG settings. */
 export function createStudioFixtureClient(config) {
   const inherited = Object.entries(process.env).filter(([key]) => key.startsWith('PG'));

@@ -1,0 +1,7 @@
+{
+  "name": "vfuture-academy-cost-guard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Independently scheduled exact-scope Azure cost protection",
+  "engines": { "node": "22.x" }
+}

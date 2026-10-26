@@ -9,7 +9,6 @@ import { Button, Input } from '@/components/ui/classic';
 import { PendingSubmit } from '@/features/workspace-ui/auth/PendingSubmit';
 import { Kicker } from '@/features/workspace-ui/ui/primitives';
 import { navigateAfterAuth } from '@/lib/post-auth-navigation';
-import { profileState } from '@/lib/profile-state';
 import { routes } from '@/lib/routes';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { supabaseBrowser } from '@/lib/supabase/client';
@@ -18,6 +17,10 @@ const credentialsSchema = z.object({ email: z.string().trim().email(), password:
 const emailSchema = credentialsSchema.pick({ email: true });
 
 export const LOGIN_COOLDOWN_MS = 3000;
+
+const PROFILE_STATE_PATH = '/api/v1/auth/profile-state';
+/** A bounded wait so a hung profile read ends in the retryable profile error, not a stuck form. */
+export const PROFILE_STATE_TIMEOUT_MS = 15_000;
 
 /** `bench` renders the Calibration Bench visuals (spec 4.1); without it the legacy markup is unchanged. */
 type AuthFormProps = { mode: 'login' | 'signup'; bench?: boolean };
@@ -28,9 +31,35 @@ function callbackUrl(next: string) {
   return url.toString();
 }
 
-async function postAuthDestination(userId: string, next: string) {
-  const profile = await supabaseBrowser().from('profiles').select('handle').eq('id', userId).maybeSingle();
-  const state = profileState(profile);
+/**
+ * Asks the server for the caller's onboarding state through the authenticated
+ * same-origin endpoint. Any failure (status, body, abort, network) is "unavailable".
+ */
+async function readProfileState(): Promise<'complete' | 'incomplete' | null> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), PROFILE_STATE_TIMEOUT_MS);
+  try {
+    const response = await fetch(PROFILE_STATE_PATH, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    const data = typeof payload === 'object' && payload !== null && 'data' in payload ? payload.data : null;
+    const state = typeof data === 'object' && data !== null && 'state' in data ? data.state : null;
+    return state === 'complete' || state === 'incomplete' ? state : null;
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function postAuthDestination(next: string) {
+  const state = await readProfileState();
   if (state === 'complete') return next;
   if (state === 'incomplete') return routes.auth.welcome({ next });
   return null;
@@ -93,7 +122,7 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
           return;
         }
         if (data?.session && data.user) {
-          const destination = await postAuthDestination(data.user.id, next);
+          const destination = await postAuthDestination(next);
           if (!destination) setServerError(t('profileLoadError'));
           else navigateAfterAuth(destination);
           return;
@@ -112,7 +141,7 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
         setServerError(t('sessionError'));
         return;
       }
-      const destination = await postAuthDestination(data.user.id, next);
+      const destination = await postAuthDestination(next);
       if (!destination) setServerError(t('profileLoadError'));
       else navigateAfterAuth(destination);
     } catch {

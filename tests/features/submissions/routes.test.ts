@@ -39,7 +39,6 @@ import { POST as submitAssignment } from '@/app/api/v1/assignments/submit/route'
 import { GET as queueSubmissions } from '@/app/api/v1/studio/submissions/route';
 import { POST as gradeSubmission } from '@/app/api/v1/studio/submissions/[id]/grade/route';
 import { POST as upload } from '@/app/api/v1/uploads/route';
-import { MAX_MEDIA_BYTES } from '@/features/media/upload';
 import { ApiError } from '@/lib/api';
 
 const learner = { id: 'learner-1' };
@@ -272,229 +271,27 @@ describe('assignment API routes', () => {
   });
 });
 
-describe('learner upload route', () => {
-  const uploadFile = vi.fn();
-  const remove = vi.fn();
-  const insert = vi.fn();
-  const claimUpload = vi.fn();
-  const updateProfile = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.requireApiUser.mockResolvedValue(learner);
-    mocks.authorizeUpload.mockResolvedValue({ courseVersionId: 'version-1', itemId: 'assignment' });
-    mocks.imageSize.mockReturnValue({ width: 640, height: 480 });
-    uploadFile.mockResolvedValue({ error: null });
-    remove.mockResolvedValue({ error: null });
-    insert.mockResolvedValue({ error: null });
-    claimUpload.mockResolvedValue({ data: true, error: null });
-    updateProfile.mockResolvedValue({ error: null });
-    mocks.supabaseService.mockReturnValue({
-      storage: { from: vi.fn(() => ({ upload: uploadFile, remove })) },
-      from: vi.fn((table: string) => table === 'profiles'
-        ? { update: vi.fn(() => ({ eq: vi.fn(() => updateProfile()) })) }
-        : { insert }),
-      rpc: claimUpload,
-    });
-  });
-
-  it('stores a profile image through the shared upload endpoint without assignment context', async () => {
-    const response = await upload(uploadRequest(
-      new File([new Uint8Array([137, 80, 78, 71])], 'avatar.png', { type: 'image/png' }),
-      { courseId: null, itemId: null, purpose: 'avatar' },
-    ));
-
-    expect(response.status).toBe(200);
-    expect(mocks.authorizeUpload).not.toHaveBeenCalled();
-    expect(mocks.supabaseService.mock.results[0].value.storage.from).toHaveBeenCalledWith('media');
-    expect(updateProfile).toHaveBeenCalledOnce();
-    await expect(response.json()).resolves.toEqual({ data: expect.objectContaining({
-      assetId: expect.stringMatching(/^asset_/), url: expect.stringMatching(/^\/api\/v1\/media\/asset_/),
-    }) });
-  });
-
-  it('stores a project cover in the media bucket without touching the learner profile', async () => {
-    const response = await upload(uploadRequest(
-      new File([new Uint8Array([137, 80, 78, 71])], 'cover.png', { type: 'image/png' }),
-      { courseId: null, itemId: null, purpose: 'project_cover' },
-    ));
-
-    expect(response.status).toBe(200);
-    expect(mocks.authorizeUpload).not.toHaveBeenCalled();
-    expect(mocks.supabaseService.mock.results[0].value.storage.from).toHaveBeenCalledWith('media');
-    expect(mocks.supabaseService.mock.results[0].value.from).not.toHaveBeenCalledWith('profiles');
-    expect(updateProfile).not.toHaveBeenCalled();
-    expect(uploadFile).toHaveBeenCalledWith(
-      expect.stringMatching(/^learner-1\/project-cover\/asset_[A-Z0-9]+\/cover\.png$/),
-      expect.any(File),
-      { contentType: 'image/png', upsert: false },
-    );
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
-      owner_id: 'learner-1', bucket: 'media', purpose: 'project_cover', mime: 'image/png',
-    }));
-    expect(claimUpload).toHaveBeenCalledWith('rate_limit', expect.objectContaining({
-      key: 'learner:upload:user:learner-1',
-    }));
-    await expect(response.json()).resolves.toEqual({ data: {
-      assetId: expect.stringMatching(/^asset_/),
-      url: expect.stringMatching(/^\/api\/v1\/media\/asset_/),
-      name: 'cover.png',
-      size: 4,
-      mime: 'image/png',
-    } });
-  });
-
-  it('rejects a project cover that is not a JPEG, PNG, or WebP image', async () => {
-    const response = await upload(uploadRequest(
-      new File([new Uint8Array([71, 73, 70, 56])], 'cover.gif', { type: 'image/gif' }),
-      { courseId: null, itemId: null, purpose: 'project_cover' },
-    ));
-
-    expect(response.status).toBe(415);
-    await expect(response.json()).resolves.toMatchObject({ error: { code: 'UNSUPPORTED_PROJECT_COVER' } });
-    expect(uploadFile).not.toHaveBeenCalled();
-    expect(insert).not.toHaveBeenCalled();
-    expect(updateProfile).not.toHaveBeenCalled();
-  });
-
-  it('stores a learner file in the private submissions bucket under the learner prefix', async () => {
-    const response = await upload(uploadRequest(new File(['pdf'], '../work.pdf', { type: 'application/pdf' })));
-
-    expect(response.status).toBe(200);
-    const storageFrom = mocks.supabaseService.mock.results[0].value.storage.from;
-    expect(storageFrom).toHaveBeenCalledWith('submissions');
-    expect(uploadFile).toHaveBeenCalledWith(
-      expect.stringMatching(/^learner-1\/asset_[A-Z0-9]+\/work\.pdf$/),
-      expect.any(File),
-      { contentType: 'application/pdf', upsert: false },
-    );
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
-      owner_id: 'learner-1', bucket: 'submissions', item_id: 'assignment', mime: 'application/pdf', size_bytes: 3,
-    }));
-    expect(mocks.authorizeUpload).toHaveBeenCalledWith(
-      learnerActor,
-      { courseId: 'course-1', itemId: 'assignment', blockId: null },
-      { size: 3, mime: 'application/pdf' },
-    );
-    await expect(response.json()).resolves.toEqual({ data: {
-      assetId: expect.stringMatching(/^asset_/), name: 'work.pdf', size: 3, mime: 'application/pdf',
-    } });
-  });
-
-  it('accepts the assignment-spec ZIP MIME when its extension matches', async () => {
-    const response = await upload(uploadRequest(new File(['zip'], 'project.zip', { type: 'application/zip' })));
-
-    expect(response.status).toBe(200);
-    expect(uploadFile).toHaveBeenCalledWith(
-      expect.stringMatching(/\/project\.zip$/),
-      expect.any(File),
-      { contentType: 'application/zip', upsert: false },
-    );
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ mime: 'application/zip' }));
-  });
-
-  it('rejects MIME-extension mismatches before writing storage', async () => {
-    const response = await upload(uploadRequest(new File(['payload'], 'work.exe', { type: 'application/pdf' })));
-
-    expect(response.status).toBe(415);
-    expect(uploadFile).not.toHaveBeenCalled();
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it('requires courseId and itemId before authorizing or storing a learner upload', async () => {
-    const response = await upload(uploadRequest(
-      new File(['pdf'], 'work.pdf', { type: 'application/pdf' }),
-      { itemId: null },
-    ));
-
-    expect(response.status).toBe(400);
-    expect(mocks.authorizeUpload).not.toHaveBeenCalled();
-    expect(uploadFile).not.toHaveBeenCalled();
-  });
-
-  it('enforces the enrolled assignment file spec before storage is touched', async () => {
-    mocks.authorizeUpload.mockRejectedValue(new ApiError(413, 'FILE_TOO_LARGE', 'Submission file exceeds the assignment size limit'));
-
-    const response = await upload(uploadRequest(new File(['pdf'], 'work.pdf', { type: 'application/pdf' })));
-
-    expect(response.status).toBe(413);
-    expect(uploadFile).not.toHaveBeenCalled();
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it('rejects oversized Content-Length before parsing multipart data', async () => {
-    const formData = vi.fn();
-    const request = {
-      headers: new Headers({ 'Content-Length': String(MAX_MEDIA_BYTES + 1) }),
-      formData,
-    } as unknown as Request;
-
+describe('retired learner multipart upload route', () => {
+  beforeEach(() => { vi.clearAllMocks(); mocks.requireApiUser.mockResolvedValue(learner); });
+  it.each(['avatar', 'project_cover', 'submission'])('requires direct reservation for %s without parsing or storage access', async (purpose) => {
+    const request = uploadRequest(new File(['payload'], 'work.txt', { type: 'text/plain' }), { purpose });
+    const parse = vi.spyOn(request, 'formData');
     const response = await upload(request);
-
-    expect(response.status).toBe(413);
-    expect(formData).not.toHaveBeenCalled();
-    expect(uploadFile).not.toHaveBeenCalled();
+    expect(response.status).toBe(410);
+    expect((await response.json()).error.code).toBe('DIRECT_UPLOAD_REQUIRED');
+    expect(parse).not.toHaveBeenCalled();
+    expect(mocks.supabaseService).not.toHaveBeenCalled();
   });
-
-  it('rejects Content-Length zero as an empty upload with a clear 400 response', async () => {
-    const formData = vi.fn();
-    const request = {
-      headers: new Headers({ 'Content-Length': '0' }),
-      formData,
-    } as unknown as Request;
-
-    const response = await upload(request);
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: { code: 'EMPTY_UPLOAD', message: 'Upload body must not be empty' },
-    });
-    expect(formData).not.toHaveBeenCalled();
+  it('rejects declared bodies above four MiB before parsing', async () => {
+    const request = new Request('http://localhost/api/v1/uploads', { method: 'POST', headers: { 'content-length': String(4 * 1024 * 1024 + 1) } });
+    expect((await upload(request)).status).toBe(413);
   });
-
-  it('accepts a chunked multipart upload through the bounded body reader', async () => {
-    const response = await upload(chunkedUploadRequest(
-      new File(['pdf'], 'work.pdf', { type: 'application/pdf' }),
-    ));
-
-    expect(response.status).toBe(200);
-    expect(uploadFile).toHaveBeenCalledOnce();
+  it('does not permit a chunked multipart bypass', async () => {
+    expect((await upload(chunkedUploadRequest(new File(['work'], 'work.txt', { type: 'text/plain' })))).status).toBe(410);
+    expect(mocks.supabaseService).not.toHaveBeenCalled();
   });
-
-  it('authenticates before parsing multipart data', async () => {
+  it('authenticates before retiring the request', async () => {
     mocks.requireApiUser.mockRejectedValue(new ApiError(401, 'UNAUTHENTICATED', 'Authentication required'));
-    const formData = vi.fn();
-    const request = {
-      headers: new Headers({ 'Content-Length': '1024' }),
-      formData,
-    } as unknown as Request;
-
-    const response = await upload(request);
-
-    expect(response.status).toBe(401);
-    expect(formData).not.toHaveBeenCalled();
-    expect(uploadFile).not.toHaveBeenCalled();
-  });
-
-  it('rate limits repeated uploads per authenticated learner before parsing the next body', async () => {
-    mocks.requireApiUser.mockResolvedValue({ id: 'rate-limited-learner' });
-    claimUpload.mockImplementation(async () => ({
-      data: claimUpload.mock.calls.length <= 10,
-      error: null,
-    }));
-    const responses: Response[] = [];
-    for (let index = 0; index < 11; index += 1) {
-      responses.push(await upload(uploadRequest(new File(['pdf'], `work-${index}.pdf`, { type: 'application/pdf' }))));
-    }
-
-    expect(responses.slice(0, 10).every(({ status }) => status === 200)).toBe(true);
-    expect(responses[10].status).toBe(429);
-    await expect(responses[10].json()).resolves.toEqual({
-      error: { code: 'RATE_LIMITED', message: 'Too many uploads; try again later' },
-    });
-    expect(uploadFile).toHaveBeenCalledTimes(10);
-    expect(claimUpload).toHaveBeenCalledWith('rate_limit', {
-      key: 'learner:upload:user:rate-limited-learner', limit: 10, window_seconds: 60,
-    });
+    expect((await upload(uploadRequest(new File(['work'], 'work.txt')))).status).toBe(401);
   });
 });

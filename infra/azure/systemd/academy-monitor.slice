@@ -1,0 +1,5 @@
+[Unit]
+Description=Combined Academy host monitoring memory budget
+[Slice]
+MemoryMax=64M
+CPUQuota=10%

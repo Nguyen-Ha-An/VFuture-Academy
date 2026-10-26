@@ -242,7 +242,7 @@ describe('Plan 2 shared route rate limits', () => {
   });
 
   it.each([
-    'src/app/api/v1/uploads/route.ts',
+    'src/app/api/v1/uploads/reserve/route.ts',
     'src/app/api/v1/analytics/route.ts',
     'src/app/api/v1/schema/validate/route.ts',
   ])('enforces a PostgreSQL rate limit in %s', (relativePath) => {

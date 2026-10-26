@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Academy cost guard configuration v1",
+  "type": "object",
+  "required": [
+    "version",
+    "enabled",
+    "subscriptionId",
+    "resourceGroup",
+    "vmResourceId",
+    "expectedTags",
+    "rates",
+    "grant",
+    "benefits",
+    "storage"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "default": true,
+      "description": "Only explicit false permits any cloud mutation."
+    },
+    "allowOperatorCostFallback": {
+      "type": "boolean",
+      "default": false
+    },
+    "subscriptionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "resourceGroup": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,90}$"
+    },
+    "vmResourceId": {
+      "type": "string",
+      "description": "Exact ARM VM ID; runtime validates subscription/group match and forbids wildcard/suffix paths."
+    },
+    "expectedTags": {
+      "type": "object",
+      "required": [
+        "project",
+        "environment"
+      ],
+      "properties": {
+        "project": {
+          "const": "vfuture-academy"
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximumHourlyUsd",
+        "retainedDailyUsd",
+        "retainedDays",
+        "operatingMonthlyUsdNoBenefits",
+        "operatingMonthlyUsdWithBenefits"
+      ],
+      "properties": {
+        "maximumHourlyUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Reviewed maximum all-resource unseen fixed hourly charge, including independent guard hosting."
+        },
+        "retainedDailyUsd": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Positive retained disk/IP/backup/guard daily cost after deallocation."
+        },
+        "retainedDays": {
+          "type": "integer",
+          "minimum": 30,
+          "description": "Reservation horizon, never an automatic deletion deadline."
+        },
+        "operatingMonthlyUsdNoBenefits": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 90,
+          "description": "Operator-reviewed whole-inventory monthly operating forecast without benefits; distinct from the $90 spending envelope. Must include bounded backup/transfer/guard/SMTP/operation usage."
+        },
+        "operatingMonthlyUsdWithBenefits": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 70,
+          "description": "Same reviewed whole-inventory forecast with actual confirmed meter benefits, distinct from the $70 envelope. Not inferred from MAU."
+        }
+      }
+    },
+    "benefits": {
+      "type": "object",
+      "required": [
+        "confirmed",
+        "meterIds",
+        "expiresAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "confirmed": {
+          "type": "boolean"
+        },
+        "meterIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "expiresAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      },
+      "if": {
+        "properties": {
+          "confirmed": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "meterIds": {
+            "minItems": 1
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "required": [
+        "account",
+        "controlContainer",
+        "stateContainer",
+        "snapshotContainer",
+        "telemetryContainer"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string",
+          "pattern": "^[a-z0-9]{3,24}$"
+        },
+        "controlContainer": {
+          "type": "string",
+          "description": "Guard writes, VM reads."
+        },
+        "stateContainer": {
+          "type": "string",
+          "description": "Guard-only writes and state lease. Operator bootstraps exactly once."
+        },
+        "snapshotContainer": {
+          "type": "string",
+          "description": "Trusted financial operator writes, guard reads, VM has no access."
+        },
+        "telemetryContainer": {
+          "type": "string",
+          "description": "VM writes only telemetry/checkpoint; guard reads."
+        }
+      }
+    },
+    "grant": {
+      "type": "object",
+      "required": [
+        "startsAt",
+        "endsAt"
+      ],
+      "additionalProperties": false,
+      "description": "Operator-verified grant-year dates; never inferred from benefit expiry. Positive period no longer than 366 days.",
+      "properties": {
+        "startsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endsAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "accountingMode": {
+      "enum": [
+        "automated-baseline",
+        "manual-snapshot"
+      ],
+      "default": "automated-baseline",
+      "description": "Default unattended verified baseline plus complete subscription usage deltas. Manual mode explicitly opts into fresh operator snapshots."
+    },
+    "baselineId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,128}$",
+      "description": "Exact immutable verified baseline ID. Required for automated accounting."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "required": [
+            "accountingMode"
+          ],
+          "properties": {
+            "accountingMode": {
+              "const": "manual-snapshot"
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "baselineId"
+        ]
+      }
+    }
+  ]
+}

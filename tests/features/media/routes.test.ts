@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
@@ -243,6 +243,23 @@ describe('authenticated media redirect route', () => {
     });
   });
 
+  afterEach(() => vi.unstubAllEnvs());
+  it('binds a private redirect to the authorized viewer and stored size', async () => {
+    vi.stubEnv('SUPABASE_GATEWAY_KEY', 'gateway-test');
+    vi.stubEnv('SUPABASE_TRANSFER_GRANT_KEY', 'transfer-test-secret-'.repeat(3));
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://storage.example');
+    const viewer = '11111111-1111-4111-8111-111111111111';
+    mocks.getActor.mockResolvedValue({ userId: viewer, roles: [] });
+    mocks.canViewProjectCover.mockResolvedValue(true);
+    maybeSingle.mockResolvedValue({ data: { owner_id: 'someone-else', bucket: 'media', path: 'media/asset_X/file.pdf', mime: 'application/pdf', size_bytes: 4321 }, error: null });
+    createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://storage.example/storage/v1/object/sign/media/media/asset_X/file.pdf?token=signed' }, error: null });
+    const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
+    expect(response.status).toBe(302);
+    const grant = new URL(response.headers.get('location')!).searchParams.get('gateway_grant');
+    expect(grant).toBeTruthy();
+    expect(JSON.parse(Buffer.from(grant!.split('.')[0], 'base64url').toString())).toMatchObject({ sub: viewer, maxBytes: 4321, method: 'GET' });
+  });
+
   it('requires an authenticated actor before creating a one-hour signed redirect', async () => {
     mocks.requireApiUser.mockRejectedValue(new ApiError(401, 'UNAUTHENTICATED', 'Authentication required'));
     const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
@@ -259,7 +276,7 @@ describe('authenticated media redirect route', () => {
     expect(response.headers.get('location')).toBe('https://storage.example/signed');
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(response.headers.get('vary')).toBe('Cookie');
-    expect(select).toHaveBeenCalledWith('owner_id,bucket,path,mime,ownership_kind,owner_branch_id');
+    expect(select).toHaveBeenCalledWith('owner_id,bucket,path,mime,ownership_kind,owner_branch_id,size_bytes');
     expect(eq).toHaveBeenCalledWith('id', 'asset_X');
     expect(createSignedUrl).toHaveBeenCalledWith('media/asset_X/file.pdf', 60 * 60);
   });

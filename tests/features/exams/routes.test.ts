@@ -516,6 +516,8 @@ describe('exam error mapping', () => {
   it.each([
     ['EXAM_CLOSED', 409],
     ['NO_ATTEMPTS', 409],
+    ['EXAM_CAPACITY', 503],
+    ['EXAM_STARTS_PAUSED', 503],
     ['ATTEMPT_NOT_ACTIVE', 409],
     ['DEADLINE_PASSED', 409],
     ['SECTION_DEADLINE_PASSED', 409],
@@ -534,6 +536,7 @@ describe('exam error mapping', () => {
     });
 
     expect(response.status).toBe(status);
+    if (status === 503) expect(response.headers.get('retry-after')).toBe('60');
     await expect(response.json()).resolves.toEqual({ error: { code, message: 'mapped failure' } });
   });
 });

@@ -1,0 +1,13 @@
+{
+  "storageAccount": "replacefromdeploymentoutputs",
+  "keyVault": "replace-from-outputs",
+  "vmResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vfuture-academy-sg/providers/Microsoft.Compute/virtualMachines/academy-sg-vm",
+  "pendingVariableUsd": null,
+  "backupAgeRecipient": "replace-with-offline-recovery-age-public-recipient",
+  "dailyBackupEnabled": false,
+  "secretVersions": {
+    "academy-runtime-env": "replace-with-exact-key-vault-version",
+    "academy-tls-cert": "replace-with-exact-key-vault-version",
+    "academy-tls-key": "replace-with-exact-key-vault-version"
+  }
+}

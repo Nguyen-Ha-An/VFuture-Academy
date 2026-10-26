@@ -1,0 +1,8 @@
+[Unit]
+Description=Check for an approved Academy financial drain
+[Timer]
+OnBootSec=60s
+OnUnitInactiveSec=5min
+AccuracySec=5s
+[Install]
+WantedBy=timers.target

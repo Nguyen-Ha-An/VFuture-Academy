@@ -7,10 +7,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProfileSettings } from '@/features/learner/ui/ProfileSettings';
 import en from '@/messages/en.json';
 
+const upload = vi.hoisted(() => vi.fn());
+vi.mock('@/features/media/direct-upload-client', () => ({ directUploadFile: upload }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 afterEach(() => {
   cleanup();
+  upload.mockReset();
   vi.unstubAllGlobals();
 });
 
@@ -34,7 +37,7 @@ describe('profile account card', () => {
   });
 
   it('reports a failed photo upload in a fault Notice', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 'X' } }), { status: 400 })));
+    upload.mockRejectedValue(new Error('upload failed'));
     const { container } = renderAccount();
 
     fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, {
@@ -45,4 +48,13 @@ describe('profile account card', () => {
     expect(notice).toHaveAttribute('role', 'alert');
     expect(notice).toHaveAttribute('data-tone', 'fault');
   });
+  it('uses the direct avatar flow and displays the finalized media URL', async () => {
+    upload.mockResolvedValue({ assetId: 'asset_one', url: '/api/v1/media/asset_one' });
+    const { container } = renderAccount();
+    const file = new File(['png'], 'photo.png', { type: 'image/png' });
+    fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [file] } });
+    expect(upload).toHaveBeenCalledWith(file, { purpose: 'avatar' });
+    expect(await screen.findByRole('presentation')).toHaveAttribute('src', '/api/v1/media/asset_one');
+  });
+
 });

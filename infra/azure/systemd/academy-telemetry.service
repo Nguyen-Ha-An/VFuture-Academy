@@ -1,0 +1,16 @@
+[Unit]
+Description=Publish Academy bounded gateway and disk telemetry
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/srv/academy /srv/academy/objects
+[Service]
+Slice=academy-monitor.slice
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/vfuture-academy/infra/azure/scripts/azure-host.py upload-telemetry
+MemoryMax=64M
+TimeoutStartSec=25
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/academy

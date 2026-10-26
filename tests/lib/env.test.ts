@@ -66,6 +66,30 @@ describe('environment validation', () => {
     expect(env.NEXT_PUBLIC_CONTACT_EMAIL).toBe('schools@vfuturelabs.org');
   });
 
+  it('treats an unset or empty gateway key as absent and accepts a header-safe token', async () => {
+    const { readEnvironment } = await import('@/lib/env');
+    const token = 'kT3vQ8n1Zp0xYw5uLr7sJc2bHd9eGf4aMi6oNq1VtXyAzBlCkD+EgFhIjKm/=';
+
+    expect(readEnvironment({ ...validEnvironment }).SUPABASE_GATEWAY_KEY).toBeUndefined();
+    expect(readEnvironment({ ...validEnvironment, SUPABASE_GATEWAY_KEY: '' }).SUPABASE_GATEWAY_KEY).toBeUndefined();
+    expect(readEnvironment({ ...validEnvironment, SUPABASE_GATEWAY_KEY: token }).SUPABASE_GATEWAY_KEY).toBe(token);
+  });
+
+  it('rejects a malformed gateway key by name only, never echoing the value', async () => {
+    const { readEnvironment } = await import('@/lib/env');
+    const secret = 'LEAKED GATEWAY VALUE with spaces';
+
+    let thrown: unknown;
+    try {
+      readEnvironment({ ...validEnvironment, SUPABASE_GATEWAY_KEY: secret });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect((thrown as Error).message).toBe('Missing or invalid environment variables: SUPABASE_GATEWAY_KEY');
+    expect(String((thrown as Error).stack)).not.toContain(secret);
+  });
+
   it('runs the production anonymous rate-limit identity check on first runtime access', async () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', validEnvironment.NEXT_PUBLIC_SUPABASE_URL);
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY);

@@ -3,6 +3,7 @@ import 'server-only';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { resolveL10nString, type L10nString, type Locale } from '@/content-engine';
 import { ApiError } from '@/lib/api';
+import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
 import { mediaAssetId } from '@/features/media/upload';
 import type { CertificatePdfInput } from './CertificateDocument';
 
@@ -181,10 +182,11 @@ async function signedArtifactUrl(
   database: CertificateDatabase,
   ownerId: string,
   assetId: string | null,
+  viewer: string,
 ): Promise<string | null> {
   if (!assetId) return null;
   const assetResult = await database.from('media_assets')
-    .select('owner_id,bucket,path')
+    .select('owner_id,bucket,path,size_bytes')
     .eq('id', assetId)
     .eq('owner_id', ownerId)
     .maybeSingle();
@@ -201,7 +203,10 @@ async function signedArtifactUrl(
   if (signedResult.error || typeof signedResult.data?.signedUrl !== 'string') {
     throw new ApiError(500, 'CERTIFICATE_STORAGE_ERROR', 'Certificate PDF could not be signed');
   }
-  return signedResult.data.signedUrl;
+  return grantStorageTransferUrl(signedResult.data.signedUrl, {
+    subject: viewer, method: 'GET', bucket: CERTIFICATES_BUCKET, path: asset.path,
+    maxBytes: asset.size_bytes, expiresIn: SIGNED_URL_TTL_SECONDS,
+  });
 }
 
 export function createCertificateService(dependencies: Dependencies) {
@@ -330,18 +335,13 @@ export function createCertificateService(dependencies: Dependencies) {
       || typeof certificate.serial !== 'string'
       || typeof certificate.issued_at !== 'string'
     ) return null;
-    const [profileResult, outlineResult, pdfUrl] = await Promise.all([
+    const [profileResult, outlineResult] = await Promise.all([
       database.from('profiles').select('display_name,handle,locale').eq('id', certificate.user_id).maybeSingle(),
       database.from('course_version_outline')
         .select('meta,default_language')
         .eq('version_id', certificate.course_version_id)
         .eq('course_id', certificate.course_id)
         .maybeSingle(),
-      signedArtifactUrl(
-        database,
-        certificate.user_id,
-        typeof certificate.pdf_asset_id === 'string' ? certificate.pdf_asset_id : null,
-      ),
     ]);
     if (profileResult.error || outlineResult.error) databaseFailure('Certificate could not be verified');
     const profile = record(profileResult.data);
@@ -352,6 +352,11 @@ export function createCertificateService(dependencies: Dependencies) {
     const learnerDisplayName = boundedText(profile.display_name, boundedText(profile.handle, 'Learner'));
     const courseTitle = boundedText(localizedTitle(outline.meta, locale, defaultLocale));
     if (!courseTitle) return null;
+    const pdfUrl = await signedArtifactUrl(
+      database, certificate.user_id,
+      typeof certificate.pdf_asset_id === 'string' ? certificate.pdf_asset_id : null,
+      'public',
+    );
     return {
       learnerDisplayName,
       courseTitle,
@@ -370,7 +375,7 @@ export function createCertificateService(dependencies: Dependencies) {
     if (certificateResult.error) databaseFailure('Certificate could not be loaded');
     const certificate = parsedCertificate(certificateResult.data);
     if (!certificate || certificate.userId !== userId) return null;
-    return signedArtifactUrl(database, userId, certificate.pdfAssetId);
+    return signedArtifactUrl(database, userId, certificate.pdfAssetId, userId);
   }
 
   async function listForUser(userId: string) {

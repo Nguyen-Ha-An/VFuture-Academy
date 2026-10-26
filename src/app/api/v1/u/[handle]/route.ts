@@ -15,10 +15,13 @@ const handleGet = withHandler(async (_request, context) => {
 });
 
 export async function GET(request: Request, context: RouteContext) {
-  const rateLimit = checkPublicRateLimit(request);
+  const rateLimit = await checkPublicRateLimit(request);
   if (!rateLimit.allowed) {
     return applyPublicResponseHeaders(
-      fail(429, 'RATE_LIMITED', 'Too many requests'),
+      fail(rateLimit.status ?? 429,
+        rateLimit.status === 503 ? 'RATE_LIMIT_UNAVAILABLE' : 'RATE_LIMITED',
+        rateLimit.status === 503 ? 'Rate limit service is unavailable' : 'Too many requests',
+        undefined, { 'Retry-After': '60' }),
       rateLimit,
     );
   }

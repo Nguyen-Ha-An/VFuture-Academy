@@ -1,0 +1,14 @@
+[Unit]
+Description=Academy encrypted backup after independently approved drain
+After=docker.service
+Requires=docker.service
+RequiresMountsFor=/srv/academy /srv/academy/objects
+[Service]
+Type=oneshot
+ExecStart=/opt/vfuture-academy/infra/azure/scripts/backup.sh --approved-drain
+MemoryMax=256M
+CPUQuota=50%
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=14400
+NoNewPrivileges=true

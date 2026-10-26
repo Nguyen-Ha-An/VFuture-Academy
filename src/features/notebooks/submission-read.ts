@@ -49,5 +49,5 @@ export async function readSubmissionNotebook(
     row.checksum !== reference.checksum
   )
     throw unavailable();
-  return signedArtifact(row, db);
+  return signedArtifact(row, actor, db);
 }

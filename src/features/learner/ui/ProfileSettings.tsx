@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
+import { directUploadFile } from '@/features/media/direct-upload-client';
 import { Card, Notice } from '@/features/workspace-ui/ui/primitives';
 
 /** The profile Account card: photo, display name and language (DESIGN D14: vf-btn, Notice). */
@@ -32,13 +33,9 @@ export function ProfileSettings({
     setUploading(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.set('purpose', 'avatar');
-      form.set('file', file);
-      const response = await fetch('/api/v1/uploads', { method: 'POST', body: form });
-      const body = await response.json() as { data?: { url?: string } };
-      if (!response.ok || typeof body.data?.url !== 'string') throw new Error('avatar upload failed');
-      setAvatarUrl(body.data.url);
+      const uploaded = await directUploadFile(file, { purpose: 'avatar' });
+      if (typeof uploaded.url !== 'string') throw new Error('avatar upload failed');
+      setAvatarUrl(uploaded.url);
       router.refresh();
     } catch {
       setError(t('uploadError'));
