@@ -155,7 +155,7 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithProvider = async (provider: 'google' | 'azure') => {
     if (submitting) return;
     setServerError(null);
     setFieldErrors({});
@@ -163,8 +163,11 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
     setSubmitting(true);
     try {
       const { error: oauthError } = await supabaseBrowser().auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: callbackUrl(next) },
+        provider,
+        options: {
+          redirectTo: callbackUrl(next),
+          ...(provider === 'azure' ? { scopes: 'email' } : {}),
+        },
       });
       if (oauthError) setServerError(t('providerError'));
     } catch {
@@ -215,7 +218,10 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
       {bench ? <Kicker>{callbackReason === 'expired' ? tb('kicker.linkExpired') : tb(mode === 'login' ? 'kicker.login' : 'kicker.signup')}</Kicker> : null}
       <h1 id="auth-title" className={bench ? 'vf-title-sm' : 'text-2xl font-semibold'}>{title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? t('loginDescription') : t('signupDescription')}</p>
-      <Button className="mt-6 min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={signInWithGoogle} disabled={submitting}>{t('continueGoogle')}</Button>
+      <div className="mt-6 space-y-3">
+        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('google')} disabled={submitting}>{t('continueGoogle')}</Button>
+        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('azure')} disabled={submitting}>{t('continueMicrosoft')}</Button>
+      </div>
       <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border" /><span className="text-xs text-muted-foreground">{t('or')}</span><span className="h-px flex-1 bg-border" /></div>
       <form action={submitCredentials} noValidate className="space-y-4">
         <div className="space-y-1.5"><label htmlFor="auth-email" className="text-sm font-medium">{t('email')}</label><Input ref={emailRef} id="auth-email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'auth-email-error' : undefined} aria-errormessage={fieldErrors.email ? 'auth-email-error' : undefined} />{fieldErrors.email ? <p id="auth-email-error" role="alert" className="text-sm text-destructive">{fieldErrors.email}</p> : null}</div>

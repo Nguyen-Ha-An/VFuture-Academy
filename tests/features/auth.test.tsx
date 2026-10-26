@@ -6,6 +6,7 @@ import { AuthSessionMissingError } from '@supabase/supabase-js';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '@/messages/en.json';
+import { withBenchMessages } from '@/messages/bench';
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((path: string) => {
@@ -38,7 +39,7 @@ import { POST as signout } from '@/app/auth/signout/route';
 import { profileState } from '@/lib/profile-state';
 
 function Provider({ children }: { children: React.ReactNode }) {
-  return <NextIntlClientProvider locale="en" messages={en}>{children}</NextIntlClientProvider>;
+  return <NextIntlClientProvider locale="en" messages={withBenchMessages(en, 'en')}>{children}</NextIntlClientProvider>;
 }
 
 function authenticatedClient(overrides: Record<string, unknown> = {}) {
@@ -294,7 +295,7 @@ describe('authentication and onboarding', () => {
     const user = userEvent.setup();
 
     render(<Provider><AuthForm mode="login" /></Provider>);
-    expect(screen.getByRole('alert')).toHaveTextContent('Google sign-in could not be completed. Please try again.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Sign-in could not be completed. Please try again.');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
     const email = screen.getByLabelText('Email');
@@ -322,19 +323,86 @@ describe('authentication and onboarding', () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
-  it('offers an accessible Google sign-in flow with the PKCE callback destination', async () => {
+  it.each([
+    { mode: 'login', bench: false, provider: 'google', label: 'Continue with Google' },
+    { mode: 'signup', bench: false, provider: 'google', label: 'Continue with Google' },
+    { mode: 'login', bench: true, provider: 'google', label: 'Continue with Google' },
+    { mode: 'signup', bench: true, provider: 'google', label: 'Continue with Google' },
+    { mode: 'login', bench: false, provider: 'azure', label: 'Continue with Microsoft' },
+    { mode: 'signup', bench: false, provider: 'azure', label: 'Continue with Microsoft' },
+    { mode: 'login', bench: true, provider: 'azure', label: 'Continue with Microsoft' },
+    { mode: 'signup', bench: true, provider: 'azure', label: 'Continue with Microsoft' },
+  ] as const)('starts $provider $mode with the PKCE destination (bench: $bench)', async ({ mode, bench, provider, label }) => {
     mocks.searchParams.mockReturnValue(new URLSearchParams('next=%2Fapp%2Fprofile%3Ftab%3Dskills'));
     const client = authenticatedClient();
     mocks.supabaseBrowser.mockReturnValue(client);
     const user = userEvent.setup();
 
-    render(<Provider><AuthForm mode="signup" /></Provider>);
-    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    render(<Provider><AuthForm mode={mode} bench={bench} /></Provider>);
+    await user.click(screen.getByRole('button', { name: label }));
 
     expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=%2Fapp%2Fprofile%3Ftab%3Dskills` },
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=%2Fapp%2Fprofile%3Ftab%3Dskills`,
+        ...(provider === 'azure' ? { scopes: 'email' } : {}),
+      },
     });
+  });
+
+  it('rejects an external next path before starting Microsoft sign-in', async () => {
+    mocks.searchParams.mockReturnValue(new URLSearchParams('next=https%3A%2F%2Fevil.example%2Fsteal'));
+    const client = authenticatedClient();
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
+
+    expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'azure',
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=%2Fapp`, scopes: 'email' },
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it.each(['returned', 'thrown'] as const)('shows a retryable provider error for a %s Microsoft failure without exposing details', async (failure) => {
+    const client = authenticatedClient();
+    if (failure === 'returned') client.auth.signInWithOAuth.mockResolvedValue({ error: new Error('private-provider-detail') });
+    else client.auth.signInWithOAuth.mockRejectedValue(new Error('private-provider-detail'));
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign-in could not be completed. Please try again.');
+    expect(screen.queryByText(/private-provider-detail/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('blocks other sign-in methods while Microsoft sign-in is pending', async () => {
+    let finish: ((value: { error: null }) => void) | undefined;
+    const client = authenticatedClient();
+    client.auth.signInWithOAuth.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    mocks.supabaseBrowser.mockReturnValue(client);
+    const user = userEvent.setup();
+
+    render(<Provider><AuthForm mode="login" /></Provider>);
+    await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
+
+    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(client.auth.signInWithOAuth).toHaveBeenCalledOnce();
+
+    await act(async () => { finish?.({ error: null }); });
+    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeEnabled();
   });
 
   it('sends existing users a magic sign-in link that preserves the requested destination', async () => {
@@ -444,9 +512,9 @@ describe('authentication and onboarding', () => {
   });
 
   it.each([
-    ['cancelled', 'Google sign-in was cancelled. You can try again.'],
+    ['cancelled', 'Sign-in was cancelled. You can try again.'],
     ['expired', 'This confirmation link has expired. Request a new link and try again.'],
-    ['provider', 'Google sign-in could not be completed. Please try again.'],
+    ['provider', 'Sign-in could not be completed. Please try again.'],
     ['profile', 'Your profile could not be loaded. Please try again.'],
   ])('shows a distinct %s callback failure', (reason, message) => {
     mocks.searchParams.mockReturnValue(new URLSearchParams(`error=${reason}&next=%2Fapp`));

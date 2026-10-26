@@ -122,6 +122,8 @@ describe('bench login', () => {
     await renderBench(LoginPage());
     const submit = document.querySelector('main form button[type="submit"]');
     expect(submit).toHaveTextContent('Sign in');
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toHaveAttribute('type', 'email');
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
     expect(screen.getByRole('link', { name: 'Forgot your password?' })).toHaveAttribute('href', '/forgot-password');
