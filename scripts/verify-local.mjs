@@ -12,8 +12,8 @@ const run = (command, args, env = {}) => {
   execFileSync(command, args, { stdio: 'inherit', env: { ...process.env, ...env } });
 };
 
-for (const task of ['graphify:check', 'typecheck', 'verify:azure', 'lint']) run('npm', ['run', task]);
-run('npm', ['test', '--', '--maxWorkers=2']);
+for (const task of ['graphify:check', 'typecheck', 'verify:azure', 'verify:azure-core', 'lint']) run('npm', ['run', task]);
+run('npm', ['test', '--', webpack ? '--maxWorkers=1' : '--maxWorkers=2']);
 for (const fixture of ['ai-foundations', 'all-question-types']) {
   run('npm', ['run', 'content:validate', '--', `src/content-engine/fixtures/${fixture}`, '--fixtures', '--publish']);
 }
@@ -37,10 +37,16 @@ try {
   run(process.execPath, ['scripts/verify-function-execution-grants.mjs', sqlRuntime]);
   run(process.execPath, ['scripts/verify-media-upload-reservations.mjs', '--native']);
   run(process.execPath, ['scripts/verify-media-upload-reservations.mjs', '--full-chain', sqlRuntime]);
+  const azureSqlEnvironment = {
+    PGLITE_MODULE_PATH: join(sqlRuntime, 'node_modules/@electric-sql/pglite'),
+  };
+  run(process.execPath, ['scripts/azure-core/rehearse.mjs'], azureSqlEnvironment);
+  run('npx', ['vitest', 'run', 'tests/scripts/azure-identity-schema.test.ts', 'tests/scripts/azure-admin-schema.test.ts', 'tests/scripts/azure-media-delete-schema.test.ts', '--maxWorkers=1'], azureSqlEnvironment);
 } finally { rmSync(sqlRuntime, { recursive: true, force: true }); }
 
 const browsers = full ? ['chromium', 'firefox', 'webkit'] : ['chromium'];
 run('npx', ['playwright', 'install', ...browsers]);
+run('npx', ['playwright', 'test', '--config', 'tests/e2e/auth-popup.config.ts'], { CI: 'true' });
 for (const config of ['studio', 'admin', 'student', 'student-runtime', ...(full ? ['student-visual'] : [])]) {
   const projects = config === 'student' || config === 'student-runtime' ? ['--project', ...browsers] : [];
   run('npx', ['playwright', 'test', '--config', `playwright.${config}.config.ts`, ...projects, '--reporter=line', '--trace', 'off'], { CI: 'true', STUDENT_CAPTURE_EVIDENCE: String(full) });

@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api';
 import { assertActiveAccount } from '@/lib/account-access';
 import { routes } from '@/lib/routes';
 import { REQUESTED_PATH_HEADER, safeInternalPath } from '@/lib/safe-internal-path';
+import { academyBackend } from '@/lib/identity/provider';
 import { supabaseUser } from '@/lib/supabase/server';
 
 /**
@@ -17,6 +18,7 @@ import { supabaseUser } from '@/lib/supabase/server';
  */
 export const getSessionUser = cache(async function getSessionUser() {
   try {
+    if (academyBackend() === 'azure') return (await import('@/lib/identity/server')).getAzureUser();
     const supabase = await supabaseUser();
     const { data, error } = await supabase.auth.getUser();
     if (!data.user && error && isAuthSessionMissingError(error)) return null;

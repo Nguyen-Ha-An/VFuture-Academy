@@ -3,6 +3,8 @@ import 'server-only';
 import { getDraft, type CourseDraft, type StudioDatabase } from '@/features/studio/drafts';
 import { env } from '@/lib/env';
 import { createServiceClient } from '@/lib/supabase/service-client';
+import { createAzureDataClient } from '@/lib/database/azure-client';
+import { academyBackend } from '@/lib/identity/provider';
 import { logMcpEvent } from '../log';
 
 const READ_TABLES = new Set([
@@ -97,7 +99,7 @@ function wrapQuery(query: RawQuery, selected: boolean): ReadOnlyQuery {
 }
 
 /** Test injection point; the production constructor never exposes its service client. */
-export function wrapReadOnlyDatabase(rawClient: unknown): ReadOnlyDatabase {
+export function wrapReadOnlyDatabase(rawClient: unknown, allowOAuthClientLookup = true): ReadOnlyDatabase {
   const client = rawClient as RawDatabase;
   return only({
     from(table: string): ReadOnlyQuery {
@@ -110,14 +112,16 @@ export function wrapReadOnlyDatabase(rawClient: unknown): ReadOnlyDatabase {
     },
     auth: only({ admin: only({ oauth: only({
       getClient(clientId: string) {
+        if (!allowOAuthClientLookup) throw new McpWriteAttemptError();
         return client.auth.admin.oauth.getClient(clientId);
       },
     }) }) }),
   });
 }
 
-/** The only MCP constructor of a service-role Supabase client. */
+/** The only MCP constructor of a service-role data client; no raw client escapes. */
 export function createReadOnlyDatabase(): ReadOnlyDatabase {
+  if (academyBackend() === 'azure') return wrapReadOnlyDatabase(createAzureDataClient('service_role'), false);
   return wrapReadOnlyDatabase(createServiceClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY));
 }
 

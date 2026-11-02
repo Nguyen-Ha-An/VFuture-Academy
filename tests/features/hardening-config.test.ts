@@ -52,7 +52,7 @@ describe('request-size platform hardening', () => {
   it('runs the secret-free Studio and other browser harnesses in the mandatory local gate', () => {
     const local = readFileSync(join(process.cwd(), 'scripts/verify-local.mjs'), 'utf8');
     expect(local).toContain("process.env.GITHUB_ACTIONS === 'true'");
-    expect(local).toContain("'graphify:check', 'typecheck', 'verify:azure', 'lint'");
+    expect(local).toContain("'graphify:check', 'typecheck', 'verify:azure', 'verify:azure-core', 'lint'");
     expect(local).toContain("['studio', 'admin', 'student', 'student-runtime'");
     expect(local).toContain("'--maxWorkers=2'");
     expect(local).toContain("'--ignore-scripts'");

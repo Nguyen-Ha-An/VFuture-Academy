@@ -36,6 +36,18 @@ beforeEach(() => {
 });
 
 describe('/studio/mcp', () => {
+  it('withholds Azure connection setup until a valid registered API/client configuration exists', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    expect(await state()).toEqual({ kind: 'unavailable' });
+    vi.stubEnv('ENTRA_TENANT_ID', '11111111-1111-4111-8111-111111111111');
+    vi.stubEnv('ENTRA_ISSUER', 'https://tenant.ciamlogin.com/11111111-1111-4111-8111-111111111111/v2.0');
+    vi.stubEnv('ENTRA_AUTHORITY', 'https://tenant.ciamlogin.com/11111111-1111-4111-8111-111111111111/v2.0');
+    vi.stubEnv('STUDIO_MCP_ENTRA_AUDIENCE', '22222222-2222-4222-8222-222222222222');
+    vi.stubEnv('STUDIO_MCP_ENTRA_SCOPE', 'api://22222222-2222-4222-8222-222222222222/Studio.Read');
+    vi.stubEnv('STUDIO_MCP_ENTRA_ALLOWED_CLIENT_IDS', '33333333-3333-4333-8333-333333333333');
+    expect(await state()).toEqual({ kind: 'enabled', endpoint: 'https://academy.example/api/mcp', provider: 'azure' });
+  });
   it('uses the canonical configured endpoint when the server is enabled', async () => {
     expect(await state()).toEqual({ kind: 'enabled', endpoint: 'https://academy.example/api/mcp' });
     expect(mocks.studioPageContext).toHaveBeenCalledOnce();

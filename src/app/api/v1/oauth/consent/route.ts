@@ -1,3 +1,4 @@
+import { academyBackend } from '@/lib/identity/provider';
 import { z } from 'zod';
 
 import { hasStudioConsentAccess, isConsentTester } from '@/features/oauth-consent/admission';
@@ -45,6 +46,9 @@ export const POST = withHandler(async (request) => {
   }
 
   const user = await requireApiUser();
+  if (academyBackend() === 'azure') {
+    throw new ApiError(409, 'MICROSOFT_MANAGED_CONSENT', 'Start authorization in your registered Microsoft client. Microsoft manages this connection.');
+  }
   const { actor } = await getStudioContext();
   if (actor.userId !== user.id || !hasStudioConsentAccess(actor)) {
     throw new ApiError(403, 'FORBIDDEN', 'Studio course access required');

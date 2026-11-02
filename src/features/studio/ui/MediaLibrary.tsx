@@ -20,6 +20,7 @@ import {
 } from '@/content-engine/schema/uploads';
 import type { MediaAsset, MediaUsage } from '@/features/media/library';
 import { mediaHref } from '@/features/media/urls';
+import { MediaDeleteButton } from '@/features/media/MediaDeleteButton';
 import { DataCard, DataToolbar, EmptyState, FileGrid, StatCard, StatGrid, type DataToolbarFilter, type FileGridItem, type FileKind } from '@/features/staff-ui/components';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 import { cn } from '@/lib/ui-cn';
@@ -184,7 +185,8 @@ function AssetPreview({ asset, locale }: { asset: MediaAssetWithUsages; locale: 
  * tiles, and one details Sheet that holds the preview, usages, alt-text editor and review
  * workflow of the asset being inspected. Only the open asset loads its draft and workflow.
  */
-export function MediaLibrary({ initialAssets, recoveryKeyPrefix, header }: {
+export function MediaLibrary({ initialAssets, recoveryKeyPrefix, header, deletionEnabled = false }: {
+  deletionEnabled?: boolean;
   initialAssets: MediaAssetWithUsages[];
   recoveryKeyPrefix?: string;
   /** When given, the library renders the page header with "Choose files" as its one primary action. */
@@ -561,6 +563,11 @@ export function MediaLibrary({ initialAssets, recoveryKeyPrefix, header }: {
                   </ul>
                 ) : <p className="text-sm leading-normal text-muted-foreground">{content('notUsed')}</p>}
               </section>
+              {deletionEnabled ? <MediaDeleteButton assetId={openAsset.id} filename={openAsset.filename} disabled={altDirty || uploading} onDeleted={() => {
+                setAssets(current => current.filter(asset => asset.id !== openAsset.id));
+                setSelected(current => current.filter(id => id !== openAsset.id));
+                setOpenId(null);
+              }} /> : null}
               <section aria-labelledby="media-alt-heading" className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <h3 id="media-alt-heading" className="text-sm font-medium leading-snug">{content('altTitle')}</h3>

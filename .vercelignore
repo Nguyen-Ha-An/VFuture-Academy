@@ -6,6 +6,7 @@
 .superpowers/
 node_modules/
 .next/
+build/
 .vercel/
 .env*
 *.pem

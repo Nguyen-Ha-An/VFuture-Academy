@@ -15,7 +15,7 @@ export type ConnectedApp = {
   grantedAt: string;
 };
 
-export type ConnectedAppsState = { kind: 'ready'; apps: ConnectedApp[] } | { kind: 'unavailable' };
+export type ConnectedAppsState = { kind: 'ready'; apps: ConnectedApp[] } | { kind: 'unavailable' | 'microsoft' };
 
 export function ConnectedAppsPanel({ state, accountEmail, locale, theme }: {
   state: ConnectedAppsState;
@@ -84,7 +84,8 @@ export function ConnectedAppsPanel({ state, accountEmail, locale, theme }: {
         <h2 id="connected-apps-list-title" className="vf-title-sm mb-5">{t.listTitle}</h2>
         {notice ? <p role="status" className="mb-5 rounded-md border border-border bg-card p-4 text-sm leading-relaxed">{notice}</p> : null}
         {error ? <p role="alert" className="mb-5 rounded-md border border-destructive bg-card p-4 text-sm leading-relaxed text-destructive">{error}</p> : null}
-        {state.kind === 'unavailable' ? <p role="alert" className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">{t.unavailable}</p>
+        {state.kind === 'microsoft' ? <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">{t.microsoft}</p>
+          : state.kind === 'unavailable' ? <p role="alert" className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">{t.unavailable}</p>
           : apps.length === 0 ? <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">{t.empty}</p>
             : <ul className="divide-y divide-border rounded-lg border border-border bg-card" aria-label={t.listTitle}>
               {apps.map((app) => <li key={app.clientId} className="min-w-0 p-5 sm:p-6">

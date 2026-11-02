@@ -1,3 +1,4 @@
+import { academyBackend } from '@/lib/identity/provider';
 import 'server-only';
 import { getLocale } from 'next-intl/server';
 import { actorDisplayNames } from '@/features/admin/actor-directory';
@@ -273,6 +274,7 @@ export type StudioLibraryData = {
   branches: { id: string; name: string }[];
   creatableTypes: string[];
   requestableKeys: string[];
+  deletableMediaIds: string[];
 };
 
 export async function studioLibraryData(): Promise<StudioLibraryData> {
@@ -295,6 +297,10 @@ export async function studioLibraryData(): Promise<StudioLibraryData> {
     branches: context.branches.map((branch) => ({ id: branch.id, name: branch.name })),
     creatableTypes,
     requestableKeys,
+    deletableMediaIds: academyBackend() === 'azure' ? rows.filter(row => {
+      const ownerScope = row.ownership_kind === 'central' ? { kind: 'central' as const } : { kind: 'branch' as const, branchId: row.owner_branch_id! };
+      return row.content_type === 'media_asset' && (can(context.actor, 'content.edit', ownerScope) || can(context.actor, 'media.upload', ownerScope));
+    }).map(row => row.content_id) : [],
   };
 }
 

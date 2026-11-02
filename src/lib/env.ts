@@ -2,6 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 import { SUPABASE_GATEWAY_KEY_PATTERN } from '@/lib/backend-gateway';
+import { academyBackend } from '@/lib/identity/provider';
 
 const environmentSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -21,6 +22,17 @@ const environmentSchema = z.object({
 
 export type Environment = z.infer<typeof environmentSchema>;
 
+const azureSharedEnvironmentSchema = environmentSchema.omit({
+  NEXT_PUBLIC_SUPABASE_URL: true,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: true,
+  SUPABASE_SERVICE_ROLE_KEY: true,
+  SUPABASE_GATEWAY_KEY: true,
+});
+
+function legacyConfigurationUnavailable(): never {
+  throw new Error('Legacy Supabase configuration is unavailable in Azure mode');
+}
+
 function formatEnvironmentError(error: z.ZodError) {
   const names = [...new Set(error.issues.map((issue) => issue.path.join('.')))].join(', ');
   return `Missing or invalid environment variables: ${names}`;
@@ -32,6 +44,18 @@ function formatEnvironmentError(error: z.ZodError) {
  * their direct-database credential in scripts/env.ts.
  */
 export function readEnvironment(source: Readonly<Record<string, string | undefined>> = process.env): Environment {
+  if (academyBackend(source) === 'azure') {
+    const result = azureSharedEnvironmentSchema.safeParse(source);
+    if (!result.success) throw new Error(formatEnvironmentError(result.error));
+    // Shared metadata/contact settings must not require legacy database keys.
+    // Fail closed if an Azure call path accidentally tries the old transport.
+    return {
+      ...result.data,
+      get NEXT_PUBLIC_SUPABASE_URL(): string { return legacyConfigurationUnavailable(); },
+      get NEXT_PUBLIC_SUPABASE_ANON_KEY(): string { return legacyConfigurationUnavailable(); },
+      get SUPABASE_SERVICE_ROLE_KEY(): string { return legacyConfigurationUnavailable(); },
+    };
+  }
   const result = environmentSchema.safeParse(source);
   if (!result.success) throw new Error(formatEnvironmentError(result.error));
   return result.data;

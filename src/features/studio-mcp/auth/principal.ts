@@ -12,6 +12,8 @@ import { StudioMcpError } from '../errors';
 import { isMcpAccessBlocked } from './access-block';
 import { validateMcpClient } from './client-allowlist';
 import { verifyMcpToken, type McpAuthClient, type VerifiedMcpToken } from './verify-token';
+import { verifyEntraMcpToken } from './verify-entra-token';
+import { academyBackend } from '@/lib/identity/provider';
 
 export type McpPrincipal = { token: string; verified: VerifiedMcpToken; actor: Actor };
 
@@ -37,13 +39,18 @@ export async function resolveMcpPrincipal(
 ): Promise<McpPrincipal> {
   const token = bearerToken(request);
   assertMcpSessionCheck();
-  // verifyMcpToken fetches the JWKS directly; route that call through the gateway key when configured.
-  const fetchJwks = gatewayFetch(process.env, undefined, env.NEXT_PUBLIC_SUPABASE_URL);
-  const verified = await verifyMcpToken(token, options.auth ?? authClient(), {
-    supabaseUrl: options.supabaseUrl ?? env.NEXT_PUBLIC_SUPABASE_URL,
-    ...(fetchJwks ? { fetchJwks } : {}),
-  });
-  await validateMcpClient(db, verified.clientId);
+  let verified: VerifiedMcpToken;
+  if (academyBackend() === 'azure') {
+    verified = await verifyEntraMcpToken(token);
+  } else {
+    // Legacy JWT JWKS requests need the configured Supabase gateway key.
+    const fetchJwks = gatewayFetch(process.env, undefined, env.NEXT_PUBLIC_SUPABASE_URL);
+    verified = await verifyMcpToken(token, options.auth ?? authClient(), {
+      supabaseUrl: options.supabaseUrl ?? env.NEXT_PUBLIC_SUPABASE_URL,
+      ...(fetchJwks ? { fetchJwks } : {}),
+    });
+    await validateMcpClient(db, verified.clientId);
+  }
   const testers = mcpTesterUserIds();
   if (testers.size > 0 && !testers.has(verified.userId)) throw new StudioMcpError('NOT_A_TESTER');
   try {

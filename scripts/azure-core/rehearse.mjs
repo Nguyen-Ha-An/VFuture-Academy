@@ -1,0 +1,96 @@
+#!/usr/bin/env node
+// Disposable local PostgreSQL only: never reads deployment credentials.
+import assert from 'node:assert/strict';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { buildAzureSchema } from './schema.mjs';
+import { databaseCatalog, restoreSnapshot } from './restore.mjs';
+const runtime = process.env.PGLITE_MODULE_PATH;
+if (!runtime) throw new Error('Set PGLITE_MODULE_PATH to the installed @electric-sql/pglite directory');
+const { PGlite } = await import(pathToFileURL(resolve(runtime, 'dist/index.js')).href);
+const { pgcrypto } = await import(pathToFileURL(resolve(runtime, 'dist/contrib/pgcrypto.js')).href);
+const db = new PGlite({ extensions: { pgcrypto } });
+const artifact = buildAzureSchema();
+try {
+  await db.exec(artifact.sql);
+  const user = '11111111-1111-4111-8111-111111111111';
+  const other = '22222222-2222-4222-8222-222222222222';
+  await db.query("insert into academy_identity.users(id,email) values($1,'learner@example.test'),($2,'other@example.test')", [user, other]);
+  assert.equal((await db.query('select count(*)::int n from public.profiles')).rows[0].n, 2);
+  assert.equal((await db.query("select to_regclass('auth.users') is null ok, to_regnamespace('storage') is null storage_absent")).rows[0].ok, true);
+  assert.equal((await db.query("select to_regnamespace('storage') is null ok")).rows[0].ok, true);
+  const now = Math.floor(Date.now()/1000);
+  const claims = { role:'authenticated',sub:user,iss:'academy-server',aud:'academy-data',iat:now,exp:now+60 };
+  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify(claims)]);
+  await db.exec('set role authenticated; select academy_private.authorize_request();');
+  assert.deepEqual((await db.query('select id from public.profiles')).rows.map(row=>row.id),[user]);
+  await assert.rejects(db.query("select public.academy_identity_get_user($1)",[other]), /permission denied/);
+  await assert.rejects(db.query("select public.academy_storage_observe('media','p','{}')"), /permission denied/);
+  await db.exec('reset role;');
+  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({...claims,iss:'wrong'})]);
+  await assert.rejects(db.exec('select academy_private.authorize_request();'), /Invalid application token/);
+  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({...claims,role:'service_role'})]);
+  await db.exec('set role service_role;');
+  assert.equal((await db.query('select count(*)::int n from public.profiles')).rows[0].n,2);
+  await db.exec('reset role;');
+  const uploadId='33333333-3333-4333-8333-333333333333';
+  const request={name:'fixture.png',size:12,mime:'image/png',purpose:'avatar',checksum:'a'.repeat(64)};
+  await assert.rejects(db.query('select public.media_upload_reserve($1,$2,$3,$4)',[user,uploadId,'asset_fixture',request]),/UPLOAD_CAPACITY/);
+  await db.query("insert into academy_private.storage_inventory_receipts values(true,now(),0,$1)",['0'.repeat(64)]);
+  await db.query('update public.media_upload_limits set capacity_bytes=$1',[2*52428800-1]);
+  await assert.rejects(db.query('select public.media_upload_reserve($1,$2,$3,$4)',[user,uploadId,'asset_fixture',{...request,size:1}]),/UPLOAD_CAPACITY/);
+  await db.query('update public.media_upload_limits set capacity_bytes=10737418240');
+  const reservation=(await db.query('select public.media_upload_reserve($1,$2,$3,$4) as r',[user,uploadId,'asset_fixture',request])).rows[0].r;
+  const transition=async(action,lease=null)=> (await db.query('select public.media_upload_transition($1,$2,$3,$4,$5) as r',[user,uploadId,action,lease,{width:1,height:1}])).rows[0].r;
+  const firstClaim=await transition('claim');
+  await assert.rejects(transition('complete',firstClaim.lease_token),/UPLOAD_NOT_FOUND/);
+  await db.query('select public.academy_storage_observe($1,$2,$3)',[reservation.bucket,reservation.ready_path,{size:12,mimetype:'image/png'}]);
+  await db.query("update public.media_upload_reservations set lease_until=now()-interval '1 minute' where id=$1",[uploadId]);
+  const secondClaim=await transition('claim');
+  await assert.rejects(transition('complete',firstClaim.lease_token),/UPLOAD_BUSY/);
+  assert.equal((await transition('complete',secondClaim.lease_token)).state,'ready');
+  assert.equal((await transition('complete',secondClaim.lease_token)).state,'ready');
+  assert.equal((await db.query("select count(*)::int n from public.media_assets where id='asset_fixture'")).rows[0].n,1);
+  await db.query("update public.media_upload_reservations set retain_until=now()-interval '1 minute' where id=$1",[uploadId]);
+  const cleanup=await transition('cleanup');
+  await db.query('select public.academy_storage_observe($1,$2,$3)',[reservation.bucket,reservation.pending_path,{size:12,mimetype:'image/png'}]);
+  await assert.rejects(transition('release',cleanup.lease_token),/UPLOAD_BYTES_REMAIN/);
+  await db.query('select public.academy_storage_observe($1,$2,null)',[reservation.bucket,reservation.pending_path]);
+  assert.ok((await transition('release',cleanup.lease_token)).released_at);
+  await db.query("insert into public.courses(id,owner_id,status) values('notebook-fixture',$1,'draft')",[user]);
+  await db.query("insert into public.notebook_artifacts(id,owner_id,course_id,item_id,purpose,checksum,runtime_profile_id,runtime_profile_version,size_bytes,mime,filename,storage_path) values('44444444-4444-4444-8444-444444444444',$1,'notebook-fixture','item_fixture','dataset',$2,'python-data-v1','1',1,'text/csv','file.csv','pending/fixture/file.csv')",[user,'a'.repeat(64)]);
+  await db.query('update public.media_upload_limits set capacity_bytes=$1',[2*10485760-1]);
+  await assert.rejects(db.query("select public.academy_storage_reserve_signed('notebooks','pending/fixture/file.csv')"),/UPLOAD_CAPACITY/);
+  await db.query('update public.media_upload_limits set capacity_bytes=10737418240');
+  await db.query("select public.academy_storage_reserve_signed('notebooks','pending/fixture/file.csv')");
+  let notebookHold=(await db.query("select metadata,observed_at::text observed_at from academy_private.storage_objects where bucket_id='notebooks'")).rows[0];
+  assert.equal(notebookHold.metadata.size,2*10485760,'a declared one-byte file reserves the verified native cap');
+  await db.query("select public.academy_storage_observe('notebooks','pending/fixture/file.csv',null)");
+  assert.equal((await db.query("select count(*)::int n from academy_private.storage_objects where bucket_id='notebooks'")).rows[0].n,1,'pending delete retains quota while its signed token is live');
+  assert.equal((await db.query("select public.academy_storage_reconcile_hold('notebooks','pending/fixture/file.csv',$1,null) ok",[notebookHold.observed_at])).rows[0].ok,false);
+  await db.query("update academy_private.storage_objects set retain_until=now()-interval '1 minute' where bucket_id='notebooks'");
+  assert.equal((await db.query("select public.academy_storage_reconcile_hold('notebooks','pending/fixture/file.csv',$1,null) ok",[notebookHold.observed_at])).rows[0].ok,true);
+  assert.equal((await db.query("select count(*)::int n from academy_private.storage_objects where bucket_id='notebooks'")).rows[0].n,0);
+  const {tables,primaryKeys}=await databaseCatalog(db);
+  const catalogs = (await db.query("select count(*)::int as n from pg_proc p join pg_namespace s on s.oid=p.pronamespace where s.nspname='public' and p.prosecdef")).rows[0].n;
+  const snapshot={format:1,schemaSha256:artifact.receipt.schemaSha256,tables:{},users:[],storage:(await db.query('select bucket_id,name,metadata from academy_private.storage_objects')).rows,sequences:[]};
+  for(const name of tables)snapshot.tables[name]=(await db.query(`select to_json(t) as row from public."${name}" t`)).rows.map(row=>row.row);
+  snapshot.users=(await db.query("select jsonb_build_object('id',id,'email',email,'raw_user_meta_data',raw_user_meta_data,'created_at',created_at) as row from academy_identity.users")).rows.map(row=>row.row);
+  for(const name of ['analytics_events_id_seq','audit_log_id_seq']) {
+    const state=(await db.query(`select last_value::text,is_called from public."${name}"`)).rows[0];
+    snapshot.sequences.push({name,...state});
+  }
+  const restored=new PGlite({extensions:{pgcrypto}});
+  let reconciliation;
+  try {
+    await restored.exec(artifact.sql);
+    reconciliation=await restoreSnapshot(restored,snapshot);
+    assert.equal((await restored.query('select count(*)::int n from public.profiles')).rows[0].n,2);
+    await assert.rejects(restoreSnapshot(restored,snapshot),/unused target/);
+  } finally {await restored.close();}
+  const output = resolve(process.env.AZURE_REHEARSAL_RECEIPT ?? 'build/azure-core/local-rehearsal.json');
+  mkdirSync(resolve(output,'..'), { recursive:true });
+  writeFileSync(output, JSON.stringify({ ...artifact.receipt, checkedAt:new Date().toISOString(), engine:'PGlite (local PostgreSQL semantics; not hosted networking or concurrency evidence)', checks:['all owned migrations replayed','owned identity trigger and UUIDs','RLS isolation','service-role visibility','private RPC ACLs','issuer pre-request rejection','no GoTrue or Storage schema','media admission fails closed before inventory','expired lease fenced from finalize','repeated finalize creates one asset','cleanup retains quota until absence','full synthetic data restore with FK/row/sequence reconciliation','one-byte native token quota evasion denied','expired notebook hold released after absence only'], tables, primaryKeys, reconciliation, securityDefinerFunctions:catalogs },null,2)+'\n');
+  console.log(`Azure schema rehearsal passed: ${tables.length} public tables; receipt ${output}`);
+} finally { await db.close(); }

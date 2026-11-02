@@ -1,3 +1,4 @@
+import { academyBackend } from '@/lib/identity/provider';
 import type { Metadata } from 'next';
 import { getLocale } from 'next-intl/server';
 
@@ -38,6 +39,9 @@ export default async function ConnectedAppsPage() {
   const [user, locale, theme] = await Promise.all([
     requireUser('/account/connected-apps'), getLocale(), readWorkspaceTheme(),
   ]);
+  if (academyBackend() === 'azure') {
+    return <ConnectedAppsPanel state={{ kind: 'microsoft' }} accountEmail={user.email ?? user.id} locale={locale === 'en' ? 'en' : 'vi'} theme={theme} />;
+  }
   let state: ConnectedAppsState = { kind: 'unavailable' };
   try {
     const client = await supabaseUser();

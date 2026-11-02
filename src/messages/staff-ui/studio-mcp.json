@@ -45,6 +45,13 @@
         "title": "Quản lý kết nối",
         "description": "Xem và gỡ quyền đã cấp cho ứng dụng từ trang tài khoản, kể cả khi Studio MCP hiện chưa khả dụng.",
         "link": "Xem ứng dụng đã kết nối"
+      },
+      "azure": {
+        "description": "Dùng ứng dụng Microsoft đã được quản trị viên Academy đăng ký và chấp thuận.",
+        "setup": "Liên hệ quản trị viên để nhận cấu hình ứng dụng. Đăng nhập qua Microsoft khi ứng dụng mở kết nối, rồi quay lại ứng dụng để kiểm tra công cụ Studio.",
+        "compatibility": "Ứng dụng cần hỗ trợ mã OAuth đã đăng ký trước và quyền API Academy. Không hỗ trợ đăng ký ứng dụng tự động. Khả năng kết nối ChatGPT, Claude và ứng dụng khác phụ thuộc vào tùy chọn kết nối của từng ứng dụng.",
+        "token": "Kết nối này dùng mã truy cập API Studio theo quyền được ủy quyền. Chỉ kết nối ứng dụng bạn tin cậy với nội dung khóa học tài khoản được đọc.",
+        "manage": "Microsoft quản lý các kết nối này. Liên hệ quản trị viên Academy để xem hoặc gỡ quyền truy cập."
       }
     }
   },
@@ -94,6 +101,13 @@
         "title": "Manage connections",
         "description": "Review and remove app authorizations from your account, even when Studio MCP is unavailable.",
         "link": "View connected apps"
+      },
+      "azure": {
+        "description": "Use a registered Microsoft client approved by your Academy administrator.",
+        "setup": "Ask your administrator for the client setup. Sign in through Microsoft when your client opens the connection, then return to the client to check the Studio tools.",
+        "compatibility": "Your client must support a pre-registered OAuth client ID and the Academy API scope. Automatic client registration is unavailable. Availability in ChatGPT, Claude and other clients depends on their supported connection settings.",
+        "token": "This connection uses a delegated Studio API access token. Connect only a client you trust with the course content your account can read.",
+        "manage": "Microsoft manages these connections. Contact your Academy administrator to review or remove access."
       }
     }
   }

@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
   // Streamed metadata in Next 15 can leave stale body tags after query navigation.
   htmlLimitedBots: /.*/,
   experimental: {
+    // Keep the existing cache-free local rehearsal mode within constrained RAM/disk.
+    ...(process.env.ACADEMY_BUILD_CACHE === '0' ? { cpus: 1 } : {}),
     authInterrupts: true,
     serverActions: { bodySizeLimit: '50mb' },
   },

@@ -84,6 +84,7 @@ async function signInAsLearner(user: ReturnType<typeof userEvent.setup>) {
 describe('authentication and onboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(window, 'open').mockReturnValue({ closed: false, close: vi.fn(), focus: vi.fn() } as unknown as Window);
     mocks.searchParams.mockReturnValue(new URLSearchParams());
     stubProfileState(() => profileStateResponse('complete'));
     vi.stubGlobal('fetch', mocks.fetch);
@@ -341,13 +342,14 @@ describe('authentication and onboarding', () => {
     render(<Provider><AuthForm mode={mode} bench={bench} /></Provider>);
     await user.click(screen.getByRole('button', { name: label }));
 
-    expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=%2Fapp%2Fprofile%3Ftab%3Dskills`,
-        ...(provider === 'azure' ? { scopes: 'email' } : {}),
-      },
-    });
+    const opened = new URL(String(vi.mocked(window.open).mock.calls[0][0]));
+    expect(opened.origin).toBe(window.location.origin);
+    expect(opened.pathname).toBe('/auth/login');
+    expect(opened.searchParams.get('provider')).toBe(provider);
+    expect(opened.searchParams.get('next')).toBe('/app/profile?tab=skills');
+    expect(opened.searchParams.get('popup')).toBe('1');
+    expect(client.auth.signInWithOAuth).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it('rejects an external next path before starting Microsoft sign-in', async () => {
@@ -359,50 +361,37 @@ describe('authentication and onboarding', () => {
     render(<Provider><AuthForm mode="login" /></Provider>);
     await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
 
-    expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider: 'azure',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=%2Fapp`, scopes: 'email' },
-    });
+    expect(new URL(String(vi.mocked(window.open).mock.calls[0][0])).searchParams.get('next')).toBe('/app');
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
-  it.each(['returned', 'thrown'] as const)('shows a retryable provider error for a %s Microsoft failure without exposing details', async (failure) => {
-    const client = authenticatedClient();
-    if (failure === 'returned') client.auth.signInWithOAuth.mockResolvedValue({ error: new Error('private-provider-detail') });
-    else client.auth.signInWithOAuth.mockRejectedValue(new Error('private-provider-detail'));
-    mocks.supabaseBrowser.mockReturnValue(client);
+  it.each(['blocked', 'thrown'] as const)('shows a retryable error when the popup is %s without redirecting', async failure => {
+    if (failure === 'blocked') vi.mocked(window.open).mockReturnValue(null);
+    else vi.mocked(window.open).mockImplementation(() => { throw new Error('private-provider-detail'); });
+    mocks.supabaseBrowser.mockReturnValue(authenticatedClient());
     const user = userEvent.setup();
-
     render(<Provider><AuthForm mode="login" /></Provider>);
     await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Sign-in could not be completed. Please try again.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('blocked');
     expect(screen.queryByText(/private-provider-detail/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
-  it('blocks other sign-in methods while Microsoft sign-in is pending', async () => {
-    let finish: ((value: { error: null }) => void) | undefined;
-    const client = authenticatedClient();
-    client.auth.signInWithOAuth.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
-    mocks.supabaseBrowser.mockReturnValue(client);
+  it('blocks competing methods while popup sign-in is pending and allows cancellation', async () => {
+    mocks.supabaseBrowser.mockReturnValue(authenticatedClient());
     const user = userEvent.setup();
-
     render(<Provider><AuthForm mode="login" /></Provider>);
     await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
-
     expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
-    expect(client.auth.signInWithOAuth).toHaveBeenCalledOnce();
-
-    await act(async () => { finish?.({ error: null }); });
+    expect(window.open).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'Cancel sign-in' }));
     expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeEnabled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it('sends existing users a magic sign-in link that preserves the requested destination', async () => {

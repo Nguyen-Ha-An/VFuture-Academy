@@ -3,6 +3,9 @@ import { z } from 'zod';
 
 import { createServerExamService } from '@/features/exams/server';
 import { ApiError, withHandler } from '@/lib/api';
+import { academyBackend } from '@/lib/identity/provider';
+import { supabaseService } from '@/lib/supabase/server';
+import { reconcileExpiredStorageHolds } from '@/lib/storage/retained-storage';
 
 function digest(value: string) {
   return createHash('sha256').update(value).digest();
@@ -23,7 +26,9 @@ function requireCronSecret(request: Request) {
 
 export const POST = withHandler(async (request) => {
   requireCronSecret(request);
-  return createServerExamService().sweepExpired();
+  const result = await createServerExamService().sweepExpired();
+  if (academyBackend() === 'azure') await reconcileExpiredStorageHolds(supabaseService());
+  return result;
 });
 
 // Vercel Cron invokes configured paths with GET. Keep POST for explicit

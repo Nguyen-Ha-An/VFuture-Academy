@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
 import { allowedConsentReturn } from './redirect-allowlist';
@@ -10,10 +10,11 @@ export type ConsentPanelState =
   | { kind: 'ready'; authorizationId: string; callback: string; host: string; clientName: string; scopes: string[]; accountEmail: string }
   | { kind: 'unsafe'; authorizationId: string }
   | { kind: 'redirect'; redirectUrl: string }
-  | { kind: 'tester' | 'access' | 'missing' | 'expired' | 'unavailable' };
+  | { kind: 'tester' | 'access' | 'missing' | 'expired' | 'unavailable' | 'microsoft' };
 
 export function ConsentPanel({ state }: { state: ConsentPanelState }) {
   const t = useTranslations('studioConnect');
+  const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
@@ -62,6 +63,7 @@ export function ConsentPanel({ state }: { state: ConsentPanelState }) {
 
   const page = denied ? 'denied' : state.kind;
   const title = page === 'ready' ? t('readyTitle', { host: state.kind === 'ready' ? state.host : '' })
+    : page === 'microsoft' ? (locale === 'vi' ? 'Kết nối qua Microsoft' : 'Connect through Microsoft')
     : page === 'unsafe' ? t('unsafeTitle')
     : page === 'tester' ? t('testerTitle')
     : page === 'access' ? t('accessTitleBlocked')
@@ -71,6 +73,9 @@ export function ConsentPanel({ state }: { state: ConsentPanelState }) {
     : page === 'redirect' ? t('redirectingTitle')
     : t('deniedTitle');
   const description = page === 'ready' ? t('description')
+    : page === 'microsoft' ? (locale === 'vi'
+      ? 'Bắt đầu kết nối trong ứng dụng đã được quản trị viên đăng ký với Microsoft. Microsoft xử lý việc đăng nhập và cấp quyền; trang này không phê duyệt kết nối Microsoft. Liên hệ quản trị viên để được hướng dẫn thiết lập hoặc gỡ quyền truy cập.'
+      : 'Start the connection in a client your administrator has registered with Microsoft. Microsoft handles sign-in and authorization; this page cannot approve Microsoft connections. Contact your administrator for setup or access removal.')
     : page === 'unsafe' ? t('unsafeDescription')
     : page === 'tester' ? t('testerDescription')
     : page === 'access' ? t('accessDescriptionBlocked')

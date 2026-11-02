@@ -28,6 +28,7 @@ function request(id: unknown = clientId, origin: string | null = 'https://academ
 }
 
 beforeEach(() => {
+  vi.unstubAllEnvs();
   mocks.requireApiUser.mockReset().mockResolvedValue({ id: 'former-studio-editor' });
   mocks.listGrants.mockReset().mockResolvedValue({
     data: [{ client: { id: clientId, name: 'Course helper', uri: 'javascript:alert(1)', logo_uri: 'https://evil.example/logo' }, scopes: ['openid'], granted_at: '2026-09-20T00:00:00Z' }],
@@ -38,6 +39,15 @@ beforeEach(() => {
 });
 
 describe('POST /api/v1/account/oauth-grants', () => {
+  it('does not claim to revoke Microsoft grants through the Supabase API in Azure mode', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    const response = await POST(request());
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: 'MICROSOFT_MANAGED_GRANTS' } });
+    expect(mocks.listGrants).not.toHaveBeenCalled();
+    expect(mocks.revokeGrant).not.toHaveBeenCalled();
+  });
   it('revokes a listed grant with the signed-in user client without Studio admission', async () => {
     const response = await POST(request());
 

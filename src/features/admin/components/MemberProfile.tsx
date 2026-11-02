@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { AccountControls } from "./AccountControls";
+import { azureBrowserIdentityEnabled } from "@/lib/identity/provider";
 import {
   useCallback,
   useEffect,
@@ -153,6 +155,15 @@ export function MemberProfile({
       new FormData(event.currentTarget).get("displayName") ?? "",
     ).trim();
     if (!displayName) return;
+    if (options?.azureAccountAdmin) {
+      if (saving) return;
+      setSaving(true);
+      try {
+        await responseData(await fetch(urlFor(`/api/v1/admin/accounts/${encodeURIComponent(userId)}`), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action: "edit", operationId: crypto.randomUUID(), displayName})}));
+        await load();
+      } catch { setStatus(t("error")); } finally { setSaving(false); }
+      return;
+    }
     await mutate({ action: "identity", displayName });
   }
 
@@ -235,7 +246,7 @@ export function MemberProfile({
         : { key: "submissions", label: tp("submissions"), value: submissions.length, icon: FileCheck },
     );
 
-  const accountAction = detail.actions.suspendAccount ? (
+  const accountAction = detail.actions.suspendAccount && !azureBrowserIdentityEnabled() ? (
     <Button
       variant="outline"
       className={detail.accountStatus === "active" ? "text-destructive hover:text-destructive" : undefined}
@@ -298,6 +309,7 @@ export function MemberProfile({
           </span>
         </div>
       </ProfileHeaderCard>
+      {options?.azureAccountAdmin ? <AccountControls scope={scope} actorId={actorId} userId={userId} onChanged={load} /> : null}
       <StatGrid aria-label={tp("statsLabel")}>
         {statCards.map(({ key, ...card }) => (
           <StatCard key={key} {...card} />

@@ -1,5 +1,7 @@
 'use client';
 
+import { AzureAuthPanel } from '@/components/AzureAuthPanel';
+import { azureBrowserIdentityEnabled } from '@/lib/identity/provider';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -15,7 +17,7 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 const passwordSchema = z.object({ password: z.string().min(8) });
 
 /** `bench` renders the Calibration Bench visuals (spec 4.1); without it the legacy markup is unchanged. */
-export function ResetPasswordForm({ bench = false }: { bench?: boolean } = {}) {
+function LegacyResetPasswordForm({ bench = false }: { bench?: boolean } = {}) {
   const t = useTranslations('auth');
   const tb = useTranslations('bench.auth');
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -78,4 +80,8 @@ export function ResetPasswordForm({ bench = false }: { bench?: boolean } = {}) {
       {linkInvalid ? <p className="mt-6 text-center text-sm text-muted-foreground"><Link href={routes.auth.forgotPassword()} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{t('requestNewResetLink')}</Link></p> : null}
     </section>
   );
+}
+
+export function ResetPasswordForm(props: { bench?: boolean } = {}) {
+  return azureBrowserIdentityEnabled() ? <AzureAuthPanel mode="recovery" bench={props.bench} /> : <LegacyResetPasswordForm {...props} />;
 }

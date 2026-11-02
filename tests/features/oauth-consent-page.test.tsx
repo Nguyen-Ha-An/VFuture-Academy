@@ -43,6 +43,12 @@ beforeEach(() => {
 });
 
 describe('/studio/connect/authorize', () => {
+  it('explains Microsoft authorization without reading Supabase authorization details in Azure mode', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    expect(await stateFor('authorization-1')).toEqual({ kind: 'microsoft' });
+    expect(mocks.getAuthorizationDetails).not.toHaveBeenCalled();
+  });
   it('shows access blocked before reading authorization details for a blocked user', async () => {
     mocks.isMcpAccessBlocked.mockResolvedValue(true);
     expect(await stateFor('authorization-1')).toEqual({ kind: 'access' });

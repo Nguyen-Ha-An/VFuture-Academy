@@ -24,6 +24,16 @@ beforeEach(() => {
 });
 
 describe('MCP HTTP boundary', () => {
+  it('returns a controlled 503 when Azure discovery configuration is incomplete', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    const response = await handleMcpRequest(new Request(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+    }));
+    expect(response.status).toBe(503);
+    expect(response.headers.get('WWW-Authenticate')).toBeNull();
+    expect((await response.json()).error.code).toBe('SERVICE_UNAVAILABLE');
+  });
   it('returns a bearer resource challenge for a missing token and limits its IP', async () => {
     const response = await handleMcpRequest(new Request(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-vercel-forwarded-for': '203.0.113.4' }, body,

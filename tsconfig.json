@@ -36,6 +36,7 @@
   ],
   "exclude": [
     "node_modules",
+    "build",
     "graphify-out",
     "notebook-runtime"
   ]
