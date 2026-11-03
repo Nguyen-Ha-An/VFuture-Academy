@@ -3,6 +3,7 @@ export function isArchiveMetadataPath(path){
   return String(path).split(/[\\/]/).some(part=>part.startsWith('._')||part==='__MACOSX'||part==='.DS_Store');
 }
 const migrationFiles=new Set([
+  'scripts/azure-core/cutover.mjs','build/azure-core/private/cutover-manifest.json',
   'package.json','infra/azure-core/migration/probe.mjs','infra/azure-core/postgres-roots.crt',
   'scripts/azure-core/migrate.mjs','scripts/azure-core/target.mjs','scripts/azure-core/diagnostics.mjs',
   'scripts/azure-core/configure-authenticator.mjs','scripts/azure-core/restore.mjs','scripts/azure-core/schema.mjs',

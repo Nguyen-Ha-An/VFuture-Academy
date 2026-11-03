@@ -1,6 +1,30 @@
-# Academy Azure core: deployment evidence and cutover gates
+# Academy Azure core: production cutover and retained evidence
 
-Observed on 3 November 2026 (Asia/Ho_Chi_Minh). This is an implementation and rehearsal record, **not a production-cutover receipt**. The production website remains on its existing Vercel deployment and Supabase identity/database configuration. The Azure copy is not yet authoritative.
+Production cutover completed on 3 November 2026 (Asia/Ho_Chi_Minh). Azure PostgreSQL/PostgREST is now the application's database, Entra handles identity, and the Academy-scoped ACS OTP listener is active. The website remains on Vercel and files remain in private Supabase Storage. Supabase's application/authentication writes are frozen for rollback retention.
+
+## Production cutover record
+
+- Initial production deployment: `dpl_2X1NA7spTPwmQ6ytW22erVkbdPKX`, application source `3a6f925da7d8dd3655cb01d86a1263343e5cf8a8`. Both backend selectors are `azure`; the canonical origin is `https://academy.vfuturelabs.org`.
+- Final private-network synchronization reconciled all 63 public tables, both user records, the retained object inventory and both sequence positions. Only transient request-limit counters were replaced; differing business rows would have aborted the transaction. Account UUIDs and existing permissions were retained.
+- Three reviewed identity mappings were applied: two exact legacy Google provider subjects, and one same-tenant workforce identity matched using the source's verified email/domain-owner claims plus the authoritative directory UPN. The Google ID token signature/issuer/audience/nonce were verified. Its absent `email_verified` claim was not treated as true and no automatic email account linking was added.
+- The missing customer identity was provisioned with its original Google subject and backup local-email identity. Its generated password was neither exposed nor imported from Supabase; the owner must use hosted password reset for password sign-in.
+- Production Google sign-in reached `authenticated: true`. Public home/login/catalog pages returned 200, the Google start route redirected to the tenant's CIAM authority, and the authenticated exam-sweep endpoint returned 200.
+- Source freeze began at `2026-11-03T01:26:44Z`. Source checks found zero active exams, pending upload grants and banned accounts. The legacy pg_cron sweep is disabled; the Azure sweep is enabled against the canonical production endpoint. A source service-role write was rejected with SQLSTATE `25006`, including the source's protected table path.
+- `source-freeze.sql` blocks legacy application/authentication writes by checking `session_user`, including through SECURITY DEFINER RPCs. A restrictive Storage policy prevents old anon/authenticated JWTs bypassing Azure file authorization. Server-side Storage credentials and authorized signed transfers remain operational; signed download returned 206 and public download was denied.
+- Entra OTP listener `e19905f4-2559-4461-bfa2-8d0a2e158cac` is restricted to Academy Web. Configuration validation returned no errors or warnings. A real recovery request was accepted by Entra, processed once by the encrypted queue worker and reached ACS `sent`; recipient inbox placement and a correlated delivery report remain unconfirmed. No recovery code or user password was read or changed.
+- The unused localhost diagnostic callback was removed after the successful sign-in test. Default and Vietnamese tenant branding use the existing VFuture symbol; API readback matched the uploaded image.
+
+### Availability settings and cost bounds
+
+Observed cold starts were approximately 3.4 seconds for the email HTTP endpoint (above Entra's two-second limit) and 27.5 seconds for the data API. The operator therefore selected **one always-ready HTTP instance** and **PostgREST min=1/max=1**, retaining 0.25 vCPU, 0.5 GiB and pool eight. A subsequent production sign-in start took approximately 2.8 seconds and the manual sweep approximately 0.8 seconds. These are sampled requests, not a 25-user capacity result.
+
+Singapore retail references read on 3 November 2026 are USD0.000034 per active vCPU-second, USD0.000004 per idle vCPU-second and USD0.000004 per GiB-second for Container Apps. Ignoring shared Container Apps grants, the single API replica is approximately USD7.78/30 days if idle-billed throughout, or USD27.22 if active-billed throughout. Add approximately USD6.48 for the email HTTP always-ready baseline and USD3.60 for 720 hours of Standard public IPv4: **USD17.86–37.30 before other usage**, while the inspected PostgreSQL/Load Balancer allowances apply. Actual execution, requests, mail, DNS, secrets and transfer are additional; applicable grants can reduce this. The USD35 target remains a notification threshold, not a cap, and full-month active usage can exceed it. No automatic SKU upgrade, extra data-API replica or budget shutdown is configured.
+
+### Remaining acceptance limits
+
+The prior full local verifier passed before the main code merge. During cutover, the owner requested proceeding without another full check run; operational probes, source reconciliation, bounded configuration checks and Graphify were used. A 25/50/100-user hosted capacity result, full customer signup/recovery completion, all production administration/file workflows, and final billing attribution have not been established. MCP stays disabled. Do not present the historical rehearsal evidence below as proof of these outstanding checks.
+
+The following sections retain the initial implementation/rehearsal observations. Where settings differ, the production record above takes precedence.
 
 ## Implemented application behavior
 
@@ -18,7 +42,7 @@ Observed on 3 November 2026 (Asia/Ho_Chi_Minh). This is an implementation and re
 | PostgreSQL | `vfa-core-pg-psqjld5eejfge`, PostgreSQL 17.11, B1ms, 32 GB, seven-day backup, no HA, public networking disabled |
 | Rehearsal data | 63 application tables, two preserved user UUIDs, one retained Storage object and two sequences reconciled against the private source snapshot; no final source write freeze yet |
 | Schema | `273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149`; 49 legacy migrations plus owned Azure schema, applied in 55 ordered transactional steps |
-| Data API | `vfa-core-data`, pinned PostgREST 13.0.7, Consumption 0–1 replicas, 0.25 vCPU/0.5 GiB, pool eight; latest inspected revision Healthy |
+| Data API | `vfa-core-data`, pinned PostgREST 13.0.7, Consumption initially 0–1 replicas, 0.25 vCPU/0.5 GiB, pool eight; latest inspected revision Healthy |
 | API authorization | Live unauthenticated and expired-token requests returned 401; service query counted two profiles; authenticated query saw its own profile and hid the other. This is not full cross-school or hosted load acceptance |
 | External ID | Customer tenant `f3152aa5-61de-40fd-bb76-780b9fbe5428`, `vfutureacademy.onmicrosoft.com`; AcademySignIn has Google and email/password and is attached to the web app |
 | Account administration | Actual application Graph adapter completed create, customer guard, edit, enable, revoke, disable and delete on a disposable identity. Absence was confirmed after directory replication; application route/UI acceptance remains separate |
@@ -58,7 +82,7 @@ One manual cost-monitor invocation was accepted. ACS subsequently reported one `
 
 The three Entra secrets use the configured 24-month maximum. Renew before expiry, update the relevant runtime, verify sign-in/administration, then retire the replaced credential. User-session expiry remains bounded independently. Prefer managed identities for Azure services. The optional always-ready HTTP instance remains zero; enabling one requires measured cold-start evidence and costs approximately USD6.48/month baseline at the reviewed rate. See the [infrastructure runbook](../../infra/azure-core/README.md) for other usage charges and primary pricing sources.
 
-## Remaining acceptance and cutover sequence
+## Cutover procedure and remaining acceptance reference
 
 1. Finish real Google consent and verified-token capture; reconcile immutable Entra identities to the two preserved Academy UUIDs. Never map solely on an unverified email. Confirm internal Microsoft staff mapping and deny nonstaff.
 2. Verify a preview build against its exact source manifest/commit. Exercise signup, existing accounts, password reset, logout, session expiry, suspended users, cross-school isolation and privileged-RPC denial. Test admin routes and Storage upload/finalize/download/delete on disposable fixtures.

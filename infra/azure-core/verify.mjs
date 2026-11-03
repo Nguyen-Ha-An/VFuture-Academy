@@ -23,7 +23,7 @@ try {
   assert.equal(pg.properties.network.publicNetworkAccess,'Disabled'); assert.equal(pg.properties.storage.storageSizeGB,32); assert.equal(pg.properties.storage.autoGrow,'Disabled'); assert.equal(pg.properties.highAvailability.mode,'Disabled'); assert.equal(pg.properties.backup.backupRetentionDays,7);
   assert.equal(resource('Microsoft.App/managedEnvironments').properties.appLogsConfiguration,undefined);
   const api=resource('Microsoft.App/containerApps'); const container=api.properties.template.containers[0];
-  assert.equal(core.variables.postgrestImage,policy.postgrest.image); assert.equal(api.properties.template.scale.maxReplicas,1); assert.equal(api.properties.template.scale.minReplicas,0); assert.equal(container.resources.memory,'0.5Gi'); assert.equal(api.properties.configuration.ingress.allowInsecure,false);
+  assert.equal(core.variables.postgrestImage,policy.postgrest.image); assert.equal(api.properties.template.scale.maxReplicas,1); assert.equal(api.properties.template.scale.minReplicas,policy.postgrest.minReplicas); assert.equal(container.resources.memory,'0.5Gi'); assert.equal(api.properties.configuration.ingress.allowInsecure,false);
   assert.equal(container.env.some(e=>e.name==='PGRST_DB_ANON_ROLE'),false); assert.equal(container.env.find(e=>e.name==='PGRST_DB_POOL').value,'8'); assert.equal(container.env.find(e=>e.name==='PGSSLMODE').value,'verify-full');
   const adminPort=Number(container.env.find(e=>e.name==='PGRST_ADMIN_SERVER_PORT')?.value);
   assert.ok(Number.isSafeInteger(adminPort)&&adminPort>0,'PostgREST 13 admin listener must be configured');
