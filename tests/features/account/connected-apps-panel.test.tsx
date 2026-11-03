@@ -16,6 +16,13 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('connected apps account panel', () => {
+  it('directs Azure grant changes to the administrator and never displays an empty grant list', () => {
+    show({ kind: 'microsoft' });
+    expect(screen.getByText(/Microsoft manages/i)).toBeInTheDocument();
+    expect(screen.getByText(/administrator/i)).toBeInTheDocument();
+    expect(screen.queryByText('You have not authorized any apps.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Disconnect/ })).not.toBeInTheDocument();
+  });
   it('shows the signed-in account and scopes without any client-controlled URL', () => {
     show();
     expect(screen.getByRole('heading', { level: 1, name: 'Connected apps' })).toBeInTheDocument();

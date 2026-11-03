@@ -1,0 +1,13 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { az, preflight, policy } from './preflight.mjs';
+if (process.argv[2] !== '--apply') throw new Error('Usage: node infra/azure-core/deploy-functions.mjs --apply; packages first with package-functions.mjs');
+preflight({ email: true });
+const receipt=JSON.parse(readFileSync('build/azure-core/functions-package-receipt.json','utf8'));
+if (createHash('sha256').update(readFileSync(receipt.path)).digest('hex')!==receipt.sha256) throw new Error('Package does not match receipt');
+const deployment=az(['deployment','group','show','--resource-group',policy.resourceGroup,'--name','academy-core','--subscription',policy.subscriptionId]);
+const name=deployment.properties.outputs.functionAppName.value;
+if (!/^vfa-[a-z0-9-]+-functions-[a-z0-9]+$/.test(name)) throw new Error('Unexpected Function App target');
+execFileSync('az',['functionapp','deployment','source','config-zip','--subscription',policy.subscriptionId,'--resource-group',policy.resourceGroup,'--name',name,'--src',receipt.path,'--build-remote','false','--only-show-errors'],{stdio:'inherit'});
+console.log('Package deployment requested. Verify host startup, Entra denial checks, delivered email, and timer ownership separately before release.');

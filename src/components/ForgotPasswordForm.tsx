@@ -1,5 +1,7 @@
 'use client';
 
+import { AzureAuthPanel } from '@/components/AzureAuthPanel';
+import { azureBrowserIdentityEnabled } from '@/lib/identity/provider';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -21,7 +23,7 @@ function recoveryUrl() {
 }
 
 /** `bench` renders the Calibration Bench visuals (spec 4.1); without it the legacy markup is unchanged. */
-export function ForgotPasswordForm({ bench = false }: { bench?: boolean } = {}) {
+function LegacyForgotPasswordForm({ bench = false }: { bench?: boolean } = {}) {
   const t = useTranslations('auth');
   const tb = useTranslations('bench.auth');
   const searchParams = useSearchParams();
@@ -76,4 +78,8 @@ export function ForgotPasswordForm({ bench = false }: { bench?: boolean } = {}) 
       <p className="mt-6 text-center text-sm text-muted-foreground"><Link href={routes.auth.login()} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{t('backToLogin')}</Link></p>
     </section>
   );
+}
+
+export function ForgotPasswordForm(props: { bench?: boolean } = {}) {
+  return azureBrowserIdentityEnabled() ? <AzureAuthPanel mode="recovery" bench={props.bench} /> : <LegacyForgotPasswordForm {...props} />;
 }

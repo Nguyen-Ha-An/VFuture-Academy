@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { verifyExtensionToken, extensionKeys } from '../functions/src/auth.mjs';
+import { MICROSOFT_AUTH_EVENTS_APP } from '../functions/src/core.mjs';
+const { generateKeyPair, exportJWK, createLocalJWKSet, SignJWT } = await import(createRequire(new URL('../functions/package.json', import.meta.url)).resolve('jose'));
+test('real RS256 signature validation rejects tampered, expired, wrong issuer/audience/tenant/caller JWTs', async () => {
+  const { privateKey, publicKey } = await generateKeyPair('RS256');
+  const jwk = await exportJWK(publicKey); jwk.kid = 'test';
+  const keys = createLocalJWKSet({ keys: [jwk] });
+  const config = { tenantId: 'tenant-id', issuer: 'https://academy.ciamlogin.com/tenant-id/v2.0', audience: 'api-id' };
+  const now = Math.floor(Date.now()/1000);
+  const payload = { iss:config.issuer, aud:config.audience, tid:config.tenantId, azp:MICROSOFT_AUTH_EVENTS_APP, ver:'2.0', iat:now, nbf:now-1, exp:now+60 };
+  const sign = value => new SignJWT(value).setProtectedHeader({alg:'RS256',kid:'test'}).sign(privateKey);
+  assert.equal((await verifyExtensionToken(await sign(payload), config, keys)).tid,config.tenantId);
+  for (const change of [{iss:'https://evil.example'}, {iss:'https://login.microsoftonline.com/tenant-id/v2.0'}, {iss:'https://sts.windows.net/tenant-id/'}, {aud:'other'}, {tid:'other'}, {azp:'other'}, {exp:now-120}, {nbf:now+120}]) await assert.rejects(verifyExtensionToken(await sign({...payload,...change}),config,keys));
+  const token = await sign(payload); const [header, data, signature] = token.split('.');
+  await assert.rejects(verifyExtensionToken(`${header}.${Buffer.from(JSON.stringify({...JSON.parse(Buffer.from(data,'base64url')),tid:'attacker'})).toString('base64url')}.${signature}`,config,keys));
+  for(const issuer of ['https://evil.example/tenant-id/v2.0','https://login.microsoftonline.com/tenant-id/v2.0','https://sts.windows.net/tenant-id/']) assert.throws(() => extensionKeys({...config,issuer}));
+});

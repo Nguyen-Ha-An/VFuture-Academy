@@ -1,0 +1,14 @@
+{
+  "externalIdentityResourceIds": [],
+  "externalIdentityBillingReviewed": false,
+  "externalIdentityMonthToDateUsd": null,
+  "externalIdentityForecastUsd": null,
+  "outsideSubscriptionBillingEvidence": "",
+  "grantBalanceUsd": null,
+  "grantObservedOn": null,
+  "freeMeterAttributionVerified": false,
+  "credentialExpiries": [],
+  "billingMonth": null,
+  "academyInfrastructureResourceGroups": [],
+  "academyCostScopeReviewed": false
+}

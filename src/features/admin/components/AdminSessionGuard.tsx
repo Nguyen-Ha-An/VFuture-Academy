@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { azureBrowserIdentityEnabled } from "@/lib/identity/provider";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 /** Conceal previously authorized data when another tab changes the signed-in actor. */
@@ -19,6 +20,27 @@ export function AdminSessionGuard({
   const router = useRouter();
   const t = useTranslations("centralAdmin");
   useEffect(() => {
+    if (azureBrowserIdentityEnabled()) {
+      let active = true;
+      let checking = false;
+      const check = async () => {
+        if (checking || !active) return;
+        checking = true;
+        try {
+          const response = await fetch('/api/v1/auth/session', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000) });
+          const session = response.ok ? await response.json() as { userId?: string } : null;
+          if (active && session?.userId !== actorId) { setChanged(true); router.replace(destination); router.refresh(); }
+        } catch {
+          // An unavailable session cannot keep previously authorized admin content visible.
+          if (active) { setChanged(true); router.refresh(); }
+        } finally { checking = false; }
+      };
+      void check();
+      const interval = window.setInterval(() => { if (document.visibilityState === 'visible') void check(); }, 15000);
+      const focus = () => { void check(); };
+      window.addEventListener('focus', focus);
+      return () => { active = false; window.clearInterval(interval); window.removeEventListener('focus', focus); };
+    }
     const { data } = supabaseBrowser().auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user.id !== actorId) {

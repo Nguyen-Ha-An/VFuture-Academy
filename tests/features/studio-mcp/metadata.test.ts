@@ -20,6 +20,28 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('MCP protected-resource discovery', () => {
+  it('advertises the Entra issuer and delegated API scope in Azure mode', () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('ENTRA_TENANT_ID', '11111111-1111-4111-8111-111111111111');
+    vi.stubEnv('ENTRA_ISSUER', 'https://tenant.ciamlogin.com/11111111-1111-4111-8111-111111111111/v2.0');
+    vi.stubEnv('ENTRA_AUTHORITY', 'https://tenant.ciamlogin.com/11111111-1111-4111-8111-111111111111/v2.0');
+    vi.stubEnv('STUDIO_MCP_ENTRA_AUDIENCE', '22222222-2222-4222-8222-222222222222');
+    vi.stubEnv('STUDIO_MCP_ENTRA_SCOPE', 'api://22222222-2222-4222-8222-222222222222/Studio.Read');
+    vi.stubEnv('STUDIO_MCP_ENTRA_ALLOWED_CLIENT_IDS', '33333333-3333-4333-8333-333333333333');
+    expect(mcpProtectedResourceMetadata()).toMatchObject({
+      authorization_servers: ['https://tenant.ciamlogin.com/11111111-1111-4111-8111-111111111111/v2.0'],
+      scopes_supported: ['api://22222222-2222-4222-8222-222222222222/Studio.Read'],
+    });
+    expect(mcpBearerChallenge()).toContain('scope="api://22222222-2222-4222-8222-222222222222/Studio.Read"');
+  });
+
+  it('fails closed for incomplete Azure registration settings instead of falling back to Supabase', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    const response = await getMcpMetadata();
+    expect(response.status).toBe(503);
+  });
   it('advertises the exact configured resource and Supabase Auth issuer', () => {
     expect(mcpProtectedResourceMetadata()).toEqual({
       resource: 'https://mcp.example.test/api/mcp',

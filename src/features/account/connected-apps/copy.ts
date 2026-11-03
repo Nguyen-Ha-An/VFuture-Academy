@@ -22,6 +22,7 @@ export const connectedAppsCopy = {
     rateLimited: 'Too many attempts. Try again later.',
     empty: 'You have not authorized any apps.',
     unavailable: 'Could not load connected apps. Reload this page to try again.',
+    microsoft: 'Microsoft manages application authorizations for this account. Contact your Academy administrator to review or remove a connection. The administrator can block Studio MCP access immediately; previously issued Microsoft tokens otherwise remain usable until they expire.',
   },
   vi: {
     brand: 'VFuture Academy',
@@ -44,5 +45,6 @@ export const connectedAppsCopy = {
     rateLimited: 'Thao tác quá nhiều lần. Hãy thử lại sau.',
     empty: 'Bạn chưa cấp quyền cho ứng dụng nào.',
     unavailable: 'Không thể tải ứng dụng đã kết nối. Hãy tải lại trang để thử lại.',
+    microsoft: 'Microsoft quản lý quyền ứng dụng của tài khoản này. Liên hệ quản trị viên Academy để xem hoặc gỡ kết nối. Quản trị viên có thể chặn ngay quyền truy cập Studio MCP; nếu không bị chặn, mã truy cập Microsoft đã phát hành vẫn có thể dùng đến khi hết hạn.',
   },
 } as const;

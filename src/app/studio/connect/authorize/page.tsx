@@ -1,3 +1,4 @@
+import { academyBackend } from '@/lib/identity/provider';
 import { ConsentPanel, type ConsentPanelState } from '@/features/oauth-consent/ConsentPanel';
 import { hasStudioConsentAccess, isConsentTester } from '@/features/oauth-consent/admission';
 import { allowedConsentCallback, allowedConsentReturn } from '@/features/oauth-consent/redirect-allowlist';
@@ -20,6 +21,8 @@ export default async function StudioConnectPage({ searchParams }: PageProps) {
 
   if (!mcpEnabled()) {
     state = { kind: 'unavailable' };
+  } else if (academyBackend() === 'azure') {
+    state = { kind: 'microsoft' };
   } else if (typeof authorizationId !== 'string' || authorizationId.length === 0 || authorizationId.length > 256) {
     state = { kind: 'missing' };
   } else if (!hasStudioConsentAccess(actor)) {

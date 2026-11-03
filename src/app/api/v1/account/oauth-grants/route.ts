@@ -1,3 +1,4 @@
+import { academyBackend } from '@/lib/identity/provider';
 import { z } from 'zod';
 
 import { ApiError, ok, parseBody, withHandler } from '@/lib/api';
@@ -18,6 +19,9 @@ export const POST = withHandler(async (request) => {
   }
 
   const user = await requireApiUser();
+  if (academyBackend() === 'azure') {
+    throw new ApiError(409, 'MICROSOFT_MANAGED_GRANTS', 'Microsoft manages these authorizations. Contact your Academy administrator to remove access.');
+  }
   await enforceRateLimit(supabaseService(), userRateLimitKey('oauth:grant-revoke', user.id), revokeLimit);
   const { clientId } = await parseBody(RevokeGrantInput, request, { maxBytes: 512 });
   const client = await supabaseUser();

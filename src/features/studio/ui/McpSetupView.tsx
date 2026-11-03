@@ -11,13 +11,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 
 export type McpSetupState =
-  | { kind: 'enabled' | 'disabled'; endpoint: string }
+  | { kind: 'enabled' | 'disabled'; endpoint: string; provider?: 'azure' }
   | { kind: 'restricted' | 'unavailable' };
 
 export function McpSetupView({ state }: { state: McpSetupState }) {
   const t = useTranslations('staffUi.studio.mcp');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const enabled = state.kind === 'enabled';
+  const azure = 'provider' in state && state.provider === 'azure';
 
   async function copyEndpoint(endpoint: string) {
     try {
@@ -73,10 +74,13 @@ export function McpSetupView({ state }: { state: McpSetupState }) {
           <Card role="region" aria-labelledby="mcp-connect" className="gap-4">
             <CardHeader>
               <h2 id="mcp-connect" className="text-sm font-medium leading-normal">{t('connect.title')}</h2>
-              <p className="text-sm leading-normal text-muted-foreground">{t('connect.description')}</p>
+              <p className="text-sm leading-normal text-muted-foreground">{t(azure ? 'azure.description' : 'connect.description')}</p>
             </CardHeader>
             <CardContent>
-              <ul className="divide-y divide-border text-sm leading-normal">
+              {azure ? <div className="space-y-3 text-sm leading-normal text-muted-foreground">
+                <p>{t('azure.setup')}</p>
+                <p>{t('azure.compatibility')}</p>
+              </div> : <ul className="divide-y divide-border text-sm leading-normal">
                 <li className="grid gap-1 py-3 first:pt-0 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-4">
                   <strong className="font-medium">{t('connect.claude')}</strong>
                   <span className="text-muted-foreground">{t('connect.claudeStep')}</span>
@@ -100,7 +104,7 @@ export function McpSetupView({ state }: { state: McpSetupState }) {
                   <strong className="font-medium">{t('connect.chatgpt')}</strong>
                   <span className="text-muted-foreground">{t('connect.chatgptStep')}</span>
                 </li>
-              </ul>
+              </ul>}
             </CardContent>
           </Card>
           <Card role="region" aria-labelledby="mcp-before-connect" className="gap-3">
@@ -110,7 +114,7 @@ export function McpSetupView({ state }: { state: McpSetupState }) {
             <CardContent className="space-y-2 text-sm leading-normal text-muted-foreground">
               <p>{t('before.signIn')}</p>
               <p>{t('before.content')}</p>
-              <p>{t('before.token')}</p>
+              <p>{t(azure ? 'azure.token' : 'before.token')}</p>
               <p>{t('before.workflow')}</p>
             </CardContent>
           </Card>
@@ -119,7 +123,7 @@ export function McpSetupView({ state }: { state: McpSetupState }) {
 
       <section className="space-y-2 rounded-lg border border-border bg-card p-6" aria-labelledby="mcp-manage-connections">
         <h2 id="mcp-manage-connections" className="text-sm font-medium leading-normal">{t('manage.title')}</h2>
-        <p className="text-sm leading-normal text-muted-foreground">{t('manage.description')}</p>
+        <p className="text-sm leading-normal text-muted-foreground">{t(azure ? 'azure.manage' : 'manage.description')}</p>
         <Link href="/account/connected-apps" className="inline-flex min-h-11 items-center text-sm font-medium leading-normal underline underline-offset-4 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {t('manage.link')}
         </Link>

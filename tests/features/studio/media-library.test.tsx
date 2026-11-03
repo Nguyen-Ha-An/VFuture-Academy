@@ -39,6 +39,22 @@ describe('MediaLibrary', () => {
   });
   afterEach(cleanup);
 
+  it('hides deletion in legacy mode and removes a confirmed Azure asset from the file manager', async () => {
+    const first = render(<NextIntlClientProvider locale="en" timeZone="UTC" messages={messages}><MediaLibrary initialAssets={[assets[1]]} /></NextIntlClientProvider>);
+    openDetails('guide.pdf');
+    expect(screen.queryByRole('button', { name: 'Delete file' })).not.toBeInTheDocument();
+    first.unmount();
+    const originalFetch = vi.mocked(fetch).getMockImplementation()!;
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => init?.method === 'DELETE'
+      ? Promise.resolve(new Response(JSON.stringify({ data: { id: 'asset_PDF', deleted: true } })))
+      : originalFetch(input, init)));
+    render(<NextIntlClientProvider locale="en" timeZone="UTC" messages={messages}><MediaLibrary deletionEnabled initialAssets={[assets[1]]} /></NextIntlClientProvider>);
+    openDetails('guide.pdf');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete permanently' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Open details for guide.pdf' })).not.toBeInTheDocument());
+  });
+
   it('asks once for a dirty alt editor in the details sheet, stays without saving, and cleans up its guard', async () => {
     const view = render(<NextIntlClientProvider locale="en" timeZone="UTC" messages={messages}><MediaLibrary initialAssets={assets} /></NextIntlClientProvider>);
     openDetails('diagram.png');

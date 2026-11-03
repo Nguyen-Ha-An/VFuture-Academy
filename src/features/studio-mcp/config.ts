@@ -54,7 +54,7 @@ export function mcpTesterUserIds(source: NodeJS.ProcessEnv = process.env): Reado
   return new Set(ids);
 }
 
-/** Session revalidation is mandatory; a disabled deployment setting fails closed. */
+/** Provider admission checks cannot be disabled (Supabase session lookup; Entra token + live Academy access). */
 export function assertMcpSessionCheck(source: NodeJS.ProcessEnv = process.env): void {
   if (source.MCP_SESSION_CHECK !== undefined && source.MCP_SESSION_CHECK !== '1') {
     throw new StudioMcpError('SERVICE_UNAVAILABLE');

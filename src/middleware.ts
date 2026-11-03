@@ -1,6 +1,7 @@
 import { notebookRuntimeUrl } from '@/features/notebooks/config';
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { buildContentSecurityPolicy } from '@/lib/security-headers';
+import { academyBackend } from '@/lib/identity/provider';
 import { updateSession } from '@/lib/supabase/middleware';
 import { REQUESTED_PATH_HEADER } from '@/lib/safe-internal-path';
 
@@ -22,8 +23,12 @@ export async function middleware(request: NextRequest) {
   request.headers.set('x-nonce', nonce);
   request.headers.set('Content-Security-Policy', contentSecurityPolicy);
 
-  const response = await updateSession(request);
+  const response = academyBackend() === 'azure' ? NextResponse.next({ request }) : await updateSession(request);
   response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+  if (['/login', '/signup', '/forgot-password', '/reset-password'].includes(pathname) || pathname.startsWith('/auth/')) {
+    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    response.headers.set('Cache-Control', 'no-store');
+  }
   // Isolate only notebook workspaces; lesson media and authentication keep their existing policy.
   if ((process.env.NODE_ENV !== 'production' && request.nextUrl.pathname === '/dev/notebook') || /^\/app\/courses\/[^/]+\/items\/[^/]+\/notebook$/.test(request.nextUrl.pathname)
     || /^\/studio\/courses\/[^/]+\/notebooks\/[^/]+$/.test(request.nextUrl.pathname)) {

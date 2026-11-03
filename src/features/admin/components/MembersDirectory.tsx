@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AccountControls } from "./AccountControls";
 import {
   useCallback,
   useEffect,
@@ -667,6 +668,7 @@ export function MembersDirectory({
       ) : (
         <RequestStatus>{status}</RequestStatus>
       )}
+      {options?.azureAccountAdmin ? <AccountControls scope={scope} actorId={actorId} onChanged={() => loadMembers(currentPage, committedFilters)} /> : null}
       {canInvite ? (
         <DataCard
           id="invitations"

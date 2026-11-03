@@ -152,4 +152,12 @@ describe('Supabase session middleware', () => {
       '/((?!api/mcp(?:/|$)|\\.well-known/oauth-protected-resource(?:/|$)|studio-workers/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
     ]);
   });
+  it('limits popup-compatible COOP to auth pages and preserves notebook isolation', async () => {
+    mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });mocks.getUser.mockResolvedValue({data:{user:null},error:null});
+    expect((await middleware(new NextRequest('https://academy.example/login'))).headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
+    expect((await middleware(new NextRequest('https://academy.example/auth/popup'))).headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
+    expect((await middleware(new NextRequest('https://academy.example/app'))).headers.get('Cross-Origin-Opener-Policy')).toBeNull();
+    expect((await middleware(new NextRequest('https://academy.example/app/courses/course/items/item/notebook'))).headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
+  });
+
 });

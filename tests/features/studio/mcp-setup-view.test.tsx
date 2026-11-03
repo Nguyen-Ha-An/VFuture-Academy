@@ -22,6 +22,11 @@ function view(state: Parameters<typeof McpSetupView>[0]['state']) {
 afterEach(cleanup);
 
 describe('Studio MCP setup', () => {
+  it('shows registered Microsoft client requirements instead of a DCR setup command in Azure mode', () => {
+    view({ kind: 'enabled', endpoint, provider: 'azure' });
+    expect(screen.getByText(/registered Microsoft client/i)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Claude Code command' })).not.toBeInTheDocument();
+  });
   it('shows the exact endpoint and lets a keyboard user copy it', async () => {
     const user = userEvent.setup();
     const copy = vi.fn().mockResolvedValue(undefined);

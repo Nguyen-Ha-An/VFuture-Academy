@@ -19,6 +19,17 @@ afterEach(() => {
 });
 
 describe('environment validation', () => {
+  it('reads shared Azure settings without requiring legacy database credentials', async () => {
+    const { readEnvironment } = await import('@/lib/env');
+    const environment = readEnvironment({
+      ACADEMY_BACKEND: 'azure', NEXT_PUBLIC_ACADEMY_BACKEND: 'azure',
+      NEXT_PUBLIC_APP_URL: 'https://academy.example',
+    });
+    expect(environment.NEXT_PUBLIC_APP_URL).toBe('https://academy.example');
+    expect(() => environment.SUPABASE_SERVICE_ROLE_KEY).toThrow('Legacy Supabase configuration is unavailable in Azure mode');
+    expect(() => environment.NEXT_PUBLIC_SUPABASE_URL).toThrow('Legacy Supabase configuration is unavailable in Azure mode');
+  });
+
   it('constructs the browser environment from statically analyzable public member expressions only', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'lib', 'env-client.ts'), 'utf8');
 

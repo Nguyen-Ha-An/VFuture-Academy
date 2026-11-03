@@ -132,6 +132,15 @@ beforeEach(() => {
 });
 
 describe('POST /api/v1/oauth/consent', () => {
+  it('rejects legacy consent mutations when Microsoft manages Azure authorization', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    const response = await POST(consentRequest('approve'));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: 'MICROSOFT_MANAGED_CONSENT' } });
+    expect(mocks.getAuthorizationDetails).not.toHaveBeenCalled();
+    expect(mocks.approveAuthorization).not.toHaveBeenCalled();
+  });
   it('blocks approval before requesting OAuth authorization details for a blocked user', async () => {
     mocks.isMcpAccessBlocked.mockResolvedValue(true);
     const response = await POST(consentRequest('approve'));

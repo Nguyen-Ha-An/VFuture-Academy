@@ -6,5 +6,6 @@ export const dynamic = 'force-dynamic';
 export function GET(): Response {
   const headers = { 'Cache-Control': 'no-store' };
   if (!mcpEnabled()) return new Response(null, { status: 404, headers });
-  return Response.json(mcpProtectedResourceMetadata(), { headers });
+  try { return Response.json(mcpProtectedResourceMetadata(), { headers }); }
+  catch { return Response.json({ error: 'MCP authorization is unavailable' }, { status: 503, headers }); }
 }

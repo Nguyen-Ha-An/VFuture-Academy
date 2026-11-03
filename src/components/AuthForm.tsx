@@ -1,5 +1,8 @@
 'use client';
 
+import { useAuthPopup } from '@/lib/identity/use-auth-popup';
+import { AzureAuthPanel } from '@/components/AzureAuthPanel';
+import { azureBrowserIdentityEnabled } from '@/lib/identity/provider';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -65,12 +68,16 @@ async function postAuthDestination(next: string) {
   return null;
 }
 
-export function AuthForm({ mode, bench = false }: AuthFormProps) {
+export function AuthForm(props: AuthFormProps) {
+  return azureBrowserIdentityEnabled() ? <AzureAuthPanel mode={props.mode} bench={props.bench} /> : <LegacyAuthForm {...props} />;
+}
+function LegacyAuthForm({ mode, bench = false }: AuthFormProps) {
   const t = useTranslations('auth');
   const tb = useTranslations('bench.auth');
   const locale = useLocale();
   const searchParams = useSearchParams();
   const next = safeInternalPath(searchParams.get('next'));
+  const popup = useAuthPopup(next, locale === 'en');
   const callbackReason = searchParams.get('error');
   const initialCallbackError = callbackReason === 'cancelled'
     ? t('providerCancelled')
@@ -91,7 +98,7 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
   const [submitting, setSubmitting] = useState(false);
 
   const submitCredentials = async (formData: FormData) => {
-    if (submitting || coolingDown) return;
+    if (submitting || coolingDown || popup.busy) return;
     setServerError(null);
     setFieldErrors({});
     setStatus(null);
@@ -155,30 +162,14 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
     }
   };
 
-  const signInWithProvider = async (provider: 'google' | 'azure') => {
-    if (submitting) return;
-    setServerError(null);
-    setFieldErrors({});
-    setStatus(null);
-    setSubmitting(true);
-    try {
-      const { error: oauthError } = await supabaseBrowser().auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: callbackUrl(next),
-          ...(provider === 'azure' ? { scopes: 'email' } : {}),
-        },
-      });
-      if (oauthError) setServerError(t('providerError'));
-    } catch {
-      setServerError(t('providerError'));
-    } finally {
-      setSubmitting(false);
-    }
+  const signInWithProvider = (provider: 'google' | 'azure') => {
+    if (submitting || popup.busy) return;
+    setServerError(null); setFieldErrors({}); setStatus(null);
+    popup.open(`/auth/login?${new URLSearchParams({ provider, next })}`);
   };
 
   const sendMagicLink = async () => {
-    if (submitting || coolingDown) return;
+    if (submitting || coolingDown || popup.busy) return;
     setServerError(null);
     setFieldErrors({});
     setStatus(null);
@@ -219,19 +210,22 @@ export function AuthForm({ mode, bench = false }: AuthFormProps) {
       <h1 id="auth-title" className={bench ? 'vf-title-sm' : 'text-2xl font-semibold'}>{title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? t('loginDescription') : t('signupDescription')}</p>
       <div className="mt-6 space-y-3">
-        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('google')} disabled={submitting}>{t('continueGoogle')}</Button>
-        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('azure')} disabled={submitting}>{t('continueMicrosoft')}</Button>
+        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('google')} disabled={submitting || popup.busy}>{t('continueGoogle')}</Button>
+        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('azure')} disabled={submitting || popup.busy}>{t('continueMicrosoft')}</Button>
       </div>
       <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border" /><span className="text-xs text-muted-foreground">{t('or')}</span><span className="h-px flex-1 bg-border" /></div>
+      {popup.status ? <p role="status" aria-live="polite" className="mt-4 text-sm">{popup.status}</p> : null}
+      {popup.error ? <p role="alert" className="mt-4 text-sm text-destructive">{popup.error}</p> : null}
+      {popup.phase ? <button type="button" className="min-h-11 underline underline-offset-4" onClick={popup.cancel}>{locale === 'en' ? 'Cancel sign-in' : 'Hủy đăng nhập'}</button> : null}
       <form action={submitCredentials} noValidate className="space-y-4">
         <div className="space-y-1.5"><label htmlFor="auth-email" className="text-sm font-medium">{t('email')}</label><Input ref={emailRef} id="auth-email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'auth-email-error' : undefined} aria-errormessage={fieldErrors.email ? 'auth-email-error' : undefined} />{fieldErrors.email ? <p id="auth-email-error" role="alert" className="text-sm text-destructive">{fieldErrors.email}</p> : null}</div>
         <div className="space-y-1.5"><label htmlFor="auth-password" className="text-sm font-medium">{t('password')}</label><Input ref={passwordRef} id="auth-password" name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? 'auth-password-error' : undefined} aria-errormessage={fieldErrors.password ? 'auth-password-error' : undefined} />{fieldErrors.password ? <p id="auth-password-error" role="alert" className="text-sm text-destructive">{fieldErrors.password}</p> : null}</div>
         {serverError ? <p id="auth-status" aria-live="assertive" role="alert" className="text-sm text-destructive">{serverError}</p> : null}
         {status ? <p aria-live="polite" role="status" className="text-sm text-muted-foreground">{status}</p> : null}
         {bench
-          ? <PendingSubmit className="min-h-11 w-full" disabled={submitting || coolingDown} label={submitLabel} pendingLabel={tb(mode === 'login' ? 'pending.signIn' : 'pending.createAccount')} />
-          : <Button type="submit" className="min-h-11 w-full" disabled={submitting || coolingDown}>{submitLabel}</Button>}
-        {mode === 'login' ? <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={sendMagicLink} disabled={submitting || coolingDown}>{t('emailMagicLink')}</Button> : null}
+          ? <PendingSubmit className="min-h-11 w-full" disabled={submitting || coolingDown || popup.busy} label={submitLabel} pendingLabel={tb(mode === 'login' ? 'pending.signIn' : 'pending.createAccount')} />
+          : <Button type="submit" className="min-h-11 w-full" disabled={submitting || coolingDown || popup.busy}>{submitLabel}</Button>}
+        {mode === 'login' ? <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={sendMagicLink} disabled={submitting || coolingDown || popup.busy}>{t('emailMagicLink')}</Button> : null}
       </form>
       {mode === 'login' ? <p className="mt-4 text-center text-sm"><Link href={routes.auth.forgotPassword()} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{t('forgotPassword')}</Link></p> : null}
       <p className="mt-6 text-center text-sm text-muted-foreground">{mode === 'login' ? t('needAccount') : t('haveAccount')} <Link href={alternateHref} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{mode === 'login' ? t('openSignup') : t('openLogin')}</Link></p>

@@ -26,6 +26,7 @@ import { CONTENT_STAGES, STAGE_TONES, isContentStage, localizedTitle, rowStage }
 import { PUBLISH_CHECKLIST_KEYS, emptyPublishChecklist, isPublishChecklistComplete, type PublishChecklist } from "@/features/studio/publish-checklist";
 import { cn } from "@/lib/ui-cn";
 import { ConfirmationDialog, scopedUrl } from "./member-admin-ui";
+import { MediaDeleteButton } from "@/features/media/MediaDeleteButton";
 import type { AdminScope } from "@/lib/admin-scope";
 
 
@@ -159,6 +160,7 @@ export function ContentInventory({
   branches,
   creatableTypes,
   requestableKeys,
+  deletableMediaIds = [],
   pageSize = LIBRARY_PAGE_SIZE,
   title,
   description,
@@ -166,6 +168,7 @@ export function ContentInventory({
   rows: ContentRow[];
   creatableTypes: string[];
   requestableKeys: string[];
+  deletableMediaIds?: string[];
   pageSize?: number;
   /** When given, the inventory renders the page header itself so "Create" is its one primary action. */
   title?: string;
@@ -397,7 +400,10 @@ export function ContentInventory({
                       {updated ? format.dateTime(updated, { dateStyle: "medium", timeStyle: "short" }) : "—"}
                     </TableCell>
                     <TableCell className="w-12 text-right">
-                      <RowActions label={library("rowActions", { title })} items={actions} />
+                      <div className="flex items-center justify-end gap-2">
+                        {row.content_type === 'media_asset' && deletableMediaIds.includes(row.content_id) ? <MediaDeleteButton assetId={row.content_id} filename={title} url={url(`/api/v1/studio/media/${encodeURIComponent(row.content_id)}`)} onDeleted={() => router.refresh()} /> : null}
+                        <RowActions label={library("rowActions", { title })} items={actions} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 import { MediaAltSchema } from '@/features/media/library';
-import { ok, parseBody, withHandler } from '@/lib/api';
+import { ApiError, ok, parseBody, withHandler } from '@/lib/api';
+import { academyBackend } from '@/lib/identity/provider';
+import { deleteMediaAsset, type MediaDeletionDatabase } from '@/features/media/delete';
 import { supabaseService } from '@/lib/supabase/server';
 import { typedContentContext } from '@/features/admin/content-review-production';
 import { assertContentAccess, type ContentReviewDatabase } from '@/features/admin/content-review';
@@ -24,4 +26,12 @@ export const PUT = withHandler(async (request, context) => {
   await assertContentAccess(supabaseService() as unknown as ContentReviewDatabase, actor, 'media_asset', assetId, 'content.edit');
   const { alt, expectedRevision } = await parseBody(UpdateAltBody, request);
   return ok(await service.saveMediaAlt(assetId, expectedRevision, alt));
+});
+
+/** Explicit authoring-file removal; academic files and all retained references are protected by SQL. */
+export const DELETE = withHandler(async (request, context) => {
+  if (academyBackend() !== 'azure') throw new ApiError(404, 'NOT_FOUND', 'Not found');
+  const { assetId } = await (context as RouteContext).params;
+  const { context: workspace } = await typedContentContext(request, 'content.edit', 'media.upload', true);
+  return ok(await deleteMediaAsset({ database: supabaseService() as unknown as MediaDeletionDatabase, actor: workspace.actor, scope: workspace.scope, assetId }), { headers: { 'cache-control': 'private, no-store' } });
 });

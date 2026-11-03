@@ -68,7 +68,10 @@ function httpError(error: StudioMcpError, origin: string | null): Response {
   const headers = mcpCorsHeaders(origin);
   headers.set('Content-Type', 'application/json; charset=utf-8');
   headers.set('Cache-Control', 'no-store');
-  if (error.code === 'UNAUTHENTICATED') headers.set('WWW-Authenticate', mcpBearerChallenge());
+  if (error.code === 'UNAUTHENTICATED') {
+    try { headers.set('WWW-Authenticate', mcpBearerChallenge()); }
+    catch { return httpError(new StudioMcpError('SERVICE_UNAVAILABLE'), origin); }
+  }
   if (error.retryAfterSeconds !== undefined) headers.set('Retry-After', String(error.retryAfterSeconds));
   return new Response(JSON.stringify(mcpErrorPayload(error)), { status: error.status, headers });
 }

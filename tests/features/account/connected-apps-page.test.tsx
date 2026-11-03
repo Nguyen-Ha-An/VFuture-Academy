@@ -21,6 +21,7 @@ import { ConnectedAppsPanel } from '@/features/account/connected-apps/ConnectedA
 const clientId = '00000000-0000-4000-8000-000000000123';
 
 beforeEach(() => {
+  vi.unstubAllEnvs();
   mocks.requireUser.mockReset().mockResolvedValue({ id: 'former-studio-editor', email: 'editor@example.com' });
   mocks.listGrants.mockReset().mockResolvedValue({ data: [{
     client: { id: clientId, name: 'Course helper', uri: 'javascript:alert(1)', logo_uri: 'https://evil.example/logo' },
@@ -31,6 +32,13 @@ beforeEach(() => {
 });
 
 describe('/account/connected-apps', () => {
+  it('explains Microsoft grant management without showing Supabase grants in Azure mode', async () => {
+    vi.stubEnv('ACADEMY_BACKEND', 'azure');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    const element = await ConnectedAppsPage();
+    expect(element.props.state).toEqual({ kind: 'microsoft' });
+    expect(mocks.listGrants).not.toHaveBeenCalled();
+  });
   it('localizes the private page title', async () => {
     expect(await generateMetadata()).toMatchObject({ title: 'Connected apps | VFuture Academy', robots: { index: false } });
     mocks.getLocale.mockResolvedValue('vi');

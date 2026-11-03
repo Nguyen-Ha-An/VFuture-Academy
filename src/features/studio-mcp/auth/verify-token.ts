@@ -10,7 +10,7 @@ export type McpAuthClient = {
 export type VerifiedMcpToken = {
   userId: string;
   clientId: string;
-  sessionId: string;
+  sessionId?: string;
   expiresAt: number;
 };
 

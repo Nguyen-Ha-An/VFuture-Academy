@@ -47,6 +47,7 @@
     "predev": "npm run studio:worker",
     "verify:local": "node scripts/verify-local.mjs",
     "verify:azure": "node scripts/verify-azure.mjs",
+    "verify:azure-core": "npm ci --prefix infra/azure-core/functions --ignore-scripts --no-audit --no-fund && node infra/azure-core/verify.mjs",
     "graphify:refresh": "node scripts/graphify.mjs refresh",
     "graphify:check": "node scripts/graphify.mjs check"
   },

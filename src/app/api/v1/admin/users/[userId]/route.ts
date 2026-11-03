@@ -1,4 +1,5 @@
-import { withHandler, ok, parseBody } from '@/lib/api';
+import { academyBackend } from '@/lib/identity/provider';
+import { withHandler, ok, parseBody, ApiError } from '@/lib/api';
 import { getLocale } from 'next-intl/server';
 import { getAdminContext, assertRequestScope, assertSameOrigin, assertAdminPermission } from '@/features/admin/context';
 import { actorDisplayNames } from '@/features/admin/actor-directory';
@@ -66,6 +67,7 @@ export const PATCH = withHandler(async (request,route) => {
   assertSameOrigin(request); const context=await getAdminContext(); assertRequestScope(context,request);
   const userId=await routeParam(route,'userId'); const {action,...input}=await parseBody(MemberMutationSchema,request);
   assertAdminPermission(context,'member.read');
+  if(academyBackend()==='azure'&&action==='account-status')throw new ApiError(409,'ACCOUNT_LIFECYCLE_REQUIRED','Use account login controls to synchronize directory state and revoke sessions');
   const updated=await managementWrite<MemberSummary>(context,`user.${action}`,{...input,userId});
   return ok(updated,{headers:{'Cache-Control':'private, no-store'}});
 });

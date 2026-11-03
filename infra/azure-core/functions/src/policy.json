@@ -1,0 +1,11 @@
+{
+  "subscriptionId": "a5981803-fc8a-4ad2-85d7-bd20ec6b9320",
+  "tenantId": "157419c9-2de9-45e7-a6f9-91546dbef629",
+  "resourceGroup": "rg-vfuture-academy-core-sg",
+  "location": "southeastasia",
+  "monthlySoftBudgetUsd": 35,
+  "notifyEmail": "an@vfuturelabs.org",
+  "postgres": { "version": "17", "sku": "Standard_B1ms", "storageGb": 32, "backupDays": 7, "highAvailability": false, "autoGrow": false },
+  "postgrest": { "image": "docker.io/postgrest/postgrest:v13.0.7@sha256:0a46780309a604cdc8b56c776c6e5e15788ce58174d709e40459ab5a2d44d228", "pool": 8, "minReplicas": 0, "maxReplicas": 1 },
+  "benefits": { "meterExpiresOn": "2027-10-23", "b1msHoursPerMonth": 750, "dataGb": 32, "backupGb": 32, "grantExpiresOn": "2027-10-20", "grantBalanceUsdObserved": 2000, "grantObservedOn": "2026-11-02" }
+}

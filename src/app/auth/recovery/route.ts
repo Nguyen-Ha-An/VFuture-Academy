@@ -1,3 +1,4 @@
+import { academyBackend } from '@/lib/identity/provider';
 import { NextResponse } from 'next/server';
 import { supabaseUser } from '@/lib/supabase/server';
 import { authRedirectOrigin } from '@/lib/auth-redirect-origin';
@@ -8,6 +9,7 @@ import { routes } from '@/lib/routes';
  * failure — missing, expired or already-redeemed — returns to the request form identically.
  */
 export async function GET(request: Request) {
+  if (academyBackend() === 'azure') return NextResponse.redirect(new URL('/forgot-password', request.url), 303);
   const requestUrl = new URL(request.url);
   const appUrl = authRedirectOrigin(request);
   const expired = () => NextResponse.redirect(new URL(routes.auth.forgotPassword({ error: 'expired' }), appUrl), 303);

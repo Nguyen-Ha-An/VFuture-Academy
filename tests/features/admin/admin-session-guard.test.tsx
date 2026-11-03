@@ -8,7 +8,7 @@ const mocks=vi.hoisted(()=>({listener:null as null|((event:string,session:{user:
 vi.mock('next/navigation',()=>({useRouter:()=>({replace:mocks.replace,refresh:mocks.refresh})}));
 vi.mock('@/lib/supabase/client',()=>({supabaseBrowser:()=>({auth:{onAuthStateChange:(listener:typeof mocks.listener)=>{mocks.listener=listener;return{data:{subscription:{unsubscribe:mocks.unsubscribe}}};}}})}));
 import {AdminSessionGuard} from '@/features/admin/components/AdminSessionGuard';
-afterEach(()=>{cleanup();vi.clearAllMocks();});
+afterEach(()=>{cleanup();vi.clearAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe('Admin actor changes',()=>{
  it('removes old authorized children immediately when account changes',()=>{
   render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);
@@ -19,4 +19,12 @@ describe('Admin actor changes',()=>{
   render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a" destination="/studio"><p>Studio content</p></AdminSessionGuard></NextIntlClientProvider>);
   act(()=>mocks.listener?.('SIGNED_IN',{user:{id:'b'}}));expect(mocks.replace).toHaveBeenCalledWith('/studio');
  });
+});
+
+it('checks Azure server sessions and conceals an actor change without using Supabase events', async()=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({userId:'b'}),{status:200})));
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Azure private data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ expect(screen.queryByText('Azure private data')).not.toBeInTheDocument();
+ expect(mocks.replace).toHaveBeenCalledWith('/admin');
 });

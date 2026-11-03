@@ -1,6 +1,6 @@
 # Studio MCP operations
 
-Independent Academy status: NOT CONFIGURED / NOT VERIFIED. Provisioning a new Supabase project is deferred. The old monolith endpoint and grants are not the Academy deployment. Configure the values below only when infrastructure setup is authorized.
+Independent Academy hosted MCP status: NOT VERIFIED. This page documents the legacy Supabase provider, which remains the default during migration. For `ACADEMY_BACKEND=azure`, follow [Microsoft Entra registered-client operations](mcp-entra.md); the Supabase registration, consent, session and revocation instructions below do not apply. Keep the feature disabled until the selected provider's hosted gate passes. Do not infer Academy readiness from the old monolith endpoint or grants.
 
 ## What the connection does
 

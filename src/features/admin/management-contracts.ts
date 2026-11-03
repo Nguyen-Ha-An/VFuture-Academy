@@ -119,6 +119,7 @@ export type ManagedInvitation = {
 };
 export type InvitationCreated = ManagedInvitation & { inviteUrl: string };
 export type ManagementOptions = {
+  azureAccountAdmin?: boolean;
   scope: AdminScope;
   branches: { id: string; name: string }[];
   roles: ManagedRoleDefinition[];
