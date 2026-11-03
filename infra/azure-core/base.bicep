@@ -173,7 +173,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = if (deployPostgrest) {
         ]
       }]
       volumes: [{ name: 'postgres-roots', storageType: 'Secret', secrets: [{ secretRef: 'postgres-roots', path: 'roots.crt' }] }]
-      scale: { minReplicas: 0, maxReplicas: 1, rules: [{ name: 'http', http: { metadata: { concurrentRequests: '20' } } }] }
+      scale: { minReplicas: 1, maxReplicas: 1, rules: [{ name: 'http', http: { metadata: { concurrentRequests: '20' } } }] }
     }
   }
   dependsOn: [apiDbReader, apiJwtReader, database]

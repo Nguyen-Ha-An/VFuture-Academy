@@ -2,12 +2,14 @@
 
 This directory contains the new Academy-only resource-group deployment. It does not modify `infra/azure` (the earlier VM design), Central, Competition, Supabase Storage or the production provider selector. Local checks do not prove deployed operation.
 
+See [the production cutover record](../../docs/deployment/azure-core-status.md) for live settings, measured cold-start corrections and outstanding acceptance limits.
+
 ## Resources and fixed limits
 
 Deploy to `rg-vfuture-academy-core-sg` in subscription `a5981803-fc8a-4ad2-85d7-bd20ec6b9320`, owner tenant `157419c9-2de9-45e7-a6f9-91546dbef629`. This is the Azure billing tenant, **not** the External ID customer tenant.
 
 - Private PostgreSQL 17, Standard_B1ms, 32 GB, seven-day local backups, HA disabled, storage autogrowth disabled. PostgreSQL has no public endpoint/firewall exception. A delegated subnet and linked private DNS zone connect Container Apps.
-- PostgREST 13.0.7 pinned to Docker Hub's manifest digest (see `functions/src/policy.json`), Consumption profile, 0–1 replicas, 0.25 vCPU, 0.5 GiB, eight connections. HTTPS ingress is public; all data requests require a server-issued JWT. No anonymous PostgREST role is configured. `academy_private.authorize_request` checks exact issuer `academy-server`, audience `academy-data`, roles `authenticated`/`service_role`, and maximum 60-second lifetime. The SQL bootstrap owns those contracts. The administrator credential must never enter PostgREST.
+- PostgREST 13.0.7 pinned to Docker Hub's manifest digest (see `functions/src/policy.json`), Consumption profile, one replica (min1/max1 after the observed cold-start correction), 0.25 vCPU, 0.5 GiB, eight connections. HTTPS ingress is public; all data requests require a server-issued JWT. No anonymous PostgREST role is configured. `academy_private.authorize_request` checks exact issuer `academy-server`, audience `academy-data`, roles `authenticated`/`service_role`, and maximum 60-second lifetime. The SQL bootstrap owns those contracts. The administrator credential must never enter PostgREST.
 - User-assigned managed identities retrieve only their own Key Vault secrets. The DB authenticator URI and HS256 key remain necessary application secrets. PostgreSQL TLS validates hostname and the shipped public DigiCert Global Root G2 and Microsoft RSA Root CA 2017 certificates. CA files are public trust anchors, not private keys.
 - Functions Flex Consumption, Node22,512MB, always-ready HTTP instances0 by default (explicit0/1 operator parameter), HTTP concurrency eight. Azure's minimum configurable maximum is **40 instances**; this is separate from the PostgREST maximum of one. Host storage singleton leases coordinate timer execution. Storage and ACS access use managed identity; shared storage account keys are disabled.
 - ACS Email custom domain defaults to `notify.academy.vfuturelabs.org`, sender `noreply`. The custom domain starts unlinked: verify ownership/SPF/DKIM first, then redeploy with `linkVerifiedEmailDomain=true`. DNS verification/actual sender delivery are release gates.

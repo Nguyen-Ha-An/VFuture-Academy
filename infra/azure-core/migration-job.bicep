@@ -13,7 +13,7 @@ param packageSha256 string
 @description('Unique immutable receipt name; re-running a completed import is refused by the DB importer.')
 param receiptBlobName string
 param packageKeySecretName string
-@allowed(['schema-import','configure-authenticator','probe'])
+@allowed(['schema-import','configure-authenticator','probe','map-identities','final-sync'])
 param migrationAction string = 'schema-import'
 param authenticatorPasswordSecretName string = ''
 param authenticatorExpiresAt string = ''

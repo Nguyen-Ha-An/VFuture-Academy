@@ -7,11 +7,14 @@ import { isArchiveMetadataPath,validateArchiveListing,tarListingArguments } from
 import { buildAzureSchema } from '../../../scripts/azure-core/schema.mjs';
 const privateDir=resolve('build/azure-core/private');mkdirSync(privateDir,{recursive:true,mode:0o700});
 const probe=process.argv.includes('--probe');
+const cutover=process.argv.includes('--cutover');
+if(probe&&cutover)throw new Error('Choose one package action');
 const snapshot=probe?null:JSON.parse(readFileSync(join(privateDir,'source-snapshot.json'),'utf8'));
 if(!probe&&snapshot.schemaSha256!==buildAzureSchema().receipt.schemaSha256)throw new Error('Snapshot schema digest differs from current reviewed code; rebuild/rehearse before upload.');
 const staging=mkdtempSync(join(privateDir,'migration-stage-'));
 try {
   const files=probe?['infra/azure-core/migration/probe.mjs','scripts/azure-core/target.mjs','infra/azure-core/postgres-roots.crt']:['infra/azure-core/migration/probe.mjs','scripts/azure-core/migrate.mjs','scripts/azure-core/target.mjs','scripts/azure-core/diagnostics.mjs','scripts/azure-core/configure-authenticator.mjs','scripts/azure-core/restore.mjs','scripts/azure-core/schema.mjs','scripts/azure-core/snapshot.mjs','scripts/azure-core/bootstrap.sql','scripts/azure-core/storage.sql','scripts/azure-core/media-delete.sql','scripts/azure-core/account-access.sql','src/lib/identity/schema.sql','src/lib/identity/admin-schema.sql','supabase/migrations','infra/azure-core/postgres-roots.crt','build/azure-core/private/source-snapshot.json'];
+  if(cutover)files.push('scripts/azure-core/cutover.mjs','build/azure-core/private/cutover-manifest.json');
   for(const path of files){const target=join(staging,path);mkdirSync(dirname(target),{recursive:true,mode:0o700});cpSync(path,target,{recursive:true,filter:source=>!isArchiveMetadataPath(source)});}
   writeFileSync(join(staging,'package.json'),'{"type":"module","private":true}\n',{mode:0o600});
   const copied=new Map();
@@ -43,7 +46,7 @@ try {
   const name=`migration-${sha256}.enc`;
   writeFileSync(join(privateDir,name),encrypted,{mode:0o600});
   writeFileSync(join(privateDir,'migration-package-key.txt'),key.toString('base64'),{mode:0o600});key.fill(0);
-  writeFileSync('build/azure-core/migration-package-receipt.json',JSON.stringify({blobName:name,sha256,packageType:probe?'probe':'schema-import',schemaSha256:snapshot?.schemaSha256??null,dependencies:Object.fromEntries(copied),createdAt:new Date().toISOString()},null,2)+'\n',{mode:0o600});
+  writeFileSync('build/azure-core/migration-package-receipt.json',JSON.stringify({blobName:name,sha256,packageType:probe?'probe':cutover?'cutover':'schema-import',schemaSha256:snapshot?.schemaSha256??null,dependencies:Object.fromEntries(copied),createdAt:new Date().toISOString()},null,2)+'\n',{mode:0o600});
   rmSync(archive);
   console.log('Encrypted migration package and key prepared in ignored private directory; no cloud calls performed.');
 }finally{if(existsSync(staging))rmSync(staging,{recursive:true,force:true});}
