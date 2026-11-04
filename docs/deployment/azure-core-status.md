@@ -2,6 +2,20 @@
 
 Production cutover completed on 3 November 2026 (Asia/Ho_Chi_Minh). Azure PostgreSQL/PostgREST is now the application's database, Entra handles identity, and the Academy-scoped ACS OTP listener is active. The website remains on Vercel and files remain in private Supabase Storage. Supabase's application/authentication writes are frozen for rollback retention.
 
+## Credit-only cost controls, 4 November 2026
+
+The owner requires a USD10–25 monthly credit-consumption target and zero cash charges. The new source policy is USD25, superseding the historical USD35 notification target below. The subscription-scoped `academy-credit-monthly-soft` budget includes both `rg-vfuture-academy-core-sg` and `ME_vfa-core-environment_rg-vfuture-academy-core-sg_southeastasia`; the old RG-only budget is retained with notifications disabled to avoid duplicates. Deployment and live readback remain separate from local verification.
+
+The current billing profile is an Individual Microsoft Customer Agreement / Azure Plan. Both subscription and billing-profile reads reported `spendingLimit: Off`, even though the subscription quota identifier is `Sponsored_2016-01-01`. The signed-in operator is a billing-profile owner, but the documented legacy spending-limit blade reported that it was not authorized to remove the limit; the profile's policy page exposes purchase controls, not a spending-limit toggle. Do not interpret the sponsored quota identifier or a USD25 budget as an enforceable credit-only cap. A supported billing-level limit still requires resolution with the billing administrator/Microsoft; no automatic subscription cancellation or service shutdown has been added.
+
+The matching profile credit-balance API reported USD2000 remaining and USD0 expired. The portal showed USD0 currently due and explained that available credits are applied when the invoice is generated. November costs are provisional usage, not proof of a cash debit or proof that every meter is credit-eligible.
+
+Free-service observations: B1ms compute used 38/750 hours, PostgreSQL data storage 1.69/32 GB-month and Standard Load Balancer 39.21/750 hours, all within allowance. Hot Blob reads used 4.34/2 units of 10,000 operations, exceeding the operation allowance. The dominant billed resources were the Functions Flex always-ready HTTP instance and the managed Standard IPv4 address. Always-ready billing has no free grant; network/DNS/storage meters are separate from serverless request allowances. See [Functions billing](https://learn.microsoft.com/en-us/azure/azure-functions/functions-consumption-costs) and [Container Apps billing](https://learn.microsoft.com/en-us/azure/container-apps/billing).
+
+The monitor now preserves actual-cost totals and actual threshold alerts if the forecast service is unavailable, including HTTP429. It does not immediately retry a throttled request and retains the provider's sanitized retry delay. Forecast unavailability is explicitly described as not a budget breach and is deduplicated monthly. Missing actual-cost data still fails rather than becoming a false zero. Outside-scope identity/free-meter completeness flags must remain false until reviewed; this change does not certify all accounting.
+
+Do not disable the warm HTTP instance or API replica merely to reach the target: the measured cold starts below would regress OTP acceptance and login latency. Reducing those fixed costs requires a separately tested hosting/callback change.
+
 ## Production cutover record
 
 - Initial production deployment: `dpl_2X1NA7spTPwmQ6ytW22erVkbdPKX`, application source `3a6f925da7d8dd3655cb01d86a1263343e5cf8a8`. Both backend selectors are `azure`; the canonical origin is `https://academy.vfuturelabs.org`.

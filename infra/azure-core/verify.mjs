@@ -42,10 +42,21 @@ try {
   assert.equal(eventSubscription.properties.deliveryWithResourceIdentity.destination.properties.queueMessageTimeToLiveInSeconds,300);
   const host=JSON.parse(readFileSync('infra/azure-core/functions/host.json','utf8'));
   assert.equal(host.extensions.queues.messageEncoding,'none');assert.equal(host.extensions.queues.maxDequeueCount,1); assert.equal(arm.parameters.examSweepEnabled.defaultValue,false);
-  const notifications=resource('Microsoft.Consumption/budgets').properties.notifications;
-  assert.equal(resource('Microsoft.Consumption/budgets').properties.amount,35);
+  const legacyBudget=resource('Microsoft.Consumption/budgets');
+  assert.ok(Object.values(legacyBudget.properties.notifications).every(n=>n.enabled===false),'Legacy RG-only budget must not duplicate aggregate alerts');
+  const budgetModule=core.resources.find(r=>r.name==='academy-credit-budget');
+  assert.equal(budgetModule.subscriptionId,"[subscription().subscriptionId]",'Budget must cover both Academy RGs at subscription scope');
+  const aggregateBudget=budgetModule.properties.template.resources.find(r=>r.type==='Microsoft.Consumption/budgets');
+  const notifications=aggregateBudget.properties.notifications;
+  assert.equal(aggregateBudget.properties.amount,"[variables('policy').monthlySoftBudgetUsd]");
+  const budgetVariables=budgetModule.properties.template.variables;
+  const policyAlias=/^\[variables\('([^']+)'\)\]$/.exec(budgetVariables.policy)?.[1];
+  const budgetPolicy=policyAlias?budgetVariables[policyAlias]:budgetVariables.policy;
+  assert.equal(budgetPolicy.monthlySoftBudgetUsd,policy.monthlySoftBudgetUsd);
+  assert.equal(aggregateBudget.properties.filter.dimensions.name,'ResourceGroupName');
+  assert.deepEqual(aggregateBudget.properties.filter.dimensions.values,["[parameters('academyResourceGroup')]","[parameters('infrastructureResourceGroup')]"]);
   assert.deepEqual(Object.values(notifications).map(n=>[n.threshold,n.thresholdType]),[[50,'Actual'],[80,'Actual'],[100,'Actual'],[100,'Forecasted']]);
-  for(const n of Object.values(notifications)) assert.deepEqual(n.contactEmails,['an@vfuturelabs.org']);
+  for(const n of Object.values(notifications)) { assert.equal(n.enabled,true); assert.deepEqual(n.contactEmails,["[variables('policy').notifyEmail]"]); }
   const jobOutput=join(dir,'job.json');
   execFileSync(bicep,['build','infra/azure-core/migration-job.bicep','--outfile',jobOutput],{stdio:'inherit'});
   const job=JSON.parse(readFileSync(jobOutput,'utf8')).resources.find(r=>r.type==='Microsoft.App/jobs');

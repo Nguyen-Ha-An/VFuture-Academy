@@ -214,18 +214,29 @@ module costReader 'cost-reader.bicep' = {
   scope: subscription()
   params: { principalId: functionIdentity.properties.principalId }
 }
-resource budget 'Microsoft.Consumption/budgets@2023-05-01' = {
+module creditBudget 'budget.bicep' = {
+  name: 'academy-credit-budget'
+  scope: subscription()
+  params: {
+    academyResourceGroup: resourceGroup().name
+    infrastructureResourceGroup: 'ME_${prefix}-environment_${resourceGroup().name}_${location}'
+    startDate: budgetStartDate
+    endDate: budgetEndDate
+  }
+}
+// Keep the old budget resource, but disable its partial-scope duplicate alerts.
+resource legacyBudget 'Microsoft.Consumption/budgets@2023-05-01' = {
   name: 'academy-core-usd35-soft'
   properties: {
-    amount: 35
+    amount: loadJsonContent('functions/src/policy.json').monthlySoftBudgetUsd
     category: 'Cost'
     timeGrain: 'Monthly'
     timePeriod: { startDate: budgetStartDate, endDate: budgetEndDate }
     notifications: {
-      actual50: { enabled: true, operator: 'GreaterThanOrEqualTo', threshold: 50, thresholdType: 'Actual', contactEmails: ['an@vfuturelabs.org'] }
-      actual80: { enabled: true, operator: 'GreaterThanOrEqualTo', threshold: 80, thresholdType: 'Actual', contactEmails: ['an@vfuturelabs.org'] }
-      actual100: { enabled: true, operator: 'GreaterThanOrEqualTo', threshold: 100, thresholdType: 'Actual', contactEmails: ['an@vfuturelabs.org'] }
-      forecast100: { enabled: true, operator: 'GreaterThanOrEqualTo', threshold: 100, thresholdType: 'Forecasted', contactEmails: ['an@vfuturelabs.org'] }
+      actual50: { enabled: false, operator: 'GreaterThanOrEqualTo', threshold: 50, thresholdType: 'Actual', contactEmails: ['an@vfuturelabs.org'] }
+      actual80: { enabled: false, operator: 'GreaterThanOrEqualTo', threshold: 80, thresholdType: 'Actual', contactEmails: ['an@vfuturelabs.org'] }
+      actual100: { enabled: false, operator: 'GreaterThanOrEqualTo', threshold: 100, thresholdType: 'Actual', contactEmails: ['an@vfuturelabs.org'] }
+      forecast100: { enabled: false, operator: 'GreaterThanOrEqualTo', threshold: 100, thresholdType: 'Forecasted', contactEmails: ['an@vfuturelabs.org'] }
     }
   }
 }
