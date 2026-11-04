@@ -16,6 +16,10 @@ export async function azureLogin(request: Request): Promise<NextResponse> {
   const config = readIdentityConfiguration(process.env, url.searchParams.get('provider') === 'microsoft' ? 'microsoft' : 'external-id');
   // OIDC callback is registered on the canonical host; do not set host-bound cookies elsewhere.
   if (url.origin !== config.appOrigin) return noStore(NextResponse.redirect(new URL(`/auth/login${url.search}`, config.appOrigin), 303));
+  if (!['google','microsoft'].includes(url.searchParams.get('provider') || '')) {
+    const path=url.searchParams.get('mode')==='recovery'?'/forgot-password':url.searchParams.get('mode')==='signup'?routes.auth.signup({next:url.searchParams.get('next')}):routes.auth.login({next:url.searchParams.get('next')});
+    return noStore(NextResponse.redirect(new URL(path,config.appOrigin),303));
+  }
   try {
     if (url.searchParams.get('popup') === '1' && !POPUP_ATTEMPT_PATTERN.test(url.searchParams.get('attempt') || '')) throw new Error('Invalid popup attempt');
     await enforceRequestRateLimit(createAzureDataClient('service_role'), 'identity-login', request, { limit: 20, windowSeconds: 60 });

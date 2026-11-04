@@ -16,6 +16,14 @@ The monitor now preserves actual-cost totals and actual threshold alerts if the 
 
 Do not disable the warm HTTP instance or API replica merely to reach the target: the measured cold starts below would regress OTP acceptance and login latency. Reducing those fixed costs requires a separately tested hosting/callback change.
 
+## Inline login restoration
+
+The inline restoration replaces the hosted password/recovery links with the Academy form while keeping existing user UUIDs, permissions and native/Google customer identities. Only social choices use the popup controller. Password and signup/recovery deep links return to the corresponding Academy page. The exact `Google` hint goes directly to Google; older `google.com` configuration is normalized in source.
+
+The existing customer app now has public-client/native API capability and basic OIDC consent (`openid profile email offline_access`). Its original Web redirects and API permission declarations were read back unchanged. A disposable directory account completed a real native password login and public-client refresh, including signed-token identity validation and stable refreshed identity; the successful probe's account was removed. This is not a hosted signup/recovery delivery result. Google Auth Platform separately reports VFuture Academy branding verified and shown to users; the federation callback remains CIAM.
+
+Native continuations are encrypted and bound to per-attempt HttpOnly browser proof plus atomically consumed handles. Passwords/codes are not persisted or logged, and provider tokens are not returned to the browser. Same-origin JSON, size and rate-limit checks apply. The existing refresh lease/version fencing remains in use, with native credentials selecting public-client refresh. Recovery still does not immediately revoke all other Academy device sessions; their prior token-expiry/refresh policy remains.
+
 ## Production cutover record
 
 - Initial production deployment: `dpl_2X1NA7spTPwmQ6ytW22erVkbdPKX`, application source `3a6f925da7d8dd3655cb01d86a1263343e5cf8a8`. Both backend selectors are `azure`; the canonical origin is `https://academy.vfuturelabs.org`.
