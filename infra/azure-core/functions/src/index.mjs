@@ -101,7 +101,7 @@ app.timer('costMonitor', { schedule: '0 31 1 * * *', runOnStartup: false, useMon
     if(!await store.claim(key,firstSent)) continue;
     const hash=createHash('sha256').update(key).digest('hex');
     try {
-      await sendMail({recipients:{to:[{address:'an@vfuturelabs.org'}]},content:{subject:'VFuture Academy Azure operating-cost notice',plainText:alert.message+'\nAvailability takes priority. This is a notification only; no shutdown or automatic upgrade is configured.'}}, {requestId:`${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`,firstSent});
+      await sendMail({recipients:{to:[{address:'an@vfuturelabs.org'}]},content:{subject:'VFuture Academy Azure operating-cost notice',plainText:alert.message+'\nCredit-only operation is required. This notification does not enforce a spending limit; no shutdown or automatic upgrade is configured.'}}, {requestId:`${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`,firstSent});
       // Retain notifications through the month, independently of one-day OTP dedupe rows.
       await table.updateEntity({partitionKey:'events',rowKey:key,status:'accepted',expiresAt:new Date(now.getTime()+40*86400000).toISOString()},'Merge');
     } catch { await table.deleteEntity('events',key); throw new Error('cost_notification_failed'); }
