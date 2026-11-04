@@ -24,12 +24,18 @@ describe('Azure authentication routes', () => {
   });
   it('stores the browser-bound transaction before redirect and uses HttpOnly cookies', async () => {
     mocks.metadata.mockResolvedValue({ authorization_endpoint: 'https://test.ciamlogin.com/authorize' });
-    const response = await azureLogin(new Request('https://academy.example/auth/login?next=https://evil.example'));
+    const response = await azureLogin(new Request('https://academy.example/auth/login?provider=google&next=https://evil.example'));
     expect(response.status).toBe(303);
     expect(new URL(response.headers.get('location')!).host).toBe('test.ciamlogin.com');
     expect(response.headers.get('set-cookie')).toContain('HttpOnly');
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(mocks.store.mock.calls[0][2].next).toBe('/app');
+  });
+  it('keeps password and recovery entry on the Academy UI without starting an OAuth transaction', async () => {
+    const response=await azureLogin(new Request('https://academy.example/auth/login?provider=password&mode=recovery'));
+    expect(response.headers.get('location')).toBe('https://academy.example/forgot-password');
+    expect(mocks.store).not.toHaveBeenCalled();
+    expect(mocks.metadata).not.toHaveBeenCalled();
   });
   it('rejects cross-site logout before revoking the current session', async () => {
     const response = await azureLogout(new Request('https://academy.example/auth/signout', { method: 'POST', headers: { origin: 'https://evil.example' } }));

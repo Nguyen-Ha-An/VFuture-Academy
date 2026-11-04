@@ -1,5 +1,5 @@
 import 'server-only';
-import { IdentityGrantRejected, decryptRefreshToken, encryptRefreshToken, exchangeTokens, getOidcMetadata, getSigningKeys, randomToken, readIdentityConfiguration, verifyIdToken } from './oidc';
+import { IdentityGrantRejected, decryptRefreshToken, encryptRefreshToken, exchangeTokens, getOidcMetadata, getSigningKeys, randomToken, readIdentityConfiguration, verifyIdToken, NATIVE_REFRESH_PREFIX } from './oidc';
 import { claimSessionRefresh, readStoredSession, releaseSessionRefresh, revokeSessionRefresh, rotateStoredSession, type StoredSession } from './store';
 
 /** A different process owns the grant. Never redeem it concurrently or accept an expired token. */
@@ -27,9 +27,11 @@ export async function refreshAzureSession(hash: string, session: StoredSession):
     }
     const config = readIdentityConfiguration(process.env, session.provider);
     const metadata = await getOidcMetadata(config);
-    const previous = decryptRefreshToken(session.refreshCiphertext, hash, config);
+    const credential = decryptRefreshToken(session.refreshCiphertext, hash, config);
+    const native=credential.startsWith(NATIVE_REFRESH_PREFIX);
+    const previous=native?credential.slice(NATIVE_REFRESH_PREFIX.length):credential;
     let tokens: Awaited<ReturnType<typeof exchangeTokens>>;
-    try { tokens = await exchangeTokens(config, metadata, { refreshToken: previous }); } catch (error) {
+    try { tokens = await exchangeTokens(config, metadata, { refreshToken: previous, ...(native?{native:true}:{}) }); } catch (error) {
       if (error instanceof IdentityGrantRejected) {
         // Only the active lease owner may revoke. An expired worker cannot destroy
         // a newer owner, even when both workers observed the same session version.
@@ -43,7 +45,7 @@ export async function refreshAzureSession(hash: string, session: StoredSession):
       await revokeSessionRefresh(hash, session.version, lease);
       throw new Error('Session identity changed');
     }
-    const rotated = await rotateStoredSession(hash, session.version, claims.exp, encryptRefreshToken(tokens.refreshToken || previous, hash, config), lease);
+    const rotated = await rotateStoredSession(hash, session.version, claims.exp, encryptRefreshToken((native?NATIVE_REFRESH_PREFIX:'')+(tokens.refreshToken || previous), hash, config), lease);
     if (!rotated) return await awaitFreshSession(hash, session.version);
     const updated = await readStoredSession(hash);
     if (!updated || updated.expiresAt <= Date.now() / 1000) return null;
