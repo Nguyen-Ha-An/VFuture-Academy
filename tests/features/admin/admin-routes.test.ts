@@ -81,6 +81,17 @@ describe('legacy administration routes', () => {
     expect(mocks.managementWrite).not.toHaveBeenCalled();
   });
 
+  it.each(['ACTOR_CHANGED', 'SCOPE_CHANGED'])('does not mutate a school when the rendered context is stale (%s)', async (code) => {
+    mocks.assertRequestScope.mockImplementationOnce(() => { throw new ApiError(409, code, 'Reload'); });
+    const request = new Request('http://localhost/api/v1/studio/branches?scope=central&actorId=admin-1', {
+      method: 'POST', body: '{"id":"hcmc","name":"HCMC","city":null}',
+    });
+    const response = await createBranch(request);
+    expect(response.status).toBe(409);
+    expect(mocks.assertRequestScope).toHaveBeenCalledWith(centralContext, request);
+    expect(mocks.managementWrite).not.toHaveBeenCalled();
+  });
+
   it('keeps member lookup in its explicitly supplied legacy scope, accepts an empty query, and never accepts a client actor', async () => {
     mocks.legacyAdminContext.mockResolvedValueOnce(branchContext);
 

@@ -1,11 +1,10 @@
 'use client';
 
 import { FileText, LoaderCircle, ShieldAlert } from 'lucide-react';
-import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button, CanvasDataTable, CanvasTabs } from '@/features/canvas/ui';
 import {
   Dialog,
   DialogClose,
@@ -17,11 +16,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { CanvasSelect } from '@/features/canvas/ui';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataCard, EmptyState, StatusBadge } from '@/features/staff-ui/components';
 import { readApiData, workspaceErrorMessage } from '@/features/studio/ui/client';
 import { routes } from '@/lib/routes';
-import { cn } from '@/lib/ui-cn';
 import { safeHttpsUrl } from './safe-url';
 import type {
   BranchOption,
@@ -31,20 +28,6 @@ import type {
   ExamReleaseResult,
   PendingManualQuestion,
 } from './types';
-
-function AttemptCell({ label, children, className, valueClassName }: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-  valueClassName?: string;
-}) {
-  return (
-    <TableCell className={cn('flex min-h-0 items-start justify-between gap-3 px-6 py-2 leading-normal xl:table-cell xl:h-12 xl:px-2 xl:py-3', className)}>
-      <span className="shrink-0 text-xs font-medium leading-normal text-muted-foreground xl:hidden">{label}</span>
-      <div className={cn('min-w-0 text-right xl:text-left', valueClassName)}>{children}</div>
-    </TableCell>
-  );
-}
 
 export function ExamAttemptsTable({
   attempts,
@@ -60,47 +43,34 @@ export function ExamAttemptsTable({
   const locale = useLocale();
   const t = useTranslations('studio.exams');
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
-  return (
-    <Table className="block xl:table" containerClassName="overflow-visible xl:overflow-x-auto">
-      <TableHeader className="hidden xl:table-header-group">
-        <TableRow className="hover:bg-transparent">
-          <TableHead scope="col">{t('table.learner')}</TableHead>
-          <TableHead scope="col">{t('table.attempt')}</TableHead>
-          <TableHead scope="col">{t('table.status')}</TableHead>
-          <TableHead scope="col">{t('table.late')}</TableHead>
-          <TableHead scope="col">{t('table.percent')}</TableHead>
-          <TableHead scope="col">{locale === 'vi' ? 'Kết quả' : 'Results'}</TableHead>
-          <TableHead scope="col">{t('table.integrity')}</TableHead>
-          <TableHead scope="col">{t('table.submittedAt')}</TableHead>
-          {canGrade ? <TableHead scope="col">{t('table.action')}</TableHead> : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody className="block xl:table-row-group">
-        {attempts.map((attempt) => (
-          <TableRow key={attempt.attemptId} className="block py-3 hover:bg-muted/30 xl:table-row xl:py-0">
-            <AttemptCell label={t('table.learner')} valueClassName="break-words font-semibold xl:font-medium">{attempt.learnerName}</AttemptCell>
-            <AttemptCell label={t('table.attempt')} valueClassName="tabular-nums">{attempt.attemptNo}</AttemptCell>
-            <AttemptCell label={t('table.status')}><StatusBadge kind="examAttempt" value={attempt.status} label={t(`status.${attempt.status}`)} /></AttemptCell>
-            <AttemptCell label={t('table.late')}>{attempt.late ? t('yes') : t('no')}</AttemptCell>
-            <AttemptCell label={t('table.percent')} valueClassName="tabular-nums">{attempt.percent === null ? '—' : `${attempt.percent}%`}</AttemptCell>
-            <AttemptCell label={locale === 'vi' ? 'Kết quả' : 'Results'} valueClassName="max-w-48 text-pretty xl:max-w-none">{attempt.status === 'pending_manual'
-              ? <span className="text-muted-foreground">{locale === 'vi' ? 'Đang chấm' : 'Grading'}</span>
-              : attempt.resultAvailableAt
-                ? <span>{locale === 'vi' ? 'Đã hoàn tất' : 'Complete'}</span>
-                // A historical attempt has no availability marker. Released the legacy way, its
-                // score is already visible to the learner, so it must not be reported as hidden.
-                : attempt.releasedAt
-                  ? <span>{locale === 'vi' ? 'Đã công bố (cũ)' : 'Released (legacy)'}</span>
-                  : <span className="text-muted-foreground">{locale === 'vi' ? 'Chờ công bố (cũ)' : 'Awaiting legacy release'}</span>}
-              {attempt.releasedAt ? <span className="mt-1 block text-xs leading-normal text-muted-foreground">{locale === 'vi' ? 'Đã công bố đáp án' : 'Answer key released'}</span> : null}</AttemptCell>
-            <AttemptCell label={t('table.integrity')} valueClassName="tabular-nums">{attempt.integrityEventCount}</AttemptCell>
-            <AttemptCell label={t('table.submittedAt')} valueClassName="text-muted-foreground tabular-nums xl:whitespace-nowrap">{attempt.submittedAt ? date.format(new Date(attempt.submittedAt)) : '—'}</AttemptCell>
-            {canGrade ? <TableCell className="block px-6 pb-2 pt-3 xl:table-cell xl:h-12 xl:px-2 xl:py-3">{detailHref ? <Button asChild size="sm" className="w-full xl:w-auto"><Link href={detailHref(attempt)}>{t('manualGradeAction')}</Link></Button> : <Button size="sm" className="w-full xl:w-auto" onClick={() => onGrade?.(attempt)}>{t('manualGradeAction')}</Button>}</TableCell> : null}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
+  return <CanvasDataTable
+    caption={t('title')}
+    rows={attempts}
+    rowKey={(attempt) => attempt.attemptId}
+    stackedBelow={64}
+    columns={[
+      { key: 'learner', label: t('table.learner'), render: (attempt) => attempt.learnerName },
+      { key: 'attempt', label: t('table.attempt'), render: (attempt) => attempt.attemptNo },
+      { key: 'status', label: t('table.status'), render: (attempt) => <StatusBadge kind="examAttempt" value={attempt.status} label={t(`status.${attempt.status}`)} /> },
+      { key: 'late', label: t('table.late'), render: (attempt) => attempt.late ? t('yes') : t('no') },
+      { key: 'percent', label: t('table.percent'), render: (attempt) => attempt.percent === null ? '—' : `${attempt.percent}%` },
+      { key: 'result', label: locale === 'vi' ? 'Kết quả' : 'Results', render: (attempt) => <>
+        {attempt.status === 'pending_manual'
+          ? <span className="text-muted-foreground">{locale === 'vi' ? 'Đang chấm' : 'Grading'}</span>
+          : attempt.resultAvailableAt
+            ? <span>{locale === 'vi' ? 'Đã hoàn tất' : 'Complete'}</span>
+            : attempt.releasedAt
+              ? <span>{locale === 'vi' ? 'Đã công bố (cũ)' : 'Released (legacy)'}</span>
+              : <span className="text-muted-foreground">{locale === 'vi' ? 'Chờ công bố (cũ)' : 'Awaiting legacy release'}</span>}
+        {attempt.releasedAt ? <span className="mt-1 block text-xs text-muted-foreground">{locale === 'vi' ? 'Đã công bố đáp án' : 'Answer key released'}</span> : null}
+      </> },
+      { key: 'integrity', label: t('table.integrity'), render: (attempt) => attempt.integrityEventCount },
+      { key: 'submitted', label: t('table.submittedAt'), render: (attempt) => attempt.submittedAt ? <time dateTime={attempt.submittedAt}>{date.format(new Date(attempt.submittedAt))}</time> : '—' },
+      ...(canGrade ? [{ key: 'action', label: t('table.action'), render: (attempt: ExamAttempt) => detailHref
+        ? <Button size="sm" variant="outline" href={detailHref(attempt)}>{t('manualGradeAction')}</Button>
+        : <Button size="sm" variant="outline" onClick={() => onGrade?.(attempt)}>{t('manualGradeAction')}</Button> }] : []),
+    ]}
+  />;
 }
 
 export function ReleaseExamDialog({
@@ -303,6 +273,7 @@ export function ExamsWorkspace({
   },[filtersReady,branchId,courseId,examKey,exams]);
 
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
+  const [workFilter, setWorkFilter] = useState<'all' | 'pending_manual' | 'graded'>('all');
   const [skippedUnassigned, setSkippedUnassigned] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -317,6 +288,12 @@ export function ExamsWorkspace({
   const canAccessSelectedBranch = canGradeSelectedBranch || canReleaseSelectedBranch;
   const hasReleasableAttempts = attempts.some((attempt) =>
     attempt.status === 'graded' && attempt.releasedAt === null);
+  const visibleAttempts = workFilter === 'all' ? attempts : attempts.filter((attempt) => attempt.status === workFilter);
+  const workFilters = [
+    { value: 'all', label: vi ? 'Tất cả lượt thi' : 'All attempts', count: attempts.length },
+    { value: 'pending_manual', label: vi ? 'Chờ chấm' : 'Waiting to grade', count: attempts.filter((attempt) => attempt.status === 'pending_manual').length },
+    { value: 'graded', label: vi ? 'Đã chấm' : 'Graded', count: attempts.filter((attempt) => attempt.status === 'graded').length },
+  ] as const;
   const loadErrorFallback = t('loadError');
   const selectedExamLabel = selectedExam
     ? t('examOption', { title: selectedExam.itemTitle, version: selectedExam.version })
@@ -346,6 +323,7 @@ export function ExamsWorkspace({
 
   function clearSelectedAttempts() {
     setAttempts([]);
+    setWorkFilter('all');
     setSkippedUnassigned(0);
     setLoading(false);
     setError(null);
@@ -386,7 +364,7 @@ export function ExamsWorkspace({
     : `${window.location.pathname}${window.location.search}`;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="canvas-page mx-auto max-w-7xl min-w-0 space-y-6">
       {!embedded ? (
         <header className="border-b border-border pb-6">
           <div className="min-w-0">
@@ -421,7 +399,14 @@ export function ExamsWorkspace({
         {skippedUnassigned && canAccessSelectedBranch ? <p className="m-6 flex items-center gap-2 rounded-md border border-warning-border bg-warning p-3 text-sm leading-normal text-warning-foreground"><ShieldAlert aria-hidden="true" className="size-4 shrink-0" />{t('unassignedSkipped', { count: skippedUnassigned })}</p> : null}
         {!loading && canAccessSelectedBranch && !selectedExam ? <EmptyState className="m-4" icon={<FileText />} title={vi ? 'Chưa có bài thi trong phạm vi này.' : 'No exams are available in this scope.'} /> : null}
         {!loading && canAccessSelectedBranch && selectedExam && !attempts.length && !error ? <EmptyState className="m-4" icon={<FileText />} title={t('empty')} /> : null}
-        {attempts.length && canAccessSelectedBranch ? <ExamAttemptsTable attempts={attempts} canGrade={canGradeSelectedBranch} detailHref={(attempt) => routes.grading.exam(attempt.attemptId, { branchId, courseId, exam: examKey, back: currentListHref() })} /> : null}
+        {attempts.length && canAccessSelectedBranch ? <CanvasTabs
+          screenReaderLabel={vi ? 'Công việc chấm bài thi' : 'Exam grading work'}
+          onRequestTabChange={(_event, data) => setWorkFilter(workFilters[data.index].value)}
+        >{workFilters.map((filter) => <CanvasTabs.Panel key={filter.value} renderTitle={`${filter.label} (${filter.count})`} isSelected={workFilter === filter.value} padding="none">
+          {visibleAttempts.length
+            ? <ExamAttemptsTable attempts={visibleAttempts} canGrade={canGradeSelectedBranch} detailHref={(attempt) => routes.grading.exam(attempt.attemptId, { branchId, courseId, exam: examKey, back: currentListHref() })} />
+            : <EmptyState className="m-4" icon={<FileText />} title={vi ? 'Không có lượt thi trong trạng thái này.' : 'No attempts in this state.'} />}
+        </CanvasTabs.Panel>)}</CanvasTabs> : null}
       </DataCard>
     </div>
   );

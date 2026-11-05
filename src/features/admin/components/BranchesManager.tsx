@@ -2,17 +2,17 @@
 
 import "@/features/admin/ui/admin.css";
 import { useState, type FormEvent } from 'react';
-import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { PlusIcon } from 'lucide-react';
 
-import { CanvasButton as Button, CanvasTextInput } from '@/features/canvas/ui';
+import { CanvasButton as Button, CanvasTextInput, CanvasDataTable, CanvasLink } from '@/features/canvas/ui';
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Branch } from '@/features/admin/branches';
 import { DataCard, EmptyState, RowActions, StatCard, StatGrid, type RowAction } from '@/features/staff-ui/components';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 import { routes } from '@/lib/routes';
+import { scopedUrl } from './member-admin-ui';
+import type { AdminScope } from '@/lib/admin-scope';
 
 type Envelope<T> = { data?: T; error?: { message?: string } };
 
@@ -36,6 +36,8 @@ export type SchoolReportCells = {
 
 export type BranchesManagerProps = {
   initialBranches: Branch[];
+  scope: AdminScope;
+  actorId: string;
   /**
    * Per-school report cells keyed by branch id. Leave undefined when the viewer may not read
    * reports (the columns are not rendered); 'unavailable' when the read failed (columns say so).
@@ -52,7 +54,7 @@ type EditorState = { mode: 'create' } | { mode: 'edit'; branch: Branch };
  * /admin/branches: KPI row, one schools table and one Sheet shared by "New school" and Edit.
  * Props are plain data so the admin harness can render it with fixtures.
  */
-export function BranchesManager({ initialBranches, reports, canManage = false, showHeading = true }: BranchesManagerProps) {
+export function BranchesManager({ initialBranches, scope, actorId, reports, canManage = false, showHeading = true }: BranchesManagerProps) {
   const t = useTranslations('studio.admin');
   const tc = useTranslations('centralAdmin');
   const to = useTranslations('staffUi.admin.org.schools');
@@ -83,7 +85,7 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
     setStatus(t('saving'));
     try {
       if (editor.mode === 'create') {
-        const branch = await responseData<Branch>(await fetch('/api/v1/studio/branches', {
+        const branch = await responseData<Branch>(await fetch(scopedUrl('/api/v1/studio/branches', scope, { actorId }), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: values.get('id'), name, city }),
@@ -92,7 +94,7 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
           .sort((left, right) => left.name.localeCompare(right.name)));
       } else {
         const id = editor.branch.id;
-        const branch = await responseData<Branch>(await fetch(`/api/v1/studio/branches/${encodeURIComponent(id)}`, {
+        const branch = await responseData<Branch>(await fetch(scopedUrl(`/api/v1/studio/branches/${encodeURIComponent(id)}`, scope, { actorId }), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, city }),
@@ -158,55 +160,33 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
             />
           </div>
         ) : (
-          <Table className="canvas-table" aria-label={to('listTitle')}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead scope="col">{to('columns.school')}</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">{to('columns.city')}</TableHead>
-                {showReports ? <>
-                  <TableHead scope="col" className="hidden text-right sm:table-cell">{to('columns.activeLearners')}</TableHead>
-                  <TableHead scope="col" className="hidden text-right lg:table-cell">{to('columns.enrollments')}</TableHead>
-                  <TableHead scope="col" className="hidden text-right lg:table-cell">{to('columns.completion')}</TableHead>
-                  <TableHead scope="col" className="hidden text-right md:table-cell">{to('columns.pendingGrading')}</TableHead>
-                  <TableHead scope="col" className="hidden text-right lg:table-cell">{to('columns.averageScore')}</TableHead>
-                </> : null}
-                <TableHead scope="col" className="w-12"><span className="sr-only">{to('columns.actions')}</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {branches.map((branch) => {
+          <CanvasDataTable
+            caption={to('listTitle')}
+            rows={branches}
+            rowKey={(branch) => branch.id}
+            stackedBelow={64}
+            columns={[
+              { key: 'school', label: to('columns.school'), render: (branch) => <>
+                <CanvasLink href={routes.admin.branch(branch.id)}>{branch.name}</CanvasLink>
+                <span className="block text-xs font-normal text-muted-foreground tabular-nums">{branch.id}</span>
+              </> },
+              { key: 'city', label: to('columns.city'), render: (branch) => branch.city ?? '—' },
+              ...(showReports ? [
+                { key: 'active', label: to('columns.activeLearners'), render: (branch: Branch) => reportCell(branch.id, (row) => count(row.activeLearners30d)) },
+                { key: 'enrollments', label: to('columns.enrollments'), render: (branch: Branch) => reportCell(branch.id, (row) => count(row.enrollments)) },
+                { key: 'completion', label: to('columns.completion'), render: (branch: Branch) => reportCell(branch.id, (row) => percent(row.completionPercent)) },
+                { key: 'waiting', label: to('columns.pendingGrading'), render: (branch: Branch) => reportCell(branch.id, (row) => count(row.pendingGrading)) },
+                { key: 'average', label: to('columns.averageScore'), render: (branch: Branch) => reportCell(branch.id, (row) => percent(row.averagePercent)) },
+              ] : []),
+              { key: 'actions', label: to('columns.actions'), render: (branch) => {
                 const actions: RowAction[] = [
                   { label: to('openSchool'), href: routes.admin.branch(branch.id) },
                   ...(canManage ? [{ label: to('editSchool'), onSelect: () => openEditor({ mode: 'edit', branch }) }] : []),
                 ];
-                return (
-                  <TableRow key={branch.id}>
-                    <TableCell className="min-w-40 whitespace-normal py-3">
-                      <Link href={routes.admin.branch(branch.id)} className="font-medium leading-normal text-foreground underline-offset-4 hover:underline">
-                        {branch.name}
-                      </Link>
-                      <span className="block text-xs leading-normal text-muted-foreground tabular-nums">
-                        {/* On phones the city column folds into this line. */}
-                        {branch.city ? <span className="md:hidden">{branch.city} · </span> : null}
-                        {branch.id}
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden text-muted-foreground md:table-cell">{branch.city ?? '—'}</TableCell>
-                    {showReports ? <>
-                      <TableCell className="hidden text-right tabular-nums sm:table-cell">{reportCell(branch.id, (row) => count(row.activeLearners30d))}</TableCell>
-                      <TableCell className="hidden text-right tabular-nums lg:table-cell">{reportCell(branch.id, (row) => count(row.enrollments))}</TableCell>
-                      <TableCell className="hidden text-right tabular-nums lg:table-cell">{reportCell(branch.id, (row) => percent(row.completionPercent))}</TableCell>
-                      <TableCell className="hidden text-right tabular-nums md:table-cell">{reportCell(branch.id, (row) => count(row.pendingGrading))}</TableCell>
-                      <TableCell className="hidden text-right tabular-nums lg:table-cell">{reportCell(branch.id, (row) => percent(row.averagePercent))}</TableCell>
-                    </> : null}
-                    <TableCell className="text-right">
-                      <RowActions items={actions} label={to('actionsFor', { name: branch.name })} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                return <RowActions items={actions} label={to('actionsFor', { name: branch.name })} />;
+              } },
+            ]}
+          />
         )}
       </DataCard>
 

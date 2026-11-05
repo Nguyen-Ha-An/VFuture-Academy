@@ -1,10 +1,10 @@
+"use client";
 import "@/features/admin/ui/admin.css";
 import Link from "next/link";
+import { useState } from "react";
 import { HistoryIcon, XIcon } from "lucide-react";
 
-import { CanvasButton as Button, CanvasTextInput } from "@/features/canvas/ui";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CanvasButton as Button, CanvasTextInput, CanvasSelect, CanvasDataTable } from "@/features/canvas/ui";
 import { DataCard, DataPagination, EmptyState } from "@/features/staff-ui/components";
 import { StaffPageHeader } from "@/features/workspace/ui/StaffPageHeader";
 
@@ -61,6 +61,7 @@ export type AuditViewProps = {
  * Presentational and server-renderable: every string arrives translated.
  */
 export function AuditView({ title, description, filters, familyOptions, actorFilter, clearHref, rows, page, hasMore, previousHref, nextHref, labels }: AuditViewProps) {
+  const [family, setFamily] = useState(filters.action);
   return (
     <section className="canvas-page canvas-admin space-y-6">
       <StaffPageHeader title={title} description={description} />
@@ -71,12 +72,8 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
           <div className="flex flex-col gap-3">
             <form method="get" role="search" aria-label={labels.apply} className="canvas-toolbar flex flex-wrap items-end gap-2">
               {filters.actor ? <input type="hidden" name="actor" value={filters.actor} /> : null}
-              <NativeSelect name="action" aria-label={labels.family} defaultValue={filters.action} wrapperClassName="min-w-44">
-                <NativeSelectOption value="">{labels.allFamilies}</NativeSelectOption>
-                {familyOptions.map((option) => (
-                  <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>
-                ))}
-              </NativeSelect>
+              <input type="hidden" name="action" value={family} />
+              <CanvasSelect label={<span className="sr-only">{labels.family}</span>} aria-label={labels.family} value={family} onChange={setFamily} options={[{ value: "", label: labels.allFamilies }, ...familyOptions]} />
               <CanvasTextInput
                 label={<span className="sr-only">{labels.target}</span>}
                 type="search"
@@ -116,53 +113,12 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
             <EmptyState icon={<HistoryIcon />} title={labels.emptyTitle} description={labels.emptyDescription} />
           </div>
         ) : (
-          <Table className="canvas-table" aria-label={labels.listTitle}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead scope="col" className="hidden md:table-cell">{labels.time}</TableHead>
-                <TableHead scope="col">{labels.action}</TableHead>
-                <TableHead scope="col">{labels.actor}</TableHead>
-                <TableHead scope="col" className="hidden xl:table-cell">{labels.targetColumn}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => {
-                // No mono and no bare UUIDs: the resolved name leads, the id is only a tooltip.
-                const target = row.target.name
-                  ? <><span className="block leading-normal">{row.target.name}</span><span className="block text-xs leading-normal text-muted-foreground" title={row.target.id}>{row.target.label}</span></>
-                  : <><span className="block leading-normal">{row.target.label}</span><span className="block max-w-56 truncate text-xs leading-normal text-muted-foreground tabular-nums" title={row.target.id}>{row.target.id}</span></>;
-                return <TableRow key={row.id} className="align-top">
-                  <TableCell className="hidden whitespace-nowrap py-3 tabular-nums text-muted-foreground md:table-cell">
-                    <time dateTime={row.at}>{row.time}</time>
-                  </TableCell>
-                  <TableCell className="min-w-40 whitespace-normal py-3">
-                    <span className="block font-medium leading-normal">{row.action.label}</span>
-                    {row.action.rawCode ? (
-                      <span className="mt-1 block text-xs leading-normal text-muted-foreground tabular-nums">{row.action.rawCode}</span>
-                    ) : null}
-                    <time dateTime={row.at} className="mt-1 block text-xs leading-normal text-muted-foreground tabular-nums md:hidden">{row.time}</time>
-                    <span className="mt-1 block text-xs leading-normal text-muted-foreground xl:hidden">{row.target.name ?? row.target.label}</span>
-                  </TableCell>
-                  <TableCell className="whitespace-normal py-3">
-                    {row.actor ? (
-                      <Link
-                        href={row.actor.href}
-                        title={row.actor.filterLabel}
-                        className={row.actor.isId
-                          ? "block max-w-40 truncate text-xs leading-normal text-muted-foreground tabular-nums underline-offset-4 hover:underline"
-                          : "leading-normal underline-offset-4 hover:underline"}
-                      >
-                        {row.actor.name}
-                      </Link>
-                    ) : (
-                      <span className="leading-normal text-muted-foreground">{labels.system}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden py-3 xl:table-cell">{target}</TableCell>
-                </TableRow>;
-              })}
-            </TableBody>
-          </Table>
+          <CanvasDataTable caption={labels.listTitle} rows={rows} rowKey={(row) => row.id} columns={[
+            { key: "time", label: labels.time, render: (row) => <time dateTime={row.at} className="tabular-nums">{row.time}</time> },
+            { key: "action", label: labels.action, render: (row) => <div><span className="block font-medium">{row.action.label}</span>{row.action.rawCode ? <span className="mt-1 block text-xs text-muted-foreground">{row.action.rawCode}</span> : null}</div> },
+            { key: "actor", label: labels.actor, render: (row) => row.actor ? <Link href={row.actor.href} title={row.actor.filterLabel} className={row.actor.isId ? "block max-w-40 truncate text-xs text-muted-foreground underline-offset-4 hover:underline" : "underline-offset-4 hover:underline"}>{row.actor.name}</Link> : <span className="text-muted-foreground">{labels.system}</span> },
+            { key: "target", label: labels.targetColumn, render: (row) => row.target.name ? <><span className="block">{row.target.name}</span><span className="block text-xs text-muted-foreground" title={row.target.id}>{row.target.label}</span></> : <><span className="block">{row.target.label}</span><span className="block max-w-56 truncate text-xs text-muted-foreground" title={row.target.id}>{row.target.id}</span></> },
+          ]} />
         )}
       </DataCard>
     </section>

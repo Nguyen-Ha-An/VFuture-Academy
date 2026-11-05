@@ -1,3 +1,4 @@
+import { assertWorkspaceRequestScope, getGradingContext } from '@/features/workspace/context';
 import { z } from 'zod';
 
 import { IdSchema } from '@/content-engine/schema/common';
@@ -13,6 +14,8 @@ const QuerySchema = z.object({
 }).strict();
 
 export const GET = withHandler(async (request, context) => {
+  const workspace = await getGradingContext();
+  assertWorkspaceRequestScope(workspace, request);
   const params = new URL(request.url).searchParams;
   const query = QuerySchema.parse({
     branchId: params.get('branchId') ?? undefined,

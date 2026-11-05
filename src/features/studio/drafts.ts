@@ -640,9 +640,8 @@ export async function importNewCourse(text: string, actor: Actor, deps?: StudioD
     actor_id: actor.userId,
     manifest: snapshot.manifest,
     items: snapshot.items,
-    // Creation owns its own history: a base version id carried in from another
-    // course's backup is deliberately not attached to the new draft.
-    base_version_id: null,
+    // This four-argument RPC creates fresh history in SQL. A backup's base
+    // version is deliberately omitted; PostgREST resolves by exact argument names.
   });
   if (error) databaseFailure('Unable to import course');
   if (object(data)?.conflict === true) throw new ApiError(409, 'COURSE_EXISTS', 'A course with this id already exists');

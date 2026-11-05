@@ -11,6 +11,8 @@ export default async function BranchesPage() {
   return (
     <BranchesManager
       initialBranches={branches}
+      scope={context.scope}
+      actorId={context.actor.userId}
       reports={reports.state === "ready" ? reports.rows : reports.state === "unavailable" ? "unavailable" : undefined}
       canManage={context.scope.kind === "central" && context.permissions.includes("branch.manage")}
     />

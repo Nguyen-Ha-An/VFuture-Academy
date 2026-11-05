@@ -51,6 +51,24 @@ const PAGES: StaffPage[] = [
 describeStaffPages(PAGES);
 
 test.describe('admin page interactions', () => {
+  test('school reports retain every metric and the edit action on a phone', async ({ page }, info) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await page.goto(withQuery('/admin/branches', { lang: 'en', theme: 'light' }));
+    const table = page.getByRole('table', { name: 'All schools' });
+    const row = table.getByRole('row').filter({ has: page.getByRole('link', { name: 'ANS · Hà Nội', exact: true }) });
+    await expect(row).toContainText('Active learners');
+    await expect(row).toContainText('Enrollments');
+    await expect(row).toContainText('Completion');
+    await expect(row).toContainText('Waiting to grade');
+    await expect(row).toContainText('Average score');
+    await row.getByRole('button', { name: 'Actions for ANS · Hà Nội', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Edit school' }).click();
+    const editor = page.getByRole('dialog', { name: 'Edit school' });
+    await expect(editor.getByRole('textbox', { name: 'Name' })).toHaveValue('ANS · Hà Nội');
+    await expectNoHorizontalScroll(page);
+    await pageShot(page, info, 'admin-school-edit-320-light', { fullPage: false });
+  });
+
   test('MCP access: block confirmation and status fit at 320px', async ({ page }, info) => {
     const userId = '00000000-0000-4000-8000-000000000101';
     await page.setViewportSize({ width: 320, height: 720 });

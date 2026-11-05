@@ -2,12 +2,12 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { ApiError, ok, parseBody, withHandler } from '@/lib/api';
 import { ADMIN_SCOPE_COOKIE, scopeKey } from '@/lib/admin-scope';
-import { assertSameOrigin, getAdminContext } from '@/features/admin/context';
+import { assertSameOrigin, getAdminWorkspaceContext } from '@/features/admin/context';
 
 export const POST = withHandler(async request => {
   assertSameOrigin(request);
   const input = await parseBody(z.object({ scope: z.string().max(80) }).strict(), request);
-  const context = await getAdminContext();
+  const context = await getAdminWorkspaceContext();
   if (!context.options.some(option => scopeKey(option.scope) === input.scope)) {
     throw new ApiError(403, 'FORBIDDEN', 'Scope not available');
   }

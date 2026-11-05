@@ -94,6 +94,7 @@ describe('AdminOverviewView', () => {
     expect(within(grid).queryByText('Waiting to grade')).not.toBeInTheDocument();
     expect(within(grid).queryByText('Waiting for review')).not.toBeInTheDocument();
     const waiting = screen.getByRole('region', { name: 'Work waiting' });
+    expect(waiting.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(waiting).getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
     expect(within(waiting).getByText('Unavailable')).toBeInTheDocument();
     // Only the trend card carries a delta.

@@ -107,7 +107,7 @@ export function AdminOverviewFixture({ permissions, entries, central, scope }: {
 export function BranchesFixture({ canManage, scope, permissions }: { canManage: boolean; scope: AdminScope; permissions: Permission[] }) {
   const schools = window.__adminFixture.readModel(scope).schools;
   const rows = fixtureScenario() === 'empty' ? [] : fixtureScenario() === 'sparse' ? schools.slice(0, 1) : schools;
-  return <BranchesManager initialBranches={rows} reports={fixtureScenario() === 'error' ? 'unavailable' : permissions.includes('report.branch.read') ? SCHOOL_REPORTS : undefined} canManage={canManage} />;
+  return <BranchesManager initialBranches={rows} scope={scope} actorId={FIXTURE_ACTOR_ID} reports={fixtureScenario() === 'error' ? 'unavailable' : permissions.includes('report.branch.read') ? SCHOOL_REPORTS : undefined} canManage={canManage} />;
 }
 export function SchoolDetailFixture({ branchId, permissions }: { branchId: string; permissions: Permission[] }) {
   const t = useTranslations('centralAdmin');

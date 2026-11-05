@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { CanvasTabs } from '@/features/canvas/ui';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CanvasTabs, CanvasDataTable } from '@/features/canvas/ui';
+import { CanvasButton as Button } from '@/features/canvas/ui';
 import { DataCard, DataToolbar, EmptyState } from '@/features/staff-ui/components';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 import { routes } from '@/lib/routes';
@@ -55,7 +53,7 @@ export function AssessmentsWorkspace(props: Props) {
   const filteredAssignments = props.assignments.filter((item) => !course || item.courseId === course);
   const title = vi ? 'Bài tập & bài thi' : 'Assignments & exams';
 
-  return <section className="mx-auto max-w-7xl space-y-6" aria-label={title}>
+  return <section className="canvas-page mx-auto max-w-7xl min-w-0 space-y-6" aria-label={title}>
     <StaffPageHeader
       eyebrow={vi ? 'Đánh giá' : 'Assessments'}
       title={title}
@@ -82,43 +80,27 @@ export function AssessmentsWorkspace(props: Props) {
           }]}
         />}
       >
-        {filteredAssignments.length ? <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead scope="col">{vi ? 'Bài tập' : 'Assignment'}</TableHead>
-              <TableHead scope="col" className="hidden sm:table-cell">{vi ? 'Khóa học' : 'Course'}</TableHead>
-              <TableHead scope="col" className="hidden md:table-cell">Rubric</TableHead>
-              <TableHead scope="col" className="w-32"><span className="sr-only">{vi ? 'Thao tác' : 'Action'}</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAssignments.map((item) => {
-              const criteriaCount = item.rubric.criteria.length;
-              const maxPoints = item.rubric.criteria.reduce((total, criterion) => total + criterion.maxPoints, 0);
-              const versionLabel = typeof item.version === 'number' && Number.isSafeInteger(item.version) && item.version > 0
-                ? `${vi ? 'Phiên bản' : 'Version'} ${item.version}`
-                : (vi ? 'Không rõ phiên bản' : 'Version unavailable');
-              const rubricSummary = vi
-                ? `${criteriaCount} tiêu chí · ${maxPoints} điểm`
-                : `${criteriaCount} ${criteriaCount === 1 ? 'criterion' : 'criteria'} · ${maxPoints} ${maxPoints === 1 ? 'point' : 'points'}`;
-              return <TableRow key={`${item.courseVersionId}:${item.assignmentId}`}>
-                <th scope="row" className="min-w-0 py-3 pr-2 text-left align-top font-normal">
-                  <p className="break-words font-medium leading-normal text-foreground">{item.itemTitle}</p>
-                  <p className="mt-1 text-xs leading-normal text-muted-foreground tabular-nums">{versionLabel}</p>
-                  <p className="mt-1 break-words text-xs leading-normal text-muted-foreground sm:hidden">{item.courseTitle}</p>
-                  <p className="mt-1 text-xs leading-normal text-muted-foreground md:hidden">{rubricSummary}</p>
-                </th>
-                <TableCell className="hidden max-w-64 whitespace-normal py-3 align-top leading-normal sm:table-cell">{item.courseTitle}</TableCell>
-                <TableCell className="hidden whitespace-nowrap py-3 align-top tabular-nums md:table-cell">{rubricSummary}</TableCell>
-                <TableCell className="py-3 align-top">
-                  <Button asChild size="sm" variant="outline" className="h-auto min-h-11 max-w-36 flex-col gap-0.5 whitespace-normal px-2 py-2 text-center leading-normal sm:max-w-none sm:px-3">
-                    <Link aria-label={vi ? 'Xem bài nộp · mọi phiên bản' : 'View submissions · all versions'} href={routes.grading.queue({ tab: 'assignments', courseId: item.courseId, assignmentId: item.assignmentId, ...(props.branches.length === 1 ? { branchId: props.branches[0].id } : {}), back: routes.grading.assessments() })}><span>{vi ? 'Xem bài nộp' : 'View submissions'}</span><span className="text-xs font-normal leading-normal">{vi ? 'Mọi phiên bản' : 'All versions'}</span></Link>
-                  </Button>
-                </TableCell>
-              </TableRow>;
-            })}
-          </TableBody>
-        </Table> : <div className="p-6"><EmptyState
+        {filteredAssignments.length ? <CanvasDataTable
+          caption={vi ? 'Danh sách bài tập' : 'Assignment list'}
+          rows={filteredAssignments}
+          rowKey={(item) => `${item.courseVersionId}:${item.assignmentId}`}
+          columns={[
+            { key: 'assignment', label: vi ? 'Bài tập' : 'Assignment', render: (item) => <>
+              <span className="block break-words font-medium">{item.itemTitle}</span>
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">{typeof item.version === 'number' && Number.isSafeInteger(item.version) && item.version > 0
+                ? `${vi ? 'Phiên bản' : 'Version'} ${item.version}` : (vi ? 'Không rõ phiên bản' : 'Version unavailable')}</span>
+            </> },
+            { key: 'course', label: vi ? 'Khóa học' : 'Course', render: (item) => item.courseTitle },
+            { key: 'rubric', label: 'Rubric', render: (item) => {
+              const count = item.rubric.criteria.length;
+              const max = item.rubric.criteria.reduce((total, criterion) => total + criterion.maxPoints, 0);
+              return vi ? `${count} tiêu chí · ${max} điểm` : `${count} ${count === 1 ? 'criterion' : 'criteria'} · ${max} ${max === 1 ? 'point' : 'points'}`;
+            } },
+            { key: 'action', label: vi ? 'Thao tác' : 'Action', render: (item) => <Button size="sm" variant="outline" aria-label={vi ? 'Xem bài nộp · mọi phiên bản' : 'View submissions · all versions'} href={routes.grading.queue({ tab: 'assignments', courseId: item.courseId, assignmentId: item.assignmentId, ...(props.branches.length === 1 ? { branchId: props.branches[0].id } : {}), back: routes.grading.assessments() })}>
+              <span>{vi ? 'Xem bài nộp' : 'View submissions'}<span className="block text-xs font-normal">{vi ? 'Mọi phiên bản' : 'All versions'}</span></span>
+            </Button> },
+          ]}
+        /> : <div className="p-6"><EmptyState
           title={vi ? 'Chưa có bài tập trong phạm vi này' : 'No assignments in this scope'}
           description={props.assignments.length ? (vi ? 'Chọn một khóa học khác để xem bài tập.' : 'Choose another course to see its assignments.') : undefined}
         /></div>}

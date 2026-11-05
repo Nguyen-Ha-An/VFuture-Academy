@@ -130,6 +130,12 @@ describe('Studio route authorization boundary', () => {
     expect(adminRoutes.length).toBeGreaterThan(0);
     for (const path of adminRoutes) {
       const source = guardedRouteSource(path);
+      // Scope selection is shared by the destination-authorized shell; its
+      // handler validates the requested scope against that context's options.
+      if (path === join(apiRouteRoot, 'admin', 'scope', 'route.ts')) {
+        expect(source, path).toMatch(/getAdminWorkspaceContext\s*\(/);
+        continue;
+      }
       expect(source, path).toMatch(/getAdminContext\s*\(|getActor\s*\(|contentReviewContext\s*\(/);
     }
   });

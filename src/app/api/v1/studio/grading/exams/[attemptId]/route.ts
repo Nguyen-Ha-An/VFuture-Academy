@@ -1,3 +1,4 @@
+import { assertWorkspaceRequestScope, getGradingContext } from '@/features/workspace/context';
 import { createServerGradingDetailService } from '@/features/grading/detail';
 import { AttemptIdSchema, BranchIdSchema } from '@/features/exams/http';
 import { ApiError, ok, withHandler } from '@/lib/api';
@@ -16,6 +17,8 @@ async function viewer(branchId: string | undefined): Promise<Actor> {
 }
 
 export const GET = withHandler(async (request, context) => {
+  const workspace = await getGradingContext();
+  assertWorkspaceRequestScope(workspace, request);
   const rawBranch = new URL(request.url).searchParams.get('branchId') ?? undefined;
   const branchId = rawBranch === undefined ? undefined : BranchIdSchema.parse(rawBranch);
   const actor = await viewer(branchId);

@@ -5,7 +5,7 @@ import {NextIntlClientProvider} from 'next-intl';
 import {afterEach,describe,it,expect,vi} from 'vitest';
 import messages from '@/messages/en.json';
 const mocks=vi.hoisted(()=>({listener:null as null|((event:string,session:{user:{id:string}}|null)=>void),replace:vi.fn(),refresh:vi.fn(),unsubscribe:vi.fn()}));
-vi.mock('next/navigation',()=>({useRouter:()=>({replace:mocks.replace,refresh:mocks.refresh})}));
+vi.mock('next/navigation',()=>({useRouter:()=>mocks}));
 vi.mock('@/lib/supabase/client',()=>({supabaseBrowser:()=>({auth:{onAuthStateChange:(listener:typeof mocks.listener)=>{mocks.listener=listener;return{data:{subscription:{unsubscribe:mocks.unsubscribe}}};}}})}));
 import {AdminSessionGuard} from '@/features/admin/components/AdminSessionGuard';
 afterEach(()=>{cleanup();vi.clearAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();});
@@ -26,5 +26,27 @@ it('checks Azure server sessions and conceals an actor change without using Supa
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({userId:'b'}),{status:200})));
  await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Azure private data</p></AdminSessionGuard></NextIntlClientProvider>);});
  expect(screen.queryByText('Azure private data')).not.toBeInTheDocument();
+ expect(mocks.replace).toHaveBeenCalledWith('/admin');
+});
+
+it.each(['network', 'server'])('restores the same actor after a temporary Azure %s failure', async(failure)=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ const fetchSession=vi.fn().mockImplementation(()=>Promise.resolve(new Response(JSON.stringify({userId:'a'}),{status:200})));
+ if(failure==='network')fetchSession.mockRejectedValueOnce(new Error('offline'));
+ else fetchSession.mockResolvedValueOnce(new Response('{}',{status:503}));
+ vi.stubGlobal('fetch',fetchSession);
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ expect(screen.queryByText('Private member data')).not.toBeInTheDocument();
+ await act(async()=>{window.dispatchEvent(new Event('focus'));});
+ expect(screen.getByText('Private member data')).toBeInTheDocument();
+});
+
+it('does not restore stale staff content after a confirmed account change', async()=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ const fetchSession=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({userId:'b'}),{status:200})).mockResolvedValue(new Response(JSON.stringify({userId:'a'}),{status:200}));
+ vi.stubGlobal('fetch',fetchSession);
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ await act(async()=>{window.dispatchEvent(new Event('focus'));});
+ expect(screen.queryByText('Private member data')).not.toBeInTheDocument();
  expect(mocks.replace).toHaveBeenCalledWith('/admin');
 });

@@ -23,13 +23,23 @@ export function AdminSessionGuard({
     if (azureBrowserIdentityEnabled()) {
       let active = true;
       let checking = false;
+      // A confirmed actor change requires a fresh authorized layout. A transient
+      // outage may recover only after the original actor is revalidated.
+      let actorChanged = false;
       const check = async () => {
         if (checking || !active) return;
         checking = true;
         try {
           const response = await fetch('/api/v1/auth/session', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000) });
+          if (!response.ok && response.status !== 401) throw new Error('session_unavailable');
           const session = response.ok ? await response.json() as { userId?: string } : null;
-          if (active && session?.userId !== actorId) { setChanged(true); router.replace(destination); router.refresh(); }
+          if (!active) return;
+          if (session?.userId !== actorId) {
+            actorChanged = true;
+            setChanged(true); router.replace(destination); router.refresh();
+          } else if (!actorChanged) {
+            setChanged(false);
+          }
         } catch {
           // An unavailable session cannot keep previously authorized admin content visible.
           if (active) { setChanged(true); router.refresh(); }

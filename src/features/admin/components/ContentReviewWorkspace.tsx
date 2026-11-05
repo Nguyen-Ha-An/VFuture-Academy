@@ -7,9 +7,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button, CanvasDataTable } from "@/features/canvas/ui";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataCard } from "@/features/staff-ui/components/DataCard";
 import { DataPagination } from "@/features/staff-ui/components/DataPagination";
 import { DataToolbar, useUrlParamUpdater } from "@/features/staff-ui/components/DataToolbar";
@@ -245,9 +244,7 @@ export function ContentInventory({
 
   const creatable = creation.filter(([key]) => creatableTypes.includes(key));
   const createAction = creatable.length === 1 ? (
-    <Button asChild>
-      <Link href={`${creatable[0][1]}?ownership=${scope.kind}`}><PlusIcon aria-hidden="true" />{t(`create.${creatable[0][0]}`)}</Link>
-    </Button>
+    <Button href={`${creatable[0][1]}?ownership=${scope.kind}`} renderIcon={<PlusIcon aria-hidden="true" />}>{t(`create.${creatable[0][0]}`)}</Button>
   ) : creatable.length > 1 ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -295,9 +292,7 @@ export function ContentInventory({
           </p>
           <div className="flex flex-wrap gap-2">
             {creatable.map(([key, href]) => (
-              <Button key={key} asChild variant="outline" size="sm">
-                <Link href={`${href}?ownership=${scope.kind}`}>{t(`create.${key}`)}</Link>
-              </Button>
+              <Button key={key} href={`${href}?ownership=${scope.kind}`} variant="outline" size="sm">{t(`create.${key}`)}</Button>
             ))}
           </div>
         </div>
@@ -344,73 +339,28 @@ export function ContentInventory({
         footer={filtered.length ? <DataPagination mode="page" page={page} pageSize={pageSize} total={filtered.length} /> : undefined}
       >
         {visible.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead scope="col">{t("content")}</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">{t("owner")}</TableHead>
-                <TableHead scope="col" className="hidden lg:table-cell">{t("audience")}</TableHead>
-                <TableHead scope="col">{t("status")}</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">{t("updated")}</TableHead>
-                <TableHead scope="col"><span className="sr-only">{t("actions")}</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((row) => {
-                const key = `${row.content_type}:${row.content_id}`;
-                const inReview = ["pending", "approved"].includes(row.review_status ?? "");
-                const rowStageValue = rowStage(row);
-                const updated = validDate(row.updated_at);
-                const title = titleOf(row);
-                const actions: RowAction[] = [];
-                if (requestableKeys.includes(key)) {
-                  actions.push({
-                    label: busy === key ? t("submitting") : inReview ? t("inReview") : t("requestReview"),
-                    disabled: busy !== null || inReview,
-                    onSelect: () => requestReview(row),
-                  });
-                }
-                const editorHref = contentEditorHref(row.content_type, row.content_id, row.studio_href);
-                // Editable rows open their editor; read-only rows (learner links) and the library itself do not.
-                if (editorHref.startsWith("/studio/") && !editorHref.startsWith("/studio/library"))
-                  actions.unshift({ label: library("openEditor"), href: editorHref });
-                actions.push({ label: library("reviewWorkflow"), onSelect: () => setWorkflowKey(key) });
-                return (
-                  <TableRow key={key}>
-                    <TableCell className="max-w-80 whitespace-normal py-3">
-                      <Link href={editorHref} className="break-words font-medium leading-normal underline-offset-4 outline-none hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring">
-                        {title}
-                      </Link>
-                      <p className="text-xs leading-normal text-muted-foreground">{typeOf(row.content_type)}</p>
-                    </TableCell>
-                    <TableCell className="hidden whitespace-normal md:table-cell">
-                      {ownerName(row.ownership_kind, row.owner_branch_id)}
-                    </TableCell>
-                    <TableCell className="hidden whitespace-normal lg:table-cell">
-                      {audienceLabel(row.audience, branches, t("globalAudience"))}
-                    </TableCell>
-                    <TableCell>
-                      {rowStageValue ? (
-                        <StatusBadge kind="content" value={rowStageValue} label={home(`stages.${rowStageValue}`)} tone={STAGE_TONES[rowStageValue]} />
-                      ) : (
-                        <StatusBadge kind="content" value={row.status} label={row.status === "asset" ? library("assetState") : undefined} />
-                      )}
-                      {busy === key ? <span role="status" className="ml-2 text-xs leading-normal text-muted-foreground">{t("submitting")}</span> : null}
-                    </TableCell>
-                    <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">
-                      {updated ? format.dateTime(updated, { dateStyle: "medium", timeStyle: "short" }) : "—"}
-                    </TableCell>
-                    <TableCell className="w-12 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {row.content_type === 'media_asset' && deletableMediaIds.includes(row.content_id) ? <MediaDeleteButton assetId={row.content_id} filename={title} url={url(`/api/v1/studio/media/${encodeURIComponent(row.content_id)}`)} onDeleted={() => router.refresh()} /> : null}
-                        <RowActions label={library("rowActions", { title })} items={actions} />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <CanvasDataTable caption={library("listTitle")} rows={visible} rowKey={(row) => `${row.content_type}:${row.content_id}`} columns={[
+            { key: "content", label: t("content"), render: (row) => <div className="max-w-80 whitespace-normal"><Link href={contentEditorHref(row.content_type, row.content_id, row.studio_href)} className="break-words font-medium leading-normal underline-offset-4 hover:underline">{titleOf(row)}</Link><p className="text-xs text-muted-foreground">{typeOf(row.content_type)}</p></div> },
+            { key: "owner", label: t("owner"), render: (row) => ownerName(row.ownership_kind, row.owner_branch_id) },
+            { key: "audience", label: t("audience"), render: (row) => audienceLabel(row.audience, branches, t("globalAudience")) },
+            { key: "status", label: t("status"), render: (row) => {
+              const stageValue = rowStage(row);
+              const key = `${row.content_type}:${row.content_id}`;
+              return <>{stageValue ? <StatusBadge kind="content" value={stageValue} label={home(`stages.${stageValue}`)} tone={STAGE_TONES[stageValue]} /> : <StatusBadge kind="content" value={row.status} label={row.status === "asset" ? library("assetState") : undefined} />}{busy === key ? <span role="status" className="ml-2 text-xs text-muted-foreground">{t("submitting")}</span> : null}</>;
+            } },
+            { key: "updated", label: t("updated"), render: (row) => { const updated = validDate(row.updated_at); return updated ? format.dateTime(updated, { dateStyle: "medium", timeStyle: "short" }) : "—"; } },
+            { key: "actions", label: t("actions"), render: (row) => {
+              const key = `${row.content_type}:${row.content_id}`;
+              const inReview = ["pending", "approved"].includes(row.review_status ?? "");
+              const title = titleOf(row);
+              const actions: RowAction[] = [];
+              if (requestableKeys.includes(key)) actions.push({ label: busy === key ? t("submitting") : inReview ? t("inReview") : t("requestReview"), disabled: busy !== null || inReview, onSelect: () => requestReview(row) });
+              const editorHref = contentEditorHref(row.content_type, row.content_id, row.studio_href);
+              if (editorHref.startsWith("/studio/") && !editorHref.startsWith("/studio/library")) actions.unshift({ label: library("openEditor"), href: editorHref });
+              actions.push({ label: library("reviewWorkflow"), onSelect: () => setWorkflowKey(key) });
+              return <div className="flex items-center gap-2">{row.content_type === "media_asset" && deletableMediaIds.includes(row.content_id) ? <MediaDeleteButton assetId={row.content_id} filename={title} url={url(`/api/v1/studio/media/${encodeURIComponent(row.content_id)}`)} onDeleted={() => router.refresh()} /> : null}<RowActions label={library("rowActions", { title })} items={actions} /></div>;
+            } },
+          ]} />
         ) : (
           <div className="p-6">
             <EmptyState title={t("emptyContent")} />
@@ -781,30 +731,11 @@ export function ReviewQueue({
                 {t("firstPublication")}
               </p>
             ) : null}
-            <Table className="text-xs">
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{t("field")}</TableHead>
-                  <TableHead scope="col">{t("before")}</TableHead>
-                  <TableHead scope="col">{t("after")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {changes.slice(0, 500).map((change) => (
-                  <TableRow key={change.field} className="align-top">
-                    <th scope="row" className="max-w-48 break-all p-2 text-left font-normal leading-normal">
-                      {change.field}
-                    </th>
-                    <TableCell className="h-auto max-w-md whitespace-pre-wrap break-words py-2 leading-normal text-muted-foreground">
-                      {change.before}
-                    </TableCell>
-                    <TableCell className="h-auto max-w-md whitespace-pre-wrap break-words py-2 leading-normal">
-                      {change.after}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <CanvasDataTable caption={t("changes")} rows={changes.slice(0, 500)} rowKey={(change) => change.field} columns={[
+              { key: "field", label: t("field"), render: (change) => <span className="break-all">{change.field}</span> },
+              { key: "before", label: t("before"), render: (change) => <span className="whitespace-pre-wrap break-words text-muted-foreground">{change.before}</span> },
+              { key: "after", label: t("after"), render: (change) => <span className="whitespace-pre-wrap break-words">{change.after}</span> },
+            ]} />
             {changes.length > 500 ? (
               <p className="text-sm leading-normal">{t("moreChanges")}</p>
             ) : null}</div> : null}

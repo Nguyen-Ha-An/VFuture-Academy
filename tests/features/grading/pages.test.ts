@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
+import { getByRole } from '@testing-library/dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement, type ComponentProps, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NextIntlClientProvider } from 'next-intl';
@@ -32,6 +35,8 @@ import LearningReportsPage from '@/app/grading/reports/page';
 import GradingAssignmentPage from '@/app/grading/assignments/[id]/page';
 import GradingExamPage from '@/app/grading/exams/[id]/page';
 import type { Permission } from '@/lib/permissions';
+
+afterEach(() => document.body.replaceChildren());
 
 function context(permissions: Permission[], scope: 'central' | 'branch' = 'branch') {
   return {
@@ -152,7 +157,12 @@ describe('Assessment & grading overview', () => {
 
     const html = markup(await GradingOverviewPage());
 
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="grade-next-reason"[^>]*>Grade next/);
+    document.body.innerHTML = html;
+    const gradeNext = getByRole(document.body, 'button', { name: 'Grade next' });
+    expect(gradeNext.tagName).toBe('BUTTON');
+    expect(gradeNext).toBeDisabled();
+    expect(gradeNext).not.toHaveAttribute('href');
+    expect(gradeNext).toHaveAccessibleDescription('Nothing is waiting to be graded.');
     expect(html).toContain('Nothing is waiting to be graded.');
     expect(html).toContain('None waiting');
   });
