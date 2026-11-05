@@ -32,6 +32,8 @@
     "overviewDescription": "Run assessments, grade submissions, and read learning reports within your authorized scope.",
     "openWorkspace": "Open workspace",
     "assessments": "Assessments",
+    "announcements": "Announcements",
+    "schedule": "Schedule",
     "queue": "Grading queue",
     "reports": "Learning reports",
     "home": "Overview"
@@ -87,6 +89,7 @@
   },
   "profile": {
     "settings": {
+      "unsavedConfirm": "Leave this page? Your unsaved profile settings will be lost.",
       "title": "Public profile settings",
       "description": "Choose your public address and whether other people can see it.",
       "handleLabel": "Public handle",
@@ -337,10 +340,10 @@
       },
       "closesAt": "Closes {date} ICT",
       "kickers": {
-        "resources": "A3 / Resources",
-        "opportunities": "A3 / Opportunities",
-        "projects": "A3 / Projects",
-        "projectsNew": "A3 / Projects · New"
+        "resources": "Resources",
+        "opportunities": "Opportunities",
+        "projects": "Projects",
+        "projectsNew": "Projects · New"
       },
       "crumbs": {
         "newProposal": "New proposal"
@@ -614,7 +617,7 @@
         "eyebrow": "Question detail",
         "titleFallback": "Untitled question",
         "status": "Status: {status}",
-        "editor": "Question JSON",
+        "editor": "Question editor",
         "editorLabel": "Question JSON editor",
         "version": "Latest version {version}",
         "ready": "Ready",
@@ -881,6 +884,7 @@
       }
     },
     "grading": {
+      "lateSnapshot": "Submitted late",
       "eyebrow": "Instructor workspace",
       "title": "Submission queue",
       "description": "Review learner work, score the pinned rubric and decide whether the submission is ready.",
@@ -1074,7 +1078,7 @@
     },
     "outline": {
       "label": "Course outline",
-      "manifest": "Course manifest",
+      "manifest": "Course settings",
       "empty": "No modules yet",
       "moduleUntitled": "Untitled module",
       "itemUntitled": "Untitled item",
@@ -1221,6 +1225,10 @@
       "submit": "Import"
     },
     "versions": {
+      "restoreBlocked": "Restoring is unavailable while this draft is locked. You can still download published versions.",
+      "restoreCancelled": "Restore cancelled. The selected version was not applied.",
+      "restoreNotApplied": "The selected version was not applied. Your draft is unchanged. Check its editing status and try again.",
+      "restoreError": "The selected version could not be restored. Your draft is unchanged.",
       "trigger": "Versions",
       "title": "Published versions",
       "description": "Restore an immutable snapshot as the draft or download its source.",
@@ -1441,6 +1449,7 @@
     "filteredEmpty": "No projects match these filters.",
     "emptyNoProjects": "No projects have been shared yet.",
     "proposal": {
+      "unsavedConfirm": "Leave this page? Your unsaved project proposal will be lost.",
       "title": "Propose a project",
       "description": "Share an idea with the Studio team. Your proposal stays private until it is approved or a team member is assigned.",
       "submit": "Submit proposal",

@@ -111,24 +111,38 @@ describe('instructor grading rubric', () => {
     }
     render(<Harness />);
 
-    await user.click(screen.getByRole('radio', { name: 'Strong' }));
-    await user.clear(screen.getByRole('spinbutton', { name: 'Impact' }));
-    await user.type(screen.getByRole('spinbutton', { name: 'Impact' }), '3.5');
+    await user.click(screen.getByRole('radio', { name: /^Strong/ }));
+    await user.clear(screen.getByRole('spinbutton', { name: /^Impact \(/ }));
+    await user.type(screen.getByRole('spinbutton', { name: /^Impact \(/ }), '3.5');
 
     expect(screen.getByText('7.5 / 8')).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Quality' })).toBeInTheDocument();
   });
 
-  it('gives duplicate-point rubric levels unique criterion-and-index ids', () => {
-    render(<RubricScoreEditor rubric={{
+  it('keeps a historical duplicate-point score without inventing its chosen level', () => {
+    render(<RubricScoreEditor rubric={{ criteria: [{ id: 'quality', name: 'Quality', maxPoints: 4, levels: [{ points: 2, label: 'Developing' }, { points: 2, label: 'Alternate' }] }] }} scores={{ quality: 2 }} onChange={vi.fn()} />);
+    expect(screen.getByText('2 / 4')).toBeInTheDocument();
+    expect(screen.queryAllByRole('radio', { checked: true })).toHaveLength(0);
+    expect(screen.getByText('Score: 2. Several rubric levels award this score; the selected level was not stored.')).toBeInTheDocument();
+  });
+
+  it('gives duplicate-point rubric levels unique ids and a single checked choice', async () => {
+    const rubric = {
       criteria: [{
         id: 'quality', name: 'Quality', maxPoints: 4,
         levels: [{ points: 2, label: 'Developing' }, { points: 2, label: 'Alternate' }],
       }],
-    }} scores={{}} onChange={vi.fn()} />);
-
-    const ids = screen.getAllByRole('radio').map((radio) => radio.id);
-    expect(ids).toEqual(['rubric-quality-0', 'rubric-quality-1']);
+    };
+    function Harness() { const [scores, setScores] = useState<Record<string, number>>({}); return <RubricScoreEditor rubric={rubric} scores={scores} onChange={setScores} />; }
+    render(<Harness />);
+    const radios = screen.getAllByRole('radio');
+    const ids = radios.map((radio) => radio.id);
+    expect(ids).toHaveLength(2);
+    expect(ids.every(Boolean)).toBe(true);
+    expect(new Set(ids).size).toBe(2);
+    await userEvent.click(screen.getByRole('radio', { name: /^Alternate/ }));
+    expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: /^Alternate/ })).toBeChecked();
   });
 });
 
@@ -388,7 +402,8 @@ describe('paged submission queue', () => {
     expect(screen.getAllByRole('link', { name: 'gradeAction' })).toHaveLength(2);
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('cursor=cursor-one');
 
-    await user.selectOptions(screen.getByLabelText('filters.assignment'), 'assignment-block');
+    await user.click(screen.getByLabelText('filters.assignment'));
+    await user.click(screen.getByRole('option', { name: 'Lesson One' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(String(fetchMock.mock.calls[2]?.[0])).toContain('assignmentId=assignment-block');
   });
@@ -411,7 +426,8 @@ describe('paged submission queue', () => {
     renderWorkspace();
 
     await user.click(await screen.findByRole('button', { name: 'Load more' }));
-    await user.selectOptions(screen.getByLabelText('filters.status'), 'in_review');
+    await user.click(screen.getByLabelText('filters.status'));
+    await user.click(screen.getByRole('option', { name: 'status.in_review' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(await screen.findByText('Learner filtered')).toBeInTheDocument();
     const loadFiltered = screen.getByRole('button', { name: 'Load more' });
@@ -658,7 +674,8 @@ describe('exam grading branch scope', () => {
 
     expect(await screen.findByText('Learner in A')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'releaseAction' })).toBeEnabled();
-    await user.selectOptions(screen.getByLabelText('filters.branch'), 'branch-b');
+    await user.click(screen.getByLabelText('filters.branch'));
+    await user.click(screen.getByRole('option', { name: 'Branch B' }));
     expect(screen.queryByText('Learner in A')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'releaseAction' })).toBeDisabled();
   });
@@ -723,7 +740,8 @@ describe('exam grading branch scope', () => {
     />);
 
     expect(await screen.findByRole('link', { name: 'manualGradeAction' })).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText('filters.branch'), 'branch-b');
+    await user.click(screen.getByLabelText('filters.branch'));
+    await user.click(screen.getByRole('option', { name: 'Branch B' }));
     expect(screen.queryByRole('link', { name: 'manualGradeAction' })).not.toBeInTheDocument();
   });
 });

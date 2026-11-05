@@ -2,6 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createTranslator, NextIntlClientProvider } from 'next-intl';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '@/messages/en.json';
 import { withBenchMessages } from '@/messages/bench';
@@ -54,8 +55,8 @@ import { CatalogBenchView, type CatalogBenchCourse } from '@/features/workspace-
 import { buildDashboardData, LearnerDashboardBench } from '@/features/workspace-ui/learner/dashboard.server';
 import { ExploreBenchView } from '@/features/workspace-ui/learner/ExploreBenchView';
 import { LearnerDashboardView } from '@/features/workspace-ui/learner/LearnerDashboardView';
-import { LearnerReadout } from '@/features/workspace-ui/learner/LearnerReadout';
 import type { LearnerDashboardData } from '@/features/workspace-ui/learner/model';
+import type { CanvasTask } from '@/features/workspace-ui/learner/canvas-model';
 
 const wrap = (children: React.ReactNode) => <NextIntlClientProvider locale="en" messages={messages} timeZone="Asia/Ho_Chi_Minh">{children}</NextIntlClientProvider>;
 const NOW = new Date('2026-09-24T14:14:00Z'); // Thursday, 21:14 ICT, ISO week 39
@@ -79,16 +80,16 @@ const dashboard = (overrides: Partial<LearnerDashboardData> = {}): LearnerDashbo
 });
 
 describe('bench learner shell', () => {
-  it('renders the section-coded bench bar while keeping every landmark and accessible name', () => {
+  it('renders the Canvas global navigation while keeping landmarks and accessible names', () => {
     const { container } = render(wrap(<AppShell theme="dark"><h1>Home</h1></AppShell>));
     expect(container.querySelector('.vf-workspace')).toHaveAttribute('data-density', 'comfortable');
     expect(container.querySelector('.vf-workspace')).toHaveAttribute('data-theme', 'dark');
-    const nav = screen.getByRole('navigation', { name: en.common.learnerNavigation });
-    expect(within(nav).getByRole('link', { name: 'Learning' })).toHaveAttribute('href', '/app');
-    expect(within(nav).getByRole('link', { name: 'Learning' })).toHaveAttribute('aria-current', 'page');
+    const nav = screen.getByRole('navigation', { name: 'Global navigation' });
+    expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
+    expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
     expect(within(nav).getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/app/explore');
-    expect(within(nav).getAllByText(/^A[123]$/).map(code => code.textContent)).toEqual(['A1', 'A2', 'A3']);
+    expect(within(nav).getByRole('link', { name: 'Calendar' })).toHaveAttribute('href', '/app/calendar');
     expect(screen.getByRole('link', { name: en.learner.skipToContent })).toHaveAttribute('href', '#learner-main');
     expect(document.getElementById('learner-main')).toHaveAttribute('tabindex', '-1');
     expect(screen.getByRole('heading', { name: 'Home' })).toHaveFocus();
@@ -145,7 +146,7 @@ describe('bench learner shell', () => {
     expect(trigger.querySelector('.vf-l-account-initials')).toHaveAttribute('aria-hidden', 'true');
     expect(trigger.querySelector('.vf-l-account-initials')).toHaveTextContent('NA');
     expect(trigger.querySelector('.vf-l-account-name')).toHaveTextContent('Nguyễn An');
-    expect(screen.getByRole('button', { name: en.common.menu })).toHaveClass('min-[760px]:hidden');
+    expect(screen.getByRole('button', { name: en.common.menu })).toHaveClass('md:hidden');
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     const menu = screen.getByRole('menu');
     expect(within(menu).getByText('@an-nguyen')).toBeInTheDocument();
@@ -264,60 +265,90 @@ describe('bench learner shell', () => {
     render(wrap(<AppShell>{page}</AppShell>));
     const crumbs = screen.getAllByRole('navigation', { name: en.common.breadcrumbs });
     expect(crumbs).toHaveLength(1);
-    expect(crumbs[0].closest('.vf-page-head')).toBeInTheDocument();
+    expect(crumbs[0].closest('.canvas-course-heading')).toBeInTheDocument();
     expect(crumbs[0].querySelector('ol')).toHaveClass('vf-crumbs');
     expect(within(crumbs[0]).getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses?tab=discover');
     expect(within(crumbs[0]).getByText('AI Foundations')).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('VF-AI-101 · AI & Emerging Technology')).toBeInTheDocument();
+    expect(screen.getByText('VF-AI-101')).toBeInTheDocument();
   });
 });
 
 describe('bench learner dashboard', () => {
-  it('anchors on the current lesson as the h1 and keeps every dashboard contract', () => {
-    const readout = <LearnerReadout locale="en" deadline={null} xp={{ ok: true, value: { week: 140, previous: 100, values: [0, 10, 0, 40, 0, 0, 20, 0, 0, 30, 0, 40, 30, 40] } }} rank={{ ok: true, value: { rank: 23, total: 142 } }} skills={{ ok: true, value: [{ id: 'c', name: 'Embedded C', level: 3, levelKey: 'demonstrated' }] }} />;
-    render(wrap(<AppShell><LearnerDashboardView data={dashboard()} trace={<p>trace</p>} readout={readout} /></AppShell>));
-    const resume = screen.getByRole('region', { name: 'Continue learning' });
-    expect(document.querySelector('#learner-main h1')).toHaveTextContent('External interrupts');
-    expect(within(resume).getByRole('heading', { level: 1 })).toHaveTextContent('External interrupts');
-    expect(resume).toHaveTextContent('Hi Avery');
-    expect(resume).toHaveTextContent('WK 39');
-    expect(resume).toHaveTextContent('24.09.2026');
-    expect(resume).toHaveTextContent('21:14 ICT');
-    expect(resume).toHaveTextContent('Opens T−1d 10h');
-    expect(within(resume).getByRole('img', { name: 'Embedded systems: 7 of 12 items complete, 58%' })).toBeInTheDocument();
+  it('shows factual task counts and working course/status filters while retaining resume, scores and feedback', async () => {
+    const user = userEvent.setup();
+    const tasks: CanvasTask[] = [
+      { id: 'overdue', courseId: 'emb', title: 'Next assignment', courseTitle: 'Embedded systems', href: '/app/courses/emb/items/task', dueAt: '2026-09-23T01:00:00Z', status: 'not_started', kind: 'assignment' },
+      { id: 'future', courseId: 'py', title: 'Python practice', courseTitle: 'Python for data', href: '/app/courses/py/items/practice', dueAt: '2026-09-28T01:00:00Z', status: 'not_started', kind: 'assignment' },
+      { id: 'submitted', courseId: 'emb', title: 'Submitted lab', courseTitle: 'Embedded systems', href: '/app/courses/emb/items/submitted', dueAt: '2026-09-22T01:00:00Z', status: 'submitted', kind: 'assignment', late: true },
+      { id: 'approved', courseId: 'py', title: 'Approved project', courseTitle: 'Python for data', href: '/app/courses/py/items/project', dueAt: null, status: 'approved', kind: 'assignment' },
+      { id: 'exam', courseId: 'py', title: 'Active assessment', courseTitle: 'Python for data', href: '/app/courses/py/items/assessment', dueAt: null, status: 'in_progress', kind: 'exam' },
+    ];
+    render(wrap(<AppShell><LearnerDashboardView data={dashboard()} tasks={tasks} results={[{ id: 'result', courseId: 'py', title: 'Recorded assessment', courseTitle: 'Python for data', href: '/app/courses/py/items/recorded', score: 0, maxScore: 10, status: 'graded', recordedAt: '2026-09-22T01:00:00Z' }]} announcements={[]} /></AppShell>));
+    expect(document.querySelector('#learner-main h1')).toHaveTextContent('Dashboard');
+    expect(screen.getByText(/Hi Avery/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Resume lesson' })).toHaveAttribute('href', '/app/courses/emb/items/l-4-3');
-    const active = screen.getByRole('region', { name: 'Active courses' });
-    expect(active).toHaveAttribute('aria-labelledby', 'active-courses-heading');
-    expect(active.querySelector('table.vf-spec[data-stack]')).toBeInTheDocument();
+    const active = screen.getByRole('region', { name: 'My courses' });
     expect(within(active).getAllByRole('heading', { level: 3 })).toHaveLength(2);
-    expect(within(active).queryByRole('columnheader', { name: 'Depends on' })).toBeNull();
-    expect(within(active).getByRole('link', { name: 'Next: External interrupts' })).toHaveAttribute('href', '/app/courses/emb/items/l-4-3');
-    expect(screen.getByRole('link', { name: 'See all' })).toHaveAttribute('href', '/app/courses?tab=learning');
-    expect(screen.getByRole('link', { name: 'Open exam' })).toHaveAttribute('href', '/app/courses/py/items/exam');
-    expect(screen.getByRole('link', { name: 'Open feedback' })).toHaveAttribute('href', '/app/courses/emb/items/lab-3');
+    const progress = within(active).getByRole('progressbar', { name: 'Embedded systems: 7 of 12 items complete, 58%' });
+    expect(progress).toHaveAttribute('value', '58');
+    expect(progress).toHaveAttribute('max', '100');
+    expect(screen.getAllByRole('link', { name: 'External interrupts' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'All courses' })).toHaveAttribute('href', '/app/courses?tab=learning');
+    expect(screen.getByRole('link', { name: 'Final exam' })).toHaveAttribute('href', '/app/courses/py/items/exam');
+    expect(screen.getByRole('link', { name: 'Lab 3' })).toHaveAttribute('href', '/app/courses/emb/items/lab-3');
     expect(screen.getByText('Clean interrupt logic.').closest('blockquote')).toBeInTheDocument();
-    const aside = screen.getByRole('complementary', { name: 'Readout' });
-    expect(aside).toHaveTextContent('140');
-    expect(within(aside).getByText('▲ 40')).toBeInTheDocument();
-    expect(within(aside).getByRole('img', { name: /XP per day over the last 14 days: 210 in total/ })).toBeInTheDocument();
-    expect(within(aside).getByRole('link', { name: 'Leaderboard' })).toHaveAttribute('href', '/app/leaderboard?scope=branch');
-    expect(within(aside).getByRole('img', { name: 'Embedded C: level 3 of 3, demonstrated' })).toBeInTheDocument();
+    const recorded = screen.getByRole('region', { name: 'Recent results' });
+    expect(recorded).toHaveTextContent('0 / 10');
+    expect(within(recorded).getByRole('link', { name: 'Recorded assessment' })).toHaveAttribute('href', '/app/courses/py/items/recorded');
+    expect(within(recorded).queryByText(/%/)).not.toBeInTheDocument();
+
+    const work = screen.getByRole('region', { name: 'Coursework' });
+    expect(within(work).getByRole('button', { name: /To do\s*3/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(work).getByRole('button', { name: /Overdue\s*1/ })).toBeVisible();
+    expect(within(work).getByRole('button', { name: /Submitted\s*1/ })).toBeVisible();
+    expect(within(work).getByRole('link', { name: 'Next assignment' })).toHaveAttribute('href', '/app/courses/emb/items/task');
+    expect(within(work).queryByRole('link', { name: 'Submitted lab' })).not.toBeInTheDocument();
+    await user.click(within(work).getByRole('button', { name: /Submitted\s*1/ }));
+    expect(within(work).getByRole('link', { name: 'Submitted lab' })).toHaveAttribute('href', '/app/courses/emb/items/submitted');
+    expect(within(work).getByText(/Submitted late/)).toBeVisible();
+    expect(within(work).queryByRole('link', { name: 'Next assignment' })).not.toBeInTheDocument();
+    await user.click(within(work).getByRole('combobox', { name: 'Course' }));
+    await user.click(await screen.findByRole('option', { name: 'Embedded systems' }));
+    expect(within(work).getByRole('button', { name: /To do\s*1/ })).toBeVisible();
+    expect(within(work).getByRole('button', { name: /Overdue\s*1/ })).toBeVisible();
+    await user.click(within(work).getByRole('combobox', { name: 'Status' }));
+    await user.click(await screen.findByRole('option', { name: 'Completed' }));
+    expect(within(work).getByText('No coursework matches these filters.')).toBeVisible();
+    await user.click(within(work).getByRole('button', { name: 'Show all coursework' }));
+    expect(within(work).getByText('5 activities')).toBeVisible();
+    expect(within(work).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(work).getByRole('link', { name: 'Approved project' })).toHaveAttribute('href', '/app/courses/py/items/project');
+    const expand = within(work).getByRole('button', { name: 'Show all 5 activities' });
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    await user.click(expand);
+    expect(within(work).getByRole('button', { name: 'Show fewer activities' })).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('renders first run, the completion strip and per-cell readout faults', () => {
-    render(wrap(<LearnerDashboardView data={dashboard({ state: 'first-run', resume: null, courses: [], exam: null, feedback: null, completion: { courseTitle: 'Embedded systems', part: 'VF-EMB-201' } })}
-      readout={<LearnerReadout locale="en" deadline={null} xp={{ ok: false }} rank={{ ok: true, value: { rank: null, reason: 'no-xp' } }} skills={{ ok: true, value: [] }} />} />));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Start your first course');
-    expect(screen.getByRole('link', { name: 'Browse courses' })).toHaveAttribute('href', '/app/courses?tab=discover');
-    expect(screen.queryByRole('region', { name: 'Active courses' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Open feedback' })).toBeNull();
+  it('distinguishes genuine first run from unavailable reads and preserves the real certificate without fake zero counts', () => {
+    const data = dashboard({ state: 'first-run', resume: null, courses: [], exam: null, feedback: null, completion: { courseTitle: 'Embedded systems', part: 'VF-EMB-201' } });
+    const view = render(wrap(<LearnerDashboardView data={data} tasks={[]} results={[]} announcements={[]} />));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboard');
+    const firstRun = screen.getByRole('region', { name: 'My courses' });
+    expect(within(firstRun).getByText('Choose a course to start learning.')).toBeVisible();
+    expect(within(firstRun).getByRole('link', { name: 'Browse courses' })).toHaveAttribute('href', '/app/courses?tab=discover');
     expect(screen.getByRole('link', { name: 'View certificate' })).toHaveAttribute('href', '/app/profile#certificates-heading');
-    expect(screen.getByText('VF-EMB-201 Embedded systems calibrated · certificate issued')).toBeInTheDocument();
-    const aside = screen.getByRole('complementary', { name: 'Readout' });
-    expect(aside).toHaveTextContent('XP · this week unavailable');
-    expect(aside).toHaveTextContent('Earn XP to enter');
-    expect(aside).toHaveTextContent('None scheduled');
-    expect(aside).toHaveTextContent('No skill evidence yet');
+    expect(screen.getByText(/VF-EMB-201 Embedded systems calibrated/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Recent feedback' })).not.toBeInTheDocument();
+    view.rerender(wrap(<LearnerDashboardView data={data} tasks={null} results={null} announcements={null} />));
+    const work = screen.getByRole('region', { name: 'Coursework' });
+    expect(within(work).getByRole('status')).toHaveTextContent('Coursework is temporarily unavailable. Open all tasks to try again.');
+    for (const name of [/To do/, /Overdue/, /Submitted/]) expect(within(work).getByRole('button', { name })).toHaveTextContent('—');
+    expect(within(work).queryByText('0 activities')).not.toBeInTheDocument();
+    const results = screen.getByRole('region', { name: 'Recent results' });
+    expect(results).toHaveTextContent('This information could not be loaded. Please try again.');
+    expect(within(results).queryByText('0 / 0')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View certificate' })).toHaveAttribute('href', '/app/profile#certificates-heading');
+    expect(screen.queryByRole('heading', { name: 'Recent feedback' })).not.toBeInTheDocument();
   });
 
   it('builds the resume anchor, progress and next items from the existing loaders', async () => {
@@ -418,12 +449,12 @@ describe('bench learner catalog', () => {
     expect(within(yours).getByRole('heading', { level: 2, name: 'Your courses' })).toHaveAttribute('id', 'your-courses-heading');
     expect(within(yours).getByRole('heading', { level: 3, name: 'active-course' })).toBeInTheDocument();
     expect(within(yours).queryByRole('heading', { name: 'completed-course' })).toBeNull();
-    expect(within(yours).getByText('Enrolled', { exact: true }).closest('td')).toHaveAttribute('data-slot', 'status');
-    expect(within(yours).getByText('VF-C-101').closest('td')).toHaveAttribute('data-slot', 'lead');
+    expect(within(yours).getByText('Enrolled', { exact: true })).toHaveClass('vf-tag');
+    expect(within(yours).getByText('VF-C-101')).toHaveClass('canvas-course-color');
     expect(within(yours).queryByRole('columnheader', { name: 'Depends on' })).toBeNull();
-    const row = within(yours).getByRole('row', { name: /active-course/ });
-    expect(within(row).getAllByRole('link')).toHaveLength(1);
-    expect(row.querySelector('p.vf-meta')).toHaveTextContent('Foundation · Beginner · EN');
+    const row = within(yours).getByRole('listitem');
+    expect(within(row).getAllByRole('link')).toHaveLength(2);
+    expect(row.querySelector('p.canvas-muted')).toHaveTextContent('Foundation · Beginner · EN');
     expect(within(yours).getByRole('link', { name: 'Open active-course' })).toHaveAttribute('href', '/app/courses/active-course?tab=learning');
     const completed = document.querySelector('details.vf-l-disclosure:not(.vf-l-filters)');
     expect(completed?.querySelector('summary')).toHaveTextContent('Completed (1)');
@@ -446,9 +477,7 @@ describe('bench learner catalog', () => {
     const available = screen.getByRole('region', { name: 'Available courses' });
     expect(within(available).getByText('Not enrolled', { exact: true })).toBeInTheDocument();
     expect(within(available).getByText('Needs VF-C-101')).toBeInTheDocument();
-    expect(within(available).getByRole('columnheader', { name: 'Depends on' })).toBeInTheDocument();
-    expect(within(available).getByText('Needs VF-C-101')).toHaveAttribute('data-tone', 'pending');
-    expect(within(available).getByText('Needs VF-C-101').closest('td')).toHaveAttribute('data-col', 'hide-sm');
+    expect(within(available).getByText('Needs VF-C-101')).toHaveClass('canvas-muted');
     expect(screen.getByRole('form', { name: 'Course filters' }).querySelector('input[name="tab"]')).toHaveValue('discover');
     expect(within(screen.getByRole('list', { name: 'Active filters' })).getByRole('link', { name: 'Remove filter English' })).toHaveAttribute('href', '/app/courses?tab=discover');
     discover.unmount();
@@ -495,7 +524,7 @@ describe('bench learner explore', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Resources' }).closest('a')).toHaveAttribute('href', '/app/resources');
     expect(screen.getByRole('list')).toHaveClass('vf-l-explore');
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(4);
-    expect(screen.getByText('X4')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByText('X4')).not.toBeInTheDocument();
     expect(screen.getByText('A3 / Explore')).toBeInTheDocument();
   });
 

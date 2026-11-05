@@ -40,7 +40,7 @@ describe('CalibrationCertificate', () => {
   it('renders the record fields, the verify contract and the existing PDF download', () => {
     renderCertificate();
     expect(screen.getByRole('article', { name: 'Python for data engineers' })).toBeVisible();
-    expect(screen.getByText('Certificate of completion · calibrated')).toBeVisible();
+    expect(screen.getByText('Certificate of completion')).toBeVisible();
     expect(screen.getByText('VF-CERT-2026-004817')).toBeVisible();
     expect(screen.getByText('Trần Minh Khoa')).toBeVisible();
     expect(screen.getByText('14.08.2026')).toBeVisible();
@@ -49,7 +49,7 @@ describe('CalibrationCertificate', () => {
     expect(screen.getByRole('link', { name: 'Verify certificate VF-CERT-2026-004817' })).toHaveAttribute('href', '/verify/K7Q2-9XMA');
     expect(screen.getByRole('link', { name: 'View certificate PDF' })).toHaveAttribute('href', '/api/v1/me/certificates/cert-1/download');
     expect(screen.getByRole('img', { name: 'Verification QR code for certificate VF-CERT-2026-004817' })).toBeVisible();
-    expect(screen.getByText('In spec')).toBeVisible();
+    expect(screen.getByText('Issued', { selector: '.vf-stamp' })).toBeVisible();
     // No invented data: part and result only render when the data model provides them.
     expect(screen.queryByText('Part')).not.toBeInTheDocument();
     expect(screen.queryByText('Result')).not.toBeInTheDocument();

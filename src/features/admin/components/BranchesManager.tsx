@@ -1,12 +1,12 @@
 'use client';
 
+import "@/features/admin/ui/admin.css";
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { PlusIcon } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { CanvasButton as Button, CanvasTextInput } from '@/features/canvas/ui';
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Branch } from '@/features/admin/branches';
@@ -133,7 +133,7 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
   const editing = editor?.mode === 'edit' ? editor.branch : null;
 
   return (
-    <div className="space-y-6">
+    <div className="canvas-page canvas-admin space-y-6">
       {showHeading ? <StaffPageHeader title={tc('schools')} description={to('description')} actions={newSchool} /> : null}
 
       <StatGrid>
@@ -145,6 +145,7 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
       </StatGrid>
 
       <DataCard
+        className="canvas-panel"
         title={to('listTitle')}
         description={reports === 'unavailable' ? to('reportsUnavailable') : to('total', { count: branches.length })}
         actions={showHeading ? undefined : newSchool}
@@ -157,7 +158,7 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
             />
           </div>
         ) : (
-          <Table>
+          <Table className="canvas-table" aria-label={to('listTitle')}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead scope="col">{to('columns.school')}</TableHead>
@@ -226,21 +227,14 @@ export function BranchesManager({ initialBranches, reports, canManage = false, s
                 </div>
               ) : (
                 <div className="grid gap-2">
-                  <label className="grid gap-2 text-sm font-medium leading-normal" htmlFor="new-branch-id">
-                    {t('branchId')}
-                    <Input id="new-branch-id" name="id" required pattern="[a-z0-9][a-z0-9-]{0,63}" aria-describedby="new-branch-id-hint" />
-                  </label>
+                  <div>
+                    <CanvasTextInput label={t('branchId')} id="new-branch-id" name="id" required pattern="[a-z0-9][a-z0-9-]{0,63}" aria-describedby="new-branch-id-hint" />
+                  </div>
                   <span id="new-branch-id-hint" className="text-xs leading-normal text-muted-foreground">{to('idHint')}</span>
                 </div>
               )}
-              <label className="grid gap-2 text-sm font-medium leading-normal" htmlFor={editing ? 'edit-branch-name' : 'new-branch-name'}>
-                {t('name')}
-                <Input id={editing ? 'edit-branch-name' : 'new-branch-name'} name="name" defaultValue={editing?.name ?? ''} required maxLength={160} />
-              </label>
-              <label className="grid gap-2 text-sm font-medium leading-normal" htmlFor={editing ? 'edit-branch-city' : 'new-branch-city'}>
-                {t('city')}
-                <Input id={editing ? 'edit-branch-city' : 'new-branch-city'} name="city" defaultValue={editing?.city ?? ''} maxLength={160} />
-              </label>
+              <CanvasTextInput label={t('name')} id={editing ? 'edit-branch-name' : 'new-branch-name'} name="name" defaultValue={editing?.name ?? ''} required maxLength={160} />
+              <CanvasTextInput label={t('city')} id={editing ? 'edit-branch-city' : 'new-branch-city'} name="city" defaultValue={editing?.city ?? ''} maxLength={160} />
               {sheetError ? (
                 <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{sheetError}</p>
               ) : null}

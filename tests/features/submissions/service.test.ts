@@ -10,6 +10,7 @@ vi.mock('@/features/progress/service', () => ({ recompute: mocks.recompute }));
 
 import type { GradingItem } from '@/content-engine/compile';
 import {
+  parseSubmissionQueueSubmission,
   createSubmissionsService,
   createServerSubmissionsService,
   SubmissionPayloadSchema,
@@ -606,7 +607,7 @@ describe('guarded assignment lifecycle', () => {
       enrollments: [successful({ course_version_id: 'version-1', status: 'active' })],
       course_version_items: [successful({ kind: 'lesson', grading: inline })],
       assignment_submissions: [successful([stored({
-        item_id: 'lesson-1', block_id: 'inline-task', payload: { text: 'Inline work' },
+        item_id: 'lesson-1', block_id: 'inline-task', payload: { text: 'Inline work' }, due_at_snapshot: '2026-11-04T17:30:00.000Z', late: true,
       })])],
     });
 
@@ -614,10 +615,13 @@ describe('guarded assignment lifecycle', () => {
       courseId: 'course-1', itemId: 'lesson-1', blockId: 'inline-task',
     })).resolves.toMatchObject({
       locator: { itemId: 'lesson-1', blockId: 'inline-task' },
-      submissions: [{ payload: { text: 'Inline work' } }],
+      submissions: [{ payload: { text: 'Inline work' }, dueAtSnapshot: '2026-11-04T17:30:00.000Z', late: true }],
     });
     const query = database.queries.find(({ table }) => table === 'assignment_submissions');
     expect(query?.operations).toContainEqual(['eq', 'block_id', 'inline-task']);
+    expect(String(query?.operations.find(op => op[0] === 'select')?.[1])).toContain('due_at_snapshot,late');
+    expect(parseSubmissionQueueSubmission(stored({ branch_scope_known: true, branch_id: 'vinsmc', due_at_snapshot: '2026-11-04T17:30:00.000Z', late: true }))).toMatchObject({ dueAtSnapshot: '2026-11-04T17:30:00.000Z', late: true });
+    expect(parseSubmissionQueueSubmission(stored({ branch_scope_known: true, branch_id: 'vinsmc', due_at_snapshot: null, late: null }))).toMatchObject({ dueAtSnapshot: null, late: null });
   });
 
   it('keeps an inline block explicit even when its id equals the surrounding item id', async () => {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import { renderToString } from 'react-dom/server';
@@ -189,6 +189,9 @@ describe('StaffWorkspaceShell', () => {
 
   it.each(ROUTES)('%s %s marks exactly one nav link as the current page', (workspace, pathname) => {
     view(workspace, { pathname });
+    const global = screen.getByRole('navigation', { name: 'Global navigation' });
+    expect(within(global).getAllByRole('link').filter(link => link.getAttribute('aria-current') === 'page')).toHaveLength(1);
+    if (!screen.queryByRole('navigation', { name: navName[workspace] })) fireEvent.click(sidebarTrigger(TOGGLE));
     const navigation = screen.getByRole('navigation', { name: navName[workspace] });
     const current = within(navigation).getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page');
     expect(current).toHaveLength(1);
@@ -225,15 +228,16 @@ describe('StaffWorkspaceShell', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     await user.click(trigger);
     expect(document.cookie).toContain('sidebar_state=false');
-    expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute('data-state', 'collapsed');
+    expect(container.querySelector('.vf-staff')).toHaveAttribute('data-state', 'collapsed');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await user.click(trigger);
     expect(document.cookie).toContain('sidebar_state=true');
   });
 
-  it('keeps accessible link names in the collapsed rail', () => {
+  it('retains accessible contextual links when the closed navigation is opened', () => {
     const { container } = view('studio', { pathname: '/studio/courses', shellChrome: chrome({ sidebarOpen: false }) });
-    expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute('data-collapsible', 'icon');
+    expect(container.querySelector('.vf-staff')).toHaveAttribute('data-state', 'collapsed');
+    fireEvent.click(sidebarTrigger(TOGGLE));
     const navigation = screen.getByRole('navigation', { name: en.common.studioNavigation });
     for (const key of ['home', 'courses', 'library', 'questionBank', 'reviews', 'mcp']) {
       expect(within(navigation).getByRole('link', { name: labels.studio[key] })).toBeInTheDocument();
@@ -243,7 +247,7 @@ describe('StaffWorkspaceShell', () => {
   it('forces the rail collapsed in the course editor without writing the cookie; the trail ends with the course title', async () => {
     const user = userEvent.setup();
     const { container } = view('studio', { pathname: '/studio/courses/course-1', title: 'Khóa học tối giản' });
-    const sidebar = () => container.querySelector('[data-slot="sidebar"]');
+    const sidebar = () => container.querySelector('.vf-staff');
     expect(sidebar()).toHaveAttribute('data-state', 'collapsed');
     const crumbs = screen.getByRole('navigation', { name: en.common.breadcrumbs });
     expect(within(crumbs).getByRole('link', { name: en.studioNav.courses })).toHaveAttribute('href', '/studio/courses');
@@ -258,7 +262,7 @@ describe('StaffWorkspaceShell', () => {
   it('restores the saved rail state when leaving the editor', () => {
     const shellChrome = chrome();
     const { container, rerender } = view('studio', { pathname: '/studio/courses/course-1/notebooks/item-1', shellChrome });
-    expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute('data-state', 'collapsed');
+    expect(container.querySelector('.vf-staff')).toHaveAttribute('data-state', 'collapsed');
     expect(container.querySelector('.vf-staff-course-editor')).toBeNull();
     nav.pathname = '/studio/courses';
     rerender(
@@ -266,7 +270,7 @@ describe('StaffWorkspaceShell', () => {
         <StaffWorkspaceShell workspace="studio" chrome={shellChrome} permissions={[...ALL]} entries={entries}><StaffPageHeader title="Courses" /></StaffWorkspaceShell>
       </NextIntlClientProvider>,
     );
-    expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute('data-state', 'expanded');
+    expect(container.querySelector('.vf-staff')).toHaveAttribute('data-state', 'expanded');
     expect(screen.getByRole('navigation', { name: en.common.breadcrumbs })).toBeInTheDocument();
     expect(document.cookie).not.toContain('sidebar_state');
   });
@@ -287,7 +291,9 @@ describe('StaffWorkspaceShell', () => {
       expect(within(drawer).getByRole('link', { name: en.gradingNav.queue })).toHaveAttribute('aria-current', 'page');
       expect(within(drawer).getByTestId('switcher')).toBeInTheDocument();
       expect(within(drawer).getByRole('button', { name: en.common.close })).toBeInTheDocument();
-      await user.keyboard('{Escape}');
+      await waitFor(() => expect(drawer.contains(document.activeElement)).toBe(true));
+      // InstUI 11.7 FocusRegion listens to keyup's legacy keyCode, which jsdom's userEvent omits.
+      fireEvent.keyUp(document.activeElement!, { key: 'Escape', code: 'Escape', keyCode: 27, which: 27 });
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
       await waitFor(() => expect(trigger).toHaveFocus());
       expect(document.cookie).not.toContain('sidebar_state');

@@ -6,6 +6,7 @@ import { AdminOverviewView } from "@/features/admin/ui/AdminOverviewView";
 import { buildAdminOverviewView } from "@/features/admin/ui/overview/view-model";
 import { firstAdminDestination } from "@/lib/admin-navigation";
 import { routes } from "@/lib/routes";
+import { scopeKey } from "@/lib/admin-scope";
 
 export default async function AdminPage() {
   // The overview itself still needs `admin.access`. An operator admitted only
@@ -21,7 +22,9 @@ export default async function AdminPage() {
     getTranslations("centralAdmin"),
     getLocale(),
   ]);
-  // No eyebrow: the scope switcher in the sidebar already names the scope.
+  // Keep the authorized scope visible when the phone's navigation drawer is closed.
+  const activeScope = context.options.find((option) => scopeKey(option.scope) === scopeKey(context.scope));
+  const eyebrow = context.scope.kind === "central" ? t("central") : activeScope?.label ?? t("scope");
   // Cross-workspace links (Studio reviews, grading queue) come from every authorized
   // scope, never from the permissions the Administration workspace filtered down to.
   return <AdminOverviewView {...buildAdminOverviewView({
@@ -29,6 +32,7 @@ export default async function AdminPage() {
     permissions: context.permissions,
     entries: context.entries,
     locale,
+    eyebrow,
     title: t("overview"),
     description: t("overviewDescription"),
   })} />;

@@ -467,7 +467,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             </div>
           </footer>
         ) : null}
-        {submitError ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
+        {submitError && !submitDialogOpen ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
       </section>
 
       <aside
@@ -568,6 +568,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
                   <DialogDescription className="mt-2 text-sm text-muted-foreground">
                     {t('dialogDescription', { count: unansweredCount })}
                   </DialogDescription>
+                  {submitError ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
                   <div className="mt-6 flex flex-col-reverse gap-2 min-[760px]:flex-row min-[760px]:justify-end">
                     <DialogClose asChild>
                       <button type="button" className="vf-btn vf-btn-lg" disabled={submitting}>
@@ -575,7 +576,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
                       </button>
                     </DialogClose>
                     <button type="button" className="vf-btn vf-btn-primary vf-btn-lg" disabled={submitting} onClick={() => void submitAttempt()}>
-                      {submitting ? t('submitting') : t('confirm')}
+                      {submitting ? t('submitting') : submitError ? t('retrySubmit') : t('confirm')}
                     </button>
                   </div>
                 </DialogContent>

@@ -1,5 +1,5 @@
 import { scopeKey } from '@/lib/admin-scope';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 import { ResourceDocumentSchema, type ResourceDocument } from '@/content-engine/schema/bundle';
@@ -33,10 +33,11 @@ const newResource: ResourceDocument = ResourceDocumentSchema.parse({
 });
 
 export default async function StudioResourceDetailPage({ params }: PageProps) {
-  const [{ id }, context, t] = await Promise.all([
+  const [{ id }, context, t, locale] = await Promise.all([
     params,
     typedContentPageContext('content.edit', 'resource.edit'),
     getTranslations('studio.resources'),
+    getLocale(),
   ]);
   const actor = context.actor;
   let document = newResource;
@@ -62,7 +63,7 @@ export default async function StudioResourceDetailPage({ params }: PageProps) {
     : t('statuses.draft');
   const title = typeof document.title === 'string'
     ? document.title
-    : document.title.en ?? document.title.vi ?? t('untitled');
+    : document.title[locale === 'en' ? 'en' : 'vi'] ?? document.title.en ?? document.title.vi ?? t('untitled');
   const knownStatus = status === 'published' || status === 'archived' ? status : 'draft';
   return <div className="mx-auto flex w-full max-w-7xl flex-col gap-6"><EditorPageHeader backHref="/studio/resources" backLabel={t('back')} title={title} status={{ kind: 'content', value: knownStatus, label: statusLabel }} /><ResourceEditor key={id} recoveryKey={`studio:recovery:${context.actor.userId}:${scopeKey(context.scope)}:resource:${id}`} initialDocument={document} initialRecord={record} initialStatus={status as 'draft' | 'published' | 'archived'} isNew={id === 'new'} canPublish={can(actor, 'resource.publish', context.scope)} /></div>;
 }

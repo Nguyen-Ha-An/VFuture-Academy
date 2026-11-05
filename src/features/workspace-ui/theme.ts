@@ -1,4 +1,5 @@
 export const WORKSPACE_THEME_COOKIE = 'vf-theme';
+export const WORKSPACE_THEME_EVENT = 'vf:workspace-theme';
 export const workspaceThemes = ['system', 'dark', 'light'] as const;
 export type WorkspaceTheme = (typeof workspaceThemes)[number];
 

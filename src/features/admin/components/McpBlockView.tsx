@@ -1,11 +1,12 @@
 'use client';
 
+import "@/features/admin/ui/admin.css";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button, CanvasTextInput, CanvasTextArea } from '@/features/canvas/ui';
 import {
   Dialog,
   DialogContent,
@@ -14,8 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/features/staff-ui/components';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 import { responseData, scopedUrl } from './member-admin-ui';
@@ -141,30 +140,30 @@ export function McpBlockView({
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="canvas-page canvas-admin max-w-3xl space-y-6">
       <StaffPageHeader title={t('title')} description={t('description')} />
 
       <SectionCard title={t('lookupTitle')} description={t('lookupDescription')} columns={1}>
-        <form onSubmit={check} className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm font-medium leading-normal">
-            {t('userId')}
-            <Input
+        <form onSubmit={check} className="canvas-toolbar flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="w-full min-w-0 flex-1 sm:w-auto">
+            <CanvasTextInput
+              label={t('userId')}
               value={inputUserId}
-              onChange={(event) => changeTarget(event.target.value)}
+              onChange={changeTarget}
               placeholder={t('userIdPlaceholder')}
               autoComplete="off"
               spellCheck={false}
               aria-invalid={invalidUserId}
+              messages={invalidUserId ? [{ type: 'error', text: <span id="mcp-user-id-error" role="alert">{t('invalidUserId')}</span> }] : []}
               aria-describedby={invalidUserId ? 'mcp-user-id-error' : undefined}
               disabled={saving}
               className="min-w-0"
             />
-          </label>
+          </div>
           <Button type="submit" disabled={loading || saving} className="w-full sm:w-auto">
             {loading ? t('checking') : t('check')}
           </Button>
         </form>
-        {invalidUserId ? <p id="mcp-user-id-error" role="alert" className="text-sm leading-normal text-destructive-soft-foreground">{t('invalidUserId')}</p> : null}
         {lookupFailed ? (
           <div role="alert" className="flex flex-wrap items-center gap-3 text-sm leading-normal text-destructive-soft-foreground">
             <span>{t('lookupFailed')}</span>
@@ -196,7 +195,7 @@ export function McpBlockView({
         </SectionCard>
       ) : null}
 
-      <section className="space-y-2 rounded-lg border border-border bg-card p-6" aria-labelledby="mcp-oauth-title">
+      <section className="canvas-panel space-y-2 p-4" aria-labelledby="mcp-oauth-title">
         <h2 id="mcp-oauth-title" className="text-sm font-medium leading-normal">{t('oauthTitle')}</h2>
         <p className="text-sm leading-normal text-muted-foreground">{t('oauthDescription')}</p>
         <Link href="/account/connected-apps" className="inline-block break-all text-sm font-medium leading-normal underline underline-offset-4 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -215,10 +214,7 @@ export function McpBlockView({
             </DialogDescription>
           </DialogHeader>
           {pending === 'block' ? (
-            <label className="flex flex-col gap-1.5 text-sm font-medium leading-normal">
-              {t('reasonLabel')}
-              <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} placeholder={t('reasonPlaceholder')} disabled={saving} />
-            </label>
+            <CanvasTextArea label={t('reasonLabel')} value={reason} onChange={setReason} maxLength={500} placeholder={t('reasonPlaceholder')} disabled={saving} />
           ) : null}
           {saveFailed ? <p role="alert" className="text-sm leading-normal text-destructive-soft-foreground">{t('saveFailed')}</p> : null}
           <DialogFooter>

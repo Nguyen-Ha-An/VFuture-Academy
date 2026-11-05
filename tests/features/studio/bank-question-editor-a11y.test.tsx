@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import en from '@/messages/en.json';
 
@@ -17,6 +17,8 @@ import { StaffTitleContext } from '@/features/workspace/ui/StaffTitleContext';
 
 const bankRouter = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => bankRouter }));
+// Existing contracts exercise the explicit JSON mode.
+beforeEach(() => { window.localStorage.setItem('academy.canvas.editor-mode', 'json'); });
 afterEach(cleanup);
 
 describe('BankQuestionEditor accessibility', () => {

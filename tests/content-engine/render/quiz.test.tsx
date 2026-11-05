@@ -241,6 +241,40 @@ describe('AssignmentRenderer', () => {
     expect(screen.getByRole('button', { name: 'Submit revision' })).toBeEnabled();
   });
 
+  it.each([true, false, null])('displays only persisted late=%s and the submission-time deadline, without changing points', async late => {
+    const r = await compileCourse({ manifest, items }, resolver);
+    const item = r.compiled!.items.a1;
+    const rt = createPreviewRuntime(item, 'en');
+    vi.spyOn(rt, 'getAssignmentSession').mockReturnValue({
+      locator: { courseId: 'c', itemId: 'a1', blockId: null }, courseVersionId: 'version-1', attemptsUsed: 1,
+      submissions: [{ submissionId: 'submission-1', attemptNo: 1, status: 'approved', submittedAt: '2026-09-03T05:00:00.000Z',
+        payload: { text: 'Work' }, files: [], late, dueAtSnapshot: '2026-09-04T05:00:00.000Z',
+        grade: { released: true, decision: 'approved', rubricScores: { c: 5 }, totalPoints: 5, maxPoints: 5, passed: true, feedback: 'Approved', gradedAt: '2026-09-03T06:00:00.000Z' } }],
+      action: { allowed: false, reason: 'approved' },
+    });
+    render(<AssignmentRenderer assignment={item.renders.en} target={{ blockId: null }} runtime={rt} />);
+    expect(screen.queryAllByText('Submitted late', { exact: true }).length > 0).toBe(late === true);
+    expect(screen.getByRole('region', { name: 'Latest feedback' })).toHaveTextContent('5 of 5');
+    const history = screen.getByRole('region', { name: 'Submission history' });
+    expect(history).toHaveTextContent('Due date at submission');
+    expect(history.querySelector('time[datetime="2026-09-04T05:00:00.000Z"]')).toHaveTextContent('12:00');
+    expect(history).toHaveTextContent('ICT');
+  });
+
+  it('does not label historical submissions as late when snapshot data is unknown', async () => {
+    const r = await compileCourse({ manifest, items }, resolver);
+    const item = r.compiled!.items.a1;
+    const rt = createPreviewRuntime(item, 'en');
+    vi.spyOn(rt, 'getAssignmentSession').mockReturnValue({
+      locator: { courseId: 'c', itemId: 'a1', blockId: null }, courseVersionId: 'version-1', attemptsUsed: 1,
+      submissions: [{ submissionId: 'old', attemptNo: 1, status: 'submitted', submittedAt: '2020-01-01T00:00:00Z', payload: {}, files: [], late: null, dueAtSnapshot: null }],
+      action: { allowed: false, reason: 'awaiting_review' },
+    });
+    render(<AssignmentRenderer assignment={item.renders.en} target={{ blockId: null }} runtime={rt} />);
+    expect(screen.queryByText('Submitted late', { exact: true })).toBeNull();
+    expect(screen.queryByText(/Due date at submission/)).toBeNull();
+  });
+
   it('distinguishes unavailable submission data from a policy lock', async () => {
     const r = await compileCourse({ manifest, items }, resolver);
     const item = r.compiled!.items.a1;

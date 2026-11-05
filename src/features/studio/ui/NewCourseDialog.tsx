@@ -1,15 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 import { PlusIcon } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { CanvasButton as Button, CanvasTextInput, CanvasSelect, CanvasCheckbox, CanvasFormFieldGroup } from '@/features/canvas/ui';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { IdSchema } from '@/content-engine/schema/common';
 import { CourseCreationInputSchema } from '@/features/studio/course-creation';
@@ -37,6 +34,7 @@ export function NewCourseDialog() {
   const t = useTranslations('studio.courses');
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const sheetContentRef = useRef<HTMLDivElement>(null);
   const [id, setId] = useState('');
   const [titleVi, setTitleVi] = useState('');
   const [titleEn, setTitleEn] = useState('');
@@ -92,35 +90,24 @@ export function NewCourseDialog() {
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!pending) setOpen(next); }}>
       <SheetTrigger asChild><Button><PlusIcon aria-hidden="true" />{t('newCourse')}</Button></SheetTrigger>
-      <SheetContent side="right" showCloseButton={false} className="w-full gap-0 sm:max-w-xl">
+      <SheetContent ref={sheetContentRef} side="right" showCloseButton={false} className="w-full gap-0 sm:max-w-xl">
         <SheetHeader className="pb-4">
           <SheetTitle className="text-lg leading-snug">{t('dialogTitle')}</SheetTitle>
           <SheetDescription>{t('dialogDescription')}</SheetDescription>
         </SheetHeader>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 pb-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium leading-snug" htmlFor="new-course-id">{t('id')}</label>
-              <Input id="new-course-id" value={id} onChange={(event) => setId(event.target.value)} aria-invalid={Boolean(idError)} aria-errormessage={idError ? 'new-course-id-error' : undefined} autoComplete="off" />
-              {idError ? <p id="new-course-id-error" role="alert" className="text-sm text-destructive">{idError}</p> : <p className="text-xs leading-snug text-muted-foreground">{t('idHint')}</p>}
-            </div>
+            <CanvasTextInput id="new-course-id" label={t('id')} value={id} onChange={setId} disabled={pending} autoComplete="off" messages={[idError ? { type: 'error', text: idError } : { type: 'hint', text: t('idHint') }]} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-2"><label className="text-sm font-medium leading-snug" htmlFor="new-course-title-vi">{t('titleVi')}</label><Input id="new-course-title-vi" value={titleVi} onChange={(event) => setTitleVi(event.target.value)} aria-invalid={defaultLanguage === 'vi' && Boolean(titleError)} aria-errormessage={defaultLanguage === 'vi' && titleError ? 'new-course-title-error' : undefined} /></div>
-              <div className="flex flex-col gap-2"><label className="text-sm font-medium leading-snug" htmlFor="new-course-title-en">{t('titleEn')}</label><Input id="new-course-title-en" value={titleEn} onChange={(event) => setTitleEn(event.target.value)} aria-invalid={defaultLanguage === 'en' && Boolean(titleError)} aria-errormessage={defaultLanguage === 'en' && titleError ? 'new-course-title-error' : undefined} /></div>
+              <CanvasTextInput id="new-course-title-vi" label={t('titleVi')} value={titleVi} onChange={setTitleVi} disabled={pending} messages={defaultLanguage === 'vi' && titleError ? [{ type: 'error', text: titleError }] : undefined} />
+              <CanvasTextInput id="new-course-title-en" label={t('titleEn')} value={titleEn} onChange={setTitleEn} disabled={pending} messages={defaultLanguage === 'en' && titleError ? [{ type: 'error', text: titleError }] : undefined} />
             </div>
-            {titleError ? <p id="new-course-title-error" role="alert" className="text-sm text-destructive">{titleError}</p> : null}
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-2 text-sm font-medium leading-snug">{t('languages')}</legend>
-              <div className="flex flex-wrap gap-5">
-                {(['vi', 'en'] as const).map((locale) => <label key={locale} className="flex min-h-9 items-center gap-2 text-sm"><Checkbox checked={languages.includes(locale)} onChange={(event) => toggleLanguage(locale, event.target.checked)} />{t(`language.${locale}`)}</label>)}
-              </div>
-              {languages.length === 0 ? <p role="alert" className="text-sm text-destructive">{t('languageRequired')}</p> : null}
-            </fieldset>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="flex flex-col gap-2"><label className="text-sm font-medium leading-snug" htmlFor="new-course-default-language">{t('defaultLanguage')}</label><NativeSelect id="new-course-default-language" value={defaultLanguage} onChange={(event) => setDefaultLanguage(event.target.value as Locale)}>{languages.map((locale) => <NativeSelectOption key={locale} value={locale}>{t(`language.${locale}`)}</NativeSelectOption>)}</NativeSelect></div>
-              <div className="flex flex-col gap-2"><label className="text-sm font-medium leading-snug" htmlFor="new-course-pathway">{t('pathway')}</label><NativeSelect id="new-course-pathway" value={pathway} onChange={(event) => setPathway(event.target.value as (typeof PATHWAYS)[number])}>{PATHWAYS.map((value) => <NativeSelectOption key={value} value={value}>{t(`pathwayOptions.${value}`)}</NativeSelectOption>)}</NativeSelect></div>
-              <div className="flex flex-col gap-2"><label className="text-sm font-medium leading-snug" htmlFor="new-course-level">{t('level')}</label><NativeSelect id="new-course-level" value={level} onChange={(event) => setLevel(event.target.value as typeof level)}><NativeSelectOption value="foundation">{t('levelOptions.foundation')}</NativeSelectOption><NativeSelectOption value="specialization">{t('levelOptions.specialization')}</NativeSelectOption></NativeSelect></div>
-            </div>
+            <CanvasFormFieldGroup description={t('languages')} layout="inline" messages={languages.length === 0 ? [{ type: 'error', text: t('languageRequired') }] : undefined}>
+              {(['vi', 'en'] as const).map(locale => <CanvasCheckbox key={locale} label={t(`language.${locale}`)} checked={languages.includes(locale)} disabled={pending} onChange={checked => toggleLanguage(locale, checked)} />)}
+            </CanvasFormFieldGroup>
+            <CanvasSelect mountNode={() => sheetContentRef.current} id="new-course-default-language" label={t('defaultLanguage')} value={defaultLanguage} disabled={pending || !languages.length} options={(['vi', 'en'] as const).map(locale => ({ value: locale, label: t(`language.${locale}`), disabled: !languages.includes(locale) }))} onChange={value => setDefaultLanguage(value as Locale)} />
+            <CanvasSelect mountNode={() => sheetContentRef.current} id="new-course-pathway" label={t('pathway')} value={pathway} disabled={pending} options={PATHWAYS.map(value => ({ value, label: t(`pathwayOptions.${value}`) }))} onChange={value => setPathway(value as (typeof PATHWAYS)[number])} />
+            <CanvasSelect mountNode={() => sheetContentRef.current} id="new-course-level" label={t('level')} value={level} disabled={pending} options={(['foundation', 'specialization'] as const).map(value => ({ value, label: t(`levelOptions.${value}`) }))} onChange={value => setLevel(value as typeof level)} />
           </div>
           <SheetFooter>
             <p aria-live="polite" className="min-h-5 text-sm text-destructive">{error}</p>

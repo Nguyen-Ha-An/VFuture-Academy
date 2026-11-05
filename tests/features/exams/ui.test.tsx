@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CompiledItem } from '@/content-engine/compile';
 import { createPreviewRuntime, registerAll } from '@/content-engine/render';
@@ -820,6 +820,10 @@ describe('ExamPlayer', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The exam could not be submitted. Please try again.',
     );
+    const confirmation = screen.getByRole('dialog', { name: 'Submit exam?' });
+    expect(within(confirmation).getByRole('alert')).toHaveTextContent('The exam could not be submitted. Please try again.');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(within(confirmation).getByRole('button', { name: 'Retry submission' })).toBeEnabled();
     expect(submit).not.toHaveBeenCalled();
     expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toEqual({ 's1/e1': 'a' });
   });

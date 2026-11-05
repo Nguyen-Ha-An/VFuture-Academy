@@ -10,11 +10,12 @@ import { staffUiTestMessages } from '@/messages/staff-ui';
 import { BranchesManager } from '@/features/admin/components/BranchesManager';
 import { UsersManager } from '@/features/admin/components/UsersManager';
 import { AnalyticsDashboard } from '@/features/admin/components/AnalyticsDashboard';
+import { CanvasProvider } from '@/features/canvas/ui';
 
 const messages = staffUiTestMessages(en, 'en');
 
 function Provider({ children }: { children: React.ReactNode }) {
-  return <NextIntlClientProvider locale="en" messages={messages}>{children}</NextIntlClientProvider>;
+  return <NextIntlClientProvider locale="en" messages={messages} timeZone="Asia/Ho_Chi_Minh"><CanvasProvider theme="light">{children}</CanvasProvider></NextIntlClientProvider>;
 }
 
 afterEach(() => {
@@ -37,12 +38,12 @@ describe('branch admin page', () => {
     const user = userEvent.setup();
 
     render(<Provider><BranchesManager initialBranches={[]} canManage /></Provider>);
-    expect(screen.queryByLabelText('Branch ID')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Branch ID' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'New school' }));
     const sheet = screen.getByRole('dialog', { name: 'New school' });
-    await user.type(within(sheet).getByLabelText('Branch ID'), 'hcmc');
-    await user.type(within(sheet).getByLabelText('Name'), 'HCMC');
-    await user.type(within(sheet).getByLabelText('City'), 'Ho Chi Minh City');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Branch ID' }), 'hcmc');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Name' }), 'HCMC');
+    await user.type(within(sheet).getByRole('textbox', { name: 'City' }), 'Ho Chi Minh City');
     await user.click(within(sheet).getByRole('button', { name: 'Create branch' }));
 
     expect(await screen.findByRole('cell', { name: 'Ho Chi Minh City' })).toBeInTheDocument();
@@ -64,11 +65,11 @@ describe('branch admin page', () => {
     await user.click(screen.getByRole('button', { name: 'Actions for ANS' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Edit school' }));
     const sheet = screen.getByRole('dialog', { name: 'Edit school' });
-    expect(within(sheet).queryByLabelText('Branch ID')).not.toBeInTheDocument();
+    expect(within(sheet).queryByRole('textbox', { name: 'Branch ID' })).not.toBeInTheDocument();
     expect(within(sheet).getByText('ans')).toBeInTheDocument();
-    await user.clear(within(sheet).getByLabelText('Name'));
-    await user.type(within(sheet).getByLabelText('Name'), 'ANS Hanoi');
-    await user.type(within(sheet).getByLabelText('City'), 'Ha Noi');
+    await user.clear(within(sheet).getByRole('textbox', { name: 'Name' }));
+    await user.type(within(sheet).getByRole('textbox', { name: 'Name' }), 'ANS Hanoi');
+    await user.type(within(sheet).getByRole('textbox', { name: 'City' }), 'Ha Noi');
     await user.click(within(sheet).getByRole('button', { name: 'Save branch' }));
 
     expect(await screen.findByRole('link', { name: 'ANS Hanoi' })).toBeInTheDocument();
@@ -79,17 +80,24 @@ describe('branch admin page', () => {
   });
 
   it('keeps the sheet open with an error when saving fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json({ error: { message: 'duplicate' } }, 409)));
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => json({ error: { message: 'duplicate' } }, 409));
+    vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
     render(<Provider><BranchesManager initialBranches={[]} canManage /></Provider>);
     await user.click(screen.getByRole('button', { name: 'New school' }));
     const sheet = screen.getByRole('dialog', { name: 'New school' });
-    await user.type(within(sheet).getByLabelText('Branch ID'), 'ans');
-    await user.type(within(sheet).getByLabelText('Name'), 'ANS');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Branch ID' }), 'ans');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Name' }), 'ANS');
     await user.click(within(sheet).getByRole('button', { name: 'Create branch' }));
 
     expect(await within(sheet).findByRole('alert')).toHaveTextContent('The change could not be saved.');
     expect(screen.getByRole('dialog', { name: 'New school' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('textbox', { name: 'Branch ID' })).toHaveValue('ans');
+    expect(within(sheet).getByRole('textbox', { name: 'Name' })).toHaveValue('ANS');
+    expect(screen.queryByRole('link', { name: 'ANS' })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches', expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ id: 'ans', name: 'ANS', city: null });
   });
 
   it('shows report columns only when reports are provided and says Unavailable when they failed', () => {
@@ -357,9 +365,11 @@ describe('branch analytics page', () => {
       initialData={initialData}
     /></Provider>);
 
-    const selector = screen.getByLabelText('Branch');
+    const selector = screen.getByRole('combobox', { name: 'Branch' });
     expect(selector.hasAttribute('disabled')).toBe(false);
-    await user.selectOptions(selector, 'vinsmc');
+    await user.click(selector);
+    await user.click(await screen.findByRole('option', { name: 'VinSMC' }));
+    expect(selector).toHaveValue('VinSMC');
     await user.click(screen.getByRole('button', { name: 'Load analytics' }));
     await waitFor(() => expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/branch/vinsmc'));
   });
@@ -383,15 +393,19 @@ describe('branch analytics page', () => {
       initialData={snapshot('ans', 1)}
     /></Provider>);
 
-    await user.selectOptions(screen.getByLabelText('Branch'), 'vinsmc');
+    const selector = screen.getByRole('combobox', { name: 'Branch' });
+    await user.click(selector);
+    await user.click(await screen.findByRole('option', { name: 'VinSMC' }));
     const load = screen.getByRole('button', { name: 'Load analytics' });
-    load.click();
-    load.click();
+    await user.dblClick(load);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/branch/vinsmc');
 
-    await user.selectOptions(screen.getByLabelText('Branch'), 'ans');
+    await user.click(selector);
+    await user.click(await screen.findByRole('option', { name: 'ANS' }));
     await user.click(load);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/branch/ans');
     resolveAns(new Response(JSON.stringify({ data: snapshot('ans', 9) }), { headers: { 'Content-Type': 'application/json' } }));
     await waitFor(() => expect(screen.getAllByText('9')).toHaveLength(2));
     resolveVin(new Response(JSON.stringify({ data: snapshot('vinsmc', 4) }), { headers: { 'Content-Type': 'application/json' } }));

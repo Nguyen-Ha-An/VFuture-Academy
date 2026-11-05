@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COURSE_REF } from '@/content-engine/diagnostics';
@@ -122,10 +122,10 @@ describe("course workspace outline", () => {
       </NextIntlClientProvider>,
     );
 
-    expect(screen.getByRole("button", { name: /Valid item.*Valid/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Warning item.*2 warnings/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Error item.*1 errors/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /Missing item.*Stub without document/i })).toBeDefined();
+    expect(within(screen.getByRole("treeitem", { name: "Valid item" })).getByRole("button", { name: /Valid item.*Lesson/i })).toBeDefined();
+    expect(within(screen.getByRole("treeitem", { name: "Warning item" })).getByRole("button", { name: /2 warnings/i })).toBeDefined();
+    expect(within(screen.getByRole("treeitem", { name: "Error item" })).getByRole("button", { name: /1 errors/i })).toBeDefined();
+    expect(within(screen.getByRole("treeitem", { name: "Missing item" })).getByRole("button", { name: /Stub without document/i })).toBeDefined();
   });
 
   it("preserves module and item metadata when reordering the outline", () => {
@@ -154,6 +154,7 @@ describe("course workspace outline", () => {
       </NextIntlClientProvider>,
     );
 
+    fireEvent.click(screen.getByText("Arrange and rename"));
     fireEvent.click(screen.getByRole("button", { name: "Move Item one down" }));
     expect(onManifestChange).toHaveBeenCalledWith(expect.objectContaining({
       modules: [expect.objectContaining({
@@ -203,6 +204,7 @@ describe("course workspace outline", () => {
       </NextIntlClientProvider>,
     );
 
+    fireEvent.click(screen.getByText("Arrange and rename"));
     fireEvent.click(screen.getByRole("button", { name: "Remove Valid item" }));
     expect(confirm).toHaveBeenCalledWith("Remove Valid item from the outline?");
     expect(onManifestChange).not.toHaveBeenCalled();
@@ -246,6 +248,7 @@ describe("course workspace outline", () => {
       </NextIntlClientProvider>,
     );
 
+    fireEvent.click(screen.getByText("Arrange and rename"));
     fireEvent.change(screen.getByRole("textbox", { name: "Title for module-1" }), { target: { value: "Renamed module" } });
     fireEvent.blur(screen.getByRole("textbox", { name: "Title for module-1" }));
     expect(onManifestChange).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -275,6 +278,7 @@ describe("course workspace outline", () => {
       </NextIntlClientProvider>,
     );
 
+    fireEvent.click(screen.getByText("Arrange and rename"));
     expect(screen.getByRole("button", { name: "Remove Only item" }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByRole("button", { name: "Remove module Only module" }).hasAttribute("disabled")).toBe(true);
   });

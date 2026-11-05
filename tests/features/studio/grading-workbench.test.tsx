@@ -22,6 +22,24 @@ function json(body: unknown, status = 200) { return new Response(JSON.stringify(
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); window.history.replaceState({}, '', '/'); });
 
 describe('grading workbench · assignments', () => {
+  it('shows the recorded deadline and late flag without deriving a penalty', async () => {
+    const late = { ...assignment, submission: { ...assignment.submission, late: true, dueAtSnapshot: '2026-11-04T17:30:00.000Z' } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ data: late })));
+    view('assignments');
+    const snapshot = await screen.findByLabelText('Deadline recorded at submission');
+    expect(snapshot).toHaveTextContent('Submitted late');
+    expect(snapshot).toHaveTextContent('5 Nov 2026');
+    expect(snapshot).not.toHaveTextContent(/penalty/i);
+  });
+
+  it('does not infer a late or on-time status for historical records', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ data: assignment })));
+    view('assignments');
+    await screen.findByDisplayValue('Existing feedback');
+    expect(screen.queryByText('Submitted late')).not.toBeInTheDocument();
+    expect(screen.queryByText('Submitted on time')).not.toBeInTheDocument();
+  });
+
   it('loads existing grades and retains assignment edits after a failed save', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json({ data: assignment })).mockResolvedValueOnce(json({ error: { message: 'Nope' } }, 500));
     vi.stubGlobal('fetch', fetchMock); view('assignments');
@@ -44,9 +62,9 @@ describe('grading workbench · assignments', () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => json({ data: assignment })));
     view('assignments');
     expect(await screen.findByText('Reviewing Learner · attempt 1')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Pinned instructions' })).toBeInTheDocument();
+    expect(screen.getByText('Pinned instructions').closest('summary')).toBeInTheDocument();
     expect(screen.getAllByText('Learner response')).toHaveLength(1);
-    expect(screen.getAllByText('Published version source').some((label) => label.closest('summary'))).toBe(true);
+    expect(screen.getByLabelText('Published version source')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save grading draft' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeInTheDocument();
   });
@@ -56,14 +74,14 @@ describe('grading workbench · assignments', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json({ data: twoCriteria })).mockResolvedValue(json({ data: { submission: { ...twoCriteria.submission, grade: { rubricScores: { quality: 3 }, feedback: '', decision: 'approved', released: false, totalPoints: 3, maxPoints: 8, gradedAt: '2026-09-07T01:00:00.000Z' } } } }));
     vi.stubGlobal('fetch', fetchMock);
     view('assignments');
-    await userEvent.type(await screen.findByRole('spinbutton', { name: 'Quality' }), '3');
+    await userEvent.type(await screen.findByRole('spinbutton', { name: /^Quality \(/ }), '3');
     expect(screen.getByRole('button', { name: 'Save grading draft' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeDisabled();
     expect(screen.getByText('Every criterion needs a valid score before grading can be completed.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Save grading draft' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Grading draft saved.');
     expect(JSON.parse(String(fetchMock.mock.calls[1][1].body)).release).toBe(false);
-    await userEvent.type(screen.getByRole('spinbutton', { name: 'Depth' }), '2');
+    await userEvent.type(screen.getByRole('spinbutton', { name: /^Depth \(/ }), '2');
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeEnabled();
   });
 
@@ -71,11 +89,11 @@ describe('grading workbench · assignments', () => {
     const ungraded = { ...assignment, submission: { ...assignment.submission, grade: undefined } };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ data: ungraded })));
     view('assignments');
-    await userEvent.type(await screen.findByRole('spinbutton', { name: 'Quality' }), '5');
+    await userEvent.type(await screen.findByRole('spinbutton', { name: /^Quality \(/ }), '5');
     expect(screen.getByRole('button', { name: 'Save grading draft' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeDisabled();
-    await userEvent.clear(screen.getByRole('spinbutton', { name: 'Quality' }));
-    await userEvent.type(screen.getByRole('spinbutton', { name: 'Quality' }), '4');
+    await userEvent.clear(screen.getByRole('spinbutton', { name: /^Quality \(/ }));
+    await userEvent.type(screen.getByRole('spinbutton', { name: /^Quality \(/ }), '4');
     expect(screen.getByRole('button', { name: 'Save grading draft' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeEnabled();
   });
@@ -93,10 +111,9 @@ describe('grading workbench · assignments', () => {
     expect(completedPanel).toHaveTextContent('4 / 4');
     expect(completedPanel).toHaveTextContent('Published feedback');
     expect(screen.getByText('This completed grade is immutable.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Complete grading' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Save grading draft' })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'Feedback' })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'Feedback' })).toHaveValue('Published feedback');
+    expect(screen.queryByRole('button', { name: 'Complete grading' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save grading draft' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Feedback' })).not.toBeInTheDocument();
   });
 
   it('does not announce or lock completion without a server-confirmed released grade', async () => {
@@ -166,7 +183,7 @@ describe('grading workbench · exams', () => {
     expect(await screen.findByText('This question is automatically graded and read-only.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /2\. Essay/ }));
     expect(await screen.findByDisplayValue('Earlier feedback')).toBeInTheDocument();
-    expect(screen.getByLabelText('Points')).toHaveValue(2);
+    expect(screen.getByLabelText(/^Points \//)).toHaveValue(2);
   });
 
   it('uses localized question labels and shows the remaining manual-grading count', async () => {
@@ -185,7 +202,7 @@ describe('grading workbench · exams', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ data: rescored })));
     view('exams');
     await userEvent.click(await screen.findByRole('button', { name: /2\. Essay/ }));
-    const points = await screen.findByLabelText('Points');
+    const points = await screen.findByLabelText(/^Points \//);
     expect(points).toBeEnabled();
     expect(screen.getByLabelText('Feedback')).toBeEnabled();
     await userEvent.clear(points);
@@ -208,7 +225,7 @@ describe('grading workbench · exams', () => {
     view('exams');
 
     await userEvent.click(await screen.findByRole('button', { name: /2\. Short answer.*unscored/ }));
-    const points = await screen.findByLabelText('Points');
+    const points = await screen.findByLabelText(/^Points \//);
     expect(points).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeDisabled();
     await userEvent.type(points, '2');
@@ -216,8 +233,8 @@ describe('grading workbench · exams', () => {
     await screen.findByRole('status');
 
     // After the save the result is no longer pending_manual, but the stored score keeps it manual.
-    await waitFor(() => expect(screen.getByLabelText('Points')).toHaveValue(2));
-    expect(screen.getByLabelText('Points')).toBeEnabled();
+    await waitFor(() => expect(screen.getByLabelText(/^Points \//)).toHaveValue(2));
+    expect(screen.getByLabelText(/^Points \//)).toBeEnabled();
     expect(screen.getByRole('button', { name: /2\. Short answer.*· 2/ })).toBeInTheDocument();
     expect(screen.queryByText('This question is automatically graded and read-only.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeEnabled();
@@ -294,8 +311,8 @@ describe('grading workbench · exams', () => {
     expect(screen.queryByRole('heading', { name: 'Completed result' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Complete grading' })).toBeEnabled();
     await userEvent.click(screen.getByRole('button', { name: /2\. Essay/ }));
-    await waitFor(() => expect(screen.getByLabelText('Points')).toHaveValue(2));
-    expect(screen.getByLabelText('Points')).toBeEnabled();
+    await waitFor(() => expect(screen.getByLabelText(/^Points \//)).toHaveValue(2));
+    expect(screen.getByLabelText(/^Points \//)).toBeEnabled();
   });
 
   it('keeps edits and refreshes when the server rejects completion as incomplete', async () => {
@@ -342,7 +359,7 @@ describe('grading workbench · exams', () => {
       .mockResolvedValueOnce(json({ data: refreshed }));
     vi.stubGlobal('fetch', fetchMock);
     view('exams');
-    const points = await screen.findByLabelText('Points');
+    const points = await screen.findByLabelText(/^Points \//);
     await userEvent.clear(points);
     await userEvent.type(points, '3');
     await userEvent.clear(screen.getByLabelText('Feedback'));
@@ -352,7 +369,7 @@ describe('grading workbench · exams', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Question grade saved.');
     await userEvent.click(screen.getByRole('button', { name: /2\. Essay/ }));
     await userEvent.click(screen.getByRole('button', { name: /1\. Essay/ }));
-    await waitFor(() => expect(screen.getByLabelText('Points')).toHaveValue(3));
+    await waitFor(() => expect(screen.getByLabelText(/^Points \//)).toHaveValue(3));
     expect(screen.getByLabelText('Feedback')).toHaveValue('Updated feedback');
   });
 
@@ -474,7 +491,7 @@ describe('grading workbench · resolved titles', () => {
     view('assignments', false, { titles: { course: 'Design thinking', item: 'Week 1 reflection' } });
     expect(await screen.findByText('Reviewing Learner · attempt 1')).toBeInTheDocument();
     expect(screen.getByText('Design thinking · Week 1 reflection')).toBeInTheDocument();
-    expect(screen.getAllByText('Week 1 reflection').length).toBeGreaterThan(1);
+    expect(screen.getByLabelText('Published version source')).toHaveTextContent('Week 1 reflection');
     expect(screen.queryByText('lesson-1')).not.toBeInTheDocument();
   });
 
@@ -492,7 +509,7 @@ describe('grading workbench · resolved titles', () => {
     view('assignments', false, { titles: null });
     await screen.findByText('Reviewing Learner · attempt 1');
     const sourceDetails = screen.getAllByText('Assessment').map((label) => label.closest('dl'));
-    expect(sourceDetails).toHaveLength(2);
+    expect(sourceDetails).toHaveLength(1);
     for (const details of sourceDetails) {
       expect(details).toHaveTextContent('Pinned assignment');
       expect(details).not.toHaveTextContent('lesson-1');

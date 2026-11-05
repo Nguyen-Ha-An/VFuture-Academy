@@ -4,7 +4,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { MoreHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ConfirmationDialog } from "@/features/admin/components/member-admin-ui";
 import { cn } from "@/lib/ui-cn";

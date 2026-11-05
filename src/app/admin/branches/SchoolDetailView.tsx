@@ -1,8 +1,9 @@
+import "@/features/admin/ui/admin.css";
 import Link from "next/link";
 import { ArrowUpRightIcon, LogInIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CanvasButton as Button } from "@/features/canvas/ui";
+import { SchoolMembersTable } from "@/features/admin/ui/SchoolMembersTable";
 import {
   ActivityFeed,
   DataCard,
@@ -11,7 +12,6 @@ import {
   type ActivityItem,
   StatCard,
   StatGrid,
-  StatusBadge,
   type MemberStatus,
 } from "@/features/staff-ui/components";
 import { StaffPageHeader } from "@/features/workspace/ui/StaffPageHeader";
@@ -79,7 +79,7 @@ export type SchoolDetailViewProps = {
  */
 export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavailableLabel, members, activity, note }: SchoolDetailViewProps) {
   return (
-    <section className="space-y-6">
+    <section className="canvas-page canvas-admin space-y-6">
       <StaffPageHeader
         title={school.name}
         description={school.description}
@@ -102,7 +102,7 @@ export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavai
             aria-current={tab.current ? "page" : undefined}
             className={cn(
               "-mb-px inline-flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
-              tab.current ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+              tab.current ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             {tab.label}
@@ -117,13 +117,11 @@ export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavai
           ))}
         </StatGrid>
       ) : null}
-      {activity ? (
-        <ActivityFeed title={activity.title} items={activity.items} emptyLabel={activity.emptyLabel} />
-      ) : null}
       {members ? (
         <DataCard
+          className="canvas-panel"
           title={members.title}
-          actions={members.action ? <Button asChild variant="outline" size="sm"><Link href={members.action.href}>{members.action.label}</Link></Button> : undefined}
+          actions={members.action ? <Button href={members.action.href} variant="outline" size="sm">{members.action.label}</Button> : undefined}
           footer={members.rows && !members.action ? (
             <DataPagination
               mode="hasMore"
@@ -140,29 +138,12 @@ export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavai
           ) : members.rows.length === 0 ? (
             <div className="p-6"><EmptyState title={members.labels.empty} /></div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead scope="col">{members.labels.member}</TableHead>
-                  <TableHead scope="col" className="hidden md:table-cell">{members.labels.roles}</TableHead>
-                  <TableHead scope="col">{members.labels.status}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.rows.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="py-3">
-                      <Link href={member.href} className="font-medium leading-normal underline-offset-4 hover:underline">{member.name}</Link>
-                      <span className="block text-xs leading-normal text-muted-foreground">{member.email}</span>
-                    </TableCell>
-                    <TableCell className="hidden text-muted-foreground md:table-cell">{member.roles}</TableCell>
-                    <TableCell><StatusBadge kind="member" value={member.status} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <SchoolMembersTable title={members.title} rows={members.rows} labels={members.labels} />
           )}
         </DataCard>
+      ) : null}
+      {activity ? (
+        <ActivityFeed title={activity.title} items={activity.items} emptyLabel={activity.emptyLabel} />
       ) : null}
       {note ? <p className="text-sm leading-normal text-muted-foreground">{note}</p> : null}
     </section>

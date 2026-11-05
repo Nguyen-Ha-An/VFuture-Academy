@@ -1,9 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NextIntlClientProvider } from 'next-intl';
 import en from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
+import { CanvasProvider } from '@/features/canvas/ui';
 
 const mocks = vi.hoisted(() => ({
   context: vi.fn(),
@@ -43,8 +47,15 @@ const school = { id: 'ans', name: 'ANS', city: 'Ha Noi', createdAt: '2026-09-01'
 const cells = { activeLearners30d: 12, enrollments: 40, completedEnrollments: 10, completionPercent: 25, pendingGrading: 3, averagePercent: 81.5 };
 
 function html(page: ReactElement) {
-  return renderToStaticMarkup(<NextIntlClientProvider locale="en" messages={staffUiTestMessages(en, 'en')}>{page}</NextIntlClientProvider>);
+  return renderToStaticMarkup(<NextIntlClientProvider locale="en" messages={staffUiTestMessages(en, 'en')} timeZone="Asia/Ho_Chi_Minh">{page}</NextIntlClientProvider>);
 }
+
+/** Upstream Responsive creates measured rows after mount, not in server static markup. */
+function renderClientPage(page: ReactElement) {
+  return render(<NextIntlClientProvider locale="en" messages={staffUiTestMessages(en, 'en')} timeZone="Asia/Ho_Chi_Minh"><CanvasProvider theme="light">{page}</CanvasProvider></NextIntlClientProvider>);
+}
+
+afterEach(cleanup);
 
 function branchPage(search: Record<string, string> = {}) {
   return BranchPage({ params: Promise.resolve({ branchId: 'ans' }), searchParams: Promise.resolve(search) });
@@ -104,10 +115,13 @@ describe('/admin/branches/[branchId]', () => {
       items: [{ id: 'm-1', displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [{ roleName: 'Teacher' }] }],
       page: 2, pageSize: 50, hasMore: true,
     });
-    const markup = html(await branchPage({ tab: 'members', page: '2' }));
-    expect(mocks.members).toHaveBeenCalledWith(expect.anything(), { page: 2, staff: false });
-    expect(markup).toContain('Lan');
-    expect(markup).toContain('Teacher');
+    const page = await branchPage({ tab: 'members', page: '2' });
+    const markup = html(page);
+    expect(mocks.members).toHaveBeenCalledWith(expect.objectContaining({ scope: { kind: 'branch', branchId: 'ans' } }), { page: 2, staff: false });
+    expect(page.props.members.rows).toEqual([expect.objectContaining({ id: 'm-1', name: 'Lan', roles: 'Teacher', status: 'active', href: '/admin/users/m-1' })]);
+    renderClientPage(page);
+    expect(await screen.findByRole('link', { name: 'Lan' })).toHaveAttribute('href', '/admin/users/m-1');
+    expect(screen.getByRole('row', { name: /Lan/ })).toHaveTextContent('Teacher');
     expect(markup).toContain('Page 2');
     expect(markup).toContain('href="/admin/branches/ans?tab=members&amp;page=3"');
     expect(markup).toContain('href="/admin/branches/ans?tab=members"');
@@ -119,13 +133,18 @@ describe('/admin/branches/[branchId]', () => {
       items: [
         { id: 'm-1', displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'other', status: 'active' }, { branchId: 'ans', status: 'suspended' }], assignments: [] },
         { id: 'm-2', displayName: 'Minh', email: 'minh@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] },
+        { id: 'm-3', displayName: 'An', email: 'an@example.test', accountStatus: 'suspended', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] },
       ],
       page: 1, pageSize: 50, hasMore: false,
     });
-    const markup = html(await branchPage({ tab: 'members' }));
-    const lan = markup.slice(markup.indexOf('Lan'), markup.indexOf('Minh'));
-    expect(lan).toContain('data-tone="danger"');
-    expect(markup.slice(markup.indexOf('Minh'))).toContain('data-tone="success"');
+    const page = await branchPage({ tab: 'members' });
+    expect(page.props.members.rows.map((member: { name: string; status: string }) => ({ name: member.name, status: member.status }))).toEqual([{ name: 'Lan', status: 'suspended' }, { name: 'Minh', status: 'active' }, { name: 'An', status: 'suspended' }]);
+    renderClientPage(page);
+    const lan = await screen.findByRole('row', { name: /Lan/ });
+    const minh = screen.getByRole('row', { name: /Minh/ });
+    expect(within(lan).getByText('Suspended')).toHaveAttribute('data-tone', 'danger');
+    expect(within(minh).getByText('Active')).toHaveAttribute('data-tone', 'success');
+    expect(within(screen.getByRole('row', { name: /An/ })).getByText('Suspended')).toHaveAttribute('data-tone', 'danger');
   });
 
     it('fills the overview with a members preview and the school\'s recent activity', async () => {
@@ -138,14 +157,19 @@ describe('/admin/branches/[branchId]', () => {
       items: Array.from({ length: 8 }, (_, index) => ({ id: `m-${index}`, displayName: `Member ${index}`, email: `m${index}@example.test`, accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] })),
       page: 1, pageSize: 50, hasMore: true,
     });
-    const markup = html(await branchPage());
+    const page = await branchPage();
+    const markup = html(page);
     expect(mocks.members).toHaveBeenCalledWith(expect.anything(), { page: 1, staff: false });
     expect(markup).toContain('schoolDetail.activityTitle');
     expect(markup).toContain('Trần Gia Bảo');
     expect(markup).toContain('đã cấp vai trò');
     // Five rows preview the list; the full list is one link away.
-    expect(markup).toContain('Member 4');
-    expect(markup).not.toContain('Member 5');
+    expect(page.props.members.rows).toHaveLength(5);
+    expect(page.props.activity.items).toEqual([expect.objectContaining({ actor: { name: 'Trần Gia Bảo' }, target: 'Lan', href: '/admin/users/m-1' })]);
+    renderClientPage(page);
+    expect(await screen.findByRole('link', { name: 'Member 4' })).toHaveAttribute('href', '/admin/users/m-4');
+    expect(screen.queryByRole('link', { name: 'Member 5' })).not.toBeInTheDocument();
+    expect(screen.getByText('Trần Gia Bảo')).toBeInTheDocument();
     expect(markup).toContain('href="/admin/branches/ans?tab=members"');
   });
 

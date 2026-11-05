@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { BookOpenIcon, CopyIcon, SquarePenIcon } from 'lucide-react';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CanvasTable } from '@/features/canvas/ui';
+import { StudioResponsiveTable } from './StudioResponsiveTable';
 import {
   DataCard,
   DataPagination,
   DataToolbar,
   EmptyState,
   RowActions,
-  SortableHead,
   StatusBadge,
   type SortState,
 } from '@/features/staff-ui/components';
@@ -112,40 +112,40 @@ export function CoursesTable({ rows, reviews = 'ready' }: CoursesTableProps) {
       ) : visible.length === 0 ? (
         <div className="p-6"><EmptyState title={t('list.noMatches')} /></div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <SortableHead column="title" sort={sort} onSortChange={(next) => { setSort(next); setPage(1); }} allowUnsorted={false}>{legacy('table.title')}</SortableHead>
-              <TableHead scope="col">{legacy('table.status')}</TableHead>
-              <TableHead scope="col" className="hidden md:table-cell">{legacy('table.version')}</TableHead>
-              <SortableHead column="updated" defaultDirection="desc" sort={sort} onSortChange={(next) => { setSort(next); setPage(1); }} allowUnsorted={false} className="hidden lg:table-cell">{legacy('table.updated')}</SortableHead>
-              <TableHead scope="col" className="hidden lg:table-cell">{legacy('table.owner')}</TableHead>
-              <TableHead scope="col" className="w-12"><span className="sr-only">{t('list.actions')}</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <StudioResponsiveTable caption={t('list.title')}>
+          <CanvasTable.Head renderSortLabel={locale === 'vi' ? 'Sắp xếp theo' : 'Sort by'}>
+            <CanvasTable.Row className="hover:bg-transparent">
+              <CanvasTable.ColHeader id="title" stackedSortByLabel={legacy('table.title')} sortDirection={sort?.column === 'title' ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'} onRequestSort={() => { setSort({ column: 'title', direction: sort?.column === 'title' && sort.direction === 'asc' ? 'desc' : 'asc' }); setPage(1); }}>{legacy('table.title')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="course-column-1" scope="col">{legacy('table.status')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="course-column-2" scope="col" className="">{legacy('table.version')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="updated" stackedSortByLabel={legacy('table.updated')} sortDirection={sort?.column === 'updated' ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'} onRequestSort={() => { setSort({ column: 'updated', direction: sort?.column === 'updated' && sort.direction === 'desc' ? 'asc' : 'desc' }); setPage(1); }}>{legacy('table.updated')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="course-column-3" scope="col" className="">{legacy('table.owner')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="course-column-4" scope="col" className="w-12"><span className="sr-only">{t('list.actions')}</span></CanvasTable.ColHeader>
+            </CanvasTable.Row>
+          </CanvasTable.Head>
+          <CanvasTable.Body>
             {visible.map((row) => {
               const title = titleOf(row);
               const href = `/studio/courses/${encodeURIComponent(row.id)}`;
               const stage = stageOf(row);
               return (
-                <TableRow key={row.id}>
-                  <TableCell className="min-w-40 py-2 whitespace-normal md:min-w-72">
+                <CanvasTable.Row key={row.id}>
+                  <CanvasTable.Cell className="min-w-40 py-2 whitespace-normal md:min-w-72">
                     <div className="flex min-w-0 flex-col gap-0.5">
                       {/* Two lines before clipping, so long Vietnamese titles stay readable on phones too. */}
                       <Link href={href} title={title} className="line-clamp-2 break-words font-medium leading-normal underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{title}</Link>
                       <span className="truncate text-xs leading-normal text-muted-foreground">{row.id}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell>
                     <StatusBadge kind="content" value={stage} tone={STAGE_TONES[stage]} label={t(`stages.${stage}`)} />
-                  </TableCell>
-                  <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell" title={row.version === null ? legacy('noVersion') : undefined}>{row.version === null ? '—' : `v${row.version}`}</TableCell>
-                  <TableCell className="hidden whitespace-nowrap tabular-nums text-muted-foreground lg:table-cell">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell className="tabular-nums text-muted-foreground" title={row.version === null ? legacy('noVersion') : undefined}>{row.version === null ? '—' : `v${row.version}`}</CanvasTable.Cell>
+                  <CanvasTable.Cell className="whitespace-nowrap tabular-nums text-muted-foreground">
                     {row.updatedAt ? format.dateTime(new Date(row.updatedAt), { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
-                  </TableCell>
-                  <TableCell className="hidden max-w-48 truncate text-muted-foreground lg:table-cell" title={row.owner ?? legacy('unknownOwner')}>{row.owner ?? '—'}</TableCell>
-                  <TableCell className="text-right">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell className="max-w-48 break-words text-muted-foreground" title={row.owner ?? legacy('unknownOwner')}>{row.owner ?? '—'}</CanvasTable.Cell>
+                  <CanvasTable.Cell textAlign="end" className="text-right">
                     <RowActions
                       label={t('list.actionsFor', { title })}
                       items={[
@@ -153,12 +153,12 @@ export function CoursesTable({ rows, reviews = 'ready' }: CoursesTableProps) {
                         { label: t('list.copyId'), onSelect: () => copyId(row.id), icon: <CopyIcon aria-hidden="true" /> },
                       ]}
                     />
-                  </TableCell>
-                </TableRow>
+                  </CanvasTable.Cell>
+                </CanvasTable.Row>
               );
             })}
-          </TableBody>
-        </Table>
+          </CanvasTable.Body>
+        </StudioResponsiveTable>
       )}
     </DataCard>
   );

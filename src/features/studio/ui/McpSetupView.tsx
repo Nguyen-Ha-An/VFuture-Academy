@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button, CanvasTextInput, CanvasTextArea } from '@/features/canvas/ui';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 
@@ -46,14 +46,7 @@ export function McpSetupView({ state }: { state: McpSetupState }) {
             <p className="text-sm leading-normal text-muted-foreground">{t('server.description')}</p>
           </CardHeader>
           <CardContent className="flex min-w-0 flex-wrap items-center gap-3">
-            <label htmlFor="mcp-endpoint" className="sr-only">{t('server.urlLabel')}</label>
-            <input
-              id="mcp-endpoint"
-              readOnly
-              value={state.endpoint}
-              onFocus={(event) => event.currentTarget.select()}
-              className="h-9 min-w-0 w-full flex-1 rounded-md border border-input bg-background px-3 text-sm leading-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [@media(pointer:coarse)]:min-h-11"
-            />
+            <div className="min-w-0 flex-1"><CanvasTextInput id="mcp-endpoint" label={t('server.urlLabel')} readOnly value={state.endpoint} onFocus={event => { if (event.target instanceof HTMLInputElement) event.target.select(); }} /></div>
             {enabled ? (
               <Button variant="outline" className="[@media(pointer:coarse)]:min-h-11" onClick={() => void copyEndpoint(state.endpoint)} aria-label={t('server.copy')}>
                 {copyState === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
@@ -89,15 +82,7 @@ export function McpSetupView({ state }: { state: McpSetupState }) {
                   <strong className="font-medium">{t('connect.claudeCode')}</strong>
                   <div className="min-w-0 space-y-2">
                     <p className="text-muted-foreground">{t('connect.claudeCodeStep')}</p>
-                    <label htmlFor="mcp-claude-command" className="sr-only">{t('connect.claudeCodeCommand')}</label>
-                    <textarea
-                      id="mcp-claude-command"
-                      readOnly
-                      rows={3}
-                      value={`claude mcp add --transport http vfuture-studio ${state.endpoint}`}
-                      onFocus={(event) => event.currentTarget.select()}
-                      className="min-w-0 w-full resize-none break-all rounded-md border border-input bg-background px-3 py-2 text-sm leading-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    />
+                    <CanvasTextArea id="mcp-claude-command" label={t('connect.claudeCodeCommand')} readOnly height="6rem" value={`claude mcp add --transport http vfuture-studio ${state.endpoint}`} onFocus={event => { if (event.target instanceof HTMLTextAreaElement) event.target.select(); }} />
                   </div>
                 </li>
                 <li className="grid gap-1 py-3 last:pb-0 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-4">

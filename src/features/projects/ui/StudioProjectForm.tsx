@@ -16,10 +16,11 @@ import {
   savedTime,
   sameContent,
 } from "@/features/content-review/editor-snapshots";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { ProjectStructuredFields } from "./ProjectStructuredFields";
 import { SectionCard } from "@/features/staff-ui/components";
 import type { ProjectDetail } from "@/features/projects/service";
 import {
@@ -29,6 +30,8 @@ import {
   parseMembers,
   parseOutputLinks,
   splitIds,
+  serializeMemberFields,
+  serializeOutputLinkFields,
 } from "@/features/projects/ui/form-utils";
 
 type StudioProjectFormProps = {
@@ -50,7 +53,7 @@ function outputText(project: ProjectDetail | undefined): string {
     project?.outputLinks
       .map(
         (link) =>
-          `${localizedPart(link.label, "vi")} | ${localizedPart(link.label, "en")} | ${link.url}`,
+          serializeOutputLinkFields([localizedPart(link.label, "vi"), localizedPart(link.label, "en"), link.url]),
       )
       .join("\n") ?? ""
   );
@@ -59,7 +62,7 @@ function outputText(project: ProjectDetail | undefined): string {
 function memberText(project: ProjectDetail | undefined): string {
   return (
     project?.members
-      .map(({ userId, role }) => `${userId} | ${role}`)
+      .map(({ userId, role }) => serializeMemberFields([userId, role]))
       .join("\n") ?? ""
   );
 }
@@ -128,8 +131,9 @@ export function StudioProjectForm({
   const filled = (value: string) => value.trim().length > 0;
   const hasTitle = filled(fields.titleVi) || filled(fields.titleEn);
   const hasSummary = filled(fields.summaryVi) || filled(fields.summaryEn);
+  const structuredComplete = parseMembers(fields.members).every(member => filled(member.userId)) && parseOutputLinks(fields.outputLinks).every(link => filled(link.url));
   const valid =
-    /^[a-z0-9][a-z0-9-]{0,63}$/.test(fields.id) && hasTitle && hasSummary;
+    /^[a-z0-9][a-z0-9-]{0,63}$/.test(fields.id) && hasTitle && hasSummary && structuredComplete;
   // A locale is missing when the other locale has text this one lacks.
   const missing = {
     vi: (!filled(fields.titleVi) && filled(fields.titleEn)) || (!filled(fields.summaryVi) && filled(fields.summaryEn)),
@@ -284,9 +288,10 @@ export function StudioProjectForm({
   return (
     <form
       ref={formRef}
-      className="flex flex-col gap-6"
+      className="canvas-page flex flex-col gap-6"
       onSubmit={submit}
-      onChange={() => {
+      onChange={(event) => {
+        if ((event.target as HTMLElement).closest('[data-project-structured]')) return;
         if (!formRef.current) return;
         const data = new FormData(formRef.current);
         setFields(
@@ -300,7 +305,7 @@ export function StudioProjectForm({
       }}
     >
       {/* The one save indicator for this editor, above every section. */}
-      <div className="rounded-lg border border-border bg-card px-4 py-3">
+      <div className="canvas-toolbar px-4 py-3">
         <ContentSaveIndicator
           saveLabel={persistedId === null ? t("create") : undefined}
           state={saveState}
@@ -308,6 +313,7 @@ export function StudioProjectForm({
           disabled={workflowLocked}
         />
       </div>
+      {!structuredComplete ? <p role="status" className="text-sm text-muted-foreground">{locale === 'vi' ? 'Hoàn tất mã người dùng và URL còn trống, hoặc xóa mục chưa dùng, để lưu bản nháp.' : 'Complete empty user IDs and URLs, or remove unused entries, to save the draft.'}</p> : null}
       <fieldset disabled={workflowLocked} className="flex min-w-0 flex-col gap-6">
         <SectionCard title={sections("details")}>
           <div className={`${field} md:col-span-2`}>
@@ -383,14 +389,14 @@ export function StudioProjectForm({
             <Input id={`${mode}-cover`} name="coverAssetId" defaultValue={initial?.coverAssetId ?? ""} placeholder={t("coverHint")} />
           </div>
           <div className={`${field} md:col-span-2`}>
-            <label className={label} htmlFor={`${mode}-outputs`}>{t("outputs")}</label>
-            <Textarea id={`${mode}-outputs`} name="outputLinks" rows={4} defaultValue={outputText(initial)} aria-describedby={`${mode}-outputs-hint`} />
-            <p id={`${mode}-outputs-hint`} className={hint}>{t("outputsHint")}</p>
+            <h3 className={label}>{t("outputs")}</h3>
+            <input type="hidden" name="outputLinks" value={fields.outputLinks} />
+            <ProjectStructuredFields kind="outputs" value={fields.outputLinks} locale={locale} disabled={workflowLocked} onChange={outputLinks => setFields(current => ({ ...current, outputLinks }))} />
           </div>
           <div className={`${field} md:col-span-2`}>
-            <label className={label} htmlFor={`${mode}-members`}>{t("members")}</label>
-            <Textarea id={`${mode}-members`} name="members" rows={4} defaultValue={memberText(initial)} aria-describedby={`${mode}-members-hint`} />
-            <p id={`${mode}-members-hint`} className={hint}>{t("membersHint")}</p>
+            <h3 className={label}>{t("members")}</h3>
+            <input type="hidden" name="members" value={fields.members} />
+            <ProjectStructuredFields kind="members" value={fields.members} members={initial?.members} locale={locale} disabled={workflowLocked} onChange={members => setFields(current => ({ ...current, members }))} />
           </div>
         </SectionCard>
       </fieldset>
@@ -402,7 +408,7 @@ export function StudioProjectForm({
           getExpectedRevision={() => revision.current}
           onLockChange={setWorkflowLocked}
           refreshKey={saveState.revision ?? undefined}
-          className="rounded-lg border border-border bg-card p-6"
+          className="canvas-panel p-4 sm:p-6"
         />
       ) : null}
       <div className="flex flex-wrap items-center gap-3">

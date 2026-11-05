@@ -1,5 +1,6 @@
 "use client";
 
+import "@/features/admin/ui/admin.css";
 import {
   useCallback,
   useEffect,
@@ -13,10 +14,7 @@ import { useTranslations } from "next-intl";
 import { ChevronRightIcon, PlusIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { CanvasButton as Button, CanvasTextInput, CanvasTextArea, CanvasCheckbox, CanvasSelect, CanvasTable, CanvasResponsive } from "@/features/canvas/ui";
 import {
   Sheet,
   SheetContent,
@@ -25,15 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
+
 import type {
   ManagementOptions,
   ManagedRoleDefinition,
@@ -108,6 +98,10 @@ export function RoleManager({
   const tr = useTranslations("staffUi.admin.org.roles");
   const tp = useTranslations("staffUi.admin.org");
   const formId = useId();
+  const editorContentRef = useRef<HTMLDivElement>(null);
+  const newRoleTriggerRef = useRef<HTMLElement>(null);
+  const editorReturnFocusRef = useRef<HTMLElement | null>(null);
+  const rowActionRefs = useRef(new Map<string, HTMLSpanElement>());
   const urlFor = useCallback(
     (
       path: string,
@@ -124,6 +118,7 @@ export function RoleManager({
   const [confirming, setConfirming] = useState<Draft | null>(null);
   const [error, setError] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [revisionConflict, setRevisionConflict] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
@@ -179,6 +174,10 @@ export function RoleManager({
     kind === "central" ? t("central") : t("branch");
 
   function openSheet(next: Draft) {
+    editorReturnFocusRef.current = next.id
+      ? rowActionRefs.current.get(next.id)?.querySelector("button") ?? newRoleTriggerRef.current
+      : newRoleTriggerRef.current;
+    setRevisionConflict(false);
     setDraft(next);
     setConfirming(null);
     setSaveFailed(false);
@@ -226,8 +225,7 @@ export function RoleManager({
       grantableBySchool: draftToSave.grantableBySchool,
     };
     try {
-      const saved = await responseData<ManagedRoleDefinition>(
-        await fetch(
+      const response = await fetch(
           urlFor(
             draftToSave.id
               ? `/api/v1/admin/roles/${encodeURIComponent(draftToSave.id)}`
@@ -242,8 +240,16 @@ export function RoleManager({
                 : payload,
             ),
           },
-        ),
-      );
+        );
+      if (response.status === 409) {
+        const problem = await response.json() as { error?: { code?: string } };
+        if (problem.error?.code === "REVISION_CONFLICT") {
+          setRevisionConflict(true);
+          return;
+        }
+        throw new Error("role_update_conflict");
+      }
+      const saved = await responseData<ManagedRoleDefinition>(response);
       setRoles((current) =>
         draftToSave.id
           ? current.map((role) => (role.id === saved.id ? saved : role))
@@ -254,6 +260,26 @@ export function RoleManager({
       setSheetOpen(false);
     } catch {
       // Stay in the sheet: the confirm step keeps the draft so the admin can retry.
+      setSaveFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function discardAndLoadLatest() {
+    if (saving || !draft.id) return;
+    setSaving(true);
+    setSaveFailed(false);
+    try {
+      const latestRoles = await responseData<ManagedRoleDefinition[]>(
+        await fetch(urlFor("/api/v1/admin/roles")),
+      );
+      const latest = latestRoles.find((role) => role.id === draft.id);
+      if (!latest) throw new Error("role_not_found");
+      setRoles(latestRoles);
+      editRole(latest);
+    } catch {
+      // The current draft and conflict remain visible if loading fails.
       setSaveFailed(true);
     } finally {
       setSaving(false);
@@ -286,13 +312,13 @@ export function RoleManager({
     : 0;
 
   return (
-    <section className="space-y-6" aria-label={t("rolesPermissions")}>
+    <section className="canvas-page canvas-admin space-y-6" aria-label={t("rolesPermissions")}>
       <StaffPageHeader
         title={t("rolesPermissions")}
         eyebrow={t("administration")}
         actions={
           canManage ? (
-            <Button onClick={() => openSheet(blankDraft)}>
+            <Button ref={newRoleTriggerRef} onClick={() => openSheet(blankDraft)}>
               <PlusIcon aria-hidden="true" />
               {tr("newRole")}
             </Button>
@@ -301,6 +327,7 @@ export function RoleManager({
       />
       {error ? <ErrorState onRetry={() => void load()} /> : null}
       <DataCard
+        className="canvas-panel"
         title={t("roleDefinitions")}
         description={options && !canManage ? t("readOnly") : undefined}
       >
@@ -309,37 +336,40 @@ export function RoleManager({
             <EmptyState title={tr("emptyTitle")} description={tr("emptyDescription")} />
           </div>
         ) : roles.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead scope="col">{tr("columns.role")}</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">{tr("columns.scope")}</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">{tr("columns.type")}</TableHead>
-                <TableHead scope="col">{tr("columns.permissions")}</TableHead>
-                <TableHead scope="col" className="hidden text-right md:table-cell">{tr("columns.assignments")}</TableHead>
-                <TableHead scope="col" className="w-12">
+          <CanvasResponsive query={{ phone: { maxWidth: "47.99rem" }, desktop: { minWidth: "48rem" } }}
+            props={{ phone: { details: false }, desktop: { details: true } }}>
+            {(responsive) => (
+          <CanvasTable className="canvas-table" caption={() => t("roleDefinitions")} hover>
+            <CanvasTable.Head>
+              <CanvasTable.Row className="hover:bg-transparent">
+                <CanvasTable.ColHeader id="admin-roles-col-0" scope="col">{tr("columns.role")}</CanvasTable.ColHeader>
+                {responsive?.details ? <CanvasTable.ColHeader id="admin-roles-col-1" scope="col" className="hidden md:table-cell">{tr("columns.scope")}</CanvasTable.ColHeader> : null}
+                {responsive?.details ? <CanvasTable.ColHeader id="admin-roles-col-2" scope="col" className="hidden md:table-cell">{tr("columns.type")}</CanvasTable.ColHeader> : null}
+                <CanvasTable.ColHeader id="admin-roles-col-3" scope="col">{tr("columns.permissions")}</CanvasTable.ColHeader>
+                {responsive?.details ? <CanvasTable.ColHeader id="admin-roles-col-4" scope="col" className="hidden text-right md:table-cell">{tr("columns.assignments")}</CanvasTable.ColHeader> : null}
+                <CanvasTable.ColHeader id="admin-roles-col-5" scope="col" className="w-12">
                   <span className="sr-only">{tr("columns.actions")}</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </CanvasTable.ColHeader>
+              </CanvasTable.Row>
+            </CanvasTable.Head>
+            <CanvasTable.Body>
               {roles.map((role) => (
-                <TableRow key={role.id}>
-                  <TableCell className="min-w-40 py-3 whitespace-normal">
+                <CanvasTable.Row key={role.id}>
+                  <CanvasTable.Cell className="min-w-40 py-3 whitespace-normal">
                     <span className="block font-medium leading-normal">{displayName(role)}</span>
                     {role.description ? (
                       <span className="hidden text-sm leading-normal text-muted-foreground md:block">{role.description}</span>
                     ) : null}
-                  </TableCell>
-                  <TableCell className="hidden py-3 text-muted-foreground md:table-cell">{scopeName(role.scopeKind)}</TableCell>
-                  <TableCell className="hidden py-3 md:table-cell">
+                  </CanvasTable.Cell>
+                  {responsive?.details ? <CanvasTable.Cell className="hidden py-3 text-muted-foreground md:table-cell">{scopeName(role.scopeKind)}</CanvasTable.Cell> : null}
+                  {responsive?.details ? <CanvasTable.Cell className="hidden py-3 md:table-cell">
                     {role.builtIn ? (
                       <Badge variant="neutral">{t("builtIn")}</Badge>
                     ) : (
                       <Badge variant="outline">{tr("custom")}</Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="py-3">
+                  </CanvasTable.Cell> : null}
+                  <CanvasTable.Cell className="py-3">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -350,8 +380,8 @@ export function RoleManager({
                       {tr("permissionCount", { count: role.permissions.length })}
                       <ChevronRightIcon aria-hidden="true" className="text-muted-foreground" />
                     </Button>
-                  </TableCell>
-                  <TableCell className="hidden py-3 text-right tabular-nums md:table-cell">
+                  </CanvasTable.Cell>
+                  {responsive?.details ? <CanvasTable.Cell className="hidden py-3 text-right tabular-nums md:table-cell">
                     {canReadMembers ? (
                       <Link
                         href={membersHref(role)}
@@ -363,17 +393,18 @@ export function RoleManager({
                     ) : (
                       t("assignmentCount", { count: role.assignmentCount })
                     )}
-                  </TableCell>
-                  <TableCell className="py-3 text-right">
-                    <RowActions
-                      label={tr("actionsFor", { name: displayName(role) })}
-                      items={rowActions(role)}
-                    />
-                  </TableCell>
-                </TableRow>
+                  </CanvasTable.Cell> : null}
+                  <CanvasTable.Cell className="py-3 text-right">
+                    <span ref={(node) => { if (node) rowActionRefs.current.set(role.id, node); else rowActionRefs.current.delete(role.id); }}>
+                      <RowActions label={tr("actionsFor", { name: displayName(role) })} items={rowActions(role)} />
+                    </span>
+                  </CanvasTable.Cell>
+                </CanvasTable.Row>
               ))}
-            </TableBody>
-          </Table>
+            </CanvasTable.Body>
+          </CanvasTable>
+            )}
+          </CanvasResponsive>
         ) : null}
       </DataCard>
       <RequestStatus>{loading ? t("loading") : ""}</RequestStatus>
@@ -407,9 +438,7 @@ export function RoleManager({
           {viewing && (canReadMembers || (canManage && !viewing.builtIn)) ? (
             <SheetFooter className="flex-row flex-wrap justify-end">
               {canReadMembers ? (
-                <Button asChild variant="outline">
-                  <Link href={membersHref(viewing)}>{tr("viewMembers")}</Link>
-                </Button>
+                <Button href={membersHref(viewing)} variant="outline">{tr("viewMembers")}</Button>
               ) : null}
               {canManage && !viewing.builtIn ? (
                 <Button onClick={() => { const role = viewing; setViewing(null); editRole(role); }}>
@@ -422,7 +451,8 @@ export function RoleManager({
       </Sheet>
 
       <Sheet open={sheetOpen} onOpenChange={(open) => { if (!open) closeSheet(); }}>
-        <SheetContent className="w-full sm:max-w-xl" closeLabel={tr("close")}>
+        <SheetContent ref={editorContentRef} className="w-full sm:max-w-xl" closeLabel={tr("close")}
+          onCloseAutoFocus={(event) => { event.preventDefault(); editorReturnFocusRef.current?.focus(); }}>
           <SheetHeader>
             <SheetTitle>{editing ? t("updateRole") : t("createRole")}</SheetTitle>
             <SheetDescription>{editing ? tr("editDescription") : tr("createDescription")}</SheetDescription>
@@ -435,62 +465,22 @@ export function RoleManager({
           >
             <fieldset disabled={confirming !== null} className="grid gap-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-medium leading-normal">
-                  {t("roleName")}
-                  <Input
-                    value={draft.name}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                    required
-                    maxLength={100}
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-medium leading-normal">
-                  {t("scopeKind")}
-                  <NativeSelect
-                    disabled={editing}
-                    value={draft.scopeKind}
-                    wrapperClassName="w-full"
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        scopeKind: event.target.value as Draft["scopeKind"],
-                        grantableBySchool:
-                          event.target.value === "branch" &&
-                          current.grantableBySchool,
-                        permissions:
-                          event.target.value === "branch"
-                            ? current.permissions.filter(
-                                (permission) =>
-                                  !CENTRAL_ONLY_PERMISSIONS.includes(permission),
-                              )
-                            : current.permissions,
-                      }))
-                    }
-                  >
-                    <NativeSelectOption value="branch">{t("branch")}</NativeSelectOption>
-                    <NativeSelectOption value="central">{t("central")}</NativeSelectOption>
-                  </NativeSelect>
-                </label>
+                <CanvasTextInput label={t("roleName")} value={draft.name}
+                  onChange={(name) => setDraft((current) => ({ ...current, name }))}
+                  required maxLength={100} disabled={confirming !== null} />
+                <CanvasSelect label={t("scopeKind")} mountNode={() => editorContentRef.current} disabled={editing || confirming !== null}
+                  value={draft.scopeKind}
+                  options={[{ value: "branch", label: t("branch") }, { value: "central", label: t("central") }]}
+                  onChange={(scopeKind) => setDraft((current) => ({
+                    ...current,
+                    scopeKind: scopeKind as Draft["scopeKind"],
+                    grantableBySchool: scopeKind === "branch" && current.grantableBySchool,
+                    permissions: scopeKind === "branch" ? current.permissions.filter((permission) => !CENTRAL_ONLY_PERMISSIONS.includes(permission)) : current.permissions,
+                  }))} />
               </div>
-              <label className="grid gap-2 text-sm font-medium leading-normal">
-                {t("description")}
-                <Textarea
-                  value={draft.description}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  className="min-h-20"
-                  maxLength={600}
-                />
-              </label>
+              <CanvasTextArea label={t("description")} value={draft.description}
+                onChange={(description) => setDraft((current) => ({ ...current, description }))}
+                maxLength={600} disabled={confirming !== null} />
               <fieldset className="grid gap-3">
                 <legend className="flex w-full items-center justify-between gap-3 text-sm font-medium leading-normal">
                   <span>{t("permissions")}</span>
@@ -502,35 +492,19 @@ export function RoleManager({
                   <fieldset key={group} className="grid gap-2 rounded-md border border-border p-3">
                     <legend className="px-1 text-xs font-semibold leading-normal text-muted-foreground">{groupLabel(group)}</legend>
                     {permissions.map((permission) => (
-                      <label key={permission} className="flex items-start gap-3 text-sm leading-normal">
-                        <Checkbox
-                          className="mt-0.5 size-4"
-                          checked={draft.permissions.includes(permission)}
-                          onChange={() => togglePermission(permission)}
-                        />
-                        <span className="grid">
-                          <span>{permissionLabel(permission)}</span>
-                          <span className="text-xs text-muted-foreground tabular-nums">{permission}</span>
-                        </span>
-                      </label>
+                      <CanvasCheckbox key={permission}
+                        label={permissionLabel(permission)}
+                        checked={draft.permissions.includes(permission)}
+                        disabled={confirming !== null}
+                        onChange={() => togglePermission(permission)} />
                     ))}
                   </fieldset>
                 ))}
               </fieldset>
-              <label className="flex items-center gap-3 text-sm leading-normal">
-                <Checkbox
-                  className="size-4"
-                  disabled={draft.scopeKind === "central"}
-                  checked={draft.grantableBySchool}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      grantableBySchool: event.target.checked,
-                    }))
-                  }
-                />
-                {t("grantableBySchool")}
-              </label>
+              <CanvasCheckbox label={t("grantableBySchool")}
+                disabled={draft.scopeKind === "central" || confirming !== null}
+                checked={draft.grantableBySchool}
+                onChange={(grantableBySchool) => setDraft((current) => ({ ...current, grantableBySchool }))} />
             </fieldset>
           </form>
           <SheetFooter>
@@ -548,18 +522,21 @@ export function RoleManager({
                 <p className="text-sm leading-normal text-muted-foreground tabular-nums">
                   {t("assignmentCount", { count: confirmAssignments })}
                 </p>
+                {revisionConflict ? <p role="alert" className="rounded-md border border-warning-border bg-warning p-3 text-sm leading-normal text-warning-foreground">{tr("revisionConflict")}</p> : null}
                 {saveFailed ? (
                   <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">
                     {t("error")}
                   </p>
                 ) : null}
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button variant="outline" disabled={saving} onClick={() => setConfirming(null)}>
+                  <Button variant="outline" disabled={saving || revisionConflict} onClick={() => setConfirming(null)}>
                     {tr("backToEditing")}
                   </Button>
-                  <Button disabled={saving} aria-busy={saving || undefined} onClick={() => void save(confirming)}>
+                  {revisionConflict ? <Button disabled={saving} aria-busy={saving || undefined} onClick={() => void discardAndLoadLatest()}>
+                    {saving ? t("loading") : tr("discardAndLoadLatest")}
+                  </Button> : <Button disabled={saving} aria-busy={saving || undefined} onClick={() => void save(confirming)}>
                     {saving ? t("loading") : t("confirm")}
-                  </Button>
+                  </Button>}
                 </div>
               </section>
             ) : (

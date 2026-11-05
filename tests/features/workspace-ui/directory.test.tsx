@@ -178,11 +178,12 @@ describe('FilterBar', () => {
     expect(details).not.toHaveAttribute('open', 'false');
   });
 
-  it('opens on phones only while filters apply, and follows the media query', () => {
+  it('keeps applied filters collapsed on phones, closes after applying and follows the media query', () => {
     const media = mockMatchMedia(false);
     const view = render(bar({ stateKey: 'level=foundation', activeCount: 1 }));
     const details = document.querySelector('details.vf-l-filters') as HTMLDetailsElement;
-    expect(details.open).toBe(true);
+    expect(details.open).toBe(false);
+    details.open = true;
     view.rerender(bar({ stateKey: '', activeCount: 0 }));
     expect(details.open).toBe(false);
     media.set(true);
@@ -220,27 +221,30 @@ const rows: DirectoryRow[] = [
 ];
 
 describe('DirectoryTable', () => {
-  it('renders one link per row, the title as a heading and the stacked slots in order', () => {
+  it('renders one labelled title link and all metadata in a native table', () => {
     render(<DirectoryTable caption="Available courses" columns={{ lead: 'Part', title: 'Course', extra: 'Depends on', status: 'Status', cta: 'Next' }} rows={rows} />);
     const table = screen.getByRole('table', { name: 'Available courses' });
-    expect(table).toHaveAttribute('data-stack');
     const bodyRows = within(table).getAllByRole('row').slice(1);
     expect(bodyRows).toHaveLength(2);
     bodyRows.forEach(row => expect(within(row).getAllByRole('link')).toHaveLength(1));
     expect(screen.getByRole('link', { name: 'Open Robotics 101' })).toHaveAttribute('href', '/app/courses/a');
     expect(screen.getByRole('heading', { level: 3, name: 'Robotics 101' })).toBeInTheDocument();
+    expect(bodyRows[0]).toHaveTextContent('VF-F01');
+    expect(bodyRows[0]).toHaveTextContent('Build a rover.');
     expect(bodyRows[0].querySelector('p.vf-meta')).toHaveTextContent('Foundation · Beginner');
     expect(within(bodyRows[0]).getByText('Enrolled')).toHaveClass('vf-tag');
-    const slots = [...bodyRows[1].querySelectorAll('td')].map(cell => cell.getAttribute('data-slot') ?? cell.getAttribute('data-col'));
-    expect(slots).toEqual(['lead', 'body', 'hide-sm', 'status', 'trail']);
+    expect(within(bodyRows[1]).getAllByRole('cell')).toHaveLength(4);
+    expect(within(screen.getByRole('link', { name: 'Open Robotics 101' })).getByRole('heading', { level: 3, name: 'Robotics 101' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Next' })).toBeNull();
     expect(within(bodyRows[1]).getByText('Needs VF-F01')).toBeInTheDocument();
   });
 
   it('omits the optional columns and supports h2 titles', () => {
     render(<DirectoryTable caption="Resources" titleAs="h2" columns={{ lead: 'Type', title: 'Resource', cta: 'Open' }} rows={[rows[0]]} />);
-    expect(screen.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual(['Type', 'Resource', 'Open']);
+    expect(screen.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual(['Type', 'Resource']);
     expect(screen.getByRole('heading', { level: 2, name: 'Robotics 101' })).toBeInTheDocument();
-    expect(document.querySelector('td[data-slot="status"]')).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Status' })).toBeNull();
+    expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')).toHaveLength(2);
   });
 
   it('stacks rows with grid areas instead of order', () => {

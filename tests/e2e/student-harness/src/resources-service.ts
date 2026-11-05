@@ -3,6 +3,7 @@ import { RESOURCE_TYPES } from '@/content-engine/schema/bundle';
 import { PATHWAYS } from '@/content-engine/schema/course';
 import type { LocalizedResource, ResourceContext, ResourcePage } from '../../../../src/features/resources/service';
 import { ApiError } from '@/lib/api-error';
+import { supportReviewParam } from '../../support/support-review-state';
 
 // Rendering-only replica of the service schema. Real-schema normalization tests remain authoritative.
 export const ResourceListFilterSchema = z.object({
@@ -11,6 +12,11 @@ export const ResourceListFilterSchema = z.object({
  page: z.coerce.number().int().min(1).max(10_000).optional(),
 }).strict();
 export type ResourceListFilter = z.infer<typeof ResourceListFilterSchema>;
+// Rendering-only query state. Service failures reach the harness error boundary, not Next error.tsx.
+const supportState = () => supportReviewParam('supportState');
+function assertAvailable() {
+ if (supportState() === 'error') throw new Error('Synthetic support fixture: resources unavailable');
+}
 function resource(locale: string): LocalizedResource {
  const vi = locale === 'vi';
  return {
@@ -42,11 +48,22 @@ function listed(locale: string): LocalizedResource[] {
 }
 export function createResourceService(_dependencies: unknown) { return {
  async listPage(filters: ResourceListFilter, context: ResourceContext): Promise<ResourcePage> {
-  const items = listed(context.locale).filter(value => (!filters.type || filters.type === value.resourceType) && (!filters.tag || value.tags.includes(filters.tag)) && (!filters.pathway || value.pathways.includes(filters.pathway)) && (!filters.search || value.title.toLowerCase().includes(filters.search.toLowerCase())));
-  return { page: filters.page ?? 1, pageSize: 50, total: items.length, items };
+  assertAvailable();
+  const base = supportState() === 'empty' ? [] : listed(context.locale);
+  // Dense rows test the actual 50-item pager; only the canonical detail ID is routed by main.tsx.
+  const rows = supportState() === 'dense' ? Array.from({ length: 63 }, (_, index) => ({
+   ...base[index % base.length],
+   id: index === 0 ? 'fixture-resource' : `fixture-resource-dense-${index}`,
+   title: `${base[index % base.length].title} · ${index + 1}`,
+  })) : base;
+  const matching = rows.filter(value => (!filters.type || filters.type === value.resourceType) && (!filters.tag || value.tags.includes(filters.tag)) && (!filters.pathway || value.pathways.includes(filters.pathway)) && (!filters.search || `${value.title} ${value.summary}`.toLowerCase().includes(filters.search.toLowerCase())));
+  const page = filters.page ?? 1;
+  return { page, pageSize: 50, total: matching.length, items: matching.slice((page - 1) * 50, page * 50) };
  },
  async get(id: string, context: ResourceContext): Promise<LocalizedResource> {
+  assertAvailable();
   if (id !== 'fixture-resource') throw new ApiError(404, 'FIXTURE_NOT_FOUND', 'Resource fixture not found');
-  return resource(context.locale);
+  const value = resource(context.locale);
+  return supportState() === 'empty' ? { ...value, body: { blocks: [] }, attachments: [], tags: [], pathways: [] } : value;
  },
 }; }

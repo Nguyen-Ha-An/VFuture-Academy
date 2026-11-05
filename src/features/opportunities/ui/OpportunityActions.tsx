@@ -1,5 +1,7 @@
 'use client';
 
+import { CanvasButton } from '@/features/canvas/ui';
+
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
@@ -82,12 +84,12 @@ export function OpportunityAction({
 
   return (
     <div>
-      <button type="button" className={interested ? 'vf-btn vf-btn-lg' : 'vf-btn vf-btn-primary vf-btn-lg'} onClick={() => void updateInterest(!interested)} disabled={pending} aria-pressed={interested}>
+      <CanvasButton type="button" variant={interested ? 'secondary' : 'default'} onClick={() => void updateInterest(!interested)} disabled={pending} aria-pressed={interested}>
         {interested ? t('remove') : t('interested')}
-      </button>
+      </CanvasButton>
       {failedDesired === null
         ? <p role="status" aria-live="polite">{status}</p>
-        : <div role="alert"><p>{status}</p><button type="button" className="vf-btn vf-btn-lg" onClick={() => void updateInterest(failedDesired)} disabled={pending}>{t('retry')}</button></div>}
+        : <div role="alert"><p>{status}</p><CanvasButton type="button" variant="secondary" onClick={() => void updateInterest(failedDesired)} disabled={pending}>{t('retry')}</CanvasButton></div>}
     </div>
   );
 }

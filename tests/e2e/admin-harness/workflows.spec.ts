@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { withQuery } from '../studio-harness/staff-ui-support';
 
 async function openPublication(page: Page) {
   await page.getByRole('button', { name: 'Xem bản gửi duyệt', exact: true }).click();
@@ -39,10 +40,39 @@ test('failed atomic publication preserves the decision and can be retried on mob
 });
 
 test('member directory opens the matching profile and retains the scoped learning data', async ({ page }, info) => {
-  await page.goto('/admin/users');
-  await page.getByRole('link', { name: 'Nguyễn Minh Anh', exact: true }).click();
+  const memberId = '00000000-0000-4000-8000-000000000101';
+  const memberPath = `/admin/users/${memberId}`;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(withQuery('/admin/users', { lang: 'vi', theme: 'light', scope: 'branch:ans', scenario: 'dense' }));
+  await expect(page.locator('.vf-staff.vf-canvas')).toBeVisible();
+  const person = page.getByRole('link', { name: 'Nguyễn Minh Anh', exact: true });
+  await expect(person).toHaveAttribute('href', new RegExp(`^${memberPath}(?:\\?|$)`));
+  await person.click();
+  await expect(page).toHaveURL(new RegExp(`${memberPath}(?:\\?|$)`));
   await expect(page.getByRole('heading', { name: 'Nguyễn Minh Anh', exact: true })).toBeVisible();
+  await expect(page.getByText('Hoạt động', { exact: true })).toBeVisible();
+  // Inspect the component's requests before making any additional contract read.
+  const requestedScopes = await page.evaluate((id) => window.__adminFixture.requests
+    .filter((request) => request.method === 'GET' && request.path === `/api/v1/admin/users/${id}`)
+    .map((request) => request.scope), memberId);
+  expect(requestedScopes.length).toBeGreaterThan(0);
+  expect(requestedScopes.every((scope) => scope === 'branch:ans')).toBe(true);
   await page.getByRole('tab', { name: 'Học tập', exact: true }).click();
-  await expect(page.getByText('Python cơ bản', { exact: true })).toBeVisible();
+  const course = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Python cơ bản / Python foundations', exact: true }) });
+  await expect(course.getByRole('rowheader', { name: 'Python cơ bản / Python foundations', exact: true })).toBeVisible();
+  await expect(course.getByRole('cell', { name: '3/8', exact: true })).toBeVisible();
+  await expect(course.getByText('Đang học', { exact: true })).toBeVisible();
+  // These independently expected fixture values check the historical record and rights;
+  // they do not infer the expected course from whatever response happens to arrive.
+  const record = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/v1/admin/users/${id}?scope=branch%3Aans`);
+    if (!response.ok) throw new Error(`Fixture member read failed: ${response.status}`);
+    return (await response.json()).data;
+  }, memberId);
+  expect(record).toMatchObject({ id: memberId, actions: { readLearning: true, readSubmissions: false } });
+  expect(record.accountStatus).toBe('active');
+  expect(record.memberships).toEqual([expect.objectContaining({ branchId: 'ans', status: 'active', isPrimary: true })]);
+  expect(record.learning).toEqual([expect.objectContaining({ courseId: 'python-foundations', courseVersionId: 'version-2026-09', branchId: 'ans', displayTitle: 'Python cơ bản / Python foundations', completedLessons: 3, totalLessons: 8, status: 'active' })]);
+  expect(record).not.toHaveProperty('submissions');
   await page.screenshot({ path: info.outputPath('member-learning.png'), fullPage: true });
 });

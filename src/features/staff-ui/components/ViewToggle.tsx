@@ -3,7 +3,7 @@
 import type { ComponentProps } from "react";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { cn } from "@/lib/ui-cn";
 
 export const VIEW_MODES = ["list", "grid"] as const;

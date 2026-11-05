@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { CanvasTabs } from '@/features/canvas/ui';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataCard, DataToolbar, EmptyState } from '@/features/staff-ui/components';
@@ -26,7 +27,6 @@ type Props = {
 
 export function AssessmentsWorkspace(props: Props) {
   const vi = useLocale() === 'vi';
-  const id = useId();
   const tabs: AssessmentTab[] = props.canGrade ? ['exams', 'assignments'] : ['exams'];
   const [tab, setTab] = useState<AssessmentTab>('exams');
   const [course, setCourse] = useState('');
@@ -52,19 +52,8 @@ export function AssessmentsWorkspace(props: Props) {
     window.history.replaceState(window.history.state, '', `${window.location.pathname}?${query}`);
   };
 
-  const move = (current: number, key: string) => {
-    const next = key === 'Home'
-      ? 0
-      : key === 'End'
-        ? tabs.length - 1
-        : (current + (key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
-    commit(tabs[next]);
-    document.getElementById(`${id}-${tabs[next]}-tab`)?.focus();
-  };
-
   const filteredAssignments = props.assignments.filter((item) => !course || item.courseId === course);
   const title = vi ? 'Bài tập & bài thi' : 'Assignments & exams';
-  const panelId = `${id}-${tab}-panel`;
 
   return <section className="mx-auto max-w-7xl space-y-6" aria-label={title}>
     <StaffPageHeader
@@ -72,26 +61,9 @@ export function AssessmentsWorkspace(props: Props) {
       title={title}
       description={vi ? 'Xem bài đánh giá theo khóa học và phiên bản, mở bài nộp để chấm hoặc công bố kết quả.' : 'Browse assessments by course and version, open submissions for grading, or release results.'}
     />
-    <div role="tablist" aria-label={vi ? 'Loại bài đánh giá' : 'Assessment type'} className="flex gap-1 border-b border-border">
-      {tabs.map((kind, index) => <button
-        key={kind}
-        id={`${id}-${kind}-tab`}
-        role="tab"
-        aria-selected={tab === kind}
-        aria-controls={`${id}-${kind}-panel`}
-        tabIndex={tab === kind ? 0 : -1}
-        onClick={() => commit(kind)}
-        onKeyDown={(event) => {
-          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-            event.preventDefault();
-            move(index, event.key);
-          }
-        }}
-        className={`min-h-11 rounded-t-md border-b-2 px-4 text-sm font-medium leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${tab === kind ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-      >{kind === 'exams' ? (vi ? 'Bài thi' : 'Exams') : (vi ? 'Bài tập' : 'Assignments')}</button>)}
-    </div>
-    <div id={panelId} role="tabpanel" aria-labelledby={`${id}-${tab}-tab`}>
-      {tab === 'exams' ? <ExamsWorkspace {...props} embedded/> : <DataCard
+    <CanvasTabs screenReaderLabel={vi ? 'Loại bài đánh giá' : 'Assessment type'} onRequestTabChange={(_event, data) => commit(tabs[data.index])}>
+      <CanvasTabs.Panel renderTitle={vi ? 'Bài thi' : 'Exams'} isSelected={tab === 'exams'} padding="none"><div className="pt-5"><ExamsWorkspace {...props} embedded /></div></CanvasTabs.Panel>
+      {props.canGrade ? <CanvasTabs.Panel renderTitle={vi ? 'Bài tập' : 'Assignments'} isSelected={tab === 'assignments'} padding="none"><div className="pt-5"><DataCard
         title={vi ? 'Danh sách bài tập' : 'Assignment list'}
         description={<>
           <p>{vi ? `${filteredAssignments.length} bài tập trong phạm vi đang chọn` : `${filteredAssignments.length} ${filteredAssignments.length === 1 ? 'assignment' : 'assignments'} in the selected scope`}</p>
@@ -150,14 +122,7 @@ export function AssessmentsWorkspace(props: Props) {
           title={vi ? 'Chưa có bài tập trong phạm vi này' : 'No assignments in this scope'}
           description={props.assignments.length ? (vi ? 'Chọn một khóa học khác để xem bài tập.' : 'Choose another course to see its assignments.') : undefined}
         /></div>}
-      </DataCard>}
-    </div>
-    {tabs.filter((kind) => kind !== tab).map((kind) => <div
-      key={kind}
-      id={`${id}-${kind}-panel`}
-      role="tabpanel"
-      aria-labelledby={`${id}-${kind}-tab`}
-      hidden
-    />)}
+      </DataCard></div></CanvasTabs.Panel> : null}
+    </CanvasTabs>
   </section>;
 }

@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { CanvasSelect } from '@/features/canvas/ui';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataCard, EmptyState, StatusBadge } from '@/features/staff-ui/components';
 import { readApiData, workspaceErrorMessage } from '@/features/studio/ui/client';
@@ -322,8 +322,8 @@ export function ExamsWorkspace({
     ? t('examOption', { title: selectedExam.itemTitle, version: selectedExam.version })
     : null;
   const releaseExplanation = vi
-    ? 'Công bố đáp án và kết quả cũ. Điểm của lượt thi vừa hoàn tất chấm đã hiển thị cho học viên.'
-    : 'Publishes answer keys and legacy results. Scores of newly completed attempts are already visible to learners.';
+    ? 'Hoàn tất chấm sẽ chia sẻ điểm và phản hồi. Công bố kết quả còn chia sẻ đáp án và những kết quả chưa công bố.'
+    : 'Completing grading shares scores and feedback. Release results also shares answer keys and previously unreleased results.';
   const noAccessMessage = branches.length
     ? (vi ? 'Bạn không có quyền xem lượt thi trong chi nhánh này.' : 'You cannot view exam attempts in this branch.')
     : (vi ? 'Chưa có chi nhánh khả dụng.' : 'No branches are available.');
@@ -410,9 +410,9 @@ export function ExamsWorkspace({
         ) : undefined}
         aria-busy={loading}
         toolbar={<section aria-label={t('filters.label')} className="grid min-w-0 gap-3 md:grid-cols-3">
-          <label className="grid gap-2 text-sm font-medium leading-normal" htmlFor="exam-branch-filter">{t('filters.branch')}<NativeSelect id="exam-branch-filter" wrapperClassName="w-full" value={branchId} onChange={(event) => chooseBranch(event.target.value)}>{branches.map((branch) => <NativeSelectOption key={branch.id} value={branch.id}>{branch.name}</NativeSelectOption>)}</NativeSelect></label>
-          <label className="grid gap-2 text-sm font-medium leading-normal" htmlFor="exam-course-filter">{t('filters.course')}<NativeSelect id="exam-course-filter" wrapperClassName="w-full" value={courseId} onChange={(event) => chooseCourse(event.target.value)}>{courseChoices.map((course) => <NativeSelectOption key={course.id} value={course.id}>{course.title}</NativeSelectOption>)}</NativeSelect></label>
-          <label className="grid gap-2 text-sm font-medium leading-normal" htmlFor="exam-item-filter">{t('filters.exam')}<NativeSelect id="exam-item-filter" wrapperClassName="w-full" value={examKey} onChange={(event) => { clearSelectedAttempts(); setExamKey(event.target.value); }}>{examChoices.map((exam) => <NativeSelectOption key={`${exam.courseVersionId}:${exam.itemId}`} value={`${exam.courseVersionId}:${exam.itemId}`}>{t('examOption', { title: exam.itemTitle, version: exam.version })}</NativeSelectOption>)}</NativeSelect></label>
+          <CanvasSelect label={t('filters.branch')} value={branchId} onChange={chooseBranch} options={branches.map(branch => ({ value: branch.id, label: branch.name }))} />
+          <CanvasSelect label={t('filters.course')} value={courseId} onChange={chooseCourse} options={courseChoices.map(course => ({ value: course.id, label: course.title }))} />
+          <CanvasSelect label={t('filters.exam')} value={examKey} onChange={value => { clearSelectedAttempts(); setExamKey(value); }} options={examChoices.map(exam => ({ value: `${exam.courseVersionId}:${exam.itemId}`, label: t('examOption', { title: exam.itemTitle, version: exam.version }) }))} />
         </section>}
       >
         {!canAccessSelectedBranch || !branches.length ? <EmptyState className="m-4" icon={<ShieldAlert />} title={noAccessMessage} /> : null}

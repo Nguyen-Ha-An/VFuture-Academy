@@ -21,11 +21,12 @@ import {
   sameContent,
   opportunityFormFromRow,
 } from "@/features/content-review/editor-snapshots";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { StructuredContentEditor } from "@/features/studio/ui/VisualEditor";
 import { SectionCard } from "@/features/staff-ui/components";
 import {
   OPPORTUNITY_TYPES,
@@ -237,29 +238,12 @@ export function OpportunityEditor({
       )}
     />
   );
-  const jsonField = (name: "description" | "eligibility") => (
-    <label className={fieldLabel}>
-      {t(name)}
-      <Textarea
-        className="min-h-32 font-mono text-xs"
-        defaultValue={JSON.stringify(initialValue[name], null, 2)}
-        {...form.register(name, {
-          setValueAs: (value) => {
-            try {
-              return JSON.parse(value);
-            } catch {
-              return value;
-            }
-          },
-        })}
-      />
-    </label>
-  );
+  const structuredField = (name: "description" | "eligibility") => <Controller name={name} control={form.control} render={({ field }) => <StructuredContentEditor value={field.value} locale={locale} disabled={workflowLocked} label={t(name)} kind={name === 'eligibility' ? 'record' : 'rich'} onChange={value => { if (!workflowLocked) field.onChange(value); }} />} />;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="canvas-page flex flex-col gap-6">
       {/* The one save indicator for this editor, above every section. */}
-      <div className="rounded-lg border border-border bg-card px-4 py-3">
+      <div className="canvas-toolbar px-4 py-3">
         <ContentSaveIndicator state={saveState} valid={valid} disabled={workflowLocked} />
       </div>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)]">
@@ -311,6 +295,10 @@ export function OpportunityEditor({
                 {t("location")}
                 <Input {...form.register("location", { setValueAs: (value) => value || null })} />
               </label>
+            </SectionCard>
+          <SectionCard title={sections("content")} columns={1}>
+              {structuredField("description")}
+              {structuredField("eligibility")}
             </SectionCard>
             <SectionCard title={sections("schedule")} description={t("timezoneUtc")}>
               {(["openAt", "closeAt", "startAt", "endAt"] as const).map((name) => (
@@ -370,10 +358,7 @@ export function OpportunityEditor({
                 />
               ) : null}
             </SectionCard>
-            <SectionCard title={sections("content")} columns={1}>
-              {jsonField("description")}
-              {jsonField("eligibility")}
-            </SectionCard>
+
             <SectionCard title={t("options")} contentClassName="flex flex-wrap gap-x-6 gap-y-3">
               {(["internalApplication", "online", "featured"] as const).map((name) => (
                 <label key={name} className="flex min-h-10 items-center gap-2 text-sm leading-normal">
@@ -401,9 +386,10 @@ export function OpportunityEditor({
               getExpectedRevision={() => updatedAt.current}
               onLockChange={setWorkflowLocked}
               refreshKey={saveState.revision ?? undefined}
-              className="rounded-lg border border-border bg-card p-6"
+              className="canvas-panel p-4 sm:p-6"
             />
           ) : null}
+          <details className="rounded-md border border-border"><summary className="cursor-pointer px-5 py-4 text-sm font-medium">{t("jsonTitle")}</summary>
           <SectionCard
             title={t("jsonTitle")}
             columns={1}
@@ -428,6 +414,7 @@ export function OpportunityEditor({
             </div>
             <ImportTextRecovery value={jsonText} appliedValue={appliedJson} storageKey={recoveryKey ? `${recoveryKey}:import` : undefined} onRestore={setJsonText} disabled={workflowLocked} />
           </SectionCard>
+          </details>
         </div>
       </div>
       {navigationGuard.dialog}

@@ -29,13 +29,13 @@ function displayUrl(url: string) {
   return url.replace(/^https?:\/\//, '');
 }
 
-/** Spec 4.6: a certificate reads like a calibration record, not a celebration. */
+/** Keep the issued record, verification destination and download actions together. */
 export function CalibrationCertificate({ certificate }: { certificate: CalibrationCertificateData }) {
   const t = useTranslations('bench.profile.certificates');
   const legacy = useTranslations('learner.profile');
   const headingId = `certificate-${certificate.id}`;
 
-  return <article className="vf-cert" aria-labelledby={headingId}>
+  return <article className="canvas-panel vf-cert" aria-labelledby={headingId}>
     <div className="vf-cert-main">
       <div className="vf-cert-top"><Kicker as="span">{t('kicker')}</Kicker><Meta as="span">{certificate.serial}</Meta></div>
       <h3 id={headingId} className="vf-cert-title">{certificate.courseTitle}</h3>

@@ -1,0 +1,862 @@
+{
+  "scope": "Focused triage of the 66 failures observed after the accepted Canvas composition refinement. Each case was investigated; product regressions were fixed by UI owners, while obsolete markup or synthetic-event assumptions were adapted without dropping business assertions. These focused results do not replace the ordered full repository verifier.",
+  "initialSourceLog": "/tmp/academy-astra-unit-pregraph.log",
+  "initialCases": 66,
+  "resolvedCases": 66,
+  "groups": {
+    "shell_contracts": 14,
+    "admin_support": 9,
+    "support_contracts": 5,
+    "teaching_contracts": 25,
+    "learner_contracts": 8,
+    "studio_contracts": 5
+  },
+  "additionalRunMetadata": [
+    {
+      "lane": "support_contracts",
+      "run": {
+        "command": "npx vitest run --project app tests/features/ecosystem/ui.test.tsx tests/features/learner/explore-refined.test.tsx tests/features/projects/pages.test.tsx tests/features/workspace-ui/directory.test.tsx --maxWorkers 1 --reporter=default --reporter=json --outputFile.json=/tmp/academy-support-contracts-focused.json",
+        "log": "/tmp/academy-support-contracts-focused.log",
+        "json": "/tmp/academy-support-contracts-focused.json",
+        "total": 81,
+        "passed": 81,
+        "failed": 0,
+        "success": true
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "F001",
+      "lane": "shell_contracts",
+      "file": "tests/features/shells.test.tsx",
+      "test": "application shells > marks the active learner navigation link with aria-current",
+      "classification": "obsolete-selector",
+      "evidence": "Global SideNavBar adds a VFuture brand link sharing /app; the named Dashboard link carries aria-current.",
+      "resolution": "Assert named links within global navigation.",
+      "status": "passed"
+    },
+    {
+      "id": "F002",
+      "lane": "admin_support",
+      "file": "tests/features/admin/account-controls.test.tsx",
+      "test": "account login controls > explains Google invitation versus email backup creation and never returns a password",
+      "classification": "stale-required-field-query",
+      "evidence": {
+        "file": "tests/features/admin/account-controls.test.tsx",
+        "test": "account login controls > explains Google invitation versus email backup creation and never returns a password",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Unable to find label Display name after native InstUI required-marker rendering.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "Google invitation versus separate backup account remains explicit",
+          "Exact create payload has no password",
+          "Single request and no password input"
+        ]
+      },
+      "resolution": "Query actual labelled textboxes and wrap real CanvasProvider. Assert Google invitation distinction, exactly one create POST with name/email/operationId, no password field or payload, and no-password success copy.",
+      "status": "passed"
+    },
+    {
+      "id": "F003",
+      "lane": "admin_support",
+      "file": "tests/features/admin/admin-pages.test.tsx",
+      "test": "branch admin page > creates a school from the \"New school\" sheet and lists it once in the table",
+      "classification": "stale-required-field-query",
+      "evidence": {
+        "file": "tests/features/admin/admin-pages.test.tsx",
+        "test": "branch admin page > creates a school from the \"New school\" sheet and lists it once in the table",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Unable to find label Branch ID; the accessible textbox still has the correct name.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "POST /api/v1/studio/branches exact id/name/city",
+          "Created school listed once",
+          "Dialog closes only after confirmed response"
+        ]
+      },
+      "resolution": "Previously corrected required fields to role/name queries; confirmed again in this fresh four-file run. Exact POST path/body and unique created link remain asserted.",
+      "status": "passed"
+    },
+    {
+      "id": "F004",
+      "lane": "admin_support",
+      "file": "tests/features/admin/admin-pages.test.tsx",
+      "test": "branch admin page > edits a school in the same sheet and replaces its row instead of adding one",
+      "classification": "stale-required-field-query",
+      "evidence": {
+        "file": "tests/features/admin/admin-pages.test.tsx",
+        "test": "branch admin page > edits a school in the same sheet and replaces its row instead of adding one",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Unable to find exact label Name after InstUI required-marker rendering.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "PUT /api/v1/studio/branches/ans exact body",
+          "Old name removed/new row retained",
+          "Exactly header plus one school row"
+        ]
+      },
+      "resolution": "Previously corrected textbox queries; preserved exact PUT/id/body, replacement rather than append, and row-count assertions.",
+      "status": "passed"
+    },
+    {
+      "id": "F005",
+      "lane": "admin_support",
+      "file": "tests/features/admin/admin-pages.test.tsx",
+      "test": "branch admin page > keeps the sheet open with an error when saving fails",
+      "classification": "stale-required-field-query",
+      "evidence": {
+        "file": "tests/features/admin/admin-pages.test.tsx",
+        "test": "branch admin page > keeps the sheet open with an error when saving fails",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Required Branch ID label lookup stopped the failed-save scenario before submission.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "Failed save keeps sheet and typed inputs",
+          "No phantom created link",
+          "One exact POST including city:null"
+        ]
+      },
+      "resolution": "Previously corrected field queries; retained error-open check and strengthened retained id/name, no phantom row, single POST and exact failed payload assertions.",
+      "status": "passed"
+    },
+    {
+      "id": "F006",
+      "lane": "admin_support",
+      "file": "tests/features/admin/branch-pages.test.tsx",
+      "test": "/admin/branches/[branchId] > pages members with ?page= instead of a 50-row cap",
+      "classification": "stale-ssr-versus-client-render-assumption",
+      "evidence": {
+        "file": "tests/features/admin/branch-pages.test.tsx",
+        "test": "/admin/branches/[branchId] > pages members with ?page= instead of a 50-row cap",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Server static markup contains Responsive placeholder before client measurement, so Lan is not yet rendered.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "schoolMembers called with selected branch:ans and page:2/staff:false",
+          "Exact Lan/Teacher DTO and real client row",
+          "Previous/current/next URLs and destination retained"
+        ]
+      },
+      "resolution": "Keep server DTO/scoped-read and exact pagination/link assertions, then mount the real native client table and await its member link/row text. No Responsive mock or UI/controller change.",
+      "status": "passed"
+    },
+    {
+      "id": "F007",
+      "lane": "admin_support",
+      "file": "tests/features/admin/branch-pages.test.tsx",
+      "test": "/admin/branches/[branchId] > shows the membership status in this school, not only the account status",
+      "classification": "stale-ssr-versus-client-render-assumption",
+      "evidence": {
+        "file": "tests/features/admin/branch-pages.test.tsx",
+        "test": "/admin/branches/[branchId] > shows the membership status in this school, not only the account status",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Static SSR string has no measured Responsive table rows for tone slicing.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "Lan account active + other membership active + ANS suspended => suspended",
+          "Minh account/membership active => active",
+          "An account suspended + ANS active => suspended",
+          "Real client badges carry danger/success tones"
+        ]
+      },
+      "resolution": "Assert exact mapped statuses in server props and mount the real table to assert per-person danger/success badges. Add suspended-account-over-active-membership case without weakening the selected-school rule.",
+      "status": "passed"
+    },
+    {
+      "id": "F008",
+      "lane": "admin_support",
+      "file": "tests/features/admin/branch-pages.test.tsx",
+      "test": "/admin/branches/[branchId] > fills the overview with a members preview and the school's recent activity",
+      "classification": "stale-ssr-versus-client-render-assumption",
+      "evidence": {
+        "file": "tests/features/admin/branch-pages.test.tsx",
+        "test": "/admin/branches/[branchId] > fills the overview with a members preview and the school's recent activity",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Member preview rows are deferred by native Responsive and absent from static markup.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "Five-row preview cap and full-list link",
+          "Recent actor/verb/target retained",
+          "Actual client Member4 present/Member5 absent"
+        ]
+      },
+      "resolution": "Preserve source activity/header assertions, assert five server preview DTOs and actor/target link, then await the actual fifth client member link and absence of a sixth.",
+      "status": "passed"
+    },
+    {
+      "id": "F009",
+      "lane": "admin_support",
+      "file": "tests/features/admin/enrollment-migration-panel.test.tsx",
+      "test": "shows skipped learner identifiers and reasons after a migration completes",
+      "classification": "stale-native-select-interaction",
+      "evidence": {
+        "file": "tests/features/admin/enrollment-migration-panel.test.tsx",
+        "test": "shows skipped learner identifiers and reasons after a migration completes",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Course moved from native select/label to a required InstUI combobox.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "Skipped learner-2 and ITEM_NOT_IN_LATEST_VERSION retained",
+          "Friendly missing-content reason rendered",
+          "One POST to course-1 migration endpoint"
+        ]
+      },
+      "resolution": "Choose the actual combobox option through user interactions; preserve skipped raw learner id/reason and add friendly reason plus exact single course POST assertions.",
+      "status": "passed"
+    },
+    {
+      "id": "F010",
+      "lane": "admin_support",
+      "file": "tests/features/admin/enrollment-migration-panel.test.tsx",
+      "test": "starts only one migration for same-tick repeated submissions",
+      "classification": "stale-native-select-interaction",
+      "evidence": {
+        "file": "tests/features/admin/enrollment-migration-panel.test.tsx",
+        "test": "starts only one migration for same-tick repeated submissions",
+        "initialLog": "/tmp/academy-astra-unit-pregraph.log",
+        "observedFailure": "Old selectOptions cannot select the custom InstUI combobox.",
+        "focusedLog": "/tmp/academy-triage-admin-support.log",
+        "focusedResult": "4 files, 30 tests passed, single worker; targeted ESLint passed",
+        "preservedOrStrengthenedIntent": [
+          "Two same-tick submit events still exercise ref-level dedup",
+          "One POST for the selected course",
+          "Pending course disabled; result settles after response"
+        ]
+      },
+      "resolution": "Use the real combobox option, retain two same-act native submit events, and assert one exact migration POST, disabled pending control, then confirmed zero result.",
+      "status": "passed"
+    },
+    {
+      "id": "F011",
+      "lane": "support_contracts",
+      "file": "tests/features/ecosystem/ui.test.tsx",
+      "test": "resource editor > previews the same validated resource JSON and saves through the Studio route",
+      "classification": "intentional_approved_rich_editor_markup",
+      "evidence": "Approved StructuredContentEditor adds a textarea with Preview body alongside the actual preview span; global findByText became ambiguous. The named complementary Preview landmark still renders the server-validated document.",
+      "resolution": "Scoped the preview assertion to the named complementary landmark; added exact POST /validate document assertion and PUT payload/CAS expectedUpdatedAt assertion. No feature source changed.",
+      "status": "resolved_focused_pass"
+    },
+    {
+      "id": "F012",
+      "lane": "teaching_contracts",
+      "file": "tests/features/grading/layout.test.tsx",
+      "test": "Assessment & grading layout gate > renders the bilingual forbidden fallback",
+      "classification": "intentional teaching boundary",
+      "evidence": "Actual TeachingForbidden now names Teaching scope, English copy retained.",
+      "resolution": "Updated assertion to Teaching boundary.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F013",
+      "lane": "learner_contracts",
+      "file": "tests/features/learner/course-overview-ui.test.tsx",
+      "test": "learner course overview > puts each module in one card with a mono M01 code and an h3, and never nests cards",
+      "classification": "obsolete_presentation_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/app/app/courses/[courseId]/page.tsx: outline uses native details/summary",
+        "Initial assertion required moduleHeading.closest(.vf-card), mono M01 and nested-card styling; approved module disclosure has no vf-card.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Test actual module collapse/hide/reopen and required/optional status links, then overview requirements Met/progress and Continue href; styling/class assertions removed, business assertions retained.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F014",
+      "lane": "learner_contracts",
+      "file": "tests/features/learner/course-overview.test.tsx",
+      "test": "learner course overview > localizes course information and exposes full outline rows with status",
+      "classification": "obsolete_presentation_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/app/app/courses/[courseId]/page.tsx: KIND_ICONS + localized kind/status labels",
+        "Initial failure expected decorative LSN text; the approved row uses decorative BookOpen SVG while spoken Lesson/Required/Completed remains in the link name.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Assert authenticated getCourse actor/locale, exact item hrefs and localized required/optional/status names, decorative hidden icon, module grouping; separately render Overview for Course information and Continue behavior.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F015",
+      "lane": "support_contracts",
+      "file": "tests/features/learner/explore-refined.test.tsx",
+      "test": "refined learner discovery > renders one link per resource row with its type, summary and pathway and tag meta",
+      "classification": "actual_single_link_contract_regression",
+      "evidence": "DirectoryTable renders a title Link and a trailing action Link to the same resource destination; focused test receives 2 links per row instead of 1. Resource type, summary, pathway, tags and destination query assertions remain intact.",
+      "resolution": "Retained one-meaningful-link assertion unchanged. Reported shared DirectoryTable source defect to Astra support owner and implementation lead; UI/source edits are outside this lane. Astra support owner subsequently fixed DirectoryTable to use one accessible Open/View-title Link wrapping its heading and removed the duplicate trailing action column. Fresh focused tests now pass without weakening the one-link/content/query assertions.",
+      "status": "resolved_focused_pass"
+    },
+    {
+      "id": "F016",
+      "lane": "support_contracts",
+      "file": "tests/features/learner/explore-refined.test.tsx",
+      "test": "refined learner discovery > renders one link per opportunity row with the availability tone and an ICT closing day",
+      "classification": "actual_single_link_contract_regression",
+      "evidence": "The same shared DirectoryTable renders duplicate title/action links for opportunity rows. Availability tone and ICT closing-day assertions remain unchanged.",
+      "resolution": "Retained one-meaningful-link assertion unchanged. Source owner notified; no test weakening. Astra support owner subsequently fixed DirectoryTable to use one accessible Open/View-title Link wrapping its heading and removed the duplicate trailing action column. Fresh focused tests now pass without weakening the one-link/content/query assertions.",
+      "status": "resolved_focused_pass"
+    },
+    {
+      "id": "F017",
+      "lane": "learner_contracts",
+      "file": "tests/features/learner/tasks-page.test.tsx",
+      "test": "all learner tasks > separates the empty state from a read failure in en",
+      "classification": "obsolete_notification_role_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/features/workspace-ui/learner/CanvasLearningLists.tsx: CanvasTasks null -> CanvasAlert warning; [] -> localized CanvasEmpty",
+        "English failure message is visibly rendered by native InstUI Alert rather than the old role=status paragraph; initial role query failed despite correct distinct error text.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Assert English factual empty copy is exclusive from unavailable copy; rejected read shows visible English unavailable copy, no empty copy/task records, and forwards the same learner actor and en locale.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F018",
+      "lane": "learner_contracts",
+      "file": "tests/features/learner/tasks-page.test.tsx",
+      "test": "all learner tasks > separates the empty state from a read failure in vi",
+      "classification": "obsolete_notification_role_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/features/workspace-ui/learner/CanvasLearningLists.tsx: CanvasTasks null -> CanvasAlert warning; [] -> localized CanvasEmpty",
+        "Vietnamese native warning visibly renders Không tải được thông tin. Vui lòng thử lại.; old role=status query was not the actual notification contract.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Assert Vietnamese empty/unavailable states are mutually exclusive, no invented task rows on rejected read, and exact learner actor + vi locale forwarding.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F019",
+      "lane": "support_contracts",
+      "file": "tests/features/projects/pages.test.tsx",
+      "test": "project pages > offers readable project filters from visible projects while preserving selected query context",
+      "classification": "obsolete_instui_table_markers_plus_actual_duplicate_link_regression",
+      "evidence": "The approved native InstUI Table has semantic columnheader/cell roles instead of bespoke data-stack/data-slot markers. After updating those marker assertions, the test exposes the same 2-links-per-project-row defect. Query context, readable filter options, rights/visibility, group membership, count and filter-chip assertions remain intact.",
+      "resolution": "Replaced obsolete data-stack/data-slot expectations with semantic Status/Project columnheader and Active cell checks; preserved exactly-one-link assertion. Shared DirectoryTable fix must come from Astra owner. Astra support owner subsequently fixed DirectoryTable to use one accessible Open/View-title Link wrapping its heading and removed the duplicate trailing action column. Fresh focused tests now pass without weakening the one-link/content/query assertions.",
+      "status": "resolved_focused_pass"
+    },
+    {
+      "id": "F020",
+      "lane": "support_contracts",
+      "file": "tests/features/projects/pages.test.tsx",
+      "test": "project pages > renders the proposal route with crumbs and catalog options even when no project has skills",
+      "classification": "intentional_approved_copy_and_native_fieldgroup_change",
+      "evidence": "Approved copy removes the A3 prefix from Projects · New. Native field groups and catalog-sourced pickers still exist even when projects supply no skills.",
+      "resolution": "Updated kicker text to Projects · New, asserted Idea and Skills and courses groups, opened Related courses and verified both the no-skills Product lab and AI Foundations catalog options. Added jsdom scrollIntoView shim matching the existing projects/ui test setup; no production code changed.",
+      "status": "resolved_focused_pass"
+    },
+    {
+      "id": "F021",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/layout-gate.test.tsx",
+      "test": "studio layout gate > renders StaffWorkspaceShell inside the session guard when UI_V2_SURFACES lists it, even with STAFF_UI_V2_WORKSPACES",
+      "classification": "intentional-drawer",
+      "evidence": "Saved sidebarOpen=false closes contextual Drawer; session guard actor and dark theme remain rendered.",
+      "resolution": "Assert collapsed root, open drawer, verify scoped current link.",
+      "status": "passed"
+    },
+    {
+      "id": "F022",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/layout-gate.test.tsx",
+      "test": "grading layout gate > renders StaffWorkspaceShell inside the session guard when UI_V2_SURFACES lists it, even with STAFF_UI_V2_WORKSPACES",
+      "classification": "intentional-drawer",
+      "evidence": "Saved sidebarOpen=false closes contextual Drawer; session guard actor and dark theme remain rendered.",
+      "resolution": "Assert collapsed root, open drawer, verify scoped current link.",
+      "status": "passed"
+    },
+    {
+      "id": "F023",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/layout-gate.test.tsx",
+      "test": "admin layout gate > renders StaffWorkspaceShell inside the session guard when UI_V2_SURFACES lists it, even with STAFF_UI_V2_WORKSPACES",
+      "classification": "intentional-drawer",
+      "evidence": "Saved sidebarOpen=false closes contextual Drawer; session guard actor and dark theme remain rendered.",
+      "resolution": "Assert collapsed root, open drawer, verify scoped current link.",
+      "status": "passed"
+    },
+    {
+      "id": "F024",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/layout-gate.test.tsx",
+      "test": "StaffWorkspaceShell server render (no theme or rail flash) > sidebarOpen true renders data-state=expanded",
+      "classification": "obsolete-markup",
+      "evidence": "SSR SidebarProvider root renders saved expanded data-state; native contextual tray has no own data-state.",
+      "resolution": "Check server-rendered root state.",
+      "status": "passed"
+    },
+    {
+      "id": "F025",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/layout-gate.test.tsx",
+      "test": "StaffWorkspaceShell server render (no theme or rail flash) > sidebarOpen false renders data-state=collapsed",
+      "classification": "obsolete-markup",
+      "evidence": "SSR SidebarProvider root renders saved collapsed data-state; native contextual tray has no own data-state.",
+      "resolution": "Check server-rendered root state.",
+      "status": "passed"
+    },
+    {
+      "id": "F026",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > studio /studio/courses/course-1/notebooks/item-1 marks exactly one nav link as the current page",
+      "classification": "intentional-drawer",
+      "evidence": "Editor closes contextual tray by default; global nav stays visible.",
+      "resolution": "Assert one current global link, open tray, assert one correct contextual current link.",
+      "status": "passed"
+    },
+    {
+      "id": "F027",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > grading /grading/assignments/sub-1 marks exactly one nav link as the current page",
+      "classification": "intentional-drawer",
+      "evidence": "Grading detail closes contextual tray by default; global nav stays visible.",
+      "resolution": "Assert one current global link, open tray, assert one correct contextual current link.",
+      "status": "passed"
+    },
+    {
+      "id": "F028",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > grading /grading/exams/attempt-1 marks exactly one nav link as the current page",
+      "classification": "intentional-drawer",
+      "evidence": "Grading detail closes contextual tray by default; global nav stays visible.",
+      "resolution": "Assert one current global link, open tray, assert one correct contextual current link.",
+      "status": "passed"
+    },
+    {
+      "id": "F029",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > persists desktop toggles to the sidebar_state cookie",
+      "classification": "obsolete-markup",
+      "evidence": "Cookie and aria-expanded respond to desktop toggle; native drawer uses root data-state.",
+      "resolution": "Assert cookie, root state and trigger expansion.",
+      "status": "passed"
+    },
+    {
+      "id": "F030",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > keeps accessible link names in the collapsed rail",
+      "classification": "intentional-drawer",
+      "evidence": "Collapsed native Drawer hides contextual links instead of showing icon rail.",
+      "resolution": "Open drawer and assert all permission-filtered accessible link names.",
+      "status": "passed"
+    },
+    {
+      "id": "F031",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > forces the rail collapsed in the course editor without writing the cookie; the trail ends with the course title",
+      "classification": "obsolete-markup",
+      "evidence": "Editor forces closed drawer; preference cookie remains untouched and breadcrumb preserves registered title.",
+      "resolution": "Assert root state, title breadcrumb, temporary toggle and no cookie.",
+      "status": "passed"
+    },
+    {
+      "id": "F032",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > restores the saved rail state when leaving the editor",
+      "classification": "obsolete-markup",
+      "evidence": "Drawer root restores saved open preference after leaving editor.",
+      "resolution": "Assert root states before and after navigation and no cookie write.",
+      "status": "passed"
+    },
+    {
+      "id": "F033",
+      "lane": "shell_contracts",
+      "file": "tests/features/staff-ui/shell-core.test.tsx",
+      "test": "StaffWorkspaceShell > on a phone > opens the drawer from \"Open menu\"; Escape closes it and returns focus to the trigger",
+      "classification": "jsdom-keyboard-event-fidelity",
+      "evidence": "InstUI 11.7 FocusRegion listens to keyup keyCode 27; userEvent keyboard in jsdom supplied keyCode 0. Focus is confirmed inside dialog before event.",
+      "resolution": "Send Escape keyup with browser-compatible keyCode 27; retain assertions that dialog closes, focus returns to trigger, and no cookie is written.",
+      "status": "passed"
+    },
+    {
+      "id": "F034",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/assessments-workspace.test.tsx",
+      "test": "assessments workspace navigation > uses roving keyboard focus and keeps course selection in the URL",
+      "classification": "test environment mismatch",
+      "evidence": "InstUI Tabs uses native keyCode; jsdom userEvent emits 0.",
+      "resolution": "Simulate key and native keyCode; preserve focus, selected tab and URL checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F035",
+      "lane": "studio_contracts",
+      "file": "tests/features/studio/courses-page-view.test.tsx",
+      "test": "Studio courses view > filters by review-aware status, searches without diacritics and sorts by title",
+      "classification": "test_layout_assumption",
+      "evidence": [
+        "tests/features/studio/courses-page-view.test.tsx",
+        "src/features/studio/ui/CoursesTable.tsx",
+        "node_modules/@instructure/ui-table/es/Table/v2/Head/index.js",
+        "/tmp/academy-studio-triage-focused.log:3files13tests passed, maxWorkers1"
+      ],
+      "resolution": "The old test expected desktop header buttons while JSDOM width0 correctly chose native stacked layout. Added explicit1024px DOM measurement for that desktop aria-sort contract; preserved review-aware status filtering, diacritic-insensitive search, exact title ordering and aria-sort directions. Additional real mobile sort-label gap was reported separately to Astra owner.",
+      "status": "passed"
+    },
+    {
+      "id": "F036",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-heading-composition.test.tsx",
+      "test": "grading queue list > offers a Waiting status that asks the queue for pending submissions",
+      "classification": "control migration",
+      "evidence": "InstUI SimpleSelect renders options only after opening.",
+      "resolution": "Open combobox and click Waiting; preserve pending request and URL checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F037",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-heading-composition.test.tsx",
+      "test": "grading queue list > restores a Waiting filter from the URL",
+      "classification": "control migration",
+      "evidence": "SimpleSelect display value is localized Waiting, not internal pending.",
+      "resolution": "Assert displayed label and pending fetch.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F038",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-operations.test.tsx",
+      "test": "grading operations tabs > honors an exam deep link, localizes tabs, and supports arrow-key navigation",
+      "classification": "test environment mismatch",
+      "evidence": "InstUI Tabs uses native keyCode; jsdom userEvent emits 0.",
+      "resolution": "Simulate key and native keyCode; preserve focus, selected tab and panel checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F039",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · assignments > identifies the submitted work and separates the pinned instructions from the learner response",
+      "classification": "intentional layout change",
+      "evidence": "Pinned instructions are a disclosure, source metadata compact and response heading retained.",
+      "resolution": "Assert summary, metadata region, learner response and both actions.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F040",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · assignments > saves a partial draft but refuses completion until every criterion is scored",
+      "classification": "control migration and product regression",
+      "evidence": "Rubric number input has range in accessible name; duplicate status regions were a genuine issue.",
+      "resolution": "Use labelled range input; UI owner restored one purposeful status; partial-save and completion gate retained.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F041",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · assignments > blocks a draft save whose score exceeds the criterion maximum",
+      "classification": "control migration",
+      "evidence": "Numeric input accessible name includes criterion and range.",
+      "resolution": "Match range-labelled input; preserve out-of-range and max-score checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F042",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · assignments > shows the score and feedback and locks from the completion response",
+      "classification": "intentional completed layout",
+      "evidence": "Completed result replaces editable controls instead of retaining disabled duplicates.",
+      "resolution": "Assert server-confirmed score/feedback and absence of editable controls/actions.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F043",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · exams > keeps automatic questions read-only and loads manual points",
+      "classification": "control migration",
+      "evidence": "Manual points accessible name now includes max points.",
+      "resolution": "Match Points / range; preserve auto-readonly and manual score checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F044",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · exams > keeps an already-scored manual question editable until grading is completed",
+      "classification": "control migration",
+      "evidence": "Manual points accessible name now includes max points.",
+      "resolution": "Match range label; preserve editable scored manual question check.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F045",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · exams > keeps a regex-fallback short answer manually gradable before and after its first save",
+      "classification": "control migration and product regression",
+      "evidence": "Range-labelled input and duplicate status; regex fallback still manual.",
+      "resolution": "Match range input; UI owner restored single status; preserve pre/post-save editability and completion gate.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F046",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · exams > does not lock on a malformed completion success and keeps the saved scores",
+      "classification": "control migration",
+      "evidence": "Manual points accessible name now includes max points.",
+      "resolution": "Match range label; malformed completion must not lock and score stays editable.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F047",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · exams > refetches a saved manual grade so switching questions does not restore stale values",
+      "classification": "control migration and product regression",
+      "evidence": "Range label and duplicate live status.",
+      "resolution": "UI owner fixed status; preserve actual save/refetch/question switching check.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F048",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · exams > does not offer manual grading or completion after an attempt is finalized",
+      "classification": "product regression fixed",
+      "evidence": "Finalized manual question explanation had disappeared.",
+      "resolution": "UI owner restored explicit no-longer-pending explanation; original assertion retained.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F049",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · resolved titles > names the assignment by its course and item titles instead of raw ids",
+      "classification": "intentional layout change",
+      "evidence": "Source metadata appears once in compact strip, with course/item header.",
+      "resolution": "Assert resolved title in metadata and absence of raw ID.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F050",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · resolved titles > uses the pinned assignment title in source details when the catalog title is unavailable",
+      "classification": "intentional layout change",
+      "evidence": "Compact source strip has one definition list rather than duplicate mobile/desktop lists.",
+      "resolution": "Assert single source details contains pinned title and excludes raw ID.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F051",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/grading-workbench.test.tsx",
+      "test": "grading workbench · status > announces through a single status region, with no toast",
+      "classification": "product regression fixed",
+      "evidence": "Simultaneous live statuses created competing announcements.",
+      "resolution": "UI owner made footer state non-live and retained single purposeful save status; original assertion retained.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F052",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "instructor grading rubric > updates the rendered total from a labelled level radio group and numeric score",
+      "classification": "control migration",
+      "evidence": "Radio label now includes points; numeric label includes range.",
+      "resolution": "Interact with actual accessible labels and verify total/radiogroup.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F053",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "instructor grading rubric > gives duplicate-point rubric levels unique criterion-and-index ids",
+      "classification": "product regression fixed",
+      "evidence": "Duplicate point values selected wrong radio after InstUI migration.",
+      "resolution": "UI owner uses local level-index identity with numeric persisted score; test verifies unique IDs, selected choice and historical ambiguity without invented selection.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F054",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "paged submission queue > filters by assignment and loads cursor pages without duplicate rows",
+      "classification": "control migration",
+      "evidence": "SimpleSelect uses a popover rather than native select.",
+      "resolution": "Open and choose actual assignment option; preserve cursor, deduplication and request filter checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F055",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "paged submission queue > resets load-more ownership when filters change and ignores the stale cursor response",
+      "classification": "control migration",
+      "evidence": "SimpleSelect uses a popover rather than native select.",
+      "resolution": "Choose status through option; preserve pending cursor ownership and stale-response rejection checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F056",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "paged submission queue > separates result availability from answer-key release in the attempts table",
+      "classification": "product regression fixed",
+      "evidence": "Historical result labels lost legacy qualifier and risked confusion with answer-key release.",
+      "resolution": "UI owner restored legacy qualifiers; original result-versus-answer-key assertions retained.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F057",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "exam grading branch scope > clears the previous branch attempts and release eligibility while the next branch loads",
+      "classification": "control migration",
+      "evidence": "Branch control changed from native select to SimpleSelect.",
+      "resolution": "Choose Branch B via popover; retain previous-attempt clearing and release gating while loading.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F058",
+      "lane": "teaching_contracts",
+      "file": "tests/features/studio/instructor-grading.test.tsx",
+      "test": "exam grading branch scope > recomputes manual-grade visibility when the selected branch changes",
+      "classification": "control migration",
+      "evidence": "Branch control changed from native select to SimpleSelect.",
+      "resolution": "Choose Branch B via popover; retain scope-specific manual-grade visibility checks.",
+      "status": "passed — focused suite 6 files, 89 tests (2026-11-05)"
+    },
+    {
+      "id": "F059",
+      "lane": "studio_contracts",
+      "file": "tests/features/studio/resource-opportunity-lists.test.tsx",
+      "test": "Studio content list table > searches without diacritics, filters status and type, and states the total of a complete list",
+      "classification": "native_stacked_dom_text_contract",
+      "evidence": [
+        "tests/features/studio/resource-opportunity-lists.test.tsx",
+        "src/features/studio/ui/content/ContentListTable.tsx",
+        "/tmp/academy-studio-triage-focused.log:3files13tests passed, maxWorkers1"
+      ],
+      "resolution": "Guide value was present in a native stacked cell as Type: Guide, not a standalone text node. Asserted the named cell while preserving diacritic search, status/type intersections, empty filtered state and honest complete-list counts.",
+      "status": "passed"
+    },
+    {
+      "id": "F060",
+      "lane": "studio_contracts",
+      "file": "tests/features/studio/resource-opportunity-lists.test.tsx",
+      "test": "Studio content list table > pages a full server page with links, says filters cover this page, and never claims a total",
+      "classification": "native_stacked_row_semantics",
+      "evidence": [
+        "tests/features/studio/resource-opportunity-lists.test.tsx",
+        "node_modules/@instructure/ui-table/es/Table/v2/Head/index.js",
+        "/tmp/academy-studio-triage-focused.log:3files13tests passed, maxWorkers1"
+      ],
+      "resolution": "Nonsortable stacked native tables omit the separate header row. Asserted all50data rows AND50record links,25Hackathon typed cells and50organization labels; retained Page2/Next/Previous links, page-scoped filter disclosure and no fake total.",
+      "status": "passed"
+    },
+    {
+      "id": "F061",
+      "lane": "studio_contracts",
+      "file": "tests/features/studio/visual-editor.test.tsx",
+      "test": "edits inline bilingual text through the same raw document without losing annotations or the other language",
+      "classification": "native_select_event_contract",
+      "evidence": [
+        "tests/features/studio/visual-editor.test.tsx",
+        "src/features/studio/ui/VisualEditor.tsx",
+        "src/features/studio/visual-authoring.ts",
+        "/tmp/academy-studio-triage-focused.log:3files13tests passed, maxWorkers1"
+      ],
+      "resolution": "fireEvent.change on the read-only native SimpleSelect input did not request a locale change. Replaced with ordinary user click plus Tiếng Việt option. Retained and strengthened exact canonical source assertions across editing both locales, annotations and stable block ID.",
+      "status": "passed"
+    },
+    {
+      "id": "F062",
+      "lane": "studio_contracts",
+      "file": "tests/features/studio/visual-editor.test.tsx",
+      "test": "adds and reorders blocks with stable existing ids",
+      "classification": "native_select_event_contract_not_type_corruption",
+      "evidence": [
+        "tests/features/studio/visual-editor.test.tsx",
+        "src/features/studio/ui/VisualEditor.tsx",
+        "src/features/studio/visual-authoring.ts",
+        "/tmp/academy-studio-triage-focused.log:3files13tests passed, maxWorkers1"
+      ],
+      "resolution": "Old fireEvent.change changed display input only, leaving palette state at paragraph; the model correctly added the selected paragraph. Real Heading option click now asserts displayed Heading and unchanged source before Add, then still requires canonical heading after Add. Reorder verifies exact added block deep identity, existing p1 ID/content preservation, root document ID and selected Heading after movement. Expected type was NOT relaxed.",
+      "status": "passed"
+    },
+    {
+      "id": "F063",
+      "lane": "learner_contracts",
+      "file": "tests/features/workspace-ui/canvas-learning.test.tsx",
+      "test": "Canvas learner views > keeps all six course destinations and marks the selected page",
+      "classification": "test_provider_and_responsive_environment_gap",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/features/canvas/ui/CanvasCourseLayout.tsx: useLocale + responsive permanent navigation/native DrawerLayout",
+        "Fresh isolated failure was No intl context found: the old direct test omitted production NextIntl context now consumed by native course navigation.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Render with real locale/theme providers and explicit wide/narrow media environments; assert all six real route links, aria-current selected Modules, retained catalog query, no tablist, chosen content only, and narrow open/Close preserving mounted content. No UI or controller mocks.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F064",
+      "lane": "learner_contracts",
+      "file": "tests/features/workspace-ui/canvas-learning.test.tsx",
+      "test": "Canvas learner views > renders announcement text as text, and separates failure from empty",
+      "classification": "obsolete_notification_role_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/features/workspace-ui/learner/CanvasLearningLists.tsx: plain React announcement body + native warning",
+        "Initial role=status expectation failed after intentional CanvasAlert adoption; the message remained visible and [] still yielded the distinct empty state.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "For EN and VI retain literal <script> text and absence of a script DOM node; assert visible localized unavailable text with no false empty state, then explicit empty text with no error copy.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F065",
+      "lane": "learner_contracts",
+      "file": "tests/features/workspace-ui/learner-bench.test.tsx",
+      "test": "bench learner dashboard > shows course cards, the continue action, tasks and recorded feedback",
+      "classification": "obsolete_task_first_layout_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/features/workspace-ui/learner/LearnerDashboardView.tsx: task-first counts/filters + compact resume + native progress + recorded results",
+        "Initial test expected removed Continue learning region, ToleranceBar image, duplicated next-title course-card action and To do aside.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Exercise factual task counts and actual course/status filters/reset/show-all; verify past-due submitted work is not counted overdue, exact task hrefs/late state, native progress value/max, single compact resume, course/exam/feedback links and raw recorded zero score without a percentage.",
+      "status": "resolved_test_only"
+    },
+    {
+      "id": "F066",
+      "lane": "learner_contracts",
+      "file": "tests/features/workspace-ui/learner-bench.test.tsx",
+      "test": "bench learner dashboard > renders first run, a real completion certificate, and task read failures",
+      "classification": "obsolete_empty_vs_unknown_contract",
+      "evidence": [
+        "/tmp/academy-astra-unit-pregraph.log",
+        "src/features/workspace-ui/learner/LearnerDashboardView.tsx: explicit first-run [] versus unavailable null; no empty feedback panel",
+        "Initial test conflated first-run and failed reads, required old generic error text and a deliberately removed large empty feedback card.",
+        "/tmp/academy-resolution-learner-contracts-tests.log"
+      ],
+      "resolution": "Test genuine first run from factual empty arrays and enrolled certificate href; rerender null reads and assert task-specific unavailable message, unknown em-dash counters instead of fake zero, unavailable results instead of 0/0, and no fabricated empty feedback panel.",
+      "status": "resolved_test_only"
+    }
+  ]
+}

@@ -20,7 +20,7 @@ describe('learner detail and profile CSS', () => {
   });
 
   it('keeps the profile settings cards on the 760/1100 breakpoints with a 44px upload control', () => {
-    const settings = learnerCss.slice(learnerCss.indexOf('/* Profile settings:'));
+    const settings = learnerCss.slice(learnerCss.indexOf('/* Profile settings:'), learnerCss.indexOf('/* Canvas learner pages:'));
     expect(settings.length).toBeGreaterThan(20);
     for (const [, width] of settings.matchAll(/@media \((?:min|max)-width: (\d+)px\)/g)) expect(['759', '760', '1099', '1100']).toContain(width);
     expect(settings).toMatch(/\.vf-l-upload \{[^}]*min-height: 44px/);

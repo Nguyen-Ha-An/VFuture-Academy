@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
 import { Badge, Button } from "@/components/ui/classic";
+import { CanvasTreeBrowser } from "@/features/canvas/ui";
 import { COURSE_REF, itemRef, refKey, refOf, type DocumentRef, type ValidationReport } from "@/content-engine/diagnostics";
 import {
   addItemReference,
@@ -169,6 +170,26 @@ export function Outline({
     );
   };
 
+  // TreeBrowser's numeric item keys are presentation indexes; document IDs stay canonical.
+  const treeItems: Record<number, { id: number; name: string; descriptor: string }> = {};
+  const treeRefs = new Map<number, DocumentRef>();
+  const treeCollections: Record<string, { id: string; name: string; items: number[]; collections?: string[] }> = {};
+  let nodeIndex = 0;
+  let selectedNode = '';
+  for (const courseModule of modules) {
+    const ids: number[] = [];
+    for (const item of courseModule.items) {
+      const id = ++nodeIndex;
+      ids.push(id);
+      treeRefs.set(id, itemRef(item.id));
+      const status = statusFromCounts(Object.hasOwn(items, item.id), diagnosticCounts.get(refKey(itemRef(item.id))));
+      const statusLabel = status.kind === 'valid' ? '' : status.kind === 'stub' ? t('badges.stub') : t(status.kind === 'error' ? 'badges.errors' : 'badges.warnings', { count: status.count });
+      treeItems[id] = { id, name: titleOf(object(items[item.id])?.title ?? item.title, locale, t('outline.itemUntitled')), descriptor: [t(`outline.itemKinds.${item.type}`), statusLabel].filter(Boolean).join(' · ') };
+      if (selectedRef.kind === 'item' && selectedRef.id === item.id) selectedNode = `item_${id}`;
+    }
+    treeCollections[courseModule.id] = { id: courseModule.id, name: titleOf(courseModule.title, locale, t('outline.moduleUntitled')), items: ids };
+  }
+
   return (
     <nav aria-label={t("outline.label")} className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border p-3">
@@ -183,7 +204,10 @@ export function Outline({
         </button>
       </div>
 
-      <ol className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="py-3"><CanvasTreeBrowser treeLabel={t('outline.label')} collections={treeCollections} items={treeItems} defaultExpanded={modules.map(module => module.id)} selectionType="single" selection={selectedNode} onSelectionChange={(_selection, type, id) => { if (type === 'item') { const ref = treeRefs.get(Number(id)); if (ref) onSelect(ref); } }} sortOrder={() => 0} variant="indent" size="medium" animation={false} /></div>
+        {!readOnly ? <details className="border-t border-border"><summary className="cursor-pointer px-3 py-3 text-sm font-medium">{locale === 'vi' ? 'Sắp xếp và đổi tên' : 'Arrange and rename'}</summary>
+      <ol className="p-3">
         {modules.length ? modules.map((module, moduleIndex) => {
           const moduleTitle = titleOf(module.title, locale, t("outline.moduleUntitled"));
           return (
@@ -236,7 +260,7 @@ export function Outline({
                         </span>
                         {badge(item)}
                       </button>
-                      {!readOnly ? <span className="hidden shrink-0 group-hover:flex group-focus-within:flex">
+                      {!readOnly ? <span className="flex shrink-0">
                         <button type="button" onClick={() => moveItem(moduleIndex, itemIndex, -1)} disabled={itemIndex === 0} aria-label={t("outline.moveUp", { title: itemTitle })} className="inline-flex size-7 items-center justify-center rounded hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-30"><ChevronUp aria-hidden="true" className="size-3.5" /></button>
                         <button type="button" onClick={() => moveItem(moduleIndex, itemIndex, 1)} disabled={itemIndex === module.items.length - 1} aria-label={t("outline.moveDown", { title: itemTitle })} className="inline-flex size-7 items-center justify-center rounded hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-30"><ChevronDown aria-hidden="true" className="size-3.5" /></button>
                         <button type="button" onClick={() => {
@@ -262,7 +286,7 @@ export function Outline({
                           }
                           if (title !== currentTitle) onManifestChange(renameItemReference(manifest, module.id, item.id, locale as "vi" | "en", title));
                         }}
-                        className="ml-2 hidden min-h-8 w-[calc(100%-0.5rem)] group-focus-within:block rounded border border-input bg-background px-2 text-xs focus-visible:outline-2 focus-visible:outline-ring"
+                        className="ml-2 block min-h-8 w-[calc(100%-0.5rem)] rounded border border-input bg-background px-2 text-xs focus-visible:outline-2 focus-visible:outline-ring"
                       /> : null}
                     </li>
                   );
@@ -279,6 +303,8 @@ export function Outline({
           );
         }) : <li className="py-5 text-center text-sm text-muted-foreground">{t("outline.empty")}</li>}
       </ol>
+        </details> : null}
+      </div>
 
       {!readOnly ? <div className="border-t border-border p-3">
         <Button onClick={addModule} className="w-full bg-secondary text-secondary-foreground shadow-none hover:bg-accent"><Plus aria-hidden="true" className="mr-2 size-4" />{t("outline.addModule")}</Button>

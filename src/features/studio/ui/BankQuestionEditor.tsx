@@ -26,6 +26,9 @@ import {
 } from "@/features/content-review/useContentAutosave";
 import { useStaffTitleRegistration } from "@/features/workspace/ui/StaffTitleContext";
 import { useUnsavedChanges } from './useUnsavedChanges';
+import { VisualEditor } from './VisualEditor';
+import { visualSourceChange } from '../visual-authoring';
+import { CanvasTabs } from '@/features/canvas/ui';
 registerAll();
 type ApiIssue = { path?: Array<string | number>; message?: string };
 export type BankQuestionDetail = {
@@ -114,6 +117,14 @@ export function BankQuestionEditor({
   ).current;
   const [detail, setDetail] = useState(initialDetail);
   const [text, setText] = useState(initialSource);
+  const [editorMode, setEditorMode] = useState<'visual' | 'json'>('visual');
+  useEffect(() => {
+    try { const saved = window.localStorage.getItem('academy.canvas.editor-mode'); if (saved === 'visual' || saved === 'json') setEditorMode(saved); } catch { /* Preferences are optional. */ }
+  }, []);
+  const chooseMode = (mode: 'visual' | 'json') => {
+    setEditorMode(mode);
+    try { window.localStorage.setItem('academy.canvas.editor-mode', mode); } catch { /* Editing remains available without storage. */ }
+  };
   const [locale, setLocale] = useState<Locale>(
     initialDetail.languages[0] ?? "vi",
   );
@@ -272,7 +283,7 @@ export function BankQuestionEditor({
   const staffTitle = titleFor(detail.latestVersion.payload, interfaceLocale) || t('titleFallback');
   useEffect(() => registerStaffTitle(staffTitle), [registerStaffTitle, staffTitle]);
   return (
-    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+    <div className="canvas-page grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
       {navigationGuard.dialog}
       <div className="min-w-0 space-y-4">
         <DataCard
@@ -281,12 +292,19 @@ export function BankQuestionEditor({
           actions={<ContentSaveIndicator state={autosave} valid={validDocument && diagnostics.length === 0} disabled={workflowLocked} />}
         >
           <div className="min-w-0 overflow-hidden">
-            <CodeMirror
+            <CanvasTabs screenReaderLabel={interfaceLocale === 'vi' ? 'Chế độ soạn thảo' : 'Editor mode'} onRequestTabChange={(_event, { index }) => chooseMode(index === 0 ? 'visual' : 'json')}>
+              <CanvasTabs.Panel renderTitle={interfaceLocale === 'vi' ? 'Trực quan' : 'Visual'} isSelected={editorMode === 'visual'} padding="0"><VisualEditor question source={text} docRef={itemRef(detail.id)} locale={interfaceLocale} defaultLanguage={detail.languages[0] ?? interfaceLocale} readOnly={editorLocked} onChange={(value, expected) => {
+              if (editorLocked) return;
+              const next = visualSourceChange(textRef.current, expected, itemRef(detail.id), value);
+              if (next !== null) { textRef.current = next; setText(next); }
+            }} /></CanvasTabs.Panel>
+              <CanvasTabs.Panel renderTitle="JSON" isSelected={editorMode === 'json'} padding="0"><CodeMirror
               value={text}
               height="36rem"
               editable={!editorLocked}
               extensions={[
                 json(),
+                EditorView.theme({ '&': { backgroundColor: 'var(--background)', color: 'var(--foreground)' }, '.cm-content': { caretColor: 'var(--foreground)' }, '.cm-gutters': { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)', borderRight: '1px solid var(--border)' }, '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--muted)' } }),
                 EditorView.contentAttributes.of({
                   "aria-label": t("editorLabel"),
                 }),
@@ -296,7 +314,8 @@ export function BankQuestionEditor({
                 setText(value);
               }}
               aria-label={t("editorLabel")}
-            />
+            /></CanvasTabs.Panel>
+            </CanvasTabs>
           </div>
           <div aria-live="polite" className="border-t border-border px-6 py-4">
             <p className="text-sm font-medium leading-normal">{activity}</p>
@@ -345,6 +364,7 @@ export function BankQuestionEditor({
             </label>
           }
         >
+          {(!validDocument || !sameContent(parseJsonDocument(text, itemRef(detail.id)).value, detail.latestVersion.payload)) ? <p role="status" className="border-b border-warning-border bg-warning px-6 py-3 text-sm text-warning-foreground">{interfaceLocale === 'vi' ? 'Bản xem trước hiển thị phiên bản đã lưu. Các thay đổi hiện tại chưa xuất hiện ở đây.' : 'Preview shows the saved version. Your current changes are not reflected here yet.'}</p> : null}
           <div className="vf-staff-preview-island min-h-48 p-6" lang={locale}>
             {runtime && previewQuestion ? (
               <QuestionRenderer

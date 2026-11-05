@@ -2,7 +2,7 @@
 
 import { ArchiveRestore, Download, History, LoaderCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -27,12 +27,13 @@ type CourseVersion = {
   notes?: string | null;
 };
 
-export function VersionsDrawer({ courseId, refreshKey, disabled = false, readOnly = false, onRestored, beforeRestore, className }: {
+export function VersionsDrawer({ courseId, refreshKey, disabled = false, restoreDisabled = false, readOnly = false, onRestored, beforeRestore, className }: {
   courseId: string;
   refreshKey: number;
   disabled?: boolean;
   readOnly?: boolean;
-  onRestored: (snapshot: { manifest: unknown; items: Record<string, unknown>; baseVersionId: string | null }) => void | Promise<void>;
+  restoreDisabled?: boolean;
+  onRestored: (snapshot: { manifest: unknown; items: Record<string, unknown>; baseVersionId: string | null }) => boolean | Promise<boolean>;
   beforeRestore?: () => Promise<boolean>;
   className?: string;
 }) {
@@ -43,6 +44,24 @@ export function VersionsDrawer({ courseId, refreshKey, disabled = false, readOnl
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const operation = useRef(0);
+  const identity = useRef(courseId);
+  if (identity.current !== courseId) {
+    identity.current = courseId;
+    operation.current += 1;
+  }
+  const current = useRef({ courseId, open, disabled, restoreDisabled, readOnly, onRestored, beforeRestore });
+  current.current = { courseId, open, disabled, restoreDisabled, readOnly, onRestored, beforeRestore };
+  useEffect(() => () => { operation.current += 1; current.current.open = false; }, []);
+  useEffect(() => { setRestoring(null); }, [courseId]);
+  const changeOpen = (next: boolean) => {
+    if (next !== current.current.open) {
+      operation.current += 1;
+      setRestoring(null);
+    }
+    current.current.open = next;
+    setOpen(next);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -62,23 +81,35 @@ export function VersionsDrawer({ courseId, refreshKey, disabled = false, readOnl
   }, [courseId, open, refreshKey, t]);
 
   const restore = async (version: number) => {
-    if (disabled || !window.confirm(t("confirmRestore", { version }))) return;
+    const allowed = () => current.current.open && !current.current.disabled && !current.current.restoreDisabled && !current.current.readOnly;
+    if (!allowed()) { setError(t("restoreBlocked")); return; }
+    if (!window.confirm(t("confirmRestore", { version }))) { setError(t("restoreCancelled")); return; }
+    const token = ++operation.current;
+    const isCurrent = () => token === operation.current && current.current.courseId === courseId;
     setRestoring(version);
     setError(null);
     try {
-      if (beforeRestore && !await beforeRestore()) return;
+      const guard = current.current.beforeRestore;
+      const permitted = !guard || await guard();
+      if (!isCurrent()) return;
+      if (!permitted) { setError(t("restoreCancelled")); return; }
+      if (!allowed()) { if (current.current.open) setError(t("restoreBlocked")); return; }
       const snapshot = await readApiData<{ manifest: unknown; items: Record<string, unknown>; baseVersionId: string | null }>(await fetch(`/api/v1/studio/courses/${encodeURIComponent(courseId)}/versions/${version}`));
-      await onRestored(snapshot);
-      setOpen(false);
+      if (!isCurrent()) return;
+      if (!allowed()) { if (current.current.open) setError(t("restoreBlocked")); return; }
+      const applied = await current.current.onRestored(snapshot);
+      if (!isCurrent()) return;
+      if (applied === true) changeOpen(false);
+      else if (current.current.open) setError(t("restoreNotApplied"));
     } catch (cause) {
-      setError(workspaceErrorMessage(cause, t("genericError")));
+      if (isCurrent() && current.current.open) setError(workspaceErrorMessage(cause, t("restoreError")));
     } finally {
-      setRestoring(null);
+      if (isCurrent()) setRestoring(null);
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={changeOpen}>
       <SheetTrigger asChild><Button disabled={disabled} className={className ?? "bg-secondary text-secondary-foreground shadow-none hover:bg-accent"}><History aria-hidden="true" className="mr-2 size-4" />{t("trigger")}</Button></SheetTrigger>
       <SheetPortal>
         <SheetOverlay className="fixed inset-0 z-50 bg-black/45" />
@@ -86,6 +117,7 @@ export function VersionsDrawer({ courseId, refreshKey, disabled = false, readOnl
           <SheetTitle className="text-xl font-semibold">{t("title")}</SheetTitle>
           <SheetDescription className="mt-1 text-sm text-muted-foreground">{t("description")}</SheetDescription>
           <div className="mt-5 min-h-0 flex-1 overflow-y-auto">
+            {restoreDisabled && !readOnly ? <p role="status" className="mb-3 text-sm text-muted-foreground">{t("restoreBlocked")}</p> : null}
             {loading ? <p className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin" />{t("loading")}</p> : null}
             {error ? <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p> : null}
             {!loading && !versions.length && !error ? <p className="py-8 text-sm text-muted-foreground">{t("empty")}</p> : null}
@@ -98,7 +130,7 @@ export function VersionsDrawer({ courseId, refreshKey, disabled = false, readOnl
                       {version.published_at ? <p className="mt-1 text-xs text-muted-foreground">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(version.published_at))}</p> : null}
                       {version.checksum ? <p className="mt-2 truncate font-mono text-[0.65rem] text-muted-foreground" title={version.checksum}>{version.checksum}</p> : null}
                     </div>
-                    {!readOnly ? <Button onClick={() => void restore(version.version)} disabled={disabled || restoring !== null} className="min-h-9 bg-secondary px-3 text-secondary-foreground shadow-none hover:bg-accent"><ArchiveRestore aria-hidden="true" className="mr-1.5 size-3.5" />{restoring === version.version ? t("restoring") : t("restore")}</Button> : null}
+                    {!readOnly ? <Button onClick={() => void restore(version.version)} disabled={disabled || restoreDisabled || restoring !== null} className="min-h-9 bg-secondary px-3 text-secondary-foreground shadow-none hover:bg-accent"><ArchiveRestore aria-hidden="true" className="mr-1.5 size-3.5" />{restoring === version.version ? t("restoring") : t("restore")}</Button> : null}
                   </div>
                   {version.notes ? <p className="mt-3 text-sm text-muted-foreground">{version.notes}</p> : null}
                   <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">

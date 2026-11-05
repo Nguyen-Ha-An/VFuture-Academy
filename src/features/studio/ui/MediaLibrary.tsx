@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { CopyIcon, FileText, ImageIcon, RotateCcwIcon, Upload } from 'lucide-react';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button } from '@/features/canvas/ui';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ContentWorkflowPanel, type ContentWorkflow } from '@/features/content-review/ContentWorkflowPanel';

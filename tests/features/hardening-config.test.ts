@@ -53,7 +53,8 @@ describe('request-size platform hardening', () => {
     const local = readFileSync(join(process.cwd(), 'scripts/verify-local.mjs'), 'utf8');
     expect(local).toContain("process.env.GITHUB_ACTIONS === 'true'");
     expect(local).toContain("'graphify:check', 'typecheck', 'verify:azure', 'verify:azure-core', 'lint'");
-    expect(local).toContain("['studio', 'admin', 'student', 'student-runtime'");
+    expect(local).toContain("['studio', 'admin', 'learner', 'student', 'student-runtime'");
+    expect(local).toContain("run('npm', ['run', 'verify:instui'])");
     expect(local).toContain("'--maxWorkers=2'");
     expect(local).toContain("'--ignore-scripts'");
     expect(local).not.toContain('competition-database');

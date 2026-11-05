@@ -36,10 +36,19 @@
         "progress": "Tiến độ",
         "unknownGrantor": "Người dùng không xác định",
         "unavailableCourse": "Chưa có tiêu đề khoá học",
-        "unavailableItem": "Chưa có tiêu đề mục"
+        "unavailableItem": "Chưa có tiêu đề mục",
+        "noLearning": "Chưa có ghi danh khóa học.",
+        "learningUnavailable": "Chưa thể hiển thị thông tin học tập.",
+        "noSubmissions": "Chưa có bài tập được nộp.",
+        "noExamResults": "Chưa có kết quả bài thi."
       },
       "searchPlaceholder": "Tìm theo tên hoặc email",
-      "invitationsDescription": "Lời mời đang chờ, đã hết hạn và đã thu hồi"
+      "invitationsDescription": "Lời mời đang chờ, đã hết hạn và đã thu hồi",
+      "clearFilters": "Xóa bộ lọc",
+      "previousResults": "Đang hiển thị kết quả đã tải trước đó. Thử lại để cập nhật danh sách.",
+      "noRoles": "Chưa được gán vai trò.",
+      "noPermissions": "Không có quyền hiệu lực trong phạm vi này.",
+      "chooseRole": "Chọn vai trò"
     }
   },
   "en": {
@@ -79,10 +88,19 @@
         "progress": "Progress",
         "unknownGrantor": "Unknown user",
         "unavailableCourse": "Course title unavailable",
-        "unavailableItem": "Item title unavailable"
+        "unavailableItem": "Item title unavailable",
+        "noLearning": "No course enrollments yet.",
+        "learningUnavailable": "Learning details are not available.",
+        "noSubmissions": "No assignment submissions yet.",
+        "noExamResults": "No exam results yet."
       },
       "searchPlaceholder": "Search by name or email",
-      "invitationsDescription": "Pending, expired and revoked invitations"
+      "invitationsDescription": "Pending, expired and revoked invitations",
+      "clearFilters": "Clear filters",
+      "previousResults": "Showing the last loaded results. Retry to refresh this list.",
+      "noRoles": "No roles assigned.",
+      "noPermissions": "No effective permissions in this scope.",
+      "chooseRole": "Select a role"
     }
   }
 }

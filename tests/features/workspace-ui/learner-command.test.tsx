@@ -103,10 +103,10 @@ describe('learner command menu bundle boundary', () => {
 });
 
 describe('learner command menu trigger and shortcut', () => {
-  it('sits first in the bench bar right slot with a mono shortcut and aria-keyshortcuts', () => {
+  it('sits first in the Canvas header action slot with shortcut and aria-keyshortcuts', () => {
     vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
     const { container } = renderShell();
-    const right = container.querySelector('.vf-bench-right')!;
+    const right = container.querySelector('.canvas-learner-header-actions')!;
     expect(right.firstElementChild).toBe(trigger());
     expect(trigger()).toHaveAttribute('aria-haspopup', 'dialog');
     expect(trigger()).toHaveAttribute('aria-expanded', 'false');
@@ -120,10 +120,10 @@ describe('learner command menu trigger and shortcut', () => {
     expect(trigger().querySelector('kbd')).toHaveTextContent('Ctrl K');
   });
 
-  it('is not mounted on focus routes', () => {
+  it('keeps the command menu available on focus routes', () => {
     mocks.pathname = '/app/courses/ai/items/lesson-1';
     renderShell();
-    expect(screen.queryByRole('button', { name: 'Search or jump to…' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Search or jump to…' })).toBeInTheDocument();
   });
 
   it('opens with ⌘K and Ctrl K, and a second press closes it', async () => {
@@ -313,10 +313,11 @@ describe('learner command entries', () => {
   const entries = learnerCommandEntries({ focus: t('learner.focus'), common: t('common'), command: t('bench.learner.command'), keywords: t('bench.learner.command.keywords') }, { studio: '/studio', grading: '/grading', admin: '/admin' });
   const hrefs = (group: string) => entries.filter(entry => entry.group === group).map(entry => entry.href);
 
-  it('uses the bench nav hrefs, codes and shortcut digits for Go to', () => {
+  it('retains the three keyboard destinations as a subset of global navigation', () => {
     renderShell();
-    const nav = screen.getByRole('navigation', { name: en.common.learnerNavigation });
-    expect(hrefs('goTo')).toEqual(within(nav).getAllByRole('link').map(link => link.getAttribute('href')));
+    const nav = screen.getByRole('navigation', { name: 'Global navigation' });
+    const destinations = within(nav).getAllByRole('link').map(link => link.getAttribute('href'));
+    expect(destinations).toEqual(expect.arrayContaining(hrefs('goTo')));
     expect(entries.filter(entry => entry.group === 'goTo').map(entry => [entry.code, entry.shortcutKey])).toEqual([['A1', '1'], ['A2', '2'], ['A3', '3']]);
   });
 

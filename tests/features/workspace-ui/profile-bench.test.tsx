@@ -88,7 +88,7 @@ describe('bench learner profile', () => {
     expect(screen.getByRole('img', { name: 'Python: Applied, level 2 of 3' })).toBeVisible();
     const completed = screen.getByRole('region', { name: 'Completed courses' });
     expect(within(completed).getByRole('link', { name: 'Python for data engineers' })).toHaveAttribute('href', '/app/courses/py-110');
-    expect(within(completed).getByText('Complete · in spec')).toBeVisible();
+    expect(within(completed).getByText('Completed', { selector: '.vf-tag' })).toBeVisible();
     expect(within(completed).getByText('14.08.2026')).toBeVisible();
     expect(within(screen.getByRole('region', { name: 'Showcased projects' })).getByRole('link', { name: /MQTT gateway/ })).toHaveAttribute('href', '/app/projects/gateway');
     expect(within(screen.getByRole('region', { name: 'Total XP' })).getByText('1,240')).toBeVisible();

@@ -22,6 +22,7 @@ export default defineConfig({
     '@/lib/auth': path.join(__dirname, 'src/server-auth.ts'),
     '@/features/catalog/service': path.join(__dirname, 'src/catalog-service.ts'),
     '@/features/learner/summary': path.join(__dirname, 'src/learner-summary.ts'),
+    '@/features/coursework/service': path.join(__dirname, '../learner-harness/src/data.ts'),
     '@/features/learner/ui/EnrollButton': path.join(__dirname, 'src/enroll-button.tsx'),
     '@/features/profile/service': path.join(__dirname, 'src/profile-service.ts'),
     '@/features/projects/service': path.join(__dirname, 'src/projects-service.ts'),

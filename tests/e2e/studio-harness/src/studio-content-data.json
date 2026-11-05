@@ -1,0 +1,347 @@
+{
+  "bank": {
+    "id": "pattern-question",
+    "status": "draft",
+    "currentVersionId": null,
+    "languages": [
+      "vi",
+      "en"
+    ],
+    "latestVersion": {
+      "id": "bank-version-1",
+      "version": 1,
+      "payload": {
+        "id": "pattern-question",
+        "type": "single_choice",
+        "content": {
+          "blocks": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": {
+                    "vi": "Bước nào nên thực hiện trước khi công bố khóa học?",
+                    "en": "Which step should happen before publishing a course?"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "options": [
+          {
+            "id": "review",
+            "content": {
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": {
+                        "vi": "Kiểm tra và duyệt nội dung",
+                        "en": "Validate and review content"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "publish",
+            "content": {
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": {
+                        "vi": "Công bố ngay",
+                        "en": "Publish immediately"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "correctAnswer": "review",
+        "points": 1,
+        "tags": [
+          "authoring"
+        ],
+        "difficulty": "easy"
+      },
+      "renders": {
+        "vi": {
+          "id": "pattern-question",
+          "type": "single_choice",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Bước nào nên thực hiện trước khi công bố khóa học?"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": [
+            {
+              "id": "review",
+              "content": {
+                "blocks": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Kiểm tra và duyệt nội dung"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "id": "publish",
+              "content": {
+                "blocks": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Công bố ngay"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "points": 1,
+          "tags": [
+            "authoring"
+          ],
+          "difficulty": "easy"
+        },
+        "en": {
+          "id": "pattern-question",
+          "type": "single_choice",
+          "content": {
+            "blocks": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Which step should happen before publishing a course?"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": [
+            {
+              "id": "review",
+              "content": {
+                "blocks": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Validate and review content"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "id": "publish",
+              "content": {
+                "blocks": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Publish immediately"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "points": 1,
+          "tags": [
+            "authoring"
+          ],
+          "difficulty": "easy"
+        }
+      },
+      "grading": {
+        "id": "pattern-question",
+        "type": "single_choice",
+        "points": 1,
+        "settings": {},
+        "interactionType": "radio",
+        "selfAssessment": false,
+        "correctAnswer": "review"
+      }
+    }
+  },
+  "resource": {
+    "schemaVersion": 1,
+    "kind": "resource",
+    "id": "course-guide",
+    "title": {
+      "vi": "Hướng dẫn học tập",
+      "en": "Learning guide"
+    },
+    "summary": {
+      "vi": "Các bước giúp bạn hoàn thành bài học.",
+      "en": "Steps for making progress through lessons."
+    },
+    "resourceType": "guide",
+    "tags": [
+      "orientation"
+    ],
+    "skills": [
+      "self-directed-learning"
+    ],
+    "pathways": [
+      "core-future-skills"
+    ],
+    "branchScope": {
+      "scope": "global"
+    },
+    "body": {
+      "blocks": [
+        {
+          "type": "heading",
+          "level": 2,
+          "content": [
+            {
+              "text": "Before you begin"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "Read the lesson, try the activities, and review your feedback."
+            }
+          ]
+        }
+      ]
+    },
+    "attachments": []
+  },
+  "opportunity": {
+    "id": "research-cohort",
+    "title": {
+      "vi": "Nhóm nghiên cứu mùa thu",
+      "en": "Autumn research cohort"
+    },
+    "organization": "VFuture Academy",
+    "type": "research_cohort",
+    "description": {
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "Work with a mentor on a six-week research project."
+            }
+          ]
+        }
+      ]
+    },
+    "eligibility": {
+      "minimumAge": 16
+    },
+    "recommendedSkills": [
+      "critical-thinking"
+    ],
+    "recommendedCourses": [
+      "minimal"
+    ],
+    "requiredCourses": [],
+    "applicationUrl": null,
+    "internalApplication": true,
+    "openAt": "2026-11-01T00:00:00Z",
+    "closeAt": "2026-12-01T00:00:00Z",
+    "startAt": null,
+    "endAt": null,
+    "location": "Online",
+    "online": true,
+    "branchScope": {
+      "scope": "global"
+    },
+    "featured": false
+  },
+  "project": {
+    "id": "climate-dashboard",
+    "title": {
+      "vi": "Bảng theo dõi khí hậu",
+      "en": "Climate data dashboard"
+    },
+    "summary": {
+      "vi": "Học viên phân tích dữ liệu khí hậu địa phương.",
+      "en": "Students investigate local climate data."
+    },
+    "status": "active",
+    "outputLinks": [
+      {
+        "label": {
+          "vi": "Bản trình diễn",
+          "en": "Prototype"
+        },
+        "url": "https://example.org/prototype"
+      }
+    ],
+    "skills": [
+      "data-analysis"
+    ],
+    "courseIds": [
+      "minimal"
+    ],
+    "ownerId": "00000000-0000-4000-8000-000000000101",
+    "coverAssetId": null,
+    "approved": false,
+    "branchScope": {
+      "scope": "global"
+    },
+    "createdAt": "2026-10-01T00:00:00Z",
+    "updatedAt": "2026-11-01T00:00:00Z",
+    "members": [
+      {
+        "userId": "00000000-0000-4000-8000-000000000101",
+        "role": "owner",
+        "displayName": "Nguyễn An",
+        "handle": "nguyen-an"
+      },
+      {
+        "userId": "00000000-0000-4000-8000-000000000102",
+        "role": "member",
+        "displayName": "Linh Trần",
+        "handle": "linh-tran"
+      }
+    ],
+    "relatedCourses": [
+      {
+        "id": "minimal",
+        "title": {
+          "vi": "Khóa học tối giản",
+          "en": "Minimal course"
+        }
+      }
+    ],
+    "interested": false,
+    "viewerRole": null,
+    "canExpressInterest": false
+  }
+}

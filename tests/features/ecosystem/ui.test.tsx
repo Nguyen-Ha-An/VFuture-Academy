@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
@@ -76,14 +76,22 @@ describe('resource editor', () => {
 
   it('previews the same validated resource JSON and saves through the Studio route', async () => {
     const user = userEvent.setup();
-    render(<Provider><ResourceEditor initialDocument={resource} canPublish /></Provider>);
+    const updatedAt = '2026-09-04T00:00:00.000Z';
+    render(<Provider><ResourceEditor initialRecord={{ id: resource.id, document: resource, status: 'draft', ownerId: 'editor-1', publishedAt: null, updatedAt }} canPublish /></Provider>);
 
     await user.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(await screen.findByText('Preview body')).toBeInTheDocument();
-    fireEvent.change(screen.getByRole('textbox', {name:'Resource JSON'}), {target:{value:JSON.stringify({...resource,title:{vi:'Huong dan',en:'Revised guide'}})}});
+    const preview = within(screen.getByRole('complementary', { name: 'Preview' }));
+    expect(await preview.findByText('Preview body')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/v1/studio/resources/prompting-guide/validate', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ document: resource }),
+    }));
+    const revised = { ...resource, title: { vi: 'Huong dan', en: 'Revised guide' } };
+    fireEvent.change(screen.getByRole('textbox', {name:'Resource JSON'}), {target:{value:JSON.stringify(revised)}});
     await user.click(screen.getByRole('button', { name: 'Save now' }));
 
-    expect(fetch).toHaveBeenCalledWith('/api/v1/studio/resources/prompting-guide', expect.objectContaining({ method: 'PUT' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/v1/studio/resources/prompting-guide', expect.objectContaining({ method: 'PUT' })));
+    const saved = vi.mocked(fetch).mock.calls.find(([url, request]) => String(url) === '/api/v1/studio/resources/prompting-guide' && request?.method === 'PUT');
+    expect(JSON.parse(String(saved?.[1]?.body))).toMatchObject({ document: revised, expectedUpdatedAt: updatedAt });
     expect(screen.getByRole('textbox', { name: 'Resource JSON' })).toBeInTheDocument();
   });
 

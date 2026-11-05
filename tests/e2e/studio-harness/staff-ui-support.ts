@@ -21,9 +21,9 @@ export type StaffRoute = {
   locale: 'vi' | 'en';
   /** Accessible name of the sidebar's navigation landmark. */
   navigation: string;
-  /** A nav link that must keep its accessible name in the collapsed rail. */
+  /** A contextual nav link that must retain its accessible name when reopened. */
   link: string;
-  /** The course editor forces the icon rail and fits the viewport. */
+  /** The course editor closes contextual navigation and fits the viewport. */
   editor?: boolean;
   /** Record title the page registers for the last crumb (Courses › course title). */
   crumbTitle?: string;
@@ -60,6 +60,23 @@ export async function shot(page: Page, info: TestInfo, name: string) {
 export const shell = (page: Page) => page.locator('.vf-staff');
 export const trigger = (page: Page) => page.locator('[data-sidebar="trigger"]');
 export const userMenuButton = (page: Page) => page.locator('[data-slot="sidebar-footer"] [data-sidebar="menu-button"]');
+const contextPanel = (page: Page) => page.locator('.canvas-context-navigation');
+
+async function openContext(page: Page) {
+  if (!await contextPanel(page).isVisible()) await trigger(page).click();
+  await expect(contextPanel(page)).toBeVisible();
+  return contextPanel(page);
+}
+
+async function expectGlobalDestination(page: Page, route: StaffRoute) {
+  const navigation = page.getByRole('navigation', { name: route.locale === 'vi' ? 'Điều hướng toàn cục' : 'Global navigation', exact: true });
+  await expect(navigation).toBeVisible();
+  await expect(page.locator('.canvas-global-nav:not(.canvas-global-nav-mobile)')).toHaveCSS('width', '84px');
+  const active = navigation.locator('a[aria-current="page"]');
+  await expect(active).toHaveCount(1);
+  await expect(active).toHaveAccessibleName(route.path.startsWith('/admin') ? (route.locale === 'vi' ? 'Quản trị' : 'Admin') : route.path.startsWith('/grading') ? (route.locale === 'vi' ? 'Giảng dạy' : 'Teaching') : 'Studio');
+  return active;
+}
 
 /** WCAG relative luminance of an element's computed colour, resolved through a canvas so oklch/hsl/rgb all compare. */
 export async function luminance(target: Locator, property: 'backgroundColor' | 'color' = 'backgroundColor'): Promise<number> {
@@ -109,6 +126,7 @@ async function openCommandPalette(page: Page, route: StaffRoute) {
 }
 
 async function openUserMenu(page: Page) {
+  await openContext(page);
   await userMenuButton(page).click();
   const menu = page.getByRole('menu');
   await expect(menu).toBeVisible();
@@ -142,11 +160,12 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
 
     test.describe(`${route.harness} ${route.key} (${route.path})`, () => {
       if (route.editor) {
-        test('the course editor forces the icon rail and fits the viewport without page scroll', async ({ page }) => {
+        test('the course editor closes contextual navigation and fits the viewport without page scroll', async ({ page }) => {
           await page.setViewportSize({ width: 1440, height: 900 });
           await page.goto(withQuery(route.path));
           await expect(shell(page)).toHaveAttribute('data-state', 'collapsed');
-          await expect(page.getByRole('navigation', { name: route.navigation }).getByRole('link', { name: route.link, exact: true })).toBeVisible();
+          await expect(contextPanel(page)).toBeHidden();
+          await expectGlobalDestination(page, route);
           await expect(page.locator('#studio-preview h3')).toBeVisible();
           if (route.crumbTitle) {
             const crumbs = page.getByRole('navigation', { name: messages[route.locale].common.breadcrumbs, exact: true });
@@ -164,6 +183,10 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
           // Toggling inside the editor is temporary: no cookie is written.
           await trigger(page).click();
           await expect(shell(page)).toHaveAttribute('data-state', 'expanded');
+          await expect(page.getByRole('navigation', { name: route.navigation }).getByRole('link', { name: route.link, exact: true })).toBeVisible();
+          expect((await page.context().cookies()).some((cookie) => cookie.name === 'sidebar_state')).toBe(false);
+          await trigger(page).click();
+          await expect(contextPanel(page)).toBeHidden();
           expect((await page.context().cookies()).some((cookie) => cookie.name === 'sidebar_state')).toBe(false);
         });
 
@@ -179,19 +202,35 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
           expect(await island.evaluate((element) => getComputedStyle(element).colorScheme)).toBe('light');
           expect(await page.locator('main').evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/^"?Inter"?/);
           // The JSON editor (CodeMirror) follows the staff theme: dark surface, light monochrome text, Plex Mono.
+          // Visual is the Canvas default; select JSON explicitly for its theme contract.
+          await page.getByRole('tab', { name: 'JSON', exact: true }).click();
+          await expect(page.locator('.cm-editor')).toBeVisible();
           expect(await luminance(page.locator('.cm-editor'))).toBeLessThan(0.05);
           expect(await luminance(page.locator('.cm-content'), 'color')).toBeGreaterThan(0.7);
           expect(await luminance(page.locator('.cm-line span').first(), 'color')).toBeGreaterThan(0.7);
           expect(await page.locator('.cm-scroller').evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/^"?IBM Plex Mono"?/);
         });
       } else {
-        test('1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names', async ({ page }) => {
+        test('1440: contextual navigation starts expanded, collapses on toggle, survives a reload and keeps link names', async ({ page }) => {
           await page.setViewportSize({ width: 1440, height: 900 });
           await page.goto(withQuery(route.path));
           await expect(shell(page)).toHaveAttribute('data-state', 'expanded');
-          await expect(page.locator('[data-slot="sidebar-container"]')).toHaveCSS('width', '256px');
+          await expect(contextPanel(page)).toBeVisible();
+          await expect(contextPanel(page)).toHaveCSS('width', '208px');
+          await expectGlobalDestination(page, route);
           // A fresh load moves no focus (no ring around the h1; the skip link stays first in the tab order).
-          expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+          const initialFocus = await page.evaluate(() => ({
+            isBody: document.activeElement === document.body,
+            tag: document.activeElement?.tagName,
+            id: document.activeElement?.id,
+            text: document.activeElement?.textContent?.slice(0, 180),
+          }));
+          await test.info().attach('initial-focus', { body: JSON.stringify(initialFocus), contentType: 'application/json' });
+          expect(initialFocus.isBody, JSON.stringify(initialFocus)).toBe(true);
+          await page.keyboard.press('Tab');
+          const skip = page.getByRole('link', { name: messages[route.locale].common.skipToContent, exact: true });
+          await expect(skip).toBeFocused();
+          await expect(skip).toHaveAttribute('href', route.path.startsWith('/admin') ? '#admin-main' : route.path.startsWith('/grading') ? '#grading-main' : '#studio-main');
           // 56px banner plus a 1px hairline, level with the sidebar header's.
           const banner = await page.locator('[data-slot="sidebar-inset"] > header').boundingBox();
           const sidebarHeader = await page.locator('[data-slot="sidebar-header"]').boundingBox();
@@ -202,15 +241,21 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
 
           await trigger(page).click();
           await expect(shell(page)).toHaveAttribute('data-state', 'collapsed');
+          await expect(contextPanel(page)).toBeHidden();
           await expect(trigger(page)).toHaveAttribute('aria-expanded', 'false');
           expect((await page.context().cookies()).find((cookie) => cookie.name === 'sidebar_state')?.value).toBe('false');
 
           await page.reload();
           await expect(shell(page)).toHaveAttribute('data-state', 'collapsed');
-          await expect(page.locator('[data-slot="sidebar-container"]')).toHaveCSS('width', '48px');
+          await expect(contextPanel(page)).toBeHidden();
+          await expectGlobalDestination(page, route);
+          expect((await page.context().cookies()).find((cookie) => cookie.name === 'sidebar_state')?.value).toBe('false');
+          // Canvas keeps the global destinations visible; the contextual links return on toggle.
+          await trigger(page).click();
           const link = page.getByRole('navigation', { name: route.navigation }).getByRole('link', { name: route.link, exact: true });
           await expect(link).toBeVisible();
           await expect(link).toHaveAccessibleName(route.link);
+          await expect(link).toHaveAttribute('aria-current', 'page');
           await expectNoHorizontalScroll(page);
         });
       }
@@ -230,13 +275,34 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
         await expectNoHorizontalScroll(page);
       });
 
+      if (route.harness === 'admin') test('768: the actual contextual drawer resizes without browser runtime errors', async ({ page }) => {
+        const errors: string[] = [];
+        page.on('pageerror', error => errors.push(error.message));
+        page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+        await page.setViewportSize({ width: 768, height: 900 });
+        await page.goto(withQuery(route.path));
+        await openContext(page);
+        await expect(page.getByRole('navigation', { name: route.navigation }).getByRole('link', { name: route.link, exact: true })).toBeVisible();
+        await page.setViewportSize({ width: 1100, height: 900 });
+        await expect(contextPanel(page)).toBeVisible();
+        await page.setViewportSize({ width: 768, height: 900 });
+        await expect(contextPanel(page)).toBeHidden();
+        await openContext(page);
+        await page.keyboard.press('Escape');
+        await expect(contextPanel(page)).toBeHidden();
+        // Observe completed layout delivery, including work deferred out of ResizeObserver.
+        await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+        expect(errors, 'console/page errors, including ResizeObserver loop errors').toEqual([]);
+        await expectNoHorizontalScroll(page);
+      });
+
       test('dark: follows the OS with theme=system and pins with theme=dark, portalled menus included', async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.emulateMedia({ colorScheme: 'dark' });
         await page.goto(withQuery(route.path));
         await expect(shell(page)).not.toHaveAttribute('data-theme', /.+/);
         expect(await luminance(page.locator('body'))).toBeLessThan(0.05);
-        expect(await luminance(page.locator('[data-slot="sidebar-inner"]'))).toBeLessThan(0.05);
+        expect(await luminance(await openContext(page))).toBeLessThan(0.05);
         expect(await luminance(await openUserMenu(page))).toBeLessThan(0.05);
         await page.keyboard.press('Escape');
 
@@ -319,14 +385,17 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
           await page.keyboard.press('Escape');
         }
 
-        // Collapsed rail: a nav tooltip on hover.
+        // Closing context leaves the labelled global destinations available; it creates no icon-only contextual rail.
         await page.goto(withQuery(route.path, { theme: 'light', sidebar: 'collapsed' }));
         await expect(shell(page)).toHaveAttribute('data-state', 'collapsed');
-        await page.getByRole('navigation', { name: route.navigation }).getByRole('link', { name: route.link, exact: true }).hover();
-        const tooltip = page.getByRole('tooltip');
-        await expect(tooltip).toBeVisible();
-        await settle(tooltip);
-        await shot(page, info, name(1440, 'light', 'rail-tooltip'));
+        await expect(contextPanel(page)).toBeHidden();
+        const destination = await expectGlobalDestination(page, route);
+        await destination.hover();
+        await shot(page, info, name(1440, 'light', 'global-navigation'));
+        await openContext(page);
+        const contextualLink = page.getByRole('navigation', { name: route.navigation }).getByRole('link', { name: route.link, exact: true });
+        await expect(contextualLink).toBeVisible();
+        await expect(contextualLink).toHaveAccessibleName(route.link);
 
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(withQuery(route.path, { theme: 'light' }));

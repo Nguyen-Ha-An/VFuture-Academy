@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
+import { SupportTable } from '../../support/SupportTable';
 import { StateTag, type Tone } from '../../ui/primitives';
 
 export type DirectoryRow = {
@@ -29,33 +30,28 @@ export type DirectoryTableProps = {
 };
 
 /**
- * The directory spec table: lead | title (summary, meta) | extra | status | one row link. Below
- * 760px rows stack into the lead/status, body, meter and trail areas (workspace.css).
+ * Native responsive directory rows have one meaningful destination: the linked title heading.
+ * Type, summary, metadata and optional columns remain readable without duplicate tab stops.
  */
 export function DirectoryTable({ caption, columns, rows, titleAs: Title = 'h3' }: DirectoryTableProps) {
-  return <table className="vf-spec vf-l-dir-table" data-stack="">
-    <caption className="sr-only">{caption}</caption>
-    <thead><tr>
-      <th scope="col">{columns.lead}</th>
-      <th scope="col">{columns.title}</th>
-      {columns.extra ? <th scope="col" data-col="hide-sm">{columns.extra}</th> : null}
-      {columns.status ? <th scope="col">{columns.status}</th> : null}
-      <th scope="col" className="vf-num">{columns.cta}</th>
-    </tr></thead>
-    <tbody>{rows.map(row => <tr key={row.id}>
-      <td data-slot="lead" className="vf-part">{row.lead}</td>
-      <td data-slot="body">
-        <Title className="vf-l-row-title">{row.title}</Title>
+  const headers = [
+    { key: 'lead', label: columns.lead },
+    { key: 'title', label: columns.title },
+    ...(columns.extra ? [{ key: 'extra', label: columns.extra }] : []),
+    ...(columns.status ? [{ key: 'status', label: columns.status }] : []),
+  ];
+  return <SupportTable caption={caption} columns={headers} rows={rows.map(row => ({
+    key: row.id,
+    cells: [
+      row.lead,
+      <div key="body"><Link href={row.href} className="vf-l-row-link" aria-label={row.ctaLabel}><Title className="vf-l-row-title">{row.title}</Title></Link>
         {row.summary ? <p className="vf-l-row-summary">{row.summary}</p> : null}
         {row.meta?.length ? <p className="vf-meta vf-l-row-meta">{row.meta.map((entry, index) => <Fragment key={index}>
           {index > 0 ? <span aria-hidden="true"> · </span> : null}{entry}
         </Fragment>)}</p> : null}
-      </td>
-      {columns.extra ? <td data-col="hide-sm">{row.extra ?? <span className="vf-meta">—</span>}</td> : null}
-      {columns.status ? <td data-slot="status">{row.status ? <StateTag tone={row.status.tone}>{row.status.label}</StateTag> : null}</td> : null}
-      <td data-slot="trail" className="vf-l-next-cell">
-        <Link href={row.href} className="vf-l-next" aria-label={row.ctaLabel}>{row.cta}<span className="vf-l-arrow" aria-hidden="true">&nbsp;→</span></Link>
-      </td>
-    </tr>)}</tbody>
-  </table>;
+      </div>,
+      ...(columns.extra ? [row.extra ?? <span key="extra" className="vf-meta">—</span>] : []),
+      ...(columns.status ? [row.status ? <StateTag key="status" tone={row.status.tone}>{row.status.label}</StateTag> : null] : []),
+    ],
+  }))} />;
 }

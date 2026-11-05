@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ValidationReport } from '@/content-engine/diagnostics';
 import { FIXTURES } from '@/content-engine/fixtures';
@@ -45,6 +45,8 @@ const editTitle = (title: string) => {
   return editor;
 };
 
+// These contracts exercise manual JSON editing; the Canvas default is visual.
+beforeEach(() => { window.localStorage.setItem('academy.canvas.editor-mode', 'json'); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('course workspace autosave', () => {

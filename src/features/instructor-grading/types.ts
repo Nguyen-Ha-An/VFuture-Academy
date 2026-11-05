@@ -69,6 +69,9 @@ export type SubmissionQueueItem = {
   attemptNo: number;
   status: SubmissionStatus;
   submittedAt: string;
+  /** Captured at submission time; null for historical or unscheduled submissions. */
+  dueAtSnapshot?: string | null;
+  late?: boolean | null;
   payload: SubmissionPayload;
   files: SubmissionFile[];
   rubric: InstructorRubric;

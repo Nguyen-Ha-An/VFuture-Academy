@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '../../..');
 const fixture = path.join(__dirname, 'src/data.ts');
 export default defineConfig({
   root: __dirname,
+  publicDir: path.join(root, 'public'),
   cacheDir: path.join(root, 'node_modules/.vite/learner-harness'),
   plugins: [react()],
   resolve: { alias: [
@@ -16,10 +17,10 @@ export default defineConfig({
     { find: 'next/navigation', replacement: path.join(__dirname, 'src/next-navigation.ts') },
     { find: 'next/link', replacement: path.join(__dirname, 'src/next-link.tsx') },
     { find: 'next-intl/server', replacement: path.join(__dirname, 'src/i18n.ts') },
-    ...['@/lib/api', '@/lib/auth', '@/features/catalog/service', '@/features/learner/summary', '@/features/progress/service', '@/features/submissions/service', '@/features/me/service', '@/features/skills/service', '@/features/xp/service'].map((find) => ({ find, replacement: fixture })),
+    ...['@/lib/api', '@/lib/auth', '@/features/catalog/service', '@/features/learner/summary', '@/features/coursework/service', '@/features/progress/service', '@/features/submissions/service', '@/features/me/service', '@/features/skills/service', '@/features/xp/service'].map((find) => ({ find, replacement: fixture })),
     { find: '@/features/learner/ui/ItemPlayer', replacement: path.join(__dirname, 'src/item-player.tsx') },
     { find: '@', replacement: path.join(root, 'src') },
   ] },
   css: { postcss: { plugins: [tailwindcss()] } },
-  server: { host: '127.0.0.1', port: 4176, strictPort: true },
+  server: { host: '127.0.0.1', port: 4177, strictPort: true },
 });

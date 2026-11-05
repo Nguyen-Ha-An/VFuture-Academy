@@ -3,9 +3,10 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { McpBlockView } from '@/features/admin/components/McpBlockView';
+import { CanvasProvider } from '@/features/canvas/ui';
 import en from '@/messages/en.json';
 import viMessages from '@/messages/vi.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
@@ -36,10 +37,14 @@ function data(value: unknown, status = 200) {
 function view(initialUserId = '', locale: 'en' | 'vi' = 'en') {
   return render(
     <NextIntlClientProvider locale={locale} messages={staffUiTestMessages(locale === 'en' ? en : viMessages, locale)}>
-      <McpBlockView initialUserId={initialUserId} actorId={actorId} />
+      <CanvasProvider theme="light"><McpBlockView initialUserId={initialUserId} actorId={actorId} /></CanvasProvider>
     </NextIntlClientProvider>,
   );
 }
+
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+});
 
 afterEach(() => {
   cleanup();

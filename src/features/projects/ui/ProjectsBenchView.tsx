@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import '@/features/workspace-ui/support/support.css';
 
 import type { Locale } from '@/content-engine/schema/common';
 import type { ProjectListEntry } from '@/features/projects/service';
@@ -70,7 +71,7 @@ export function ProjectsBenchView({ projects, locale, filter, skills, courses }:
   // Chips name a filter exactly as its select shows it, including a stale id.
   const optionLabels = (options: ReadonlyArray<{ value: string; label: string }>) => new Map(options.map(option => [option.value, option.label]));
 
-  return <div className="vf-projects-bench vf-l-directory">
+  return <div className="canvas-page vf-projects-bench vf-l-directory">
     <PageHeader
       crumbs={[{ label: focus('explore'), href: routes.learner.explore() }, { label: focus('projects') }]}
       kicker={learner('directory.kickers.projects')}
@@ -104,7 +105,7 @@ export function ProjectsBenchView({ projects, locale, filter, skills, courses }:
       // With no list there is no relationship h2 above the empty state, so its title is the page's h2.
       empty={projects.length === 0 && <BenchState kind={activeCount ? 'filtered' : 'empty'} titleAs="h2" title={activeCount ? t('filteredEmpty') : t('emptyNoProjects')} actions={activeCount ? <FilterLink href={routes.learner.projects()} className="vf-btn vf-btn-lg">{directory('clear')}</FilterLink> : <Link href={routes.learner.newProject()} className="vf-btn vf-btn-lg">{t('openProposal')}</Link>} />}
     >
-      {displayed.map(({ relationship, items }) => items.length ? <section key={relationship} aria-labelledby={`build-${relationship}`}>
+      {displayed.map(({ relationship, items }) => items.length ? <section className="canvas-panel p-4 sm:p-6" key={relationship} aria-labelledby={`build-${relationship}`}>
         <div className="vf-block-head"><div><h2 id={`build-${relationship}`} className="vf-h3">{t(`sections.${relationship}.title`)}</h2><p className="vf-project-section-desc">{t(`sections.${relationship}.description`)}</p></div><span className="vf-meta">{t('sections.count', { count: items.length })}</span></div>
         <ProjectTable projects={items} locale={locale} filter={filter} skillLabels={skillLabels} caption={t(`sections.${relationship}.title`)} />
       </section> : null)}

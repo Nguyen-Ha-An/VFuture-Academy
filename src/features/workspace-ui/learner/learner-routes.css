@@ -1,0 +1,63 @@
+/* Course-local navigation and learning records. Global shell and dashboard own their styling. */
+.vf-canvas .canvas-course-heading { align-items: flex-start; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--vf-line); }
+.vf-canvas .canvas-course-heading h1 { margin-top: 6px; font-weight: 500; }
+.vf-canvas .canvas-course-heading .vf-breadcrumb { margin-bottom: 20px; }
+.canvas-course-links { display: flex; flex-direction: column; gap: 2px; padding-block: 2px; }
+.canvas-course-links a { display: flex; align-items: center; min-height: 44px; padding: 9px 12px; border-left: 3px solid transparent; color: var(--vf-signal); font-size: 14px; line-height: 1.5; text-decoration: none; overflow-wrap: anywhere; }
+.canvas-course-links a:hover { background: var(--vf-raised); }
+.canvas-course-links a[aria-current='page'] { color: var(--vf-ink); border-left-color: var(--vf-ink); background: var(--vf-raised); font-weight: 650; }
+.canvas-course-tab-panel { min-width: 0; }
+.vf-canvas .canvas-course-workspace .canvas-tab-title { font-size: 24px; font-weight: 500; }
+.vf-canvas .canvas-course-overview { grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: 24px; }
+.vf-canvas .canvas-course-description { margin: 0; }
+.vf-canvas .canvas-course-workspace .vf-l-outline > .canvas-section-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.canvas-module { margin-bottom: 24px; border: 1px solid var(--vf-line); border-radius: 3px; }
+.canvas-module > summary { cursor: pointer; padding: 16px; background: var(--vf-raised); font-size: 16px; font-weight: 600; line-height: 1.5; }
+.canvas-module > summary h3 { display: inline; }
+.canvas-module[open] > summary { border-bottom: 1px solid var(--vf-line); }
+.vf-canvas .canvas-module .vf-l-item { padding-inline: 18px; min-height: 68px; }
+.vf-canvas .canvas-module .vf-l-item-code { color: var(--vf-muted); }
+.vf-canvas .canvas-module .vf-tag { font-family: inherit; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.canvas-task-kind { margin: 0 0 4px; font-size: 12px; color: var(--vf-muted); }
+.vf-canvas .canvas-task-symbol { border: 0; width: 28px; height: 28px; margin-top: 3px; color: var(--vf-signal); }
+.vf-canvas .canvas-task-list:not(.canvas-task-list-compact) > li { padding-block: 20px; align-items: start; }
+.vf-canvas .canvas-task-list:not(.canvas-task-list-compact) > li:first-child { padding-top: 4px; }
+.vf-canvas .canvas-task-list:not(.canvas-task-list-compact) a { font-size: 16px; font-weight: 500; }
+.canvas-status[data-status='completed'], .canvas-status[data-status='approved'], .canvas-status[data-status='graded'] { color: var(--vf-signal); background: var(--vf-signal-soft); }
+.canvas-status[data-status='changes_requested'] { color: var(--vf-pending); background: var(--vf-pending-soft); }
+.vf-canvas .canvas-catalog .canvas-course-color { height: 96px; align-items: end; font-size: 20px; border-bottom: 1px solid var(--vf-line); }
+.vf-canvas .canvas-catalog .canvas-course-card { border-radius: 4px; }
+.vf-canvas .canvas-catalog .canvas-course-body { padding: 20px; }
+.vf-canvas .canvas-catalog .canvas-course-body h3 { font-size: 18px; font-weight: 600; }
+.vf-canvas .canvas-catalog .canvas-course-next { min-height: 44px; display: flex; align-items: center; }
+.vf-canvas .canvas-catalog .canvas-catalog-summary { line-height: 1.6; }
+.vf-canvas .canvas-result-score { font-variant-numeric: tabular-nums; }
+.vf-canvas .canvas-month-grid td { height: 112px; }
+.vf-canvas .canvas-month-grid td:empty { background: var(--vf-raised); }
+.vf-canvas .canvas-month-grid li a { border: 0; border-left: 3px solid var(--vf-signal); border-radius: 0; min-height: 44px; }
+.vf-canvas .canvas-month-grid li[data-event-kind='exam_close'] a { border-left-color: var(--vf-pending); }
+.vf-canvas .canvas-month-grid td[data-today] .canvas-day-number { color: var(--vf-signal-ink); }
+.vf-canvas .vf-activity-head { padding-bottom: 24px; border-bottom: 1px solid var(--vf-line); }
+.vf-canvas .vf-activity-title { font-weight: 500; letter-spacing: -.02em; }
+.vf-canvas .vf-pager-link { border-radius: 3px; background: var(--vf-surface); }
+@media (max-width: 1199px) {
+  .vf-canvas .canvas-course-overview { grid-template-columns: minmax(0, 1fr); }
+  .canvas-course-overview-aside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .canvas-course-overview-aside { grid-template-columns: minmax(0, 1fr); }
+  .vf-canvas .canvas-course-heading { margin-bottom: 16px; padding-bottom: 16px; }
+  .vf-canvas .canvas-task-list:not(.canvas-task-list-compact) .canvas-status { margin-left: 40px; }
+}
+@media (max-width: 480px) {
+  .vf-canvas .canvas-module .vf-l-item { grid-template-columns: 24px minmax(0, 1fr); padding: 14px 12px; }
+  .canvas-module .vf-l-item > .vf-tag { grid-column: 2; justify-self: start; }
+}
+
+/* Authored titles and identifiers remain readable without widening the workspace. */
+.canvas-course-heading > div { min-width: 0; }
+.canvas-course-heading h1, .canvas-module summary, .canvas-announcement h3,
+.canvas-catalog .canvas-course-body h3, .canvas-native-results a,
+.canvas-native-results td, .canvas-native-results th { overflow-wrap: anywhere; }
+.canvas-native-results { min-width: 0; max-width: 100%; }
+.canvas-native-results a { text-underline-offset: 3px; }

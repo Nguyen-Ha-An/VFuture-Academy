@@ -5,10 +5,11 @@ import userEvent from '@testing-library/user-event';
 import {NextIntlClientProvider} from 'next-intl';
 import {afterEach,describe,it,expect,vi} from 'vitest';
 import {AccountControls} from '@/features/admin/components/AccountControls';
+import {CanvasProvider} from '@/features/canvas/ui';
 const userId='11111111-1111-4111-8111-111111111111';
 const state={userId,status:'active',operation:null};
 const data=(value:unknown,status=200)=>new Response(JSON.stringify({data:value}),{status});
-const view=(props:Partial<React.ComponentProps<typeof AccountControls>>={})=>render(<NextIntlClientProvider locale="en" messages={{memberAdmin:{cancel:'Cancel',confirm:'Confirm'}}}><AccountControls scope={{kind:'central'}} actorId="another-admin" userId={userId} onChanged={async()=>{}} {...props}/></NextIntlClientProvider>);
+const view=(props:Partial<React.ComponentProps<typeof AccountControls>>={})=>render(<NextIntlClientProvider locale="en" messages={{memberAdmin:{cancel:'Cancel',confirm:'Confirm'}}}><CanvasProvider theme="light"><AccountControls scope={{kind:'central'}} actorId="another-admin" userId={userId} onChanged={async()=>{}} {...props}/></CanvasProvider></NextIntlClientProvider>);
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('account login controls',()=>{
  it('requires the explicit deletion phrase and clearly retains academic history',async()=>{
@@ -28,7 +29,20 @@ describe('account login controls',()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>data(state)));view({actorId:userId});expect(await screen.findByRole('button',{name:'Disable login'})).toBeDisabled();expect(screen.getByRole('button',{name:'Delete login'})).toBeDisabled();
  });
  it('explains Google invitation versus email backup creation and never returns a password',async()=>{
-  vi.stubGlobal('fetch',vi.fn(async()=>data({status:'complete'})));view({userId:undefined});expect(screen.getByText(/does not link Google by matching email/)).toBeInTheDocument();
-  const user=userEvent.setup();await user.type(screen.getByLabelText('Display name'),'New person');await user.type(screen.getByLabelText('Email'),'new@example.com');await user.click(screen.getByRole('button',{name:'Create email backup account'}));expect(await screen.findByText(/No password is shared with administrators/)).toBeInTheDocument();
+  const fetchMock=vi.fn(async(_url:RequestInfo|URL,_init?:RequestInit)=>data({status:'complete'}));
+  vi.stubGlobal('fetch',fetchMock);view({userId:undefined});
+  expect(screen.getByText(/For Google sign-in, use Invite member/)).toBeInTheDocument();
+  expect(screen.getByText(/does not link Google by matching email/)).toBeInTheDocument();
+  const user=userEvent.setup();
+  await user.type(screen.getByRole('textbox',{name:'Display name'}),'New person');
+  await user.type(screen.getByRole('textbox',{name:'Email'}),'new@example.com');
+  await user.click(screen.getByRole('button',{name:'Create email backup account'}));
+  expect(await screen.findByText(/No password is shared with administrators/)).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('POST');
+  const posted=JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+  expect(posted).toEqual({action:'create',operationId:expect.any(String),displayName:'New person',email:'new@example.com'});
+  expect(posted).not.toHaveProperty('password');
+  expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
  });
 });

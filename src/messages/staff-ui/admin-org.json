@@ -100,7 +100,9 @@
           "school_editor": "Biên tập viên trường",
           "teacher": "Giáo viên",
           "member": "Thành viên"
-        }
+        },
+        "revisionConflict": "Vai trò đã được thay đổi ở nơi khác. Các thay đổi chưa lưu của bạn vẫn được hiển thị ở đây. Hãy bỏ các thay đổi này và tải bản mới nhất trước khi chỉnh sửa lại.",
+        "discardAndLoadLatest": "Bỏ thay đổi và tải bản mới nhất"
       },
       "audit": {
         "listTitle": "Hoạt động",
@@ -169,6 +171,8 @@
         "grading_read": "Xem hàng chờ chấm bài",
         "grading_manage": "Quản lý chấm bài",
         "submission_grade": "Chấm bài nộp",
+        "teaching_announcement_manage": "Quản lý thông báo giảng dạy",
+        "teaching_schedule_manage": "Quản lý lịch bài tập",
         "exam_release": "Công bố kết quả bài thi",
         "report_branch_read": "Xem báo cáo của trường",
         "report_global_read": "Xem báo cáo toàn hệ thống",
@@ -294,7 +298,9 @@
           "school_editor": "School editor",
           "teacher": "Teacher",
           "member": "Member"
-        }
+        },
+        "revisionConflict": "This role changed elsewhere. Your unsaved changes are still shown here. Discard them and load the latest role before making a new change.",
+        "discardAndLoadLatest": "Discard changes and load latest"
       },
       "audit": {
         "listTitle": "Activity",
@@ -363,6 +369,8 @@
         "grading_read": "View grading queues",
         "grading_manage": "Manage grading",
         "submission_grade": "Grade submissions",
+        "teaching_announcement_manage": "Manage teaching announcements",
+        "teaching_schedule_manage": "Manage assignment schedules",
         "exam_release": "Release exam results",
         "report_branch_read": "View school reports",
         "report_global_read": "View reports across all schools",

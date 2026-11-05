@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
+import { CanvasTabs } from '@/features/canvas/ui';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 import { ExamsWorkspace } from './ExamsWorkspace';
 import { SubmissionsWorkspace, type QueueTitles } from './SubmissionsWorkspace';
@@ -16,7 +17,6 @@ function tabFromUrl(): QueueTab {
 
 export function GradingOperations({ branches, courses, assignments, exams, gradingBranchIds, titles }: { branches: BranchOption[]; courses: CourseOption[]; assignments: AssignmentMetadata[]; exams: ExamOption[]; gradingBranchIds: string[] | null; /** Localized course/item titles by course version, for rows without assignment metadata. */ titles?: QueueTitles }) {
   const [tab, setTab] = useState<QueueTab>('assignments');
-  const id = useId();
   const vi = useLocale() === 'vi';
   const tabs: QueueTab[] = ['assignments', 'exams'];
 
@@ -41,31 +41,13 @@ export function GradingOperations({ branches, courses, assignments, exams, gradi
       title={vi ? 'Hàng chờ chấm bài' : 'Grading queues'}
       description={vi ? 'Xem bài nộp đang chờ, mở bài làm và hoàn tất điểm cho học viên.' : 'Review queued submissions, open learner work, and complete grading.'}
     />
-    <div role="tablist" aria-label={vi ? 'Loại hàng chờ' : 'Queue type'} className="flex min-w-0 gap-1 border-b border-border">
-      {tabs.map((value, index) => <button
-        key={value}
-        type="button"
-        id={`${id}-${value}`}
-        role="tab"
-        aria-selected={tab === value}
-        aria-controls={`${id}-panel`}
-        tabIndex={tab === value ? 0 : -1}
-        onClick={() => select(value)}
-        onKeyDown={(event) => {
-          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-            event.preventDefault();
-            const next = event.key === 'Home' ? 'assignments' : event.key === 'End' ? 'exams' : tabs[1 - index];
-            select(next);
-            document.getElementById(`${id}-${next}`)?.focus();
-          }
-        }}
-        className={`-mb-px min-h-11 flex-1 whitespace-nowrap border-b-2 px-4 text-sm font-medium leading-normal outline-none transition-colors focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none sm:flex-none ${tab === value ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-      >{value === 'assignments' ? (vi ? 'Bài tập' : 'Assignments') : (vi ? 'Kỳ thi' : 'Exams')}</button>)}
-    </div>
-    <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab}`} tabIndex={0} className="min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      {tab === 'assignments'
-        ? <SubmissionsWorkspace branches={branches} courses={courses} assignments={assignments} titles={titles} canGrade embedded/>
-        : <ExamsWorkspace branches={branches} courses={courses} exams={exams} gradingBranchIds={gradingBranchIds} canRelease={false} releaseBranchIds={[]} embedded/>}
-    </div>
+    <CanvasTabs screenReaderLabel={vi ? 'Loại hàng chờ' : 'Queue type'} onRequestTabChange={(_event, data) => select(tabs[data.index])}>
+      <CanvasTabs.Panel renderTitle={vi ? 'Bài tập' : 'Assignments'} isSelected={tab === 'assignments'} padding="none">
+        <div className="pt-5"><SubmissionsWorkspace branches={branches} courses={courses} assignments={assignments} titles={titles} canGrade embedded /></div>
+      </CanvasTabs.Panel>
+      <CanvasTabs.Panel renderTitle={vi ? 'Kỳ thi' : 'Exams'} isSelected={tab === 'exams'} padding="none">
+        <div className="pt-5"><ExamsWorkspace branches={branches} courses={courses} exams={exams} gradingBranchIds={gradingBranchIds} canRelease={false} releaseBranchIds={[]} embedded /></div>
+      </CanvasTabs.Panel>
+    </CanvasTabs>
   </section>;
 }

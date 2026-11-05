@@ -122,9 +122,11 @@ export function JsonEditor({
       "aria-readonly": String(readOnly),
     }),
     EditorView.theme({
-      "&": { height: "100%", fontSize: "13px" },
+      "&": { height: "100%", fontSize: "13px", backgroundColor: "var(--background)", color: "var(--foreground)" },
+      ".cm-content": { caretColor: "var(--foreground)" },
+      ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "var(--muted)" },
       ".cm-scroller": { overflow: "auto", overscrollBehavior: "contain", fontFamily: "var(--font-mono)" },
-      ".cm-gutters": { backgroundColor: "var(--muted)", borderRight: "1px solid var(--border)" },
+      ".cm-gutters": { backgroundColor: "var(--muted)", color: "var(--muted-foreground)", borderRight: "1px solid var(--border)" },
       "&.cm-focused": { outline: "2px solid var(--ring)", outlineOffset: "-2px" },
     }),
   ], [docId, readOnly, t]);

@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+// Disposable socket-only PostgreSQL17. No deployment credentials or hosted DB connection.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { discoverStudioPostgresBinaries, createStudioFixtureClient } from '../lib/studio-postgres-fixture.mjs';
+import { buildAzureSchema } from './schema.mjs';
+import { createForwardExecutor } from './forward.mjs';
+import { isPermission } from '../../src/lib/authorization.ts';
+
+const target = { AZURE_TARGET_HOST:'fixture.postgres.database.azure.com', AZURE_DATABASE_URL:'postgres://academy_admin:fixture@fixture.postgres.database.azure.com/academy?sslmode=verify-full' };
+const imported = '273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149';
+const teaching = new Set(['teaching.announcement.manage','teaching.schedule.manage']);
+const artifact = buildAzureSchema();
+const baseline = artifact.steps.filter(step => !/^supabase\/migrations\/20261105/.test(step.id));
+const root = mkdtempSync('/tmp/academy-forward-pg.');
+const data = join(root,'data'), socket = join(root,'socket');
+mkdirSync(socket);
+const found = discoverStudioPostgresBinaries();
+const env = { PATH:process.env.PATH, LC_ALL:'C', LANG:'C' };
+const run = (name,args) => execFileSync(join(found.bin,name),args,{env,stdio:'pipe'});
+let started=false;
+const clients=[];
+try {
+  run('initdb',['-D',data,'-A','trust','-U','postgres','--no-locale']);
+  run('pg_ctl',['-D',data,'-l',join(root,'postgres.log'),'-o',`-F -c listen_addresses='' -k ${socket}`,'-w','start']);
+  started=true;
+  const control=createStudioFixtureClient({host:socket,user:'postgres',database:'postgres'});
+  await control.connect(); clients.push(control);
+  await control.query('create role academy_admin login superuser');
+  await control.query('create database academy owner academy_admin');
+  const db=createStudioFixtureClient({host:socket,user:'academy_admin',database:'academy'});
+  await db.connect(); clients.push(db);
+  await db.query(baseline.map(step=>step.sql).join('\n\n'));
+  await db.query("update academy_private.migration_state set state='imported',schema_sha256=$1,imported_at=now() where singleton",[imported]);
+  const rolesBefore=(await db.query('select id,permissions from public.role_definitions order by id')).rows;
+  assert.ok(rolesBefore.every(role=>role.permissions.every(permission=>isPermission(permission)&&!teaching.has(permission))));
+  const user='98000000-0000-4000-8000-000000000001',version='98000000-0000-4000-8000-000000000002';
+  await db.query(`insert into academy_identity.users(id,email) values($1,'forward-fixture@example.test');`,[user]);
+  await db.query("update public.profiles set branch_id='ans' where id=$1",[user]);
+  await db.query("insert into public.courses(id,owner_id,status) values('forward-fixture',$1,'published')",[user]);
+  await db.query("insert into public.course_versions(id,course_id,version,manifest,checksum,summary,published_by) values($1,'forward-fixture',1,'{}','fixture','{}',$2)",[version,user]);
+  await db.query("insert into public.course_version_items(version_id,item_id,kind,source,grading,checksum) values($1,'task','assignment','{}','{}','fixture')",[version]);
+  await db.query("insert into public.enrollments(user_id,course_id,course_version_id) values($1,'forward-fixture',$2)",[user,version]);
+  const submitSql='select public.submit_assignment_guarded($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) result';
+  const submitArgs=[user,'forward-fixture',version,'task',null,null,'until_approved',{text:'Retained legacy work'},'2026-11-04T00:00:00Z',JSON.stringify([])];
+  const submitted=(await db.query(submitSql,submitArgs)).rows[0].result;
+  const rowBefore=(await db.query('select to_jsonb(t) value from public.assignment_submissions t where id=$1',[submitted.id])).rows[0].value;
+  const executor=createForwardExecutor({db,target});
+  const plan=JSON.parse(JSON.stringify(await executor.plan('schema')));
+  assert.equal(plan.action,'apply');
+  // A real SQL failure in migration51 must roll back migration50 and both receipts.
+  const failing=createForwardExecutor({target,db:{query:(sql,params)=>db.query(sql.includes('add column revision integer')?'select 1/0':sql,params)}});
+  await assert.rejects(failing.apply('schema',plan),error=>error.message==='Azure forward migration failed'&&error.code==='22012');
+  assert.equal((await db.query("select to_regclass('public.teaching_announcements') is null absent, to_regclass('academy_private.canvas_forward_receipts') is null no_receipts")).rows[0].absent,true);
+  assert.equal((await db.query("select to_regclass('academy_private.canvas_forward_receipts') is null ok")).rows[0].ok,true);
+  assert.deepEqual((await db.query('select id,permissions from public.role_definitions order by id')).rows,rolesBefore);
+  assert.equal((await executor.apply('schema',plan)).action,'applied');
+  assert.deepEqual((await db.query('select id,permissions from public.role_definitions order by id')).rows,rolesBefore,'Old parser permission arrays remain exactly unchanged');
+  const expanded=(await db.query('select to_jsonb(t) value,due_at_snapshot,late from public.assignment_submissions t where id=$1',[submitted.id])).rows[0];
+  assert.equal(expanded.due_at_snapshot,null); assert.equal(expanded.late,null);
+  const {due_at_snapshot:_due,late:_late,...retained}=expanded.value;
+  assert.deepEqual(retained,rowBefore,'Existing submission history is unchanged');
+  const retry=(await db.query(submitSql,submitArgs)).rows[0].result;
+  assert.equal(retry.created,false); assert.equal(retry.id,submitted.id,'Old RPC retry remains compatible after expansion');
+  assert.equal((await executor.apply('schema',await executor.plan('schema'))).action,'noop');
+  const activate=JSON.parse(JSON.stringify(await executor.plan('activate')));
+  await assert.rejects(executor.apply('activate',activate,{verified:false,reviewedSha:'a'.repeat(40),verifiedSha:'a'.repeat(40)}),/Verified deployment required/);
+  assert.equal((await db.query('select count(*)::int n from academy_private.canvas_forward_receipts')).rows[0].n,2);
+  const evidence={verified:true,reviewedSha:'a'.repeat(40),verifiedSha:'a'.repeat(40)};
+  assert.equal((await executor.apply('activate',activate,evidence)).action,'applied');
+  const active=(await db.query('select id,permissions from public.role_definitions order by id')).rows;
+  assert.ok(active.every(role=>role.permissions.every(isPermission)),'New application permission parser accepts every activated role');
+  for(const id of ['teacher','central_admin'])for(const permission of teaching)assert.equal(active.find(role=>role.id===id).permissions.filter(value=>value===permission).length,1);
+  assert.ok(active.find(role=>role.id==='school_admin').permissions.every(value=>!teaching.has(value)));
+  assert.equal((await executor.apply('activate',await executor.plan('activate'),evidence)).action,'noop');
+  assert.equal((await db.query('select schema_sha256 from academy_private.migration_state where singleton')).rows[0].schema_sha256,imported,'Import provenance is never rewritten');
+  assert.equal((await db.query('select count(*)::int n from academy_private.canvas_forward_receipts')).rows[0].n,3);
+  console.log('Native Azure forward rehearsal passed: exact baseline, real SQL rollback, atomic expansion/receipts, unchanged legacy roles/history, gated activation/new parser, idempotent replay. TCP disabled; no hosted proof.');
+} finally {
+  await Promise.all(clients.map(client=>client.end().catch(()=>undefined)));
+  if(started)run('pg_ctl',['-D',data,'-m','fast','-w','stop']);
+  rmSync(root,{recursive:true,force:true});
+  if(found.temporaryRuntime)rmSync(found.temporaryRuntime,{recursive:true,force:true});
+}

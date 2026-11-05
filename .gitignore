@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/tests/e2e/instui-next-harness/.next/
 /out/
 
 # production
@@ -46,6 +47,7 @@ next-env.d.ts
 .env.local
 
 # e2e
+/.playwright-cli/
 playwright-report/
 playwright-report-studio/
 playwright-report-admin/

@@ -422,6 +422,8 @@ function learnerSubmission(value: unknown): LearnerAssignmentSubmission | null {
     attemptNo: row.attempt_no as number,
     status,
     submittedAt,
+    dueAtSnapshot: stringValue(row?.due_at_snapshot),
+    late: typeof row?.late === 'boolean' ? row.late : null,
     payload,
     files,
     ...(releasedGrade ? { grade: releasedGrade } : {}),
@@ -453,6 +455,8 @@ function queueSubmission(value: unknown): SubmissionQueueSubmission | null {
     attemptNo: parsed.attemptNo,
     status: effectiveSubmissionStatus(parsed.status, row?.grades),
     submittedAt,
+    dueAtSnapshot: stringValue(row?.due_at_snapshot),
+    late: typeof row?.late === 'boolean' ? row.late : null,
     payload,
     files,
     ...(grade ? { grade } : {}),
@@ -599,7 +603,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
     context: AssignmentContext,
   ): Promise<AssignmentSessionResult> {
     let query = database.from('assignment_submissions')
-      .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
+      .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,due_at_snapshot,late,submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
       .eq('user_id', actor.userId)
       .eq('course_version_id', context.courseVersionId)
       .eq('item_id', locator.itemId);
@@ -911,6 +915,8 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
       attempt_no: submission.attemptNo,
       status: submission.status,
       submitted_at: submission.submittedAt,
+      due_at_snapshot: submission.dueAtSnapshot ?? null,
+      late: submission.late ?? null,
       payload: submission.payload,
       submission_files: submission.files.map((file) => ({
         asset_id: file.assetId, name: file.name, size_bytes: file.size, mime: file.mime,
@@ -967,7 +973,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
 
     async function readRows(after: { submittedAt: string; id: string } | null) {
       let query = database.from('assignment_submissions')
-        .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)');
+        .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,due_at_snapshot,late,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)');
       if (effectiveBranch) query = query.eq('branch_scope_known', true).eq('branch_id', effectiveBranch);
       else if (effectiveBranches) query = query.eq('branch_scope_known', true).in('branch_id', effectiveBranches);
       if (versionIds) query = query.in('course_version_id', versionIds);
@@ -1059,7 +1065,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
   async function grade(actor: Actor, submissionId: string, rawInput: GradeSubmissionInput) {
     const input = GradeSubmissionSchema.parse(rawInput);
     const submissionResult = await database.from('assignment_submissions')
-      .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
+      .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,due_at_snapshot,late,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
       .eq('id', submissionId)
       .maybeSingle();
     if (submissionResult.error) databaseFailure('Unable to load assignment submission');
@@ -1227,7 +1233,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
       },
     };
     const refreshedResult = await database.from('assignment_submissions')
-      .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
+      .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,due_at_snapshot,late,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
       .eq('id', submissionId)
       .maybeSingle();
     if (refreshedResult.error) {

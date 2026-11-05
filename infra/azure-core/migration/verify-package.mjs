@@ -21,6 +21,11 @@ try{
   if(receipt.packageType==='probe'){
     // Resolve from the relocated package, not from this verifier's module directory.
     execFileSync(process.execPath,['--input-type=module','-e','await import(process.argv[1]);',pathToFileURL(join(folder,'infra','azure-core','migration','probe.mjs')).href],{cwd:folder,env:{PATH:process.env.PATH,LC_ALL:'C'},stdio:'pipe'});
+  }else if(receipt.packageType==='forward'){
+    const cliUrl=pathToFileURL(join(folder,'scripts','azure-core','forward-cli.mjs')).href;
+    const schemaUrl=pathToFileURL(join(folder,'scripts','azure-core','schema.mjs')).href;
+    const actual=execFileSync(process.execPath,['--input-type=module','-e',`await import(process.argv[1]);const{buildAzureSchema}=await import(process.argv[2]);process.stdout.write(buildAzureSchema().receipt.schemaSha256);`,cliUrl,schemaUrl],{cwd:folder,env:{PATH:process.env.PATH,LC_ALL:'C'},stdio:['ignore','pipe','pipe'],encoding:'utf8'}).trim();
+    if(actual!==receipt.schemaSha256)throw new Error('Relocated package schema mismatch');
   }else{
   execFileSync(process.execPath,['scripts/azure-core/migrate.mjs','schema'],{cwd:folder,env:{PATH:process.env.PATH,LC_ALL:'C'},stdio:'pipe'});
   const actual=JSON.parse(readFileSync(join(folder,'build/azure-core/schema-receipt.json'),'utf8'));

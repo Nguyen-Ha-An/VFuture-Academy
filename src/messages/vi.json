@@ -32,6 +32,8 @@
     "overviewDescription": "Tổ chức kỳ đánh giá, chấm bài và xem báo cáo học tập trong phạm vi được cấp quyền.",
     "openWorkspace": "Mở không gian",
     "assessments": "Đánh giá",
+    "announcements": "Thông báo",
+    "schedule": "Lịch học",
     "queue": "Hàng đợi chấm điểm",
     "reports": "Báo cáo học tập",
     "home": "Tổng quan"
@@ -87,6 +89,7 @@
   },
   "profile": {
     "settings": {
+      "unsavedConfirm": "Rời khỏi trang? Cài đặt hồ sơ chưa lưu sẽ bị mất.",
       "title": "Cài đặt hồ sơ công khai",
       "description": "Chọn địa chỉ công khai và quyết định người khác có thể xem hồ sơ hay không.",
       "handleLabel": "Tên định danh công khai",
@@ -337,10 +340,10 @@
       },
       "closesAt": "Đóng {date} (ICT)",
       "kickers": {
-        "resources": "A3 / Tài nguyên",
-        "opportunities": "A3 / Cơ hội",
-        "projects": "A3 / Dự án",
-        "projectsNew": "A3 / Dự án · Đề xuất mới"
+        "resources": "Tài nguyên",
+        "opportunities": "Cơ hội",
+        "projects": "Dự án",
+        "projectsNew": "Dự án · Đề xuất mới"
       },
       "crumbs": {
         "newProposal": "Đề xuất mới"
@@ -614,7 +617,7 @@
         "eyebrow": "Chi tiết câu hỏi",
         "titleFallback": "Câu hỏi chưa đặt tên",
         "status": "Trạng thái: {status}",
-        "editor": "JSON câu hỏi",
+        "editor": "Soạn câu hỏi",
         "editorLabel": "Trình soạn thảo JSON câu hỏi",
         "version": "Phiên bản mới nhất {version}",
         "ready": "Sẵn sàng",
@@ -881,6 +884,7 @@
       }
     },
     "grading": {
+      "lateSnapshot": "Nộp muộn",
       "eyebrow": "Không gian giảng viên",
       "title": "Hàng đợi bài nộp",
       "description": "Xem bài làm, chấm theo rubric của phiên bản khoá học và đưa ra quyết định.",
@@ -1074,7 +1078,7 @@
     },
     "outline": {
       "label": "Dàn ý khóa học",
-      "manifest": "Manifest khóa học",
+      "manifest": "Thông tin khóa học",
       "empty": "Chưa có module",
       "moduleUntitled": "Module chưa đặt tên",
       "itemUntitled": "Mục chưa đặt tên",
@@ -1221,6 +1225,10 @@
       "submit": "Nhập"
     },
     "versions": {
+      "restoreBlocked": "Không thể khôi phục khi bản nháp đang bị khóa. Bạn vẫn có thể tải các phiên bản đã công bố.",
+      "restoreCancelled": "Đã hủy khôi phục. Phiên bản đã chọn chưa được áp dụng.",
+      "restoreNotApplied": "Phiên bản đã chọn chưa được áp dụng. Bản nháp không thay đổi. Hãy kiểm tra trạng thái chỉnh sửa rồi thử lại.",
+      "restoreError": "Không thể khôi phục phiên bản đã chọn. Bản nháp không thay đổi.",
       "trigger": "Phiên bản",
       "title": "Các phiên bản đã xuất bản",
       "description": "Khôi phục snapshot bất biến thành bản nháp hoặc tải mã nguồn.",
@@ -1441,6 +1449,7 @@
     "filteredEmpty": "Không có dự án nào phù hợp với bộ lọc này.",
     "emptyNoProjects": "Chưa có dự án nào được chia sẻ.",
     "proposal": {
+      "unsavedConfirm": "Rời khỏi trang? Nội dung đề xuất dự án chưa gửi sẽ bị mất.",
       "title": "Đề xuất dự án",
       "description": "Chia sẻ ý tưởng với đội ngũ Studio. Đề xuất được giữ riêng tư cho đến khi được duyệt hoặc có thành viên nhóm được chỉ định.",
       "submit": "Gửi đề xuất",

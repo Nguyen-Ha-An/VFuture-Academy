@@ -365,7 +365,7 @@ export function createSupabaseGradingDetailRepository(
   return {
     async getAssignmentSubmission(id) {
       const result = await client.from('assignment_submissions')
-        .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
+        .select('id,user_id,course_version_id,item_id,block_id,attempt_no,payload,status,submitted_at,due_at_snapshot,late,branch_id,branch_scope_known,profiles!inner(display_name,handle),submission_files(asset_id,name,size_bytes,mime),grades(rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released)')
         .eq('id', id)
         .maybeSingle();
       const value = queryData(result, 'load assignment submission');

@@ -116,7 +116,7 @@ describe('Assessment & grading layout gate', () => {
   it('renders the bilingual forbidden fallback', () => {
     render(<Provider><GradingForbiddenPage /></Provider>);
 
-    expect(screen.getByRole('heading', { name: 'Studio access required' })).toBeInTheDocument();
-    expect(screen.getByText('Bạn không có quyền truy cập Studio.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Teaching access required' })).toBeInTheDocument();
+    expect(screen.getByText('You do not have permission to access Teaching in this scope.')).toBeInTheDocument();
   });
 });

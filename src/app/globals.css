@@ -93,6 +93,17 @@ body {
 
 code, pre { font-family: "IBM Plex Mono", monospace; }
 
+/* github-light tokens are authored for white. The shared renderer's transparent pre
+ * otherwise puts them on Canvas's muted gray and drops red keywords below 4.5:1.
+ * Keep the existing dark surface and syntax palette unchanged. This must share the
+ * utilities layer: layered !important beats unlayered !important, even at lower specificity. */
+@layer utilities {
+  @media (prefers-color-scheme: light) {
+    .vf-canvas:not([data-theme="dark"]) [data-code-block] .shiki { background-color: #fff !important; }
+  }
+  .vf-canvas[data-theme="light"] [data-code-block] .shiki { background-color: #fff !important; }
+}
+
 /*
  * Code blocks (content-engine Code.tsx): Shiki writes github-light as the inline colour and
  * github-dark as `--shiki-dark`. Only the dark learner and staff themes switch; public prose and

@@ -40,6 +40,8 @@ const ownership = (tabId = 'tab-a', priorTabId: string | null = null): TabOwners
 
 let storage: RecoveryStorage;
 beforeEach(() => { storage = memoryRecoveryStorage(); });
+// These contracts exercise manual JSON editing; the Canvas default is visual.
+beforeEach(() => { window.localStorage.setItem('academy.canvas.editor-mode', 'json'); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 function open(overrides: Partial<Parameters<typeof Workspace>[0]> = {}) {

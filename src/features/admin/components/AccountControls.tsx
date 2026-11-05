@@ -1,8 +1,7 @@
 'use client';
 import { useEffect,useRef,useState,type FormEvent } from 'react';
 import { useLocale } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { CanvasButton as Button, CanvasTextInput } from '@/features/canvas/ui';
 import { DataCard } from '@/features/staff-ui/components';
 import type { AdminScope } from '@/lib/admin-scope';
 import { scopedUrl,responseData,RequestStatus,ConfirmationDialog } from './member-admin-ui';
@@ -27,17 +26,17 @@ export function AccountControls({scope,actorId,userId,onChanged}:Props){
    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,operationId:id})});
    if(response.status>=400&&response.status<500)operation.current=null;
    await responseData(response);
-   operation.current=null;setConfirm(false);setConfirmation('');setStatus(body.action==='create'?t.created:t.saved);
+   operation.current=null;setConfirm(false);setConfirmation('');setStatus(body.action==='create'||(!userId&&body.action==='retry')?t.created:t.saved);
    await reload();await onChanged();
   }catch{setStatus(t.failure);await reload();}finally{lock.current=false;setBusy(false);}
  }
  async function create(event:FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);await mutate(operation.current?{action:'retry'}:{action:'create',email:data.get('email'),displayName:data.get('displayName')});}
  const pending=Boolean(state?.operation||operation.current);
- if(!userId)return <DataCard title={t.create} description={t.intro}><form onSubmit={create} className="grid gap-4 p-6 sm:max-w-xl"><label className="grid gap-2">{t.name}<Input name="displayName" required maxLength={160} disabled={busy||pending}/></label><label className="grid gap-2">{t.email}<Input name="email" type="email" required maxLength={254} disabled={busy||pending}/></label><Button type="submit" disabled={busy}>{busy?t.loading:pending?t.retry:t.create}</Button><RequestStatus>{status}</RequestStatus></form></DataCard>;
+ if(!userId)return <DataCard title={t.create} description={t.intro}><form onSubmit={create} className="grid gap-4 p-6 sm:max-w-xl"><CanvasTextInput label={t.name} name="displayName" required maxLength={160} disabled={busy||pending}/><CanvasTextInput label={t.email} name="email" type="email" required maxLength={254} disabled={busy||pending}/><Button type="submit" disabled={busy}>{busy?t.loading:pending?t.retry:t.create}</Button><RequestStatus>{status}</RequestStatus></form></DataCard>;
  return <DataCard title={t.title}><div className="grid gap-4 p-6">
   <p>{state?.status==='deleted'?t.deleted:state?.status==='disabled'?t.disabled:state?t.active:t.loading}</p>
   {state?.operation?<><p>{t.pending}</p><Button variant="outline" disabled={busy} onClick={()=>void mutate({action:'retry'})}>{t.retry}</Button></>:state&&state.status!=='deleted'?<div className="flex flex-wrap gap-3"><Button variant="outline" disabled={busy||actorId===userId} onClick={()=>void mutate({action:state.status==='active'?'disable':'enable'})}>{state.status==='active'?t.disable:t.enable}</Button><Button variant="outline" disabled={busy||actorId===userId} onClick={()=>setConfirm(true)}>{t.remove}</Button></div>:null}
   <Button variant="ghost" disabled={busy} onClick={()=>void reload()}>{t.reload}</Button><RequestStatus>{status}</RequestStatus>
-  <ConfirmationDialog open={confirm} title={t.confirm} description={t.description} confirmLabel={busy?t.loading:t.remove} onCancel={()=>{if(!busy)setConfirm(false);}} onConfirm={()=>{if(confirmation==='DELETE LOGIN'&&!busy)void mutate({action:'delete',confirmation});}}><label className="grid gap-2">{t.confirmLabel}<Input value={confirmation} onChange={e=>setConfirmation(e.target.value)} autoComplete="off" disabled={busy}/></label></ConfirmationDialog>
+  <ConfirmationDialog open={confirm} title={t.confirm} description={t.description} confirmLabel={busy?t.loading:t.remove} onCancel={()=>{if(!busy)setConfirm(false);}} onConfirm={()=>{if(confirmation==='DELETE LOGIN'&&!busy)void mutate({action:'delete',confirmation});}}><CanvasTextInput label={t.confirmLabel} value={confirmation} onChange={setConfirmation} autoComplete="off" disabled={busy}/></ConfirmationDialog>
  </div></DataCard>;
 }

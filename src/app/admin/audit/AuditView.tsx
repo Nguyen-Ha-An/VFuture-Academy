@@ -1,8 +1,8 @@
+import "@/features/admin/ui/admin.css";
 import Link from "next/link";
 import { HistoryIcon, XIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CanvasButton as Button, CanvasTextInput } from "@/features/canvas/ui";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataCard, DataPagination, EmptyState } from "@/features/staff-ui/components";
@@ -62,13 +62,14 @@ export type AuditViewProps = {
  */
 export function AuditView({ title, description, filters, familyOptions, actorFilter, clearHref, rows, page, hasMore, previousHref, nextHref, labels }: AuditViewProps) {
   return (
-    <section className="space-y-6">
+    <section className="canvas-page canvas-admin space-y-6">
       <StaffPageHeader title={title} description={description} />
       <DataCard
+        className="canvas-panel"
         title={labels.listTitle}
         toolbar={
           <div className="flex flex-col gap-3">
-            <form method="get" role="search" aria-label={labels.apply} className="flex flex-wrap items-end gap-2">
+            <form method="get" role="search" aria-label={labels.apply} className="canvas-toolbar flex flex-wrap items-end gap-2">
               {filters.actor ? <input type="hidden" name="actor" value={filters.actor} /> : null}
               <NativeSelect name="action" aria-label={labels.family} defaultValue={filters.action} wrapperClassName="min-w-44">
                 <NativeSelectOption value="">{labels.allFamilies}</NativeSelectOption>
@@ -76,7 +77,8 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
                   <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>
                 ))}
               </NativeSelect>
-              <Input
+              <CanvasTextInput
+                label={<span className="sr-only">{labels.target}</span>}
                 type="search"
                 name="target"
                 aria-label={labels.target}
@@ -87,12 +89,7 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
               />
               <Button type="submit" variant="outline">{labels.apply}</Button>
               {clearHref ? (
-                <Button asChild variant="ghost" size="sm" className="h-9">
-                  <Link href={clearHref}>
-                    <XIcon aria-hidden="true" />
-                    {labels.clearFilters}
-                  </Link>
-                </Button>
+                <Button href={clearHref} variant="ghost" size="sm" renderIcon={<XIcon aria-hidden="true" />}>{labels.clearFilters}</Button>
               ) : null}
             </form>
             {actorFilter ? (
@@ -119,13 +116,13 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
             <EmptyState icon={<HistoryIcon />} title={labels.emptyTitle} description={labels.emptyDescription} />
           </div>
         ) : (
-          <Table>
+          <Table className="canvas-table" aria-label={labels.listTitle}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead scope="col" className="hidden md:table-cell">{labels.time}</TableHead>
                 <TableHead scope="col">{labels.action}</TableHead>
                 <TableHead scope="col">{labels.actor}</TableHead>
-                <TableHead scope="col" className="hidden md:table-cell">{labels.targetColumn}</TableHead>
+                <TableHead scope="col" className="hidden xl:table-cell">{labels.targetColumn}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,11 +140,8 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
                     {row.action.rawCode ? (
                       <span className="mt-1 block text-xs leading-normal text-muted-foreground tabular-nums">{row.action.rawCode}</span>
                     ) : null}
-                    {/* On phones the time and target columns fold in here as meta. */}
-                    <span className="mt-1 block text-xs leading-normal text-muted-foreground md:hidden">
-                      <time dateTime={row.at} className="tabular-nums">{row.time}</time>
-                      {" · "}{row.target.name ?? row.target.label}
-                    </span>
+                    <time dateTime={row.at} className="mt-1 block text-xs leading-normal text-muted-foreground tabular-nums md:hidden">{row.time}</time>
+                    <span className="mt-1 block text-xs leading-normal text-muted-foreground xl:hidden">{row.target.name ?? row.target.label}</span>
                   </TableCell>
                   <TableCell className="whitespace-normal py-3">
                     {row.actor ? (
@@ -164,7 +158,7 @@ export function AuditView({ title, description, filters, familyOptions, actorFil
                       <span className="leading-normal text-muted-foreground">{labels.system}</span>
                     )}
                   </TableCell>
-                  <TableCell className="hidden py-3 md:table-cell">{target}</TableCell>
+                  <TableCell className="hidden py-3 xl:table-cell">{target}</TableCell>
                 </TableRow>;
               })}
             </TableBody>

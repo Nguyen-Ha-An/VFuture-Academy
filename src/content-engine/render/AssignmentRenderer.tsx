@@ -75,6 +75,16 @@ function StatusTag({ status, locale }: { status: AssignmentStatus; locale: 'vi' 
   </span>;
 }
 
+/** Submission-time facts only. A later schedule edit cannot relabel historical work. */
+function SubmissionTiming({ submission, locale }: { submission: { dueAtSnapshot?: string | null; late?: boolean | null }; locale: 'vi' | 'en' }) {
+  const dueAt = submission.dueAtSnapshot && Number.isFinite(Date.parse(submission.dueAtSnapshot)) ? submission.dueAtSnapshot : null;
+  if (!dueAt && submission.late !== true) return null;
+  return <div className="mt-2 space-y-1 text-xs leading-relaxed text-muted-foreground">
+    {submission.late === true && <p><strong>{t(locale, 'Nộp muộn', 'Submitted late')}</strong> · {t(locale, 'Ghi nhận khi nộp bài. Không tự động trừ điểm.', 'Recorded at submission. No automatic score penalty.')}</p>}
+    {dueAt && <p>{t(locale, 'Hạn nộp khi nộp bài', 'Due date at submission')}: <time dateTime={dueAt}>{new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(dueAt))}</time> ICT</p>}
+  </div>;
+}
+
 function AssignmentRubric({ rubric, locale }: { rubric: Rubric; locale: 'vi' | 'en' }) {
   return <div className="mt-4 divide-y divide-border border-y border-border">
     {rubric.criteria.map((criterion) => <div key={criterion.id} className="flex min-w-0 flex-wrap items-start justify-between gap-3 py-3 sm:flex-nowrap">
@@ -138,6 +148,7 @@ function SubmissionHistory({
           </div>
           <StatusTag status={submission.status} locale={L} />
         </div>
+        <SubmissionTiming submission={submission} locale={L} />
         {submission.payload.text ? <p className="mt-4 whitespace-pre-wrap break-words border-t border-border pt-3 text-sm leading-relaxed">{submission.payload.text}</p> : null}
         {submission.payload.links?.length ? <ul className="mt-3 space-y-1">{submission.payload.links.map((link, index) => <li key={`${link.url}-${index}`} className="min-w-0 break-all text-sm"><a className="text-primary underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring" href={link.url} target="_blank" rel="noopener noreferrer">{link.label ?? link.url}</a></li>)}</ul> : null}
         {submission.payload.code?.code ? <pre className="mt-3 max-w-full overflow-x-auto border-l-2 border-border bg-muted p-3 text-xs"><code>{submission.payload.code.code}</code></pre> : null}
@@ -248,7 +259,7 @@ export function AssignmentRenderer({
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t(L, 'Bài tập', 'Assignment')}</p>
           <TitleTag className="mt-1 break-words text-xl font-semibold leading-snug">{asText(a.title)}</TitleTag>
         </div> : null}
-        <StatusTag status={status} locale={L} />
+        <div><StatusTag status={status} locale={L} />{latest && <SubmissionTiming submission={latest} locale={L} />}</div>
       </header>
       <div className="space-y-7 px-4 py-5 sm:px-6 sm:py-6">
         <section aria-labelledby={instructionsId}>

@@ -8,6 +8,8 @@ import type { OwnerCompletedCourse, ProfileSettings as ProfileSettingsValue, Pub
 import { ProfileSettings } from '@/features/profile/ui/ProfileSettings';
 import type { PassportSkill } from '@/features/skills/service';
 import { ictDate, intlLocale } from '@/features/workspace-ui/format';
+import '../support/support.css';
+import { SupportTable } from '../support/SupportTable';
 import { PageHeader } from '@/features/workspace-ui/ui/PageHeader';
 import { EmptyBench, LevelScale, Meta, StateTag } from '@/features/workspace-ui/ui/primitives';
 import { SectionBoundary } from '@/features/workspace-ui/ui/SectionBoundary';
@@ -52,9 +54,8 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
   const name = profile.displayName || legacy('title');
   const handle = settings.handle ?? profile.handle;
 
-  return <div className="vf-profile">
-    {props.trace ? <SectionBoundary label={t('traceLabel')}><div className="vf-profile-trace"><Suspense fallback={<div className="vf-trace vf-sweep" aria-hidden="true" />}>{props.trace}</Suspense></div></SectionBoundary> : null}
-    <section aria-labelledby="profile-title">
+  return <div className="canvas-page canvas-support-profile vf-profile gap-6">
+    <section aria-labelledby="profile-title" className="canvas-panel p-4 sm:p-6">
       <PageHeader className="vf-anchor-in" kicker={t('kicker')} title={name} titleId="profile-title" meta={[
         <ProfileHandle key="handle" handle={handle} />,
         props.branch ? t('branch', { branch: props.branch }) : t('independent'),
@@ -68,24 +69,20 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
     <SectionBoundary label={t('skills.label')}><SkillsBlock skills={props.skills} locale={locale} /></SectionBoundary>
 
     <SectionBoundary label={t('completed.label')}>
-      <section aria-labelledby="completed-courses-heading" className="vf-block">
+      <section aria-labelledby="completed-courses-heading" className="canvas-panel vf-block p-4 sm:p-6">
         <div className="vf-block-head"><h2 id="completed-courses-heading" className="vf-h3">{publicT('completedCourses')}</h2>{props.completedCourses.length ? <Meta as="span">{props.completedCourses.length}</Meta> : null}</div>
-        {props.completedCourses.length ? <div className="vf-scroll-x"><table className="vf-spec" data-stack="">
-          <thead><tr><th scope="col">{t('completed.course')}</th><th scope="col">{t('completed.state')}</th><th scope="col" className="vf-num">{t('completed.date')}</th></tr></thead>
-          <tbody>{props.completedCourses.map((course) => {
-            const title = titleOf(course.title, locale);
-            return <tr key={course.id}>
-              <td data-slot="lead">{course.currentDestinationAvailable ? <Link href={routes.learner.course(course.id)}>{title}</Link> : <span className="font-medium">{title}</span>}</td>
-              <td data-slot="status"><StateTag tone="signal">{t('completed.inSpec')}</StateTag></td>
-              <td data-slot="trail" className="vf-num vf-meta"><time dateTime={course.completedAt}>{ictDate(new Date(course.completedAt))}</time></td>
-            </tr>;
-          })}</tbody>
-        </table></div> : <EmptyBench title={publicT('empty')} />}
+        {props.completedCourses.length ? <SupportTable caption={publicT('completedCourses')} columns={[
+          { key: 'course', label: t('completed.course') }, { key: 'state', label: t('completed.state') }, { key: 'date', label: t('completed.date') },
+        ]} rows={props.completedCourses.map(course => ({ key: course.id, cells: [
+          course.currentDestinationAvailable ? <Link key="course" href={routes.learner.course(course.id)}>{titleOf(course.title, locale)}</Link> : <span key="course">{titleOf(course.title, locale)}</span>,
+          <StateTag key="state" tone="signal">{t('completed.inSpec')}</StateTag>,
+          <time key="date" dateTime={course.completedAt}>{ictDate(new Date(course.completedAt))}</time>,
+        ] }))} /> : <EmptyBench title={publicT('empty')} />}
       </section>
     </SectionBoundary>
 
     <SectionBoundary label={t('projects.label')}>
-      <section aria-labelledby="projects-heading" className="vf-block">
+      <section aria-labelledby="projects-heading" className="canvas-panel vf-block p-4 sm:p-6">
         <div className="vf-block-head"><h2 id="projects-heading" className="vf-h3">{publicT('projects')}</h2></div>
         {props.projects.length ? <ul className="vf-hairlist">{props.projects.map((project) => <li key={project.id}>
           <Link className="vf-hair-link" href={routes.learner.project(project.id)}><span>{titleOf(project.title, locale)}</span><span aria-hidden="true" className="vf-meta">→</span></Link>
@@ -95,7 +92,7 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
     </SectionBoundary>
 
     <SectionBoundary label={t('certificates.label')}>
-      <section aria-labelledby="certificates-heading" className="vf-block">
+      <section aria-labelledby="certificates-heading" className="canvas-panel vf-block p-4 sm:p-6">
         <div className="vf-block-head"><h2 id="certificates-heading" className="vf-h3">{legacy('certificates')}</h2>{props.certificates.length ? <Meta as="span">{t('certificates.count', { count: props.certificates.length })}</Meta> : null}</div>
         {props.certificates.length
           ? <ul className="vf-cert-list">{props.certificates.map((certificate) => <li key={certificate.id}><CalibrationCertificate certificate={certificate} /></li>)}</ul>
@@ -104,13 +101,14 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
     </SectionBoundary>
 
     <SectionBoundary label={t('xp.label')}>
-      <section aria-labelledby="xp-heading" className="vf-block">
+      <section aria-labelledby="xp-heading" className="canvas-panel vf-block p-4 sm:p-6">
         <div className="vf-block-head"><h2 id="xp-heading" className="vf-h3">{legacy('xp')}</h2></div>
         {/* No weekly XP series exists yet, so the 12-week sparkline is omitted and only the total renders. */}
         <p className="vf-xp-total m-0"><span className="vf-readout-big">{new Intl.NumberFormat(intlLocale(locale)).format(props.xpTotal)}</span> <span className="vf-meta">{t('xp.unit')}</span></p>
       </section>
     </SectionBoundary>
 
+    {props.trace ? <SectionBoundary label={t('traceLabel')}><section className="canvas-panel vf-block p-4 sm:p-6" aria-label={t('traceLabel')}><h2 className="vf-h3">{t('traceLabel')}</h2><Suspense fallback={<div className="vf-trace vf-sweep" aria-hidden="true" />}>{props.trace}</Suspense></section></SectionBoundary> : null}
     <div className="vf-block"><ProfileSettings initial={settings} /></div>
   </div>;
 }
@@ -118,7 +116,7 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
 function SkillsBlock({ skills, locale }: { skills: PassportSkill[]; locale: Locale }) {
   const t = useTranslations('skills');
   const bench = useTranslations('bench.profile');
-  return <section aria-labelledby="skills-passport-heading" className="vf-block">
+  return <section aria-labelledby="skills-passport-heading" className="canvas-panel vf-block p-4 sm:p-6">
     <div className="vf-block-head"><h2 id="skills-passport-heading" className="vf-h3">{t('title')}</h2></div>
     <p className="mt-0 mb-4 text-muted-foreground">{t('description')}</p>
     {skills.length ? <ul className="vf-hairlist">{skills.map((skill) => {
@@ -140,6 +138,6 @@ function SkillsBlock({ skills, locale }: { skills: PassportSkill[]; locale: Loca
           })}</ul>
         </details> : null}
       </li>;
-    })}</ul> : <EmptyBench title={t('empty')} />}
+    })}</ul> : <EmptyBench title={t('empty')} action={<Link className="vf-btn" href={routes.learner.courses()}>{bench('certificates.browse')}</Link>} />}
   </section>;
 }

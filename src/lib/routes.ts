@@ -64,6 +64,9 @@ export const routes = {
   },
   learner: {
     dashboard: path('/app'),
+    tasks: path('/app/tasks'),
+    calendar: path('/app/calendar'),
+    results: path('/app/results'),
     courses: path('/app/courses'),
     course: (courseId: string, query?: RouteQuery) => withQuery(`/app/courses/${segment(courseId)}`, query),
     courseItem: (courseId: string, itemId: string, query?: RouteQuery) =>

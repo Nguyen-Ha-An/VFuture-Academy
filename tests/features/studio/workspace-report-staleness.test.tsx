@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COURSE_REF, itemRef, makeDiagnostic, type ValidationReport } from '@/content-engine/diagnostics';
 import { FIXTURES } from '@/content-engine/fixtures';
@@ -44,6 +44,8 @@ const semanticFailure = (message: string): ValidationReport => ({
   errors: [{ ...makeDiagnostic('E_ANSWER_REF_UNKNOWN', { ref: itemRef('intro'), path: '/blocks/0' }), message: { en: message, vi: message } }],
 });
 
+// These contracts exercise manual JSON editing; the Canvas default is visual.
+beforeEach(() => { window.localStorage.setItem('academy.canvas.editor-mode', 'json'); });
 afterEach(() => { cleanup(); mocks.preview.report = null; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const revision = () => screen.getByTestId('preview-revision').textContent!;

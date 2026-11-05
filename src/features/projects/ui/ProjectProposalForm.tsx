@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 import { HttpsUrlSchema, ID_PATTERN, type Locale } from '@/content-engine/schema/common';
+import { CanvasButton, CanvasTextInput, CanvasTextArea } from '@/features/canvas/ui';
+import '@/features/workspace-ui/support/support.css';
+import { useSupportUnsaved } from '@/features/workspace-ui/support/useSupportUnsaved';
 import { MultiCombobox } from '@/components/ui/multi-combobox';
 import { RESERVED_PROJECT_IDS, slugifyProjectId } from '@/features/projects/ids';
 import { routes } from '@/lib/routes';
@@ -280,36 +283,32 @@ export function ProjectProposalForm({ locale, courseOptions, skillOptions }: {
     }
   }
 
+  const dirty = Boolean(title || summary || otherTitle || otherSummary || skills.length || courses.length || links.length || cover.status !== 'idle' || customSlug);
+  useSupportUnsaved(dirty && !pending, t('unsavedConfirm'));
   const coverBusy = cover.status === 'uploading';
   const writtenIn = t('writtenIn', { language: locale });
 
   return (
-    <form className="vf-proposal" aria-label={t('title')} onSubmit={submit}>
+    <form className="canvas-page canvas-support-proposal vf-proposal" aria-label={t('title')} onSubmit={submit}>
       <fieldset className="vf-proposal-section">
         <legend className="vf-proposal-legend">{t('sections.idea')}</legend>
         <p id={ids.writtenIn} className="vf-meta">{writtenIn}</p>
         <div className="vf-proposal-field">
-          <label htmlFor={ids.title}>{t('titleField')}</label>
-          <input id={ids.title} name="title" required maxLength={TITLE_MAX} value={title} onChange={(event) => { setTitle(event.target.value); setLinkError(null); setFieldErrors((current) => ({ ...current, title: false })); }}
-            aria-invalid={fieldErrors.title || undefined} aria-describedby={[fieldErrors.title ? ids.titleError : null, ids.writtenIn].filter(Boolean).join(' ')} />
-          {fieldErrors.title ? <p id={ids.titleError} className="vf-proposal-error">{t('titleRequired')}</p> : null}
+          <CanvasTextInput label={t('titleField')} id={ids.title} name="title" required maxLength={TITLE_MAX} value={title} onChange={(value) => { setTitle(value); setLinkError(null); setFieldErrors((current) => ({ ...current, title: false })); }}
+            messages={fieldErrors.title ? [{ type: 'error', text: <span id={ids.titleError}>{t('titleRequired')}</span> }] : []} aria-invalid={fieldErrors.title || undefined} aria-describedby={ids.writtenIn} />
         </div>
         <div className="vf-proposal-field">
-          <label htmlFor={ids.summary}>{t('summaryField')}</label>
-          <textarea id={ids.summary} name="summary" required rows={4} maxLength={SUMMARY_MAX} value={summary} onChange={(event) => { setSummary(event.target.value); setFieldErrors((current) => ({ ...current, summary: false })); }}
-            aria-invalid={fieldErrors.summary || undefined} aria-describedby={[fieldErrors.summary ? ids.summaryError : null, ids.writtenIn].filter(Boolean).join(' ')} />
-          {fieldErrors.summary ? <p id={ids.summaryError} className="vf-proposal-error">{t('summaryRequired')}</p> : null}
+          <CanvasTextArea label={t('summaryField')} id={ids.summary} name="summary" required rows={4} maxLength={SUMMARY_MAX} value={summary} onChange={(value) => { setSummary(value); setFieldErrors((current) => ({ ...current, summary: false })); }}
+            messages={fieldErrors.summary ? [{ type: 'error', text: <span id={ids.summaryError}>{t('summaryRequired')}</span> }] : []} aria-invalid={fieldErrors.summary || undefined} aria-describedby={ids.writtenIn} />
         </div>
         <details className="vf-proposal-disclosure">
           <summary>{t('otherLanguage', { language: other })}</summary>
           <div className="vf-proposal-disclosure-body">
             <div className="vf-proposal-field">
-              <label htmlFor={ids.otherTitle}>{t('otherTitle', { language: other })}</label>
-              <input id={ids.otherTitle} name="otherTitle" lang={other} maxLength={TITLE_MAX} value={otherTitle} onChange={(event) => setOtherTitle(event.target.value)} />
+              <CanvasTextInput label={t('otherTitle', { language: other })} id={ids.otherTitle} name="otherTitle" lang={other} maxLength={TITLE_MAX} value={otherTitle} onChange={(value) => setOtherTitle(value)} />
             </div>
             <div className="vf-proposal-field">
-              <label htmlFor={ids.otherSummary}>{t('otherSummary', { language: other })}</label>
-              <textarea id={ids.otherSummary} name="otherSummary" lang={other} rows={4} maxLength={SUMMARY_MAX} value={otherSummary} onChange={(event) => setOtherSummary(event.target.value)} />
+              <CanvasTextArea label={t('otherSummary', { language: other })} id={ids.otherSummary} name="otherSummary" lang={other} rows={4} maxLength={SUMMARY_MAX} value={otherSummary} onChange={(value) => setOtherSummary(value)} />
             </div>
           </div>
         </details>
@@ -317,27 +316,26 @@ export function ProjectProposalForm({ locale, courseOptions, skillOptions }: {
           <div className="vf-proposal-link-row">
             <p id={ids.linkHint} className="vf-meta">{t('linkHint', { slug })}</p>
             {!linkOpen ? (
-              <button type="button" className="vf-btn vf-btn-ghost vf-btn-lg" aria-expanded={false} aria-controls={ids.linkEditor} onClick={() => { focusTarget.current = ids.link; setLinkOpen(true); setCustomSlug(slug); }}>
+              <CanvasButton variant="secondary" type="button" className="vf-btn vf-btn-ghost vf-btn-lg" aria-expanded={false} aria-controls={ids.linkEditor} onClick={() => { focusTarget.current = ids.link; setLinkOpen(true); setCustomSlug(slug); }}>
                 {t('changeLink')}
-              </button>
+              </CanvasButton>
             ) : null}
           </div>
           <div id={ids.linkEditor} hidden={!linkOpen} className="vf-proposal-field">
-            <label htmlFor={ids.link}>{t('link')}</label>
-            <input
+            <CanvasTextInput label={t('link')}
               id={ids.link}
               name="id"
               value={slug}
               maxLength={64}
               autoCapitalize="none"
               spellCheck={false}
-              onChange={(event) => { setCustomSlug(event.target.value.toLowerCase()); setLinkError(null); }}
+              onChange={(value) => { setCustomSlug(value.toLowerCase()); setLinkError(null); }}
+              messages={linkError ? [{ type: 'error', text: <span id={ids.linkError} role="alert">{linkError}</span> }] : []}
               aria-invalid={linkError ? true : undefined}
-              aria-describedby={[linkError ? ids.linkError : null, ids.linkHint].filter(Boolean).join(' ')}
+              aria-describedby={ids.linkHint}
             />
             <p className="vf-meta">{t('linkFormat')}</p>
           </div>
-          {linkError ? <p id={ids.linkError} role="alert" className="vf-proposal-error">{linkError}</p> : null}
         </div>
       </fieldset>
 
@@ -391,7 +389,7 @@ export function ProjectProposalForm({ locale, courseOptions, skillOptions }: {
           {coverProblem ? <p role="alert" className="vf-proposal-error">{coverProblem}</p> : null}
           <div className="vf-proposal-actions-inline">
             {cover.status === 'uploading' ? (
-              <button id={ids.coverCancel} type="button" className="vf-btn vf-btn-lg" onClick={() => cover.controller.abort()}>{t('coverCancel')}</button>
+              <CanvasButton variant="secondary" id={ids.coverCancel} type="button" className="vf-btn vf-btn-lg" onClick={() => cover.controller.abort()}>{t('coverCancel')}</CanvasButton>
             ) : (
               <label className="vf-btn vf-btn-lg vf-proposal-file">
                 {cover.status === 'done' ? t('coverReplace') : t('coverUpload')}
@@ -408,8 +406,8 @@ export function ProjectProposalForm({ locale, courseOptions, skillOptions }: {
                 />
               </label>
             )}
-            {cover.status === 'failed' ? <button type="button" className="vf-btn vf-btn-lg" onClick={() => startUpload(cover.file)}>{t('coverRetry')}</button> : null}
-            {cover.status === 'done' || cover.status === 'failed' ? <button type="button" className="vf-btn vf-btn-ghost vf-btn-lg" onClick={removeCover}>{t('coverRemove')}</button> : null}
+            {cover.status === 'failed' ? <CanvasButton variant="secondary" type="button" className="vf-btn vf-btn-lg" onClick={() => startUpload(cover.file)}>{t('coverRetry')}</CanvasButton> : null}
+            {cover.status === 'done' || cover.status === 'failed' ? <CanvasButton variant="secondary" type="button" className="vf-btn vf-btn-ghost vf-btn-lg" onClick={removeCover}>{t('coverRemove')}</CanvasButton> : null}
           </div>
         </div>
 
@@ -424,42 +422,39 @@ export function ProjectProposalForm({ locale, courseOptions, skillOptions }: {
                 return (
                   <li key={row.key} className="vf-proposal-link-item">
                     <div className="vf-proposal-field">
-                      <label htmlFor={`${ids.links}-${row.key}-label`}>{t('linkLabel', { number })}</label>
-                      <input id={`${ids.links}-${row.key}-label`} maxLength={LABEL_MAX} value={row.label} onChange={(event) => updateLink(row.key, { label: event.target.value })} />
+                      <CanvasTextInput label={t('linkLabel', { number })} id={`${ids.links}-${row.key}-label`} maxLength={LABEL_MAX} value={row.label} onChange={(value) => updateLink(row.key, { label: value })} />
                     </div>
                     <div className="vf-proposal-field">
-                      <label htmlFor={`${ids.links}-${row.key}-url`}>{t('linkUrl', { number })}</label>
-                      <input
+                      <CanvasTextInput label={t('linkUrl', { number })}
                         id={`${ids.links}-${row.key}-url`}
                         type="url"
                         inputMode="url"
                         placeholder="https://"
                         value={row.url}
-                        onChange={(event) => updateLink(row.key, { url: event.target.value, error: false })}
+                        onChange={(value) => updateLink(row.key, { url: value, error: false })}
                         onBlur={() => checkLink(row)}
+                        messages={row.error ? [{ type: 'error', text: <span id={errorId}>{t('linkHttps')}</span> }] : []}
                         aria-invalid={row.error || undefined}
-                        aria-describedby={row.error ? errorId : undefined}
                       />
-                      {row.error ? <p id={errorId} className="vf-proposal-error">{t('linkHttps')}</p> : null}
                     </div>
-                    <button type="button" className="vf-btn vf-btn-ghost vf-btn-lg vf-proposal-link-remove" onClick={() => removeLink(row.key)}>
+                    <CanvasButton variant="secondary" type="button" className="vf-btn vf-btn-ghost vf-btn-lg vf-proposal-link-remove" onClick={() => removeLink(row.key)}>
                       <span aria-hidden="true">×</span>
                       <span className="sr-only">{t('removeLink', { number })}</span>
-                    </button>
+                    </CanvasButton>
                   </li>
                 );
               })}
             </ol>
           ) : null}
           <div className="vf-proposal-actions-inline">
-            <button id={ids.addLink} type="button" className="vf-btn vf-btn-lg" onClick={addLink} disabled={links.length >= MAX_PROPOSAL_LINKS}>{t('addLink')}</button>
+            <CanvasButton variant="secondary" id={ids.addLink} type="button" className="vf-btn vf-btn-lg" onClick={addLink} disabled={links.length >= MAX_PROPOSAL_LINKS}>{t('addLink')}</CanvasButton>
             {links.length >= MAX_PROPOSAL_LINKS ? <p className="vf-meta" role="status">{t('linksMax')}</p> : null}
           </div>
         </div>
       </fieldset>
 
       <div className="vf-proposal-submit">
-        <button type="submit" className="vf-btn vf-btn-primary vf-btn-lg" disabled={pending || coverBusy}>{pending ? t('submitting') : t('submit')}</button>
+        <CanvasButton type="submit" className="vf-btn vf-btn-primary vf-btn-lg" disabled={pending || coverBusy}>{pending ? t('submitting') : t('submit')}</CanvasButton>
         <Link href={routes.learner.projects()} className="vf-btn vf-btn-ghost vf-btn-lg">{t('cancel')}</Link>
         {failure ? <p role="alert" className="vf-proposal-error">{failure}</p> : null}
       </div>

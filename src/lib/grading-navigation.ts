@@ -7,11 +7,13 @@ import { routes } from '@/lib/routes';
  * `admin.access`, so grader-only and report-only operators reach their own work.
  */
 export const gradingNavigation = [
-  { key: 'home', href: routes.grading.dashboard(), permissions: ['exam.release', 'submission.grade', 'report.branch.read', 'report.global.read', 'analytics.branch.read', 'analytics.global.read'], available: true, landing: false },
+  { key: 'home', href: routes.grading.dashboard(), permissions: ['exam.release', 'submission.grade', 'report.branch.read', 'report.global.read', 'analytics.branch.read', 'analytics.global.read', 'teaching.announcement.manage', 'teaching.schedule.manage'], available: true, landing: false },
   { key: 'assessments', href: routes.grading.assessments(), permissions: ['exam.release', 'submission.grade'], available: true, landing: true },
   { key: 'queue', href: routes.grading.queue(), permissions: ['submission.grade'], available: true, landing: true,
     // Workbenches open from the queue; keep the queue highlighted while grading one.
     matches: [{ href: '/grading/assignments' }, { href: '/grading/exams' }] },
+  { key: 'announcements', href: '/grading/announcements', permissions: ['teaching.announcement.manage'], available: true, landing: true },
+  { key: 'schedule', href: '/grading/schedule', permissions: ['teaching.schedule.manage'], available: true, landing: true },
   { key: 'reports', href: routes.grading.reports(), permissions: ['report.branch.read', 'report.global.read', 'analytics.branch.read', 'analytics.global.read'], available: true, landing: true },
 ] as const;
 

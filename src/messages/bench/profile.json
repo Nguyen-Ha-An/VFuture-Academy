@@ -16,7 +16,7 @@
       "course": "Course",
       "date": "Completed",
       "state": "State",
-      "inSpec": "Complete · in spec"
+      "inSpec": "Completed"
     },
     "projects": {
       "label": "Projects"
@@ -24,7 +24,7 @@
     "certificates": {
       "label": "Certificates",
       "count": "{count, plural, one {# issued} other {# issued}}",
-      "kicker": "Certificate of completion · calibrated",
+      "kicker": "Certificate of completion",
       "holder": "Holder",
       "part": "Part",
       "issuedBy": "Issued by",
@@ -37,11 +37,11 @@
       "copied": "Copied",
       "copiedAnnouncement": "Verify link copied",
       "copyFailed": "Copy failed · select the verify link above and copy it",
-      "inSpec": "In spec",
+      "inSpec": "Issued",
       "qr": "Verification QR code for certificate {serial}",
       "publicNote": "Public verification works without an account.",
-      "emptyKicker": "No readings yet",
-      "emptyBody": "Complete a course within spec and your certificate appears here with a public verification link.",
+      "emptyKicker": "Your certificates",
+      "emptyBody": "When a course awards you a certificate, it appears here with a public verification link.",
       "browse": "Browse courses"
     },
     "xp": {
@@ -67,7 +67,7 @@
       "changeHint": " since last week",
       "new": "new"
     },
-    "traceLabel": "Activity trace"
+    "traceLabel": "Recent learning activity"
   },
   "vi": {
     "kicker": "Hồ sơ học viên",
@@ -86,7 +86,7 @@
       "course": "Khóa học",
       "date": "Hoàn thành",
       "state": "Trạng thái",
-      "inSpec": "Hoàn thành · đạt chuẩn"
+      "inSpec": "Hoàn thành"
     },
     "projects": {
       "label": "Dự án"
@@ -94,7 +94,7 @@
     "certificates": {
       "label": "Chứng chỉ",
       "count": "{count, plural, other {Đã cấp #}}",
-      "kicker": "Chứng nhận hoàn thành · đạt chuẩn",
+      "kicker": "Chứng nhận hoàn thành",
       "holder": "Người nhận",
       "part": "Mã khóa",
       "issuedBy": "Đơn vị cấp",
@@ -107,11 +107,11 @@
       "copied": "Đã sao chép",
       "copiedAnnouncement": "Đã sao chép liên kết xác minh",
       "copyFailed": "Không sao chép được · hãy chọn liên kết xác minh ở trên để sao chép",
-      "inSpec": "Đạt chuẩn",
+      "inSpec": "Đã cấp",
       "qr": "Mã QR xác minh chứng chỉ {serial}",
       "publicNote": "Ai cũng có thể xác minh mà không cần tài khoản.",
-      "emptyKicker": "Chưa có dữ liệu",
-      "emptyBody": "Hoàn thành một khóa học đạt chuẩn, chứng chỉ của bạn sẽ xuất hiện ở đây kèm liên kết xác minh công khai.",
+      "emptyKicker": "Chứng chỉ của bạn",
+      "emptyBody": "Khi được cấp chứng chỉ khóa học, bạn sẽ thấy chứng chỉ ở đây cùng liên kết xác minh công khai.",
       "browse": "Xem khóa học"
     },
     "xp": {
@@ -137,6 +137,6 @@
       "changeHint": " so với tuần trước",
       "new": "mới"
     },
-    "traceLabel": "Biểu đồ hoạt động"
+    "traceLabel": "Hoạt động học tập gần đây"
   }
 }

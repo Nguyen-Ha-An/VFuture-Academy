@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ValidationReport } from '@/content-engine/diagnostics';
 import { FIXTURES } from '@/content-engine/fixtures';
@@ -26,6 +26,8 @@ const messages = staffUiTestMessages(enMessages, 'en');
 
 const report: ValidationReport = { ok: true, errors: [], warnings: [], summary: { modules: 1, items: { lesson: 1, exam: 0, assignment: 1 }, blocks: 1, questions: {}, totalPoints: 0, languages: ['en'] } };
 
+// These contracts exercise manual JSON editing; the Canvas default is visual.
+beforeEach(() => { window.localStorage.setItem('academy.canvas.editor-mode', 'json'); });
 afterEach(() => { cleanup(); mocks.router.push.mockClear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Workspace document existence', () => {
@@ -40,7 +42,7 @@ describe('Workspace document existence', () => {
 
     const manifest = screen.getByRole('textbox', { name: 'JSON editor for manifest' });
     expect((manifest as HTMLTextAreaElement).value).not.toContain('Post one sentence');
-    fireEvent.click(screen.getByText('Say hello').closest('button')!);
+    fireEvent.click(screen.getByRole('treeitem', { name: /Say hello/ }));
     expect((screen.getByRole('textbox', { name: 'JSON editor for hello' }) as HTMLTextAreaElement).value).toContain('Post one sentence');
   });
 
@@ -52,7 +54,7 @@ describe('Workspace document existence', () => {
     };
     render(<NextIntlClientProvider locale="en" messages={messages}><Workspace initialDraft={draft} initialReport={report} workflowEnabled={false} /></NextIntlClientProvider>);
 
-    fireEvent.click(screen.getByText('Persisted lesson').closest('button')!);
+    fireEvent.click(screen.getByRole('treeitem', { name: /Persisted lesson/ }));
     expect((screen.getByRole('textbox', { name: 'JSON editor for intro' }) as HTMLTextAreaElement).value).toContain('Persisted lesson');
   });
 });

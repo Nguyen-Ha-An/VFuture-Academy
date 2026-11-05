@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import messages from '@/messages/en.json';
@@ -57,7 +56,8 @@ describe('assessments workspace navigation', () => {
     view();
     const exams = screen.getByRole('tab', { name: 'Exams' });
     exams.focus();
-    await userEvent.keyboard('{ArrowRight}');
+    // InstUI currently reads native keyCode; jsdom userEvent does not populate it.
+    fireEvent.keyDown(exams, { key: 'ArrowRight', keyCode: 39, which: 39 });
 
     expect(screen.getByRole('tab', { name: 'Assignments' })).toHaveFocus();
     fireEvent.change(screen.getByRole('combobox', { name: 'Course' }), { target: { value: 'course-b' } });

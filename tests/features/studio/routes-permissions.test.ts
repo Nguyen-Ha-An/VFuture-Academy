@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const apiRouteRoot = join(process.cwd(), 'src', 'app', 'api', 'v1');
 const routeRoot = join(apiRouteRoot, 'studio');
-const nonLearnerRoute = /^(admin\/|analytics\/|certificates\/verify\/|grading\/|internal\/|notebooks\/submissions\/|public\/|schema\/|studio\/|u\/)/;
+const nonLearnerRoute = /^(admin\/|analytics\/|certificates\/verify\/|grading\/|internal\/|notebooks\/submissions\/|public\/|schema\/|studio\/|teaching\/|u\/)/;
 const requiredRoutes = [
   ['courses/route.ts', ['course.read', 'course.create']],
   ['courses/[courseId]/draft/route.ts', ['course.read', 'course.edit']],
@@ -29,6 +29,8 @@ const requiredRoutes = [
 
 const branchScopedPermissions = new Set([
   'submission.grade',
+  'teaching.announcement.manage',
+  'teaching.schedule.manage',
   'exam.release',
   'user.manage.branch',
   'analytics.branch.read',
@@ -98,6 +100,16 @@ describe('Studio route authorization boundary', () => {
       expect(requireUserSpecifier, `${relative}: missing requireApiUser import`).toBeDefined();
       const binding = requireUserSpecifier?.match(/\bas\s+(\w+)$/)?.[1] ?? 'requireApiUser';
       expect(source, `${relative}: imported ${binding} is not called`).toMatch(new RegExp(`\\b${binding}\\s*\\(`));
+    }
+  });
+
+  it('guards every teaching route with scoped teaching authorization', () => {
+    const routes = routeFiles(join(apiRouteRoot, 'teaching'));
+    expect(routes.length).toBeGreaterThan(0);
+    for (const path of routes) {
+      const source = guardedRouteSource(path);
+      expect(source, path).toMatch(/requirePermission\s*\(\s*['"]teaching\.(announcement|schedule)\.manage['"]\s*,|hasPermission\s*\(\s*actor\s*,\s*['"]teaching\.(announcement|schedule)\.manage['"]\s*,/);
+      expect(source, path).toMatch(/\bbranchId\b/);
     }
   });
 
