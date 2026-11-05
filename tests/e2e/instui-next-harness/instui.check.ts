@@ -97,6 +97,7 @@ for (const scenario of [{ route: '/studio/courses', width: 1440, locale: 'en', t
     // InstUI Responsive intentionally defers its render prop until element measurement.
     // Current source table rows are client-rendered; this is recorded, not called SSR data.
     test.info().annotations.push({ type: 'element-responsive-ssr', description: html.includes('Course records') ? 'Table present in server markup.' : 'Known source boundary: table waits for client measurement; no non-JS data fallback.' });
+    expect((html.match(/<table\b[\s\S]*?<\/table>/g) ?? []).some(markup => markup.includes('Staff record from server') && markup.includes('Waiting for review')), 'staff data rows exist in actual server table markup').toBe(true);
     await expect(page.getByTestId('server-content')).toHaveText('Server-rendered course content.');
     await expect(page.getByTestId('native-composition')).toHaveAttribute('data-framework-hydrated', 'true');
     const serverFrameworkId = html.match(/data-framework-root-id="([^"]+)"/)?.[1];
@@ -104,6 +105,13 @@ for (const scenario of [{ route: '/studio/courses', width: 1440, locale: 'en', t
     if (!serverFrameworkId || !serverNativeId) throw new Error('Expected server-rendered React ID probes.');
     await expect(page.locator('[data-framework-root-id]')).toHaveAttribute('data-client-framework-id', serverFrameworkId);
     await expect(page.getByTestId('native-composition')).toHaveAttribute('data-client-native-id', serverNativeId);
+    const staffTable = page.getByRole('table', { name: 'Staff records', exact: true });
+    await expect(staffTable).toContainText('Staff record from server');
+    await expect(staffTable).toContainText('Waiting for review');
+    if (scenario.width < 640) {
+      await expect(staffTable).toHaveJSProperty('tagName', 'DIV');
+      await expect(staffTable).toContainText('Review state');
+    }
 
     if (scenario.width < 640) {
       const menu = page.getByRole('button', { name: scenario.locale === 'vi' ? 'Mở menu' : 'Open menu', exact: true });

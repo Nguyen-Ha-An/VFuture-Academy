@@ -27,6 +27,7 @@ import {
 } from '@/lib/workspace-admission';
 import { firstWorkspaceDestination, type WorkspaceEntries } from '@/lib/workspace-navigation';
 import { STAFF_WORKSPACES, workspaceHome, type StaffWorkspace } from '@/lib/workspaces';
+import { PERMISSION_DEFINITIONS } from '@/lib/authorization';
 
 export type WorkspaceContext = {
   workspace: StaffWorkspace;
@@ -103,16 +104,24 @@ async function resolve(admission: Admission): Promise<WorkspaceContext> {
   const allBranches = await createSupabaseBranchRepository(supabaseService()).list();
   const central = { kind: 'central' } as const;
   const centralPermissions = new Set(permitted(central));
-  // A branch scope is offered only when it adds authority the actor lacks centrally,
-  // so a central operator is not shown every school in the picker.
+  const canReadBranchDirectory = admission.directory.some((permission) => can(actor, permission, central));
+  // Attached schools keep their existing scope rules. Directory access can also
+  // offer schools when the destination and scope-capable authority permit work there.
   const scopeBranches = allBranches.filter((branch) => {
     const scope = { kind: 'branch' as const, branchId: branch.id };
-    if (!scopes.some((candidate) => candidate.kind === 'branch' && candidate.branchId === branch.id)) return false;
+    const attached = scopes.some((candidate) => candidate.kind === 'branch' && candidate.branchId === branch.id);
+    const directoryScope = admission.admit === 'destination' && canReadBranchDirectory;
+    if (!attached && !directoryScope) return false;
     if (!reaches(scope)) return false;
+    // Studio's content capabilities are scope-aware but are not in the legacy
+    // BRANCH_SCOPED_PERMISSIONS list. Require a destination reachable with an
+    // any-scope capability before offering a directory school to a central user.
+    if (directoryScope && admission.workspace === 'studio') {
+      return firstWorkspaceDestination('studio', permitted(scope).filter((permission) => PERMISSION_DEFINITIONS[permission].scope === 'any')) !== null;
+    }
     return permitted(scope).some((permission) =>
       branchPermissions.has(permission) || !centralPermissions.has(permission));
   });
-  const canReadBranchDirectory = admission.directory.some((permission) => can(actor, permission, central));
   const branches = canReadBranchDirectory ? allBranches : scopeBranches;
 
   const candidates: Array<{ scope: AdminScope; label: string }> = [];

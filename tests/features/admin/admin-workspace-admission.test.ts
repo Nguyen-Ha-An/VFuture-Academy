@@ -4,14 +4,15 @@ const mocks = vi.hoisted(() => ({
   getActor: vi.fn(),
   cookie: undefined as string | undefined,
   listBranches: vi.fn(),
+  setCookie: vi.fn(),
   redirect: vi.fn((path: string) => { throw new Error(`redirect:${path}`); }),
   forbidden: vi.fn(() => { throw new Error('forbidden:403'); }),
 }));
 
 vi.mock('server-only', () => ({}));
 vi.mock('react', () => ({ cache: (fn: unknown) => fn }));
-vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => mocks.cookie === undefined ? undefined : { value: mocks.cookie } }) }));
-vi.mock('next/navigation', () => ({ redirect: mocks.redirect, forbidden: mocks.forbidden }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => mocks.cookie === undefined ? undefined : { value: mocks.cookie }, set: mocks.setCookie }) }));
+vi.mock('next/navigation', () => ({ redirect: mocks.redirect, forbidden: mocks.forbidden, unstable_rethrow: () => {} }));
 vi.mock('@/lib/auth', () => ({ loginDestination: vi.fn(async () => '/login') }));
 vi.mock('@/lib/permissions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/permissions')>()),
@@ -30,6 +31,7 @@ import {
 } from '@/features/admin/context';
 import type { Actor, Permission, Scope } from '@/lib/permissions';
 import { workspaceNavigationFor } from '@/lib/workspace-navigation';
+import { POST as changeScope } from '@/app/api/v1/admin/scope/route';
 
 function actor(grants: Array<{ permissions: Permission[]; scope: Scope }>): Actor {
   const branchIds = [...new Set(grants.flatMap(({ scope }) => scope.kind === 'branch' ? [scope.branchId] : []))];
@@ -94,6 +96,27 @@ describe('narrow Administration admission for a course.publish publisher', () =>
 
     expect(context.permissions.filter((permission) => permission !== 'course.read'))
       .toEqual(['course.publish']);
+  });
+
+  it('allows the shell to select a destination-authorized scope without granting management access', async () => {
+    mocks.getActor.mockResolvedValue(publisher());
+    const response = await changeScope(new Request('http://localhost/api/v1/admin/scope', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scope: 'branch:school-a' }),
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.setCookie).toHaveBeenCalledWith('vfuture-admin-scope', 'branch:school-a', expect.any(Object));
+    await expect(getAdminContext()).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('rejects a scope absent from the shell options', async () => {
+    mocks.getActor.mockResolvedValue(publisher());
+    const response = await changeScope(new Request('http://localhost/api/v1/admin/scope', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scope: 'branch:unknown' }),
+    }));
+    expect(response.status).toBe(403);
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });
 

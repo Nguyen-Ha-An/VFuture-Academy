@@ -108,20 +108,6 @@ export function AdminOverviewView({
         : undefined}
     />
 
-    {summaryKpis.length ? <StatGrid className="admin-metrics">
-      {summaryKpis.map((kpi) => <StatCard
-        key={kpi.key}
-        label={t(`kpi.${kpi.key}`)}
-        value={kpi.value}
-        icon={KPI_ICONS[kpi.key]}
-        href={kpi.href}
-        hint={kpiHint(kpi)}
-        delta={kpi.delta === undefined
-          ? undefined
-          : { value: kpi.delta, label: t("kpi.previousWindow"), goodDirection: "up" }}
-      />)}
-    </StatGrid> : null}
-
     {pipeline?.length ? <section className="admin-work" aria-labelledby={workTitleId}>
       <div className="admin-section-heading">
         <h2 id={workTitleId}>{t("pipeline.title")}</h2>
@@ -136,6 +122,20 @@ export function AdminOverviewView({
         </li>)}
       </ol>
     </section> : null}
+
+    {summaryKpis.length ? <StatGrid className="admin-metrics">
+      {summaryKpis.map((kpi) => <StatCard
+        key={kpi.key}
+        label={t(`kpi.${kpi.key}`)}
+        value={kpi.value}
+        icon={KPI_ICONS[kpi.key]}
+        href={kpi.href}
+        hint={kpiHint(kpi)}
+        delta={kpi.delta === undefined
+          ? undefined
+          : { value: kpi.delta, label: t("kpi.previousWindow"), goodDirection: "up" }}
+      />)}
+    </StatGrid> : null}
 
     {hasInsightRow ? <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
       {activity ? <ChartCard

@@ -58,12 +58,12 @@ describe('audit page scope and filters',()=>{
  });
  it('offers an action-family select that keeps the current filter and an empty state when nothing matches',async()=>{
   const markup=html(await AuditPage({searchParams:Promise.resolve({action:'role'})}));
-  expect(markup).toMatch(/<select[^>]*name="action"[^>]*aria-label="familyLabel"/);
-  expect(markup).toMatch(/<option[^>]*value="role"[^>]*selected=""[^>]*>families\.role<\/option>/);
+  expect(markup).toMatch(/<input[^>]*name="action"[^>]*value="role"/);
+  expect(markup).toContain('familyLabel');
   expect(markup).toContain('emptyTitle');
   expect(markup).toContain('href="/admin/audit"');
   const legacy=html(await AuditPage({searchParams:Promise.resolve({action:'user.role'})}));
-  expect(legacy).toMatch(/<option[^>]*value="user\.role"[^>]*selected=""[^>]*>user\.role<\/option>/);
+  expect(legacy).toMatch(/<input[^>]*name="action"[^>]*value="user\.role"/);
  });
  it('pages with "Page n" and only links to the next page when a full page came back',async()=>{
   const row=(id:number)=>({id:String(id),action:'user.role',actorId:null,targetType:'user',targetId:`m-${id}`,at:'2026-09-06T00:00:00.000Z'});

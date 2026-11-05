@@ -8,6 +8,8 @@ export type { CanvasButtonProps, CanvasTextInputProps, CanvasTextAreaProps, Canv
 export { FormFieldGroup as CanvasFormFieldGroup } from '@instructure/ui-form-field/v11_7';
 export { Table as CanvasTable } from '@instructure/ui-table/v11_7';
 export { CanvasResponsive } from './CanvasResponsive';
+export { CanvasDataTable } from './CanvasDataTable';
+export type { CanvasDataColumn } from './CanvasDataTable';
 export { ProgressBar as CanvasProgressBar, ProgressCircle as CanvasProgressCircle } from '@instructure/ui-progress/v11_7';
 export { Tabs as CanvasTabs } from '@instructure/ui-tabs/v11_7';
 export { TreeBrowser as CanvasTreeBrowser } from '@instructure/ui-tree-browser/v11_7';

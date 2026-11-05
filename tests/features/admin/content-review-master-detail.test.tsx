@@ -36,7 +36,7 @@ describe('Content library data card', () => {
   it('pages the fully loaded list on the client with an honest total', () => {
     render(provider(<ContentInventory {...props} rows={rows} creatableTypes={[]} requestableKeys={[]} />));
     expect(screen.getByText('Showing 1–25 of 30')).toBeInTheDocument();
-    expect(screen.getAllByRole('row')).toHaveLength(26);
+    expect(screen.getAllByRole('row')).toHaveLength(25);
     cleanup();
     navigation.search = 'page=2';
     render(provider(<ContentInventory {...props} rows={rows} creatableTypes={[]} requestableKeys={[]} />));
@@ -48,7 +48,7 @@ describe('Content library data card', () => {
     navigation.search = 'status=in_review&page=3';
     render(provider(<ContentInventory {...props} rows={rows} creatableTypes={[]} requestableKeys={[]} />));
     expect(screen.getByRole('link', { name: 'Waiting guide' })).toBeInTheDocument();
-    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.getAllByRole('row')).toHaveLength(1);
     expect(screen.getByText('In review', { selector: '[data-tone]' })).toHaveAttribute('data-tone', 'warning');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Content type' }), 'course');
     expect(navigation.replace).toHaveBeenCalledWith('/studio/library?status=in_review&type=course', { scroll: false });
@@ -57,7 +57,7 @@ describe('Content library data card', () => {
   it('narrows to the CMS deep link id until the viewer asks for everything', async () => {
     navigation.search = 'type=resource&id=item-3';
     render(provider(<ContentInventory {...props} rows={rows} creatableTypes={[]} requestableKeys={[]} />));
-    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.getAllByRole('row')).toHaveLength(1);
     expect(screen.getByText(/Showing one item: item-3/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Show all content' }));
     expect(navigation.replace).toHaveBeenCalledWith('/studio/library?type=resource', { scroll: false });

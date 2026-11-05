@@ -8,7 +8,7 @@ import { StudioResponsiveTable } from '@/features/studio/ui/StudioResponsiveTabl
 import { COURSE_REF, emptySummary, type DocumentRef } from '@/content-engine/diagnostics';
 import { AppShell } from '@/components/AppShell';
 import { StaffWorkspaceShell } from '@/features/staff-ui/ui/StaffWorkspaceShell';
-import { CanvasCourseLayout, CanvasButton, CanvasFormFieldGroup, CanvasProgressBar, CanvasSelect, CanvasTable, CanvasTabs } from '@/features/canvas/ui';
+import { CanvasCourseLayout, CanvasButton, CanvasDataTable, CanvasFormFieldGroup, CanvasProgressBar, CanvasSelect, CanvasTable, CanvasTabs } from '@/features/canvas/ui';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { withStaffUiMessages } from '@/messages/staff-ui';
 import { withBenchMessages } from '@/messages/bench';
@@ -35,6 +35,10 @@ function NativeComposition({ children, locale }: { children: ReactNode; locale: 
       <CanvasTable.Head><CanvasTable.Row><CanvasTable.ColHeader id="proof-title">Item</CanvasTable.ColHeader><CanvasTable.ColHeader id="proof-status">Status</CanvasTable.ColHeader><CanvasTable.ColHeader id="proof-score" textAlign="end">Score</CanvasTable.ColHeader></CanvasTable.Row></CanvasTable.Head>
       <CanvasTable.Body><CanvasTable.Row><CanvasTable.Cell>Introduction</CanvasTable.Cell><CanvasTable.Cell>Completed</CanvasTable.Cell><CanvasTable.Cell textAlign="end">8 / 10</CanvasTable.Cell></CanvasTable.Row><CanvasTable.Row><CanvasTable.Cell>Practice</CanvasTable.Cell><CanvasTable.Cell>Submitted</CanvasTable.Cell><CanvasTable.Cell textAlign="end">Pending</CanvasTable.Cell></CanvasTable.Row></CanvasTable.Body>
     </StudioResponsiveTable>
+    <CanvasDataTable caption="Staff records" rows={[{ id: 'staff-record', title: 'Staff record from server', state: 'Waiting for review' }]} rowKey={row => row.id} columns={[
+      { key: 'title', label: 'Record', render: row => row.title },
+      { key: 'state', label: 'Review state', render: row => row.state },
+    ]} />
     <PortalOwnershipProof />
   </section>;
 }

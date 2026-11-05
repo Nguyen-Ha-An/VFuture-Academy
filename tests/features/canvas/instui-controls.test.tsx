@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { CanvasButton, CanvasCheckbox, CanvasProvider, CanvasSelect, CanvasTextInput } from '@/features/canvas/ui';
 import { NextIntlClientProvider } from 'next-intl';
 import messages from '@/messages/en.json';
@@ -17,10 +17,11 @@ afterEach(cleanup);
 function renderCanvas(children: React.ReactNode) { return render(<CanvasProvider theme="light">{children}</CanvasProvider>); }
 
 it('renders actual InstUI controls with labels, values and native disabled semantics', async () => {
+  const publish = vi.fn();
   function Form() {
     const [value, setValue] = useState('Course');
     const [checked, setChecked] = useState(false);
-    return <><CanvasTextInput label="Course title" value={value} onChange={setValue} /><CanvasCheckbox label="Required" checked={checked} onChange={setChecked} /><CanvasButton disabled>Publish</CanvasButton></>;
+    return <><CanvasTextInput label="Course title" value={value} onChange={setValue} /><CanvasCheckbox label="Required" checked={checked} onChange={setChecked} /><CanvasButton disabled onClick={publish}>Publish</CanvasButton></>;
   }
   const view = renderCanvas(<Form />);
   fireEvent.change(screen.getByRole('textbox', { name: 'Course title' }), { target: { value: 'Updated course' } });
@@ -28,6 +29,8 @@ it('renders actual InstUI controls with labels, values and native disabled seman
   fireEvent.click(screen.getByRole('checkbox', { name: 'Required' }));
   expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
   expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
+  await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+  expect(publish).not.toHaveBeenCalled();
   expect(view.container.querySelector('[class*="textInput"]')).not.toBeNull();
 });
 

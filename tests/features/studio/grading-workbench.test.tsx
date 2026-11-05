@@ -21,6 +21,19 @@ function view(kind: 'assignments' | 'exams', canRelease = false, extra: Partial<
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }); }
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); window.history.replaceState({}, '', '/'); });
 
+describe('grading detail request contract', () => {
+  it.each(['assignments', 'exams'] as const)('sends the selected school and locale to the %s detail route', async kind => {
+    const fetcher = vi.fn().mockResolvedValue(json({ data: kind === 'assignments' ? assignment : exam }));
+    vi.stubGlobal('fetch', fetcher);
+    view(kind);
+    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    const url = new URL(String(fetcher.mock.calls[0][0]), 'https://academy.example');
+    expect(url.pathname).toBe(`/api/v1/studio/grading/${kind}/id`);
+    expect(url.searchParams.get('branchId')).toBe('branch-a');
+    expect(url.searchParams.get('locale')).toBe('en');
+  });
+});
+
 describe('grading workbench · assignments', () => {
   it('shows the recorded deadline and late flag without deriving a penalty', async () => {
     const late = { ...assignment, submission: { ...assignment.submission, late: true, dueAtSnapshot: '2026-11-04T17:30:00.000Z' } };
@@ -231,6 +244,10 @@ describe('grading workbench · exams', () => {
     await userEvent.type(points, '2');
     await userEvent.click(screen.getByRole('button', { name: 'Save question grade' }));
     await screen.findByRole('status');
+
+    const refreshedUrl = new URL(String(fetchMock.mock.calls[2][0]), 'https://academy.example');
+    expect(refreshedUrl.searchParams.get('branchId')).toBe('branch-a');
+    expect(refreshedUrl.searchParams.get('locale')).toBe('en');
 
     // After the save the result is no longer pending_manual, but the stored score keeps it manual.
     await waitFor(() => expect(screen.getByLabelText(/^Points \//)).toHaveValue(2));

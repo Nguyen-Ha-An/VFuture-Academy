@@ -4,12 +4,13 @@ const mocks = vi.hoisted(() => ({
   getActor: vi.fn(),
   cookie: undefined as string | undefined,
   listBranches: vi.fn(),
+  adminContext: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
 vi.mock('react', () => ({ cache: (fn: unknown) => fn }));
-vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => mocks.cookie === undefined ? undefined : { value: mocks.cookie } }) }));
-vi.mock('next/navigation', () => ({ forbidden: vi.fn(), redirect: vi.fn() }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => mocks.cookie === undefined ? undefined : { value: mocks.cookie }, set: (_name: string, value: string) => { mocks.cookie = value; } }) }));
+vi.mock('next/navigation', () => ({ forbidden: vi.fn(), redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 vi.mock('@/lib/auth', () => ({ loginDestination: vi.fn() }));
 vi.mock('@/lib/permissions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/permissions')>()),
@@ -19,11 +20,13 @@ vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn(() => ({})) }))
 vi.mock('@/features/admin/branches', () => ({
   createSupabaseBranchRepository: vi.fn(() => ({ list: mocks.listBranches })),
 }));
+vi.mock('@/features/admin/context', () => ({ getAdminContext: mocks.adminContext }));
 
 import { getGradingContext, getStudioContext } from '@/features/workspace/context';
 import { ApiError } from '@/lib/api';
 import type { Actor, Permission, Scope } from '@/lib/permissions';
 import { workspaceNavigationFor } from '@/lib/workspace-navigation';
+import { enterSchoolWorkspace } from '@/features/admin/actions';
 
 function actor(grants: Array<{ permissions: Permission[]; scope: Scope }>): Actor {
   const branchIds = [...new Set(grants.flatMap(({ scope }) => scope.kind === 'branch' ? [scope.branchId] : []))];
@@ -166,6 +169,35 @@ describe('workspace admission is separated per workspace', () => {
   it('denies Studio to a grading-only operator', async () => {
     mocks.getActor.mockResolvedValue(actor([{ permissions: ['submission.grade', 'exam.release'], scope: schoolA }]));
 
+    await expect(getStudioContext()).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('keeps an explicitly selected school in Studio for a central directory operator', async () => {
+    const operator = actor([{ permissions: ['content.read', 'content.review'], scope: central }]);
+    mocks.getActor.mockResolvedValue(operator);
+    mocks.adminContext.mockResolvedValue({ actor: operator, options: [{ scope: schoolA, label: 'School A' }] });
+    const form = new FormData();
+    form.set('scope', 'branch:school-a');
+    form.set('destination', '/studio/library');
+    await expect(enterSchoolWorkspace(form)).rejects.toThrow('redirect:/studio/library');
+    const context = await getStudioContext();
+    expect(context.scope).toEqual(schoolA);
+    expect(context.options.map((option) => option.scope)).toContainEqual(schoolA);
+    expect(context.permissions).toContain('content.read');
+  });
+
+  it('does not offer an unrelated school to a school-only Studio operator', async () => {
+    mocks.listBranches.mockResolvedValue([{ id: 'school-a', name: 'School A' }, { id: 'school-b', name: 'School B' }]);
+    mocks.getActor.mockResolvedValue(actor([{ permissions: ['content.read'], scope: schoolA }]));
+    mocks.cookie = 'branch:school-b';
+    const context = await getStudioContext();
+    expect(context.scope).toEqual(schoolA);
+    expect(context.options.map((option) => option.scope)).toEqual([schoolA]);
+  });
+
+  it('does not admit central actors who lack any Studio destination', async () => {
+    mocks.getActor.mockResolvedValue(actor([{ permissions: ['branch.read', 'learning.read'], scope: central }]));
+    mocks.cookie = 'branch:school-a';
     await expect(getStudioContext()).rejects.toMatchObject({ status: 403 });
   });
 

@@ -37,7 +37,7 @@ describe('branch admin page', () => {
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
 
-    render(<Provider><BranchesManager initialBranches={[]} canManage /></Provider>);
+    render(<Provider><BranchesManager scope={{kind: "central"}} actorId="operator" initialBranches={[]} canManage /></Provider>);
     expect(screen.queryByRole('textbox', { name: 'Branch ID' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'New school' }));
     const sheet = screen.getByRole('dialog', { name: 'New school' });
@@ -46,11 +46,11 @@ describe('branch admin page', () => {
     await user.type(within(sheet).getByRole('textbox', { name: 'City' }), 'Ho Chi Minh City');
     await user.click(within(sheet).getByRole('button', { name: 'Create branch' }));
 
-    expect(await screen.findByRole('cell', { name: 'Ho Chi Minh City' })).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: /Ho Chi Minh City$/ })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'HCMC' })).toHaveLength(1);
-    expect(screen.getByRole('status')).toHaveTextContent('Saved.');
+    expect(screen.getAllByRole('status').some((status) => status.textContent === 'Saved.')).toBe(true);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches?scope=central&actorId=operator', expect.objectContaining({ method: 'POST' }));
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ id: 'hcmc', name: 'HCMC', city: 'Ho Chi Minh City' });
   });
 
@@ -61,7 +61,7 @@ describe('branch admin page', () => {
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
 
-    render(<Provider><BranchesManager initialBranches={[{ id: 'ans', name: 'ANS', city: null, createdAt: '2026-09-01' }]} canManage /></Provider>);
+    render(<Provider><BranchesManager scope={{kind: "central"}} actorId="operator" initialBranches={[{ id: 'ans', name: 'ANS', city: null, createdAt: '2026-09-01' }]} canManage /></Provider>);
     await user.click(screen.getByRole('button', { name: 'Actions for ANS' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Edit school' }));
     const sheet = screen.getByRole('dialog', { name: 'Edit school' });
@@ -74,8 +74,8 @@ describe('branch admin page', () => {
 
     expect(await screen.findByRole('link', { name: 'ANS Hanoi' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'ANS' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('row')).toHaveLength(2);
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches/ans', expect.objectContaining({ method: 'PUT' }));
+    expect(screen.getAllByRole('row', { name: /ANS Hanoi/ })).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches/ans?scope=central&actorId=operator', expect.objectContaining({ method: 'PUT' }));
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ name: 'ANS Hanoi', city: 'Ha Noi' });
   });
 
@@ -83,7 +83,7 @@ describe('branch admin page', () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => json({ error: { message: 'duplicate' } }, 409));
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
-    render(<Provider><BranchesManager initialBranches={[]} canManage /></Provider>);
+    render(<Provider><BranchesManager scope={{kind: "central"}} actorId="operator" initialBranches={[]} canManage /></Provider>);
     await user.click(screen.getByRole('button', { name: 'New school' }));
     const sheet = screen.getByRole('dialog', { name: 'New school' });
     await user.type(within(sheet).getByRole('textbox', { name: 'Branch ID' }), 'ans');
@@ -96,26 +96,26 @@ describe('branch admin page', () => {
     expect(within(sheet).getByRole('textbox', { name: 'Name' })).toHaveValue('ANS');
     expect(screen.queryByRole('link', { name: 'ANS' })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/studio/branches?scope=central&actorId=operator', expect.objectContaining({ method: 'POST' }));
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ id: 'ans', name: 'ANS', city: null });
   });
 
   it('shows report columns only when reports are provided and says Unavailable when they failed', () => {
     const branches = [{ id: 'ans', name: 'ANS', city: 'Ha Noi', createdAt: '2026-09-01' }];
-    const { unmount } = render(<Provider><BranchesManager initialBranches={branches} canManage={false} /></Provider>);
+    const { unmount } = render(<Provider><BranchesManager scope={{kind: "central"}} actorId="operator" initialBranches={branches} canManage={false} /></Provider>);
     expect(screen.queryByRole('columnheader', { name: 'Average score' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'New school' })).not.toBeInTheDocument();
     unmount();
 
-    const ready = render(<Provider><BranchesManager initialBranches={branches} reports={{ ans: reportCells }} canManage={false} /></Provider>);
+    const ready = render(<Provider><BranchesManager scope={{kind: "central"}} actorId="operator" initialBranches={branches} reports={{ ans: reportCells }} canManage={false} /></Provider>);
     const row = screen.getByRole('row', { name: /ANS/ });
-    expect(screen.getByRole('columnheader', { name: 'Average score' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: '12' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: '25%' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: '81.5%' })).toBeInTheDocument();
+    // JSDOM measures an empty container as narrow, so native rows include their column labels.
+    expect(within(row).getByRole('cell', { name: /Active learners · 30 days: 12/ })).toBeInTheDocument();
+    expect(within(row).getByRole('cell', { name: /Completion: 25%/ })).toBeInTheDocument();
+    expect(within(row).getByRole('cell', { name: /Average score: 81.5%/ })).toBeInTheDocument();
     ready.unmount();
 
-    render(<Provider><BranchesManager initialBranches={branches} reports="unavailable" canManage={false} /></Provider>);
+    render(<Provider><BranchesManager scope={{kind: "central"}} actorId="operator" initialBranches={branches} reports="unavailable" canManage={false} /></Provider>);
     expect(within(screen.getByRole('row', { name: /ANS/ })).getAllByText('Unavailable')).toHaveLength(5);
     expect(screen.queryByText('0')).not.toBeInTheDocument();
   });

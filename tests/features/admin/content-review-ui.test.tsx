@@ -60,7 +60,7 @@ describe('Central review interface',()=>{
  it('renders only allowed creation and review controls with title, owner and audience',()=>{
   render(provider(<ContentInventory {...props} creatableTypes={['resource']} requestableKeys={[]} rows={[{...row,title:{en:'Student guide'},audience:{scope:'branches',branchIds:['ans']},ownership_kind:'central',owner_branch_id:null,updated_at:'2026-09-06T00:00:00Z',review_status:null,studio_href:'/admin/resources/guide'}]}/>));
   expect(screen.getByRole('link',{name:'Create resource'})).toBeInTheDocument();expect(screen.queryByRole('link',{name:'Create course'})).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Request review'})).not.toBeInTheDocument();
-  expect(screen.getByText('Student guide')).toBeInTheDocument();expect(screen.getByText('ANS')).toBeInTheDocument();
+  expect(screen.getByText('Student guide')).toBeInTheDocument();expect(screen.getByRole('row')).toHaveTextContent('ANS');
  });
  it('loads a library workflow only when expanded and withdraws a pending review',async()=>{
   const workflow={content:{contentType:'resource',contentId:'guide',revisionKey:'v2',status:'draft',publishedRevisionKey:null},activeReview:{id:'review-1',status:'pending',revisionKey:'v2',note:null},publication:null,actions:{requestReview:false,withdrawReview:true,approveAndPublish:false,mutate:false}};

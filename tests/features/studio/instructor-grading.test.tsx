@@ -609,6 +609,13 @@ describe('exam release confirmation', () => {
 
     expect(await screen.findByText('Learner One')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'releaseAction' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('tab', { name: 'Graded (0)' }));
+    expect(screen.getByText('No attempts in this state.')).toBeInTheDocument();
+    expect(screen.queryByText('Learner One')).not.toBeInTheDocument();
+    // Changing the work view neither grants release authority nor changes the server scope.
+    expect(screen.getByRole('button', { name: 'releaseAction' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('tab', { name: 'Waiting to grade (1)' }));
+    expect(screen.getByText('Learner One')).toBeInTheDocument();
   });
 
   it('uses the workspace API error code when release fails', async () => {

@@ -48,6 +48,27 @@ const PAGES: StaffPage[] = [
 describeStaffPages(PAGES);
 
 test.describe('studio page interactions', () => {
+  test('assessment work filters preserve release scope and all phone attempt details', async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(withQuery('/grading/assessments', { lang: 'en', theme: 'light' }));
+    const table = page.getByRole('table', { name: 'Exam attempts' });
+    await expect(table.getByRole('row', { name: /Nguyễn Thị Thanh Hương/ })).toContainText('Integrity events');
+    await expect(table.getByRole('row', { name: /Nguyễn Thị Thanh Hương/ })).toContainText('Submitted');
+    await expectNoHorizontalScroll(page);
+    await page.getByRole('tab', { name: 'Waiting to grade (0)' }).click();
+    await expect(page.getByText('No attempts in this state.')).toBeVisible();
+    // Release remains scoped to the selected exam, even when the work filter is empty.
+    await expect(page.getByRole('button', { name: 'Release results', exact: true })).toBeEnabled();
+    await page.getByRole('tab', { name: 'Graded (1)' }).click();
+    await expect(page.getByRole('table', { name: 'Exam attempts' })).toContainText('Nguyễn Thị Thanh Hương');
+    await pageShot(page, info, 'teaching-exam-attempts-390-light');
+    await page.getByRole('tab', { name: 'Assignments', exact: true }).click();
+    await expect(page.getByRole('table', { name: 'Assignment list' })).toContainText('Physics and data analysis');
+    await expect(page.getByRole('table', { name: 'Assignment list' })).toContainText('1 criterion · 5 points');
+    await expectNoHorizontalScroll(page);
+    await pageShot(page, info, 'teaching-assignments-390-light');
+  });
+
   test('grading workbench: review and grading panels remain reachable at 320px', async ({ page }, info) => {
     await page.setViewportSize({ width: 320, height: 700 });
     await page.goto(withQuery('/grading/assignments/sub-001', { theme: 'light' }));
@@ -126,6 +147,13 @@ test.describe('studio page interactions', () => {
     await expect(preview).toContainText(home.previewTitle);
     await expect(preview).toBeVisible();
     await expect(preview.getByRole('link', { name: /Open grading workbench/ })).toBeVisible();
+    const selectedRow = page.getByRole('table').locator('[data-state="selected"]');
+    const otherRow = page.getByRole('table').getByRole('row').filter({ hasText: 'Nguyễn Minh Anh' }).first();
+    await otherRow.hover();
+    await expect(selectedRow.getByRole('button', { name: 'Preview Trần Gia Bảo' })).toHaveAttribute('aria-pressed', 'true');
+    // Native persistent hover state keeps the selected row's accent borders after the pointer leaves.
+    await expect.poll(() => selectedRow.evaluate((row) => getComputedStyle(row).borderLeftColor)).not.toBe('rgba(0, 0, 0, 0)');
+    await expect.poll(() => selectedRow.evaluate((row) => parseFloat(getComputedStyle(row).borderLeftWidth))).toBeGreaterThan(0);
     await pageShot(page, info, 'studio-queue-1440-light-preview');
     await preview.getByRole('button', { name: home.closePreview }).click();
     await expect(preview).toBeHidden();

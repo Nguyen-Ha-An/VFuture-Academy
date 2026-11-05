@@ -2,8 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, ClipboardCheck, FileClock, Hourglass, Inbox, NotebookPen } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CanvasButton as Button, CanvasDataTable } from '@/features/canvas/ui';
 import {
   ActivityFeed,
   ChartCard,
@@ -70,7 +69,7 @@ function waitingDays(submittedAt: string, now: string): number | null {
   return Math.max(0, Math.floor((to - from) / DAY_MS));
 }
 
-/** `/grading`: H1 + "Grade next" → KPI row → status strip → throughput and recent grades → oldest waiting → shortcuts. */
+/** `/grading`: waiting learner work precedes aggregate activity and historical reports. */
 export function GradingHomeView({ destinations, overview }: GradingHomeViewProps) {
   const nav = useTranslations('gradingNav');
   const t = useTranslations('staffUi.grading.home');
@@ -84,7 +83,7 @@ export function GradingHomeView({ destinations, overview }: GradingHomeViewProps
     : null;
   const gradeNext = overview
     ? next
-      ? <Button asChild><Link href={next.href}>{t('gradeNext')}<ArrowRight aria-hidden="true" /></Link></Button>
+      ? <Button href={next.href}>{t('gradeNext')}<ArrowRight aria-hidden="true" /></Button>
       : <div className="flex flex-col items-end gap-1">
         <Button disabled aria-describedby="grade-next-reason">{t('gradeNext')}<ArrowRight aria-hidden="true" /></Button>
         <p id="grade-next-reason" className="text-xs leading-normal text-muted-foreground">{gradeNextReason}</p>
@@ -122,6 +121,34 @@ export function GradingHomeView({ destinations, overview }: GradingHomeViewProps
     <StaffPageHeader title={nav('overview')} description={nav('overviewDescription')} actions={gradeNext} />
 
     {overview ? <>
+      <DataCard
+        title={t('oldest.title')}
+        description={t('oldest.description')}
+        actions={<Button variant="outline" size="sm" href={routes.grading.queue({ status: 'pending' })}>{t('oldest.openQueue')}</Button>}
+      >
+        {oldest === null
+          ? <p className="px-6 py-10 text-center text-sm leading-normal text-muted-foreground">{insights('unavailable')}</p>
+          : oldest && oldest.length
+            ? <CanvasDataTable
+              caption={t('oldest.title')}
+              rows={oldest}
+              rowKey={(item) => item.id}
+              columns={[
+                { key: 'learner', label: grading('table.learner'), render: (item) => item.learnerName ?? t('unknownLearner') },
+                { key: 'assignment', label: grading('table.courseItem'), render: (item) => <>
+                  <span className="block font-medium">{item.courseTitle ?? t('unknownCourse')}</span>
+                  <span className="block text-xs text-muted-foreground">{item.itemTitle ?? t('unknownItem')}</span>
+                </> },
+                { key: 'waiting', label: t('oldest.waiting'), render: (item) => {
+                  const days = waitingDays(item.submittedAt, overview.generatedAt);
+                  return <time dateTime={item.submittedAt} title={format.dateTime(new Date(item.submittedAt), { dateStyle: 'medium', timeStyle: 'short' })}>{days === null ? '—' : t('kpi.oldestValue', { days })}</time>;
+                } },
+                { key: 'status', label: grading('table.status'), render: (item) => <StatusBadge kind="submission" value={item.status} label={grading(`status.${item.status}`)} /> },
+                { key: 'action', label: grading('table.action'), render: (item) => <Button size="sm" variant="outline" href={item.href}>{grading('gradeAction')}</Button> },
+              ]}
+            />
+            : <div className="p-6"><EmptyState icon={<FileClock />} title={t('oldest.empty')} description={t('oldest.emptyDescription')} /></div>}
+      </DataCard>
       <StatGrid>
         <StatCard
           label={t('kpi.waiting')}
@@ -153,53 +180,6 @@ export function GradingHomeView({ destinations, overview }: GradingHomeViewProps
 
       <PipelineStrip title={t('pipeline.title')} description={t('pipeline.description')} stages={stages} />
 
-      <DataCard
-        title={t('oldest.title')}
-        description={t('oldest.description')}
-        actions={<Button asChild variant="outline" size="sm"><Link href={routes.grading.queue({ status: 'pending' })}>{t('oldest.openQueue')}</Link></Button>}
-      >
-        {oldest === null
-          ? <p className="px-6 py-10 text-center text-sm leading-normal text-muted-foreground">{insights('unavailable')}</p>
-          : oldest && oldest.length
-            ? <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{grading('table.learner')}</TableHead>
-                  <TableHead scope="col" className="hidden sm:table-cell">{grading('table.courseItem')}</TableHead>
-                  <TableHead scope="col">{t('oldest.waiting')}</TableHead>
-                  <TableHead scope="col" className="hidden sm:table-cell">{grading('table.status')}</TableHead>
-                  <TableHead scope="col"><span className="sr-only">{grading('table.action')}</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {oldest.map((item) => {
-                  const days = waitingDays(item.submittedAt, overview.generatedAt);
-                  return <TableRow key={item.id}>
-                    <TableCell className="font-medium whitespace-normal">
-                      <span className="block leading-normal">{item.learnerName ?? t('unknownLearner')}</span>
-                      {/* On phones the course and status columns are hidden; item and status stay under the name. */}
-                      <span className="block text-xs font-normal leading-normal text-muted-foreground sm:hidden">{item.itemTitle ?? t('unknownItem')}</span>
-                      <span className="mt-1 block sm:hidden"><StatusBadge kind="submission" value={item.status} label={grading(`status.${item.status}`)} /></span>
-                    </TableCell>
-                    <TableCell className="hidden min-w-48 whitespace-normal py-3 sm:table-cell">
-                      <span className="block font-medium leading-normal">{item.courseTitle ?? t('unknownCourse')}</span>
-                      <span className="block text-xs leading-normal text-muted-foreground">{item.itemTitle ?? t('unknownItem')}</span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap tabular-nums">
-                      <time dateTime={item.submittedAt} title={format.dateTime(new Date(item.submittedAt), { dateStyle: 'medium', timeStyle: 'short' })}>
-                        {days === null ? '—' : t('kpi.oldestValue', { days })}
-                      </time>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell"><StatusBadge kind="submission" value={item.status} label={grading(`status.${item.status}`)} /></TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild size="sm" variant="outline"><Link href={item.href}>{grading('gradeAction')}</Link></Button>
-                    </TableCell>
-                  </TableRow>;
-                })}
-              </TableBody>
-            </Table>
-            : <div className="p-6"><EmptyState icon={<FileClock />} title={t('oldest.empty')} description={t('oldest.emptyDescription')} /></div>}
-      </DataCard>
       <div className="grid gap-6 xl:grid-cols-3 xl:items-start">
         <ChartCard
           className="xl:col-span-2"

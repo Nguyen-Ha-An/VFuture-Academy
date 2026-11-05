@@ -801,7 +801,8 @@ describe('studio draft services', () => {
     const client = new SupabaseStub({}, { studio_import_course: [successful({ conflict: false, draft: savedDraft })] });
 
     await expect(importNewCourse(text, actor, { client, resolver: minimalResolver() })).resolves.toMatchObject({ draft: { id: 'draft-new' } });
-    expect(client.rpcCalls[0]).toMatchObject({ name: 'studio_import_course', args: { course_id: 'minimal', base_version_id: null } });
+    expect(client.rpcCalls[0]).toMatchObject({ name: 'studio_import_course', args: { course_id: 'minimal' } });
+    expect(client.rpcCalls[0].args).not.toHaveProperty('base_version_id');
   });
 
   it('imports bundle documents, delegates questions/assets, and rewrites asset URLs', async () => {

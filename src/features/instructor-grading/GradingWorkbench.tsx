@@ -10,7 +10,6 @@ import { registerAll } from "@/content-engine/render";
 import type { LearnerQuestion } from "@/content-engine/render/registry";
 import { registerContentBlocks } from "@/content-engine/render/blocks";
 import type { LessonRuntime } from "@/content-engine/render/runtime";
-import { Button } from "@/components/ui/button";
 import { CanvasButton, CanvasTextArea, CanvasNumberInput, CanvasRadioInput, CanvasRadioInputGroup, CanvasSelect } from "@/features/canvas/ui";
 import { SectionCard } from "@/features/staff-ui/components";
 import { WorkspaceApiError, readApiData, workspaceErrorMessage } from "@/features/studio/ui/client";
@@ -18,6 +17,7 @@ import { useUnsavedChanges } from "@/features/studio/ui/useUnsavedChanges";
 import { StaffPageHeader } from "@/features/workspace/ui/StaffPageHeader";
 import { useStaffTitleRegistration } from "@/features/workspace/ui/StaffTitleContext";
 import { routes } from "@/lib/routes";
+import { parseScopeKey } from "@/lib/admin-scope";
 import { RubricScoreEditor, SubmissionResponse, computeRubricTotal, normalizeSubmissionRows } from "./SubmissionsWorkspace";
 import type { InstructorRubric, SubmissionQueueItem } from "./types";
 import { ManualAnswer } from "./ExamsWorkspace";
@@ -54,6 +54,17 @@ type Props = {
   nextHref?: string | null | Promise<string | null>;
 };
 type RecordValue = Record<string, unknown>;
+/** Detail routes authorize the selected school through branchId, independently of UI guard fields. */
+function detailQuery(scopeKey: string, actorId: string, locale: Props['locale']): URLSearchParams {
+  const scope = parseScopeKey(scopeKey);
+  return new URLSearchParams({
+    scope: scopeKey,
+    actorId,
+    locale,
+    ...(scope?.kind === 'branch' ? { branchId: scope.branchId } : {}),
+  });
+}
+
 
 function object(value: unknown): RecordValue | null { return value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : null; }
 function rich(value: unknown) { const candidate = object(value); return candidate && Array.isArray(candidate.blocks) ? candidate as { blocks: unknown[] } : null; }
@@ -92,7 +103,7 @@ function questionTypeLabel(type: unknown, locale: "vi" | "en"): string {
 function NextInQueueLink({ href }: { href: string | null | Promise<string | null> }) {
   const t = useTranslations("staffUi.grading.workbench");
   const next = safeInternalGradingHref(typeof href === "string" || href === null ? href : use(href));
-  return next ? <Button asChild variant="outline"><Link href={next}>{t("next")}<ArrowRight aria-hidden="true" /></Link></Button> : null;
+  return next ? <CanvasButton href={next} variant="outline">{t("next")}<ArrowRight aria-hidden="true" /></CanvasButton> : null;
 }
 
 function WorkbenchIdentity({ locale, learner, course, assessment, attempt, nextHref }: { locale: "vi" | "en"; learner?: string | null; course?: string | null; assessment?: string | null; attempt?: number | null; nextHref?: string | null | Promise<string | null> }) {
@@ -340,7 +351,7 @@ function ExamWorkbench({ detail, props }: { detail: RecordValue; props: Props })
   }));
   const dirty = gradingOpen && savedQuestion !== JSON.stringify({ nextPoints: points, nextFeedback: feedback });
   async function refresh(): Promise<void> {
-    const params=new URLSearchParams({scope:props.scope,actorId:props.actorId});
+    const params=detailQuery(props.scope, props.actorId, props.locale);
     setCurrentDetail(await readApiData<RecordValue>(await fetch(`/api/v1/studio/grading/exams/${encodeURIComponent(props.id)}?${params}`)));
   }
   async function save(): Promise<boolean> {
@@ -432,7 +443,7 @@ function ExamWorkbench({ detail, props }: { detail: RecordValue; props: Props })
         {saveMessage?<p role="status" className="text-sm leading-normal text-foreground">{saveMessage}</p>:null}
         {!gradingOpen ? <CompletedResult locale={props.locale} score={finalPoints} max={finalMax} percent={finalPercent} availableAt={resultAvailableAt} /> : null}
         {!gradingOpen && manualType ? <p className="text-sm leading-normal text-muted-foreground">{vi ? "Câu hỏi này không còn chờ chấm tay." : "This question is no longer pending manual grading."}</p> : null}
-        {legacyRelease && props.canRelease ? <div className="rounded-md border border-warning-border bg-warning p-3 text-sm leading-normal text-warning-foreground"><p className="font-medium">{vi ? "Kết quả cũ chưa công bố" : "Legacy unreleased result"}</p><p className="mt-1">{vi ? "Lượt thi này đã chấm xong trước khi có cơ chế hiển thị kết quả mới. Dùng công bố kết quả cũ để hiển thị cho học viên." : "This attempt finished grading before result availability existed. Use the legacy release operation to show it to the learner."}</p><Button asChild variant="outline" size="sm" className="mt-3"><Link href={releaseHref}>{vi ? "Mở công bố kết quả cũ" : "Open legacy result release"}</Link></Button></div> : null}
+        {legacyRelease && props.canRelease ? <div className="rounded-md border border-warning-border bg-warning p-3 text-sm leading-normal text-warning-foreground"><p className="font-medium">{vi ? "Kết quả cũ chưa công bố" : "Legacy unreleased result"}</p><p className="mt-1">{vi ? "Lượt thi này đã chấm xong trước khi có cơ chế hiển thị kết quả mới. Dùng công bố kết quả cũ để hiển thị cho học viên." : "This attempt finished grading before result availability existed. Use the legacy release operation to show it to the learner."}</p><CanvasButton href={releaseHref} variant="outline" size="sm" className="mt-3">{vi ? "Mở công bố kết quả cũ" : "Open legacy result release"}</CanvasButton></div> : null}
         {question && gradingOpen ? manualType ? <><CanvasNumberInput renderLabel={vi ? `Điểm / ${maxPoints}` : `Points / ${maxPoints}`} min={0} max={maxPoints} showArrows={false} value={points} interaction={!editable || busy !== null ? "disabled" : "enabled"} onChange={(_event, value) => setPoints(value)} /><CanvasTextArea label={vi ? "Phản hồi" : "Feedback"} value={feedback} disabled={!editable || busy !== null} onChange={setFeedback} />{error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}{!editable ? <p className="text-sm leading-normal text-muted-foreground">{vi?"Câu hỏi này không còn chờ chấm tay.":"This question is no longer pending manual grading."}</p> : null}</> : <p className="text-sm leading-normal text-muted-foreground">{vi ? "Câu hỏi này được chấm tự động và chỉ đọc." : "This question is automatically graded and read-only."}</p> : null}
         {gradingOpen ? <div id={`${panelId}-completion-reason`} className="grid gap-2 border-t border-border pt-4">{!everyManualScored ? <p className="text-xs leading-normal text-muted-foreground">{vi ? `Mọi câu hỏi chấm tay cần điểm hợp lệ trước khi hoàn tất chấm.${progress ? ` Đã chấm ${progress.scored}/${progress.total}.` : ''}` : `Every manual question needs a valid score before grading can be completed.${progress ? ` Scored ${progress.scored} of ${progress.total}.` : ''}`}</p> : dirty ? <p className="text-xs leading-normal text-muted-foreground">{vi ? "Lưu điểm câu hỏi đang sửa trước khi hoàn tất chấm." : "Save the question grade you are editing before completing grading."}</p> : null}{!manualType && error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}</div> : null}
       </SectionCard>
@@ -448,8 +459,8 @@ function LoadedGradingWorkbench(props: Props) {
   const [backHref,setBackHref]=useState(() => routes.grading.queue());
   useEffect(()=>{const back=safeInternalHref(new URLSearchParams(window.location.search).get('back'));if(back)setBackHref(back)},[]);
   const [detail, setDetail] = useState<RecordValue | null>(null); const [error, setError] = useState<string | null>(null);
-  useEffect(() => { const controller = new AbortController(); setDetail(null);setError(null); const path = props.kind === "assignments" ? "assignments" : "exams"; const params = new URLSearchParams({ scope: props.scope, actorId: props.actorId }); void fetch(`/api/v1/studio/grading/${path}/${encodeURIComponent(props.id)}?${params}`, { signal: controller.signal }).then((response) => readApiData<unknown>(response)).then((value) => { const parsed = object(value); if (!parsed) throw new Error("Invalid grading detail"); if(!controller.signal.aborted)setDetail(parsed); }).catch((cause) => { if (!controller.signal.aborted) setError(workspaceErrorMessage(cause, props.locale === "vi" ? "Không thể tải nguồn lịch sử đã ghim." : "The pinned historical source is unavailable.")); }); return () => controller.abort(); }, [props.kind,props.id,props.scope,props.actorId,props.locale]);
-  if (error) return <section className="mx-auto max-w-3xl space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground"><p className="text-xs font-medium leading-normal text-destructive-soft-foreground">{props.locale === "vi" ? "Lỗi tải dữ liệu" : "Load error"}</p><h1 className="text-xl font-bold leading-[1.4]">{props.locale === "vi" ? "Không có nguồn lịch sử" : "Historical source unavailable"}</h1><p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p><Button asChild variant="outline"><Link href={backHref}><ArrowLeft aria-hidden="true" />{t(`back.${backLabelKey(backHref)}`)}</Link></Button></section>;
+  useEffect(() => { const controller = new AbortController(); setDetail(null);setError(null); const path = props.kind === "assignments" ? "assignments" : "exams"; const params = detailQuery(props.scope, props.actorId, props.locale); void fetch(`/api/v1/studio/grading/${path}/${encodeURIComponent(props.id)}?${params}`, { signal: controller.signal }).then((response) => readApiData<unknown>(response)).then((value) => { const parsed = object(value); if (!parsed) throw new Error("Invalid grading detail"); if(!controller.signal.aborted)setDetail(parsed); }).catch((cause) => { if (!controller.signal.aborted) setError(workspaceErrorMessage(cause, props.locale === "vi" ? "Không thể tải nguồn lịch sử đã ghim." : "The pinned historical source is unavailable.")); }); return () => controller.abort(); }, [props.kind,props.id,props.scope,props.actorId,props.locale]);
+  if (error) return <section className="mx-auto max-w-3xl space-y-4 rounded-lg border border-border bg-card p-6 text-card-foreground"><p className="text-xs font-medium leading-normal text-destructive-soft-foreground">{props.locale === "vi" ? "Lỗi tải dữ liệu" : "Load error"}</p><h1 className="text-xl font-bold leading-[1.4]">{props.locale === "vi" ? "Không có nguồn lịch sử" : "Historical source unavailable"}</h1><p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p><CanvasButton href={backHref} variant="outline"><ArrowLeft aria-hidden="true" />{t(`back.${backLabelKey(backHref)}`)}</CanvasButton></section>;
   if (!detail) return <div role="status" className="flex min-h-40 items-center justify-center gap-2 rounded-lg border border-border bg-card p-6 text-sm leading-normal text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />{props.locale === "vi" ? "Đang tải bài chấm…" : "Loading grading workbench…"}</div>;
   return <><Link href={backHref} className="mb-4 inline-flex min-h-9 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none"><ArrowLeft aria-hidden="true" className="size-4" />{t(`back.${backLabelKey(backHref)}`)}</Link>{props.kind === "assignments" ? <AssignmentWorkbench detail={detail} props={props} /> : <ExamWorkbench detail={detail} props={props} />}</>;
 }

@@ -1,14 +1,12 @@
 'use client';
 import { NotebookSubmissionPreview } from '@/features/notebooks/ui/NotebookSubmissionPreview';
-import Link from 'next/link';
 
 import { Eye, FileText, Inbox, ListFilter, LoaderCircle, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button, CanvasDataTable } from '@/features/canvas/ui';
 import { CanvasNumberInput, CanvasRadioInput, CanvasRadioInputGroup, CanvasSelect, CanvasProgressBar } from '@/features/canvas/ui';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataCard, EmptyState, StatusBadge } from '@/features/staff-ui/components';
 import { registerContentBlocks } from '@/content-engine/render/blocks';
 import { RichContentView } from '@/content-engine/render/RichContentView';
@@ -303,7 +301,7 @@ export function SubmissionsTable({
   const home = useTranslations('staffUi.grading.home');
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
-  function previewFromRow(event: MouseEvent<HTMLTableRowElement>, item: SubmissionQueueItem) {
+  function previewFromRow(event: MouseEvent<Element>, item: SubmissionQueueItem) {
     // Links and buttons inside the row keep their own behaviour.
     if (!onPreview || (event.target as HTMLElement).closest('a,button')) return;
     // The preview pane only exists from xl (1280px); below it a row click would set invisible state.
@@ -311,58 +309,36 @@ export function SubmissionsTable({
     onPreview(item);
   }
 
-  return (
-    <Table className="max-md:block" containerClassName="max-md:overflow-visible">
-      <TableHeader className="max-md:hidden">
-        <TableRow className="hover:bg-transparent">
-          <TableHead scope="col">{t('table.learner')}</TableHead>
-          <TableHead scope="col">{t('table.courseItem')}</TableHead>
-          <TableHead scope="col" className="hidden lg:table-cell">{t('table.attempt')}</TableHead>
-          <TableHead scope="col" className="hidden sm:table-cell">{t('table.submittedAt')}</TableHead>
-          <TableHead scope="col">{t('table.status')}</TableHead>
-          {canGrade ? <TableHead scope="col">{t('table.action')}</TableHead> : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody className="max-md:block">
-        {items.map((item) => {
-          const selected = item.id === selectedId;
-          const courseTitle = item.courseTitle === item.courseVersionId ? home('unknownCourse') : item.courseTitle;
-          const itemTitle = item.itemTitle === item.itemId ? home('unknownItem') : item.itemTitle;
-          return (
-            <TableRow
-              key={item.id}
-              data-state={selected ? 'selected' : undefined}
-              onClick={onPreview ? (event) => previewFromRow(event, item) : undefined}
-              className={`${onPreview ? 'xl:cursor-pointer ' : ''}max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-3 max-md:gap-y-2 max-md:px-4 max-md:py-4 max-md:[&>td]:!h-auto max-md:[&>td]:!p-0`}
-            >
-              <TableCell className="min-w-28 whitespace-normal font-medium leading-normal max-md:col-start-1 max-md:row-start-1 max-md:min-w-0 max-md:break-words"><span className="sr-only md:hidden">{t('table.learner')}: </span>{item.learnerName}</TableCell>
-              <TableCell className="whitespace-normal py-3 md:min-w-48 max-md:col-span-2 max-md:row-start-2 max-md:min-w-0"><span className="sr-only md:hidden">{t('table.courseItem')}: </span><span className="block break-words font-medium leading-normal">{courseTitle}</span><span className="block break-words text-xs leading-normal text-muted-foreground">{itemTitle}</span></TableCell>
-              <TableCell className="hidden tabular-nums lg:table-cell max-md:col-start-1 max-md:row-start-3 max-md:!block max-md:text-xs max-md:text-muted-foreground"><span className="md:hidden">{t('table.attempt')} </span>{item.attemptNo}</TableCell>
-              <TableCell className="hidden whitespace-nowrap text-muted-foreground tabular-nums sm:table-cell max-md:col-start-2 max-md:row-start-3 max-md:!block max-md:whitespace-normal max-md:text-right max-md:text-xs"><span className="sr-only md:hidden">{t('table.submittedAt')}: </span>{date.format(new Date(item.submittedAt))}</TableCell>
-              <TableCell className="max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end"><StatusBadge kind="submission" value={item.status} label={t(`status.${item.status}`)} />{item.late === true ? <span className="mt-1 block text-xs text-muted-foreground">{t("lateSnapshot")}</span> : null}</TableCell>
-              {canGrade ? <TableCell className="max-md:col-span-2 max-md:row-start-4 max-md:pt-2">
-                <div className="flex items-center gap-2">
-                  {/* Outline, not primary: one black primary per page, never one per row. */}
-                  {detailHref
-                    ? <Button asChild size="sm" variant="outline" className="max-md:min-h-11 max-md:w-full"><Link href={detailHref(item)}>{t('gradeAction')}</Link></Button>
-                    : <Button size="sm" variant="outline" className="max-md:min-h-11 max-md:w-full" onClick={() => onGrade?.(item)}>{t('gradeAction')}</Button>}
-                  {onPreview ? <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="hidden xl:inline-flex"
-                    aria-label={home('queue.preview', { learner: item.learnerName })}
-                    aria-pressed={selected}
-                    data-preview-for={item.id}
-                    onClick={() => onPreview(item)}
-                  ><Eye aria-hidden="true" /></Button> : null}
-                </div>
-              </TableCell> : null}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
+  return <CanvasDataTable
+    caption={t('title')}
+    rows={items}
+    rowKey={(item) => item.id}
+    rowProps={(item) => ({
+      'data-state': item.id === selectedId ? 'selected' : undefined,
+      setHoverStateTo: item.id === selectedId ? true : undefined,
+      onClick: onPreview ? (event) => previewFromRow(event, item) : undefined,
+      className: onPreview ? 'xl:cursor-pointer' : undefined,
+    })}
+    columns={[
+      { key: 'learner', label: t('table.learner'), render: (item) => item.learnerName },
+      { key: 'assignment', label: t('table.courseItem'), render: (item) => <>
+        <span className="block break-words font-medium">{item.courseTitle === item.courseVersionId ? home('unknownCourse') : item.courseTitle}</span>
+        <span className="block break-words text-xs text-muted-foreground">{item.itemTitle === item.itemId ? home('unknownItem') : item.itemTitle}</span>
+      </> },
+      { key: 'attempt', label: t('table.attempt'), render: (item) => item.attemptNo },
+      { key: 'submitted', label: t('table.submittedAt'), render: (item) => <time className="text-muted-foreground tabular-nums" dateTime={item.submittedAt}>{date.format(new Date(item.submittedAt))}</time> },
+      { key: 'status', label: t('table.status'), render: (item) => <>
+        <StatusBadge kind="submission" value={item.status} label={t(`status.${item.status}`)} />
+        {item.late === true ? <span className="mt-1 block text-xs text-muted-foreground">{t('lateSnapshot')}</span> : null}
+      </> },
+      ...(canGrade ? [{ key: 'action', label: t('table.action'), render: (item: SubmissionQueueItem) => <div className="flex flex-wrap items-center gap-2">
+        {detailHref
+          ? <Button size="sm" variant="outline" href={detailHref(item)}>{t('gradeAction')}</Button>
+          : <Button size="sm" variant="outline" onClick={() => onGrade?.(item)}>{t('gradeAction')}</Button>}
+        {onPreview ? <Button variant="ghost" size="icon-sm" className="hidden xl:inline-flex" aria-label={home('queue.preview', { learner: item.learnerName })} aria-pressed={item.id === selectedId} data-preview-for={item.id} onClick={() => onPreview(item)}><Eye aria-hidden="true" /></Button> : null}
+      </div> }] : []),
+    ]}
+  />;
 }
 
 function textContent(text: string): RichContent {
@@ -641,7 +617,7 @@ export function SubmissionsWorkspace({
   const unavailable = !canGrade || !branches.length;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="canvas-page mx-auto max-w-7xl min-w-0 space-y-6">
       {/* Inside the queue page the page header and tab already name this list: one header only,
           the h2 stays for the document outline. */}
       {embedded
@@ -688,7 +664,7 @@ export function SubmissionsWorkspace({
           </div>
           <div><StatusBadge kind="submission" value={preview.status} label={t(`status.${preview.status}`)} /></div>
           <div className="max-h-[60vh] min-w-0 overflow-y-auto"><SubmissionResponse item={preview} /></div>
-          <Button asChild><Link href={detailHref(preview)}>{home('queue.openWorkbench')}</Link></Button>
+          <Button href={detailHref(preview)}>{home('queue.openWorkbench')}</Button>
         </aside> : null}
       </div>
     </div>
