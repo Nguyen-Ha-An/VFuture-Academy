@@ -13,8 +13,12 @@ param packageSha256 string
 @description('Unique immutable receipt name; re-running a completed import is refused by the DB importer.')
 param receiptBlobName string
 param packageKeySecretName string
-@allowed(['schema-import','configure-authenticator','probe','map-identities','final-sync','forward-plan','forward-schema','forward-activation-plan','forward-activate'])
+@allowed(['schema-import','configure-authenticator','probe','map-identities','final-sync','forward-plan','forward-schema','forward-activation-plan','forward-activate','forward-53-plan','forward-53-apply'])
 param migrationAction string = 'schema-import'
+param sourceManifestSha256 string = ''
+param packageContentSha256 string = ''
+param sourceCommit string = ''
+param sourceTree string = ''
 param authenticatorPasswordSecretName string = ''
 param authenticatorExpiresAt string = ''
 var approvedVaultHost = '${vaultName}${az.environment().suffixes.keyvaultDns}'
@@ -68,7 +72,12 @@ resource job 'Microsoft.App/jobs@2024-03-01' = {
           { name: 'MIGRATION_PACKAGE_URL', value: '${storage.properties.primaryEndpoints.blob}migration-packages/${packageBlobName}' }
           { name: 'MIGRATION_PACKAGE_SHA256', value: packageSha256 }
           { name: 'MIGRATION_RECEIPT_URL', value: '${storage.properties.primaryEndpoints.blob}migration-receipts/${receiptBlobName}' }
-        ], migrationAction == 'configure-authenticator' ? [{ name: 'MIGRATION_AUTHENTICATOR_SECRET_URL', value: 'https://${approvedVaultHost}/secrets/${authenticatorPasswordSecretName}' }, { name: 'AZURE_AUTHENTICATOR_EXPIRES_AT', value: authenticatorExpiresAt }] : [])
+        ], migrationAction == 'configure-authenticator' ? [{ name: 'MIGRATION_AUTHENTICATOR_SECRET_URL', value: 'https://${approvedVaultHost}/secrets/${authenticatorPasswordSecretName}' }, { name: 'AZURE_AUTHENTICATOR_EXPIRES_AT', value: authenticatorExpiresAt }] : [], contains(['forward-53-plan','forward-53-apply'],migrationAction) ? [
+          { name: 'MIGRATION_SOURCE_MANIFEST_SHA256', value: sourceManifestSha256 }
+          { name: 'MIGRATION_PACKAGE_CONTENT_SHA256', value: packageContentSha256 }
+          { name: 'MIGRATION_SOURCE_COMMIT', value: sourceCommit }
+          { name: 'MIGRATION_SOURCE_TREE', value: sourceTree }
+        ] : [])
       }]
     }
   }

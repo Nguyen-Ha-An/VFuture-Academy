@@ -4,16 +4,11 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAzureSchema } from './schema.mjs';
 import { assertForward53Source } from './forward-53-provenance.mjs';
+import { forward53SourceFiles,validateForward53ReviewedPlan } from './forward-53-artifact.mjs';
 
 const root=new URL('../../',import.meta.url);
 const file='20261105030000_exam_attachment_bindings.sql';
-const fixed=[
-  'scripts/azure-core/forward-53.mjs','scripts/azure-core/forward-53-cli.mjs',
-  'scripts/azure-core/forward-53-provenance.mjs','scripts/azure-core/forward-53-package.mjs',
-  'scripts/azure-core/target.mjs','scripts/azure-core/schema.mjs','scripts/azure-core/bootstrap.sql',
-  'scripts/azure-core/storage.sql','scripts/azure-core/media-delete.sql','scripts/azure-core/account-access.sql',
-  'src/lib/identity/schema.sql','src/lib/identity/admin-schema.sql','infra/azure-core/postgres-roots.crt','package.json','package-lock.json',
-];
+
 /**
  * Local-only manifest. A future package builder must stage exactly these bytes and recheck provenance.
  * @param {{action:string,source:{sourceClean:boolean,sourceCommit:string|null,sourceTree:string|null},plan:{action:string,filename:string,source:unknown,activationSha:string,sourceSha256:string,azureSha256:string,baseline:string,priorReceiptDigest:string,roleDigest:string,roleCount:number,receiptSourceCommit?:string|null,receiptSourceTree?:string|null}}} envelope
@@ -32,7 +27,8 @@ export function createForward53PackageManifest(envelope,{v1Evidence,provenanceOp
   if(artifact.receipt.migrations.length!==53 || artifact.receipt.migrations[52].file!==file
     || artifact.receipt.migrations[52].sourceSha256!==envelope.plan.sourceSha256
     || artifact.receipt.migrations[52].azureSha256!==envelope.plan.azureSha256)throw new Error('Reviewed forward 53 artifact mismatch');
-  const paths=[...fixed,...artifact.receipt.migrations.map(row=>`supabase/migrations/${row.file}`)];
+  validateForward53ReviewedPlan(envelope,v1Evidence,{entry:artifact.receipt.migrations[52],source});
+  const paths=forward53SourceFiles();
   const files=paths.map(path=>({path,sha256:createHash('sha256').update(readFileSync(new URL(path,root))).digest('hex')}));
   assertForward53Source(source,provenanceOptions);
   const reviewedPlanSha256=createHash('sha256').update(JSON.stringify(envelope)).digest('hex');

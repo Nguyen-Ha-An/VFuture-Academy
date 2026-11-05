@@ -19,25 +19,25 @@ function fixedJson(path){
  * @param {string} mode
  * @param {Readonly<Record<string,string|undefined>>} [env]
  */
-export async function runForward53Cli(mode,env=process.env){
+export async function runForward53Cli(mode,env=process.env,proof={captureSource:captureForward53Source,assertSource:assertForward53Source,verifyReviewed:createForward53PackageManifest}){
   if(mode!=='plan' && mode!=='apply')throw new Error('Invalid forward 53 mode');
   const evidence=fixedJson(evidencePath);
   if(evidence?.verified!==true || typeof evidence.activationSha!=='string' || !/^[a-f0-9]{40}$/.test(evidence.activationSha))throw new Error('Verified V1 activation evidence required');
   let reviewed;
-  let source=captureForward53Source();
+  let source=proof.captureSource();
   if(mode==='apply'){
     const envelope=fixedJson(planPath);
     if(envelope?.action!=='forward-53-plan' || !envelope.plan || envelope.plan.activationSha!==evidence.activationSha)throw new Error('Reviewed forward 53 plan required');
-    source=assertForward53Source(envelope.source);
+    source=proof.assertSource(envelope.source);
     if(JSON.stringify(envelope.plan.source)!==JSON.stringify(source))throw new Error('Reviewed forward 53 source mismatch');
-    createForward53PackageManifest(envelope,{v1Evidence:evidence});
+    proof.verifyReviewed(envelope,{v1Evidence:evidence});
     reviewed=envelope.plan;
   }
   const db=createAzureTargetClient(env,{statement_timeout:120000});
   try{
     await db.connect();
     const executor=createForward53Executor({db,target:env,expectedActivationSha:evidence.activationSha,source,
-      ...(mode==='apply'?{verifySource:()=>assertForward53Source(source)}:{})});
+      ...(mode==='apply'?{verifySource:()=>proof.assertSource(source)}:{})});
     if(mode==='plan'){
       const plan=await executor.plan();
       if(plan.action==='noop' && (!/^[a-f0-9]{40}$/.test(plan.receiptSourceCommit??'') || !/^[a-f0-9]{40}$/.test(plan.receiptSourceTree??'')))throw new Error('Existing assessment receipt lacks committed provenance');
