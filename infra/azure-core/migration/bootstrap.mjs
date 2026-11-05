@@ -1,7 +1,7 @@
-/* global validateArchiveListing, tarListingArguments, FORWARD_ACTIONS, validateForwardReceipt */
+/* global validateArchiveListing, tarListingArguments, FORWARD_ACTIONS, validateForwardReceipt, ASSESSMENT_ACTIONS, validateAssessmentReceipt */
 // Bicep prefixes archive-policy.mjs; executed inside a pinned Node container. No dependency download or public DB exception.
 import { createHash, createDecipheriv } from 'node:crypto';
-import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, lstatSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 const work=`/tmp/academy-migration-${process.pid}`;
@@ -18,7 +18,7 @@ function safeFailure(error) {
   const code=error?.code??error?.cause?.code;
   if(allowed.includes(code))result.runtimeCode=code;
   for(const line of String(error?.stderr??'').split('\n')) {
-    try {const parsed=JSON.parse(line);if(/^[0-9A-Z]{5}$/.test(parsed.sqlState??''))result.sqlState=parsed.sqlState;if(allowed.includes(parsed.runtimeCode))result.runtimeCode=parsed.runtimeCode;if(['MIGRATION_FAILED','PROBE_FAILED','AUTHENTICATOR_FAILED','CUTOVER_FAILED','FORWARD_FAILED'].includes(parsed.errorCode))result.childErrorCode=parsed.errorCode;if(parsed.errorCode==='MIGRATION_FAILED'&&stage==='apply_schema'){if(allowedSchemaSteps.has(parsed.schemaStep))result.schemaStep=parsed.schemaStep;if(Number.isSafeInteger(parsed.position)&&parsed.position>0)result.position=parsed.position;}}catch{/* Raw stderr and SQL values are never forwarded. */}
+    try {const parsed=JSON.parse(line);if(/^[0-9A-Z]{5}$/.test(parsed.sqlState??''))result.sqlState=parsed.sqlState;if(allowed.includes(parsed.runtimeCode))result.runtimeCode=parsed.runtimeCode;if(['MIGRATION_FAILED','PROBE_FAILED','AUTHENTICATOR_FAILED','CUTOVER_FAILED','FORWARD_FAILED','FORWARD_53_FAILED'].includes(parsed.errorCode))result.childErrorCode=parsed.errorCode;if(parsed.errorCode==='MIGRATION_FAILED'&&stage==='apply_schema'){if(allowedSchemaSteps.has(parsed.schemaStep))result.schemaStep=parsed.schemaStep;if(Number.isSafeInteger(parsed.position)&&parsed.position>0)result.position=parsed.position;}}catch{/* Raw stderr and SQL values are never forwarded. */}
     for(const known of allowed)if(line.includes(`code: '${known}'`))result.runtimeCode=known;
   }
   return result;
@@ -58,7 +58,7 @@ async function readSecret(url,token){
 (async () => {
   const env=process.env;
   mark('validate_config');
-  if(!['probe','configure-authenticator','map-identities','final-sync','schema-import',...Object.keys(FORWARD_ACTIONS)].includes(env.MIGRATION_ACTION))throw new Error('invalid_migration_action');
+  if(!['probe','configure-authenticator','map-identities','final-sync','schema-import',...Object.keys(FORWARD_ACTIONS),...Object.keys(ASSESSMENT_ACTIONS)].includes(env.MIGRATION_ACTION))throw new Error('invalid_migration_action');
   const endpoint=new URL(env.MIGRATION_PACKAGE_URL);
   if(endpoint.protocol!=='https:' || !endpoint.hostname.endsWith('.blob.core.windows.net') || endpoint.search || endpoint.hash) throw new Error('invalid_blob_endpoint');
   const receiptUrl=new URL(env.MIGRATION_RECEIPT_URL);
@@ -95,6 +95,21 @@ async function readSecret(url,token){
   validateArchiveListing(execFileSync('tar',tarListingArguments(archive,execFileSync('tar',['--version'],{encoding:'utf8',stdio:['ignore','pipe','pipe'],env:archiveEnv})),{encoding:'utf8',stdio:['ignore','pipe','pipe'],env:archiveEnv}));
   mark('extract_package');
   execFileSync('tar',['-xzf',archive,'-C',work],{stdio:'pipe',env:archiveEnv});rmSync(archive);plain.fill(0);key.fill(0);
+  if(Object.hasOwn(ASSESSMENT_ACTIONS,env.MIGRATION_ACTION)){
+    mark('verify_assessment_artifact');
+    const bytes=readFileSync(work+'/build/azure-core/private/forward-53-source-manifest.json');
+    if(bytes.length>4*1024*1024||!/^[a-f0-9]{64}$/.test(env.MIGRATION_SOURCE_MANIFEST_SHA256??'')||createHash('sha256').update(bytes).digest('hex')!==env.MIGRATION_SOURCE_MANIFEST_SHA256)throw new Error('assessment_manifest_mismatch');
+    const manifest=JSON.parse(bytes);
+    if(env.MIGRATION_ACTION==='forward-53-apply'&&!/^[a-f0-9]{64}$/.test(manifest.reviewedPlanSha256??''))throw new Error('assessment_reviewed_plan_missing');
+    if(manifest.source?.sourceClean!==true||manifest.source.sourceCommit!==env.MIGRATION_SOURCE_COMMIT||manifest.source.sourceTree!==env.MIGRATION_SOURCE_TREE||!/^[a-f0-9]{40}$/.test(manifest.source.sourceCommit??'')||!/^[a-f0-9]{40}$/.test(manifest.source.sourceTree??'')||manifest.contentSha256!==env.MIGRATION_PACKAGE_CONTENT_SHA256||!/^[a-f0-9]{64}$/.test(manifest.contentSha256??'')||!Array.isArray(manifest.files)||manifest.files.length>5000)throw new Error('assessment_source_mismatch');
+    // Verify every executable/dependency byte with the trusted inline bootstrap,
+    // before importing even the packaged verifier and before fetching DB credentials.
+    for(const file of manifest.files){
+      if(typeof file.path!=='string'||file.path.startsWith('/')||/[\\\x00-\x1f\x7f]/.test(file.path)||file.path.split('/').some(part=>!part||part==='.'||part==='..')||!/^[a-f0-9]{64}$/.test(file.sha256??''))throw new Error('assessment_file_invalid');
+      const path=work+'/'+file.path;if(!lstatSync(path).isFile()||lstatSync(path).size>16*1024*1024||createHash('sha256').update(readFileSync(path)).digest('hex')!==file.sha256)throw new Error('assessment_file_mismatch');
+    }
+    execFileSync(process.execPath,['scripts/azure-core/forward-53-job.mjs','verify'],{cwd:work,env:{PATH:env.PATH,LC_ALL:'C'},stdio:['ignore','pipe','pipe'],timeout:120000});
+  }
   if(env.MIGRATION_ACTION==='schema-import'){
     mark('load_schema_step_names');
     const {azureSchemaStepNames}=await import(pathToFileURL(work+'/scripts/azure-core/schema.mjs').href);
@@ -134,6 +149,12 @@ async function readSecret(url,token){
     const output=execFileSync(process.execPath,[forwardEntrypoint,FORWARD_ACTIONS[env.MIGRATION_ACTION].mode],{cwd:work,env:runtimeEnv,stdio:['ignore','pipe','pipe'],timeout:300000});
     const observed=validateForwardReceipt(JSON.parse(output.toString('utf8')),env.MIGRATION_ACTION);
     receipt=Buffer.from(JSON.stringify(observed));
+  } else if (Object.hasOwn(ASSESSMENT_ACTIONS,env.MIGRATION_ACTION)) {
+    mark('assessment_action');
+    const output=execFileSync(process.execPath,['scripts/azure-core/forward-53-job.mjs',ASSESSMENT_ACTIONS[env.MIGRATION_ACTION].mode],{cwd:work,env:runtimeEnv,stdio:['ignore','pipe','pipe'],timeout:300000});
+    const observed=validateAssessmentReceipt(JSON.parse(output.toString('utf8')),env.MIGRATION_ACTION);
+    if(observed.packageContentSha256!==env.MIGRATION_PACKAGE_CONTENT_SHA256||observed.source.sourceCommit!==env.MIGRATION_SOURCE_COMMIT||observed.source.sourceTree!==env.MIGRATION_SOURCE_TREE)throw new Error('assessment_receipt_package_mismatch');
+    receipt=Buffer.from(JSON.stringify(validateAssessmentReceipt({...observed,encryptedPackageSha256:env.MIGRATION_PACKAGE_SHA256,sourceManifestSha256:env.MIGRATION_SOURCE_MANIFEST_SHA256},env.MIGRATION_ACTION,{transport:true})));
   } else if (env.MIGRATION_ACTION === 'schema-import') {
     for(const action of ['schema','import']) { mark(action==='schema'?'apply_schema':'import_snapshot'); execFileSync(process.execPath,['scripts/azure-core/migrate.mjs',action,'--apply'],{cwd:work,env:runtimeEnv,stdio:['ignore','pipe','pipe'],timeout:900000}); }
     mark('read_reconciliation_receipt');
@@ -143,7 +164,7 @@ async function readSecret(url,token){
   mark('upload_receipt');
   const upload=await fetch(receiptUrl,{method:'PUT',headers:{Authorization:`Bearer ${access_token}`,'x-ms-version':'2023-11-03','x-ms-blob-type':'BlockBlob','If-None-Match':'*','Content-Type':'application/json'},body:receipt,redirect:'error',signal:AbortSignal.timeout(30000)});
   if(!upload.ok)throw httpError('receipt_upload_failed',upload.status);
-  console.log(JSON.stringify({status:Object.hasOwn(FORWARD_ACTIONS,env.MIGRATION_ACTION)?'forward_action_completed':env.MIGRATION_ACTION==='probe'?'target_probed':env.MIGRATION_ACTION==='schema-import'?'schema_and_import_reconciled':env.MIGRATION_ACTION==='configure-authenticator'?'authenticator_configured':'cutover_action_completed',packageSha256:env.MIGRATION_PACKAGE_SHA256,receiptSha256:createHash('sha256').update(receipt).digest('hex')}));
+  console.log(JSON.stringify({status:Object.hasOwn(ASSESSMENT_ACTIONS,env.MIGRATION_ACTION)?'assessment_action_completed':Object.hasOwn(FORWARD_ACTIONS,env.MIGRATION_ACTION)?'forward_action_completed':env.MIGRATION_ACTION==='probe'?'target_probed':env.MIGRATION_ACTION==='schema-import'?'schema_and_import_reconciled':env.MIGRATION_ACTION==='configure-authenticator'?'authenticator_configured':'cutover_action_completed',packageSha256:env.MIGRATION_PACKAGE_SHA256,receiptSha256:createHash('sha256').update(receipt).digest('hex')}));
   rmSync(work,{recursive:true,force:true});
 })().catch(async error=>{
   rmSync(work,{recursive:true,force:true});

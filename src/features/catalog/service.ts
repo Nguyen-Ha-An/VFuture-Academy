@@ -180,7 +180,7 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
     .maybeSingle();
   databaseFailure(courseResult.error, 'Course could not be loaded');
   const course = recordOf(courseResult.data);
-  if (!course || course.status !== 'published' || typeof course.current_version_id !== 'string') {
+  if (!course) {
     throw new ApiError(404, 'COURSE_NOT_FOUND', 'Course was not found');
   }
 
@@ -196,10 +196,16 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
     && ['active', 'completed'].includes(String(enrollmentCandidate.status))
     ? enrollmentCandidate
     : null;
+  // Archived history follows the same owned enrollment pin as the item reader.
+  // Discovery still requires a published course with a current version.
+  if ((course.status !== 'published' && !(course.status === 'archived' && enrollment))
+    || (!enrollment && typeof course.current_version_id !== 'string')) {
+    throw new ApiError(404, 'COURSE_NOT_FOUND', 'Course was not found');
+  }
   if(enrollment)await assertEnrollmentMembershipAccess(actor,enrollment,database);
   const versionId = enrollment
     ? enrollment.course_version_id as string
-    : course.current_version_id;
+    : course.current_version_id as string;
 
   const outlineResult = await database.from('course_version_outline')
     .select('version_id,course_id,outline,meta,access,completion,skills,languages,default_language')
@@ -218,6 +224,32 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
 
   const items = outlineItems(row.outline);
   const { facts, lessonProgress } = await loadCompletionRows(database, actor.userId, versionId, items);
+  const examActivity = new Map<string, 'in_progress' | 'in_review' | 'submitted' | 'expired'>();
+  if (items.some((item) => item.type === 'exam')) {
+    const attemptsResult = await database.from('exam_attempts')
+      .select('id,user_id,course_version_id,item_id,status,attempt_no,started_at')
+      .eq('user_id', actor.userId)
+      .eq('course_version_id', versionId)
+      .order('attempt_no', { ascending: false })
+      .order('started_at', { ascending: false })
+      .order('id', { ascending: false });
+    databaseFailure(attemptsResult.error, 'Exam activity could not be loaded');
+    const publicStatuses = {
+      in_progress: 'in_progress', pending_manual: 'in_review', submitted: 'submitted',
+      submitted_late: 'submitted', graded: 'submitted', expired: 'expired',
+    } as const;
+    const attemptNumber = (row: Record<string, unknown>) => typeof row.attempt_no === 'number' && Number.isSafeInteger(row.attempt_no) ? row.attempt_no : 0;
+    const startedAt = (row: Record<string, unknown>) => typeof row.started_at === 'string' && Number.isFinite(Date.parse(row.started_at)) ? Date.parse(row.started_at) : 0;
+    const attempts = recordsOf(attemptsResult.data)
+      .filter((attempt) => attempt.user_id === actor.userId && attempt.course_version_id === versionId
+        && typeof attempt.item_id === 'string' && Object.hasOwn(publicStatuses, String(attempt.status)))
+      .sort((left, right) => attemptNumber(right) - attemptNumber(left) || startedAt(right) - startedAt(left)
+        || String(right.id ?? '').localeCompare(String(left.id ?? '')));
+    for (const attempt of attempts) {
+      const itemId = attempt.item_id as string;
+      if (!examActivity.has(itemId)) examActivity.set(itemId, publicStatuses[attempt.status as keyof typeof publicStatuses]);
+    }
+  }
   const completionResult = evaluateCompletion(completionRules(row.completion), facts);
   const completionRowResult = await database.from('course_completions')
     .select('completed_at')
@@ -230,7 +262,12 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
     item.id,
     itemIsComplete(item, facts)
       ? 'completed'
-      : item.type === 'lesson' ? lessonProgress[item.id] ?? 'not_started' : 'not_started',
+      : item.type === 'lesson' ? lessonProgress[item.id] ?? 'not_started'
+        : item.type === 'exam'
+          // Legacy recorded grading proves submitted work, without deriving pass/fail
+          // from private points. Completion remains governed by itemIsComplete above.
+          ? examActivity.get(item.id) ?? (facts.examGrades[item.id] !== undefined ? 'submitted' : 'not_started')
+          : facts.assignmentStatus[item.id] !== undefined ? 'in_progress' : 'not_started',
   ]));
   const defaultLocale = localeOf(row);
   const completedItems = items.filter((item) => itemIsComplete(item, facts)).length;

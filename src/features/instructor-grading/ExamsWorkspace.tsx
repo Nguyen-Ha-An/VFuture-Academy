@@ -369,7 +369,7 @@ export function ExamsWorkspace({
         <header className="border-b border-border pb-6">
           <div className="min-w-0">
             <p className="text-xs font-medium leading-normal text-muted-foreground">{t('eyebrow')}</p>
-            <h1 className="mt-1 text-2xl font-bold leading-[1.4] tracking-tight text-balance">{t('title')}</h1>
+            <h1 tabIndex={-1} className="mt-1 text-2xl font-bold leading-[1.4] tracking-tight text-balance">{t('title')}</h1>
             <p className="mt-1 max-w-2xl text-sm leading-normal text-muted-foreground text-pretty">{t('description')}</p>
           </div>
         </header>

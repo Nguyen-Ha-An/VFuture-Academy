@@ -17,7 +17,8 @@ const allWorkspaces: WorkspaceEntries = { studio: "/studio", grading: "/grading"
 
 const navigationMocks = vitest.hoisted(() => ({ pathname: "/app" }));
 
-vitest.mock("next/navigation", () => ({
+vitest.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
   useSearchParams: () => new URLSearchParams("pathway=ai-emerging-technology&sort=title"),
   usePathname: () => navigationMocks.pathname,
   useRouter: () => ({ push: vitest.fn() }),
@@ -29,26 +30,31 @@ function Provider({ children, locale = 'vi' }: { children: React.ReactNode; loca
 
 afterEach(() => {
   cleanup();
+  vitest.restoreAllMocks();
   navigationMocks.pathname = "/app";
 });
 
 describe("application shells", () => {
-  it("renders the focused learner navigation and account menu", () => {
+  it("renders the focused learner navigation and one shared Account tray", async () => {
     render(<Provider><AppShell><p>content</p></AppShell></Provider>);
     expect(screen.getByRole("navigation", { name: "Điều hướng toàn cục" })).toBeDefined();
     expect(screen.getByRole("link", { name: "Tổng quan" }).getAttribute("href")).toBe("/app");
     expect(screen.getByRole("link", { name: "Khóa học" }).getAttribute("href")).toBe("/app/courses");
     expect(screen.getByRole("link", { name: "Khám phá" }).getAttribute("href")).toBe("/app/explore");
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Tài khoản' }), { button: 0, ctrlKey: false });
-    expect(screen.getByRole('menuitem', { name: 'Hồ sơ' })).toHaveAttribute('href', '/app/profile');
+    expect(screen.getAllByRole('button', { name: 'Tài khoản' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Tài khoản' }));
+    const tray = await screen.findByRole('dialog', { name: 'Tài khoản' });
+    expect(within(tray).getByRole('link', { name: 'Hồ sơ' })).toHaveAttribute('href', '/app/profile');
+    expect(screen.getAllByRole('dialog', { name: 'Tài khoản' })).toHaveLength(1);
   });
 
-  it('uses the real English focus translations for navigation and account destinations', () => {
+  it('uses the real English focus translations for navigation and account destinations', async () => {
     render(<Provider locale="en"><AppShell><p>content</p></AppShell></Provider>);
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
     expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Account' }), { button: 0, ctrlKey: false });
-    expect(screen.getByRole('menuitem', { name: 'Certificates' })).toHaveAttribute('href', '/app/profile#certificates-heading');
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    const tray = await screen.findByRole('dialog', { name: 'Account' });
+    expect(within(tray).getByRole('link', { name: 'Certificates' })).toHaveAttribute('href', '/app/profile#certificates-heading');
   });
 
   it("marks the active learner navigation link with aria-current", () => {
@@ -69,7 +75,7 @@ describe("application shells", () => {
   });
 
   it('moves focus to the learner page heading after client navigation', () => {
-    render(<Provider><AppShell><h1>Trang học</h1></AppShell></Provider>);
+    render(<Provider><AppShell><h1 tabIndex={-1}>Trang học</h1></AppShell></Provider>);
 
     expect(screen.getByRole('heading', { name: 'Trang học' })).toHaveFocus();
   });
@@ -157,24 +163,31 @@ describe("application shells", () => {
     expect(screen.queryByRole('navigation', { name: 'Đường dẫn trang' })).toBeNull();
   });
 
-  it("offers the learner every staff workspace the server resolved", () => {
+  it("offers the learner every staff workspace the server resolved in global navigation", async () => {
     render(<Provider><AppShell studioDestination="/studio" gradingDestination="/grading" adminDestination="/admin" userName="An"><h1>Dashboard</h1></AppShell></Provider>);
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'An' }), { button: 0, ctrlKey: false });
-
-    expect(screen.getByRole('menuitem', { name: 'Mở Studio' })).toHaveAttribute('href', '/studio');
-    expect(screen.getByRole('menuitem', { name: 'Mở Khảo thí & đánh giá' })).toHaveAttribute('href', '/grading');
-    expect(screen.getByRole('menuitem', { name: 'Mở Quản trị' })).toHaveAttribute('href', '/admin');
+    const navigation = screen.getByRole('navigation', { name: 'Điều hướng toàn cục' });
+    expect(within(navigation).getByRole('link', { name: 'Studio' })).toHaveAttribute('href', '/studio');
+    expect(within(navigation).getByRole('link', { name: 'Giảng dạy' })).toHaveAttribute('href', '/grading');
+    expect(within(navigation).getByRole('link', { name: 'Quản trị' })).toHaveAttribute('href', '/admin');
+    fireEvent.click(within(navigation).getByRole('button', { name: 'Tài khoản' }));
+    const tray = await screen.findByRole('dialog', { name: 'Tài khoản' });
+    expect(within(tray).getByRole('heading', { name: 'An' })).toBeInTheDocument();
+    for (const href of ['/studio', '/grading', '/admin']) expect(tray.querySelector(`a[href="${href}"]`)).toBeNull();
   });
 
-  it("shows workspace switching only when the server grants Studio access", () => {
+  it("shows the Studio destination only when the server grants Studio access", async () => {
     const { rerender } = render(<Provider><AppShell><h1>Dashboard</h1></AppShell></Provider>);
-    expect(screen.queryByRole("link", { name: "Mở Studio" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Studio" })).toBeNull();
 
     rerender(<Provider><AppShell canAccessStudio userName="An"><h1>Dashboard</h1></AppShell></Provider>);
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'An' }), { button: 0, ctrlKey: false });
-    expect(screen.getByRole("menuitem", { name: "Mở Studio" })).toHaveAttribute("href", "/studio");
-    expect(screen.getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute("href", "/app/profile");
-    expect((screen.getByRole("menuitem", { name: "Đăng xuất" }) as HTMLButtonElement).form).toHaveAttribute("action", "/auth/signout");
+    expect(screen.getByRole('link', { name: 'Studio' })).toHaveAttribute('href', '/studio');
+    fireEvent.click(screen.getByRole('button', { name: 'Tài khoản' }));
+    const tray = await screen.findByRole('dialog', { name: 'Tài khoản' });
+    expect(within(tray).getByRole('link', { name: 'Hồ sơ' })).toHaveAttribute('href', '/app/profile');
+    expect(within(tray).getByRole('button', { name: 'Đăng xuất' }).tagName).toBe('BUTTON');
+    const signoutForm = document.querySelector('form[action="/auth/signout"]');
+    expect(signoutForm).toHaveAttribute('method', 'post');
+    expect(signoutForm).toHaveAttribute('hidden');
   });
 
   it("opens an accessible mobile drawer and restores trigger focus on Escape", async () => {
@@ -224,23 +237,33 @@ describe("application shells", () => {
     Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
   });
 
-  it('bounds a long account name while keeping the full accessible name', () => {
+  it('keeps the full long identity and name-derived Avatar inside the bounded Account panel', async () => {
     const name = 'A very long learner account name that must remain accessible';
     render(<Provider><AppShell userName={name}><h1>Dashboard</h1></AppShell></Provider>);
-    const trigger = screen.getByRole('button', { name });
-    expect(trigger).toHaveAttribute('title', name);
-    expect(trigger).toHaveClass('vf-l-account-trigger');
-    expect(trigger.querySelector('.vf-l-account-name')).toHaveClass('truncate');
+    const trigger = screen.getByRole('button', { name: 'Tài khoản' });
+    expect(trigger).toHaveAccessibleName('Tài khoản');
+    fireEvent.click(trigger);
+    const tray = await screen.findByRole('dialog', { name: 'Tài khoản' });
+    const identity = within(tray).getByRole('heading', { name });
+    expect(identity).toHaveTextContent(name);
+    expect(identity.closest('.canvas-account-identity')).not.toBeNull();
+    expect(tray.querySelector('.canvas-account-panel')).toBeInTheDocument();
+    expect(tray.querySelector('.canvas-account-avatar')).toHaveTextContent('RA');
   });
 
-  it('includes all account destinations in the mobile drawer', () => {
+  it('hands mobile navigation to the single Account tray with every actual account destination', async () => {
     render(<Provider><AppShell canAccessStudio><h1>Dashboard</h1></AppShell></Provider>);
     fireEvent.click(screen.getByRole('button', { name: 'Mở menu' }));
-    expect(screen.getByRole('link', { name: 'Hồ sơ' })).toHaveAttribute('href', '/app/profile');
-    expect(screen.getByRole('link', { name: 'Chứng chỉ' })).toHaveAttribute('href', '/app/profile#certificates-heading');
-    expect(screen.getByRole('link', { name: 'XP' })).toHaveAttribute('href', '/app/profile#xp-heading');
-    expect(screen.getByRole('link', { name: 'Bảng xếp hạng' })).toHaveAttribute('href', '/app/leaderboard');
-    expect(screen.getByRole('link', { name: 'Mở Studio' })).toHaveAttribute('href', '/studio');
+    const drawer = screen.getByRole('dialog', { name: 'Điều hướng học viên' });
+    expect(within(drawer).getByRole('link', { name: 'Studio' })).toHaveAttribute('href', '/studio');
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Tài khoản' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Điều hướng học viên' })).not.toBeInTheDocument());
+    const tray = await screen.findByRole('dialog', { name: 'Tài khoản' });
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(within(tray).getByRole('link', { name: 'Hồ sơ' })).toHaveAttribute('href', '/app/profile');
+    expect(within(tray).getByRole('link', { name: 'Chứng chỉ' })).toHaveAttribute('href', '/app/profile#certificates-heading');
+    expect(within(tray).getByRole('link', { name: 'Cài đặt tài khoản' })).toHaveAttribute('href', '/app/profile#profile-settings-heading');
+    expect(within(tray).getByRole('link', { name: 'Bảng xếp hạng' })).toHaveAttribute('href', '/app/leaderboard');
   });
 
   it("renders public locale links that opt into the lang query contract", () => {

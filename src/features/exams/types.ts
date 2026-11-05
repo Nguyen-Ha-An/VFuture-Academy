@@ -29,6 +29,7 @@ export type ExamErrorCode =
   | 'FORBIDDEN'
   | 'LOCALE_UNAVAILABLE'
   | 'INVALID_EXAM_CONFIGURATION'
+  | 'INVALID_ANSWER'
   | 'POOL_UNSATISFIABLE'
   | 'MANUAL_GRADING_INCOMPLETE'
   | 'GRADING_CONFLICT'
@@ -48,7 +49,7 @@ export class ExamError extends Error {
       ? 503
       : code === 'FORBIDDEN'
         ? 403
-        : code === 'POOL_UNSATISFIABLE' || code === 'INVALID_EXAM_CONFIGURATION'
+        : code === 'POOL_UNSATISFIABLE' || code === 'INVALID_EXAM_CONFIGURATION' || code === 'INVALID_ANSWER'
           ? 422
           : 409;
   }
@@ -217,7 +218,7 @@ export interface ExamRepo {
   /** Atomically preserves the first release timestamp for one graded attempt. */
   releaseAttempt(id: string, releasedAt: Date): Promise<ExamReleaseTransition>;
   upsertAnswers(answers: readonly ExamAnswerRecord[]): Promise<void>;
-  listAnswers(attemptId: string): Promise<ExamAnswerRecord[]>;
+  listAnswers(attemptId: string, questionIds?: readonly string[]): Promise<ExamAnswerRecord[]>;
   upsertGrade(grade: ExamGradeRecord): Promise<ExamGradeRecord>;
   /** Atomically appends no more than `limit` total events and returns the accepted count. */
   insertEvents(events: readonly ExamEventRecord[], limit: number): Promise<number>;

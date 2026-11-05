@@ -1,4 +1,5 @@
 import { staffShellVariant } from "@/features/workspace/presentation";
+import { headers } from "next/headers";
 import { AdminSessionGuard } from "@/features/admin/components/AdminSessionGuard";
 import { AdminShell } from "@/components/AdminShell";
 import { adminWorkspacePageContext } from "@/features/admin/context";
@@ -16,9 +17,10 @@ export default async function AdminLayout({
 }) {
   const variant = staffShellVariant("admin");
   // Chrome (theme, rail, identity) is read only for the Catmin shell, alongside the context.
-  const [context, chrome] = await Promise.all([
+  const [context, chrome, requestHeaders] = await Promise.all([
     adminWorkspacePageContext(),
     variant === "catmin" ? readStaffChrome() : null,
+    headers(),
   ]);
   if (chrome) {
     preloadStaffFonts();
@@ -28,6 +30,7 @@ export default async function AdminLayout({
         actorId={context.actor.userId}
       >
         <StaffWorkspaceShell
+          nonce={requestHeaders.get('x-nonce') ?? undefined}
           key={`${context.actor.userId}:${scopeKey(context.scope)}`}
           workspace="admin"
           chrome={chrome}

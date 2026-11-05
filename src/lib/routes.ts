@@ -71,6 +71,12 @@ export const routes = {
     course: (courseId: string, query?: RouteQuery) => withQuery(`/app/courses/${segment(courseId)}`, query),
     courseItem: (courseId: string, itemId: string, query?: RouteQuery) =>
       withQuery(`/app/courses/${segment(courseId)}/items/${segment(itemId)}`, query),
+    examReview: (courseId: string, itemId: string, attemptId: string) =>
+      `/app/courses/${segment(courseId)}/items/${segment(itemId)}/exam-reviews/${segment(attemptId)}`,
+    assignmentReview: (courseId: string, itemId: string, submissionId: string) =>
+      `/app/courses/${segment(courseId)}/items/${segment(itemId)}/assignment-reviews/${segment(submissionId)}`,
+    quizReview: (courseId: string, itemId: string, attemptId: string) =>
+      `/app/courses/${segment(courseId)}/items/${segment(itemId)}/quiz-reviews/${segment(attemptId)}`,
     explore: path('/app/explore'),
     resources: path('/app/resources'),
     resource: (resourceId: string, query?: RouteQuery) => withQuery(`/app/resources/${segment(resourceId)}`, query),

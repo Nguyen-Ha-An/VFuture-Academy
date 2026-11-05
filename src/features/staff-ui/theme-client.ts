@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { workspaceThemeAttribute, workspaceThemeCookie, workspaceThemes, type WorkspaceTheme } from '@/features/workspace-ui/theme';
+import { WORKSPACE_THEME_EVENT, workspaceThemeAttribute, workspaceThemeCookie, workspaceThemes, type WorkspaceTheme } from '@/features/workspace-ui/theme';
 
 const THEME_EVENT = 'vf-staff-theme';
 
@@ -29,7 +29,8 @@ export function useStaffTheme(initial: WorkspaceTheme): [WorkspaceTheme, (next: 
       if (workspaceThemes.includes(next as WorkspaceTheme)) setTheme(next as WorkspaceTheme);
     };
     window.addEventListener(THEME_EVENT, sync);
-    return () => window.removeEventListener(THEME_EVENT, sync);
+    window.addEventListener(WORKSPACE_THEME_EVENT, sync);
+    return () => { window.removeEventListener(THEME_EVENT, sync); window.removeEventListener(WORKSPACE_THEME_EVENT, sync); };
   }, []);
   return [theme, (next) => { setTheme(next); applyStaffTheme(next); }];
 }

@@ -21,6 +21,7 @@
       "shortcut": "g then {key}",
       "current": "Current",
       "propose": "Propose a project",
+      "accountPreferences": "Language and appearance",
       "hint": "↑↓ to move · Enter to open · Esc to close",
       "theme": {
         "system": "Automatic theme",
@@ -146,6 +147,7 @@
         "inReview": "In review",
         "approved": "Approved",
         "changesRequested": "Changes requested",
+        "expired": "Expired",
         "saving": "Saving",
         "notSaved": "Not saved"
       },
@@ -181,6 +183,7 @@
       "shortcut": "g rồi {key}",
       "current": "Đang dùng",
       "propose": "Đề xuất dự án",
+      "accountPreferences": "Ngôn ngữ và giao diện",
       "hint": "↑↓ di chuyển · Enter mở · Esc đóng",
       "theme": {
         "system": "Giao diện tự động",
@@ -306,6 +309,7 @@
         "inReview": "Đang chấm",
         "approved": "Đã duyệt",
         "changesRequested": "Cần chỉnh sửa",
+        "expired": "Đã hết hạn",
         "saving": "Đang lưu",
         "notSaved": "Chưa lưu"
       },

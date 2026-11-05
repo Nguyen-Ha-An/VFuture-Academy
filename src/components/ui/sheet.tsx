@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/ui-cn";
+import { useWorkspaceSurfaceTheme } from "./workspace-surface-context";
 
 export function Sheet(props: ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -46,11 +47,13 @@ export type SheetContentProps = ComponentProps<typeof SheetPrimitive.Content> & 
 };
 
 export function SheetContent({ className, children, side = "right", showCloseButton = true, closeLabel = "Close", ...props }: SheetContentProps) {
+  const surfaceTheme = useWorkspaceSurfaceTheme();
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-canvas-surface={surfaceTheme ?? undefined}
         data-side={side}
         className={cn(
           "fixed z-50 flex flex-col gap-4 border-border bg-background text-foreground outline-none transition ease-in-out data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:duration-150 motion-reduce:animate-none!",

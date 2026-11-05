@@ -14,7 +14,7 @@ export function StudioForbidden() {
     <div className="grid min-h-[60vh] place-items-center px-4 py-12 text-foreground">
       <section className="w-full max-w-xl rounded-lg border border-border bg-card p-6 text-card-foreground sm:p-8" aria-labelledby="studio-forbidden-title">
         <p className="text-xs font-medium leading-normal text-muted-foreground tabular-nums">{t('code')}</p>
-        <h1 id="studio-forbidden-title" className="mt-2 text-2xl font-bold leading-[1.4] tracking-tight">{t('title')}</h1>
+        <h1 tabIndex={-1} id="studio-forbidden-title" className="mt-2 text-2xl font-bold leading-[1.4] tracking-tight">{t('title')}</h1>
         <div className="mt-4 space-y-2 text-sm leading-normal text-muted-foreground">
           <p lang="vi">{t('messageVi')}</p>
           <p lang="en">{t('messageEn')}</p>

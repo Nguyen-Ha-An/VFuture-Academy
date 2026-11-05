@@ -100,7 +100,7 @@ test('real forward packager relocates with all52 schema inputs and locked pg clo
       const packed=spawnSync(process.execPath,[join(source,'infra/azure-core/migration/package.mjs'),'--forward'],{cwd:root,env:archiveEnv,encoding:'utf8'});
       assert.equal(packed.status,0,packed.stderr);
       const receipt=JSON.parse(readFileSync(join(root,'build/azure-core/migration-package-receipt.json'),'utf8'));
-      assert.equal(receipt.packageType,'forward');assert.equal(receipt.schemaSha256,buildAzureSchema().receipt.schemaSha256);assert.ok(receipt.dependencies.pg);
+      assert.equal(receipt.packageType,'forward');assert.equal(receipt.schemaSha256,buildAzureSchema({through:'20261105020000_teaching_permissions_activation.sql'}).receipt.schemaSha256);assert.ok(receipt.dependencies.pg);
       assert.equal(receipt.sourceClean,false);assert.equal(receipt.sourceCommit,null);assert.equal(receipt.sourceTree,null);
       const encrypted=readFileSync(join(privateDir,receipt.blobName));const key=Buffer.from(readFileSync(join(privateDir,'migration-package-key.txt'),'utf8'),'base64');
       const decrypt=createDecipheriv('aes-256-gcm',key,encrypted.subarray(0,12));decrypt.setAuthTag(encrypted.subarray(12,28));
@@ -109,6 +109,7 @@ test('real forward packager relocates with all52 schema inputs and locked pg clo
       const listing=execFileSync('tar',tarListingArguments(archive,version),{encoding:'utf8',env:archiveEnv});rmSync(archive);
       assert.equal(listing.includes('source-snapshot.json'),false);assert.equal(listing.includes('scripts/azure-core/migrate.mjs'),false);
       assert.equal(listing.split('\n').filter(name=>/^\.\/supabase\/migrations\/[^/]+\.sql$/.test(name)).length,52);
+      assert.equal(listing.includes('20261105030000_exam_attachment_bindings.sql'),false);
       assert.equal(listing.includes('forward-plan.json'),optional);assert.equal(listing.includes('forward-deployment-evidence.json'),optional);
       assert.equal(existsSync(join(privateDir,'source-snapshot.json')),false);
       const checked=spawnSync(process.execPath,[join(source,'infra/azure-core/migration/verify-package.mjs')],{cwd:root,env:{PATH:process.env.PATH,LC_ALL:'C'},encoding:'utf8'});

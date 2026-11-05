@@ -35,7 +35,7 @@ export function BenchState({ kind, kicker, title, titleAs = 'h3', titleId, body,
     aria-labelledby={Root === 'section' && titleId ? titleId : undefined}
   >
     {kicker ? <span className="vf-kicker">{kicker}</span> : null}
-    <Heading id={titleId} className={titleAs === 'h1' ? 'vf-title-sm' : 'vf-empty-title'}>{title}</Heading>
+    <Heading tabIndex={titleAs === 'h1' ? -1 : undefined} id={titleId} className={titleAs === 'h1' ? 'vf-title-sm' : 'vf-empty-title'}>{title}</Heading>
     {body ? typeof body === 'string' ? <p>{body}</p> : body : null}
     {meta ? <span className="vf-meta">{meta}</span> : null}
     {actions ? <div className="vf-state-actions">{actions}</div> : null}

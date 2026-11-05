@@ -39,7 +39,7 @@ export function ActivityFrame({ kind, width = defaultActivityWidth(kind), course
       <div className="vf-activity-body">
         <header className="vf-activity-head">
           <p className="vf-kicker m-0">{head.kicker}</p>
-          <h1 className="vf-activity-title">{head.title}</h1>
+          <h1 tabIndex={-1} className="vf-activity-title">{head.title}</h1>
           {meta.length || head.status ? <div className="vf-activity-meta">
             {meta.length ? <p className="vf-meta vf-l-head-meta m-0">{meta.map((item, index) => <span key={index}>{item}</span>)}</p> : null}
             {head.status ? <ActivityStatusTag initial={head.status} /> : null}

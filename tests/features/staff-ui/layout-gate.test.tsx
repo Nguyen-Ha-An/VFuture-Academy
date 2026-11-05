@@ -12,6 +12,7 @@ import { staffShellVariant, uiV2Enabled } from '@/features/workspace/presentatio
 import type { StaffWorkspace } from '@/lib/workspaces';
 import en from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
+import { withBenchMessages } from '@/messages/bench';
 
 const mocks = vi.hoisted(() => ({
   readStaffChrome: vi.fn(),
@@ -24,8 +25,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('server-only', () => ({}));
+vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-nonce': 'layout-request-nonce' }) }));
 vi.mock('react-dom', async (importOriginal) => ({ ...(await importOriginal<typeof import('react-dom')>()), preload: mocks.preload }));
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   usePathname: () => mocks.pathname,
   useRouter: () => mocks.router,
   useSearchParams: () => new URLSearchParams(),
@@ -43,7 +46,7 @@ import AdminLayout from '@/app/admin/layout';
 import GradingLayout from '@/app/grading/layout';
 import StudioLayout from '@/app/studio/layout';
 
-const messages = staffUiTestMessages(en, 'en');
+const messages = withBenchMessages(staffUiTestMessages(en, 'en'), 'en');
 const SEARCH = (messages.staffUi.shell as { command: { trigger: string } }).command.trigger;
 const identity = { name: 'Nguyễn Thị Thanh Hương', email: 'huong.nguyen@vfuture.test', avatarUrl: null, initials: 'TH' };
 const chrome = (overrides: Partial<StaffChrome> = {}): StaffChrome => ({ theme: 'system', sidebarOpen: true, identity, ...overrides });
@@ -171,15 +174,19 @@ describe.each(Object.keys(layouts) as StaffWorkspace[])('%s layout gate', (works
     expect(container.querySelector('.staff-workspace')).toBeNull();
     expect(mocks.readStaffChrome).toHaveBeenCalledTimes(1);
 
-    // Real shell parts, wired together: navigation, main landmark, user menu identity, ⌘K trigger.
+    // Real shell parts, wired together: navigation, main landmark, account identity, ⌘K trigger.
     expect(root).toHaveAttribute('data-state', 'collapsed');
     fireEvent.click(screen.getByRole('button', { name: (messages.staffUi.shell as {core:{toggleSidebar:string}}).core.toggleSidebar }));
     const nav = screen.getByRole('navigation', { name: navigation });
     expect(within(nav).getByRole('link', { name: link })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('main')).toHaveAttribute('id', `${workspace}-main`);
     expect(within(screen.getByRole('main')).getByRole('heading', { name: 'Protected page' })).toBeInTheDocument();
-    expect(screen.getAllByText('Nguyễn Thị Thanh Hương').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: SEARCH })).toBeInTheDocument();
+    const global = screen.getByRole('navigation', { name: 'Global navigation' });
+    fireEvent.click(within(global).getByRole('button', { name: 'Account' }));
+    const account = await screen.findByRole('dialog', { name: 'Account' });
+    expect(within(account).getByText(identity.name)).toBeInTheDocument();
+    expect(within(account).getByText(identity.email)).toBeInTheDocument();
   });
 
   it('preloads the Inter latin and vietnamese files only for the new shell', async () => {

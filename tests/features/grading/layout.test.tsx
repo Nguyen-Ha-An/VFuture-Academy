@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,7 +19,9 @@ vi.mock('@/features/admin/components/AdminSessionGuard', () => ({
   AdminSessionGuard: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock('server-only', () => ({}));
+vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-nonce': 'layout-request-nonce' }) }));
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   redirect: mocks.redirect,
   forbidden: mocks.forbidden,
   useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }),
@@ -88,10 +90,14 @@ describe('Assessment & grading layout gate', () => {
     expect(screen.queryByRole('link', { name: 'Grading queue' })).not.toBeInTheDocument();
   });
 
-  it('offers no workspace switcher when grading is the only authorized workspace', async () => {
+  it('offers only the authorized grading workspace in global navigation', async () => {
     render(<Provider>{await GradingLayout({ children: <p>Protected</p> })}</Provider>);
 
     expect(screen.queryByRole('navigation', { name: 'Workspaces' })).not.toBeInTheDocument();
+    const global = screen.getByRole('navigation', { name: 'Global navigation' });
+    expect(within(global).getByRole('link', { name: 'Teaching' })).toHaveAttribute('href', '/grading');
+    expect(within(global).queryByRole('link', { name: 'Studio' })).not.toBeInTheDocument();
+    expect(within(global).queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
   it('offers the other authorized workspaces by their landing pages', async () => {
@@ -106,11 +112,11 @@ describe('Assessment & grading layout gate', () => {
 
     render(<Provider>{await GradingLayout({ children: <p>Protected</p> })}</Provider>);
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Assessment & grading' }), { button: 0, ctrlKey: false });
-    const menu = screen.getByRole('menu');
-    expect(within(menu).getByRole('menuitem', { name: 'Studio' })).toHaveAttribute('href', '/studio');
-    expect(within(menu).getByRole('menuitem', { name: 'Administration' })).toHaveAttribute('href', '/admin');
-    expect(within(menu).getByRole('menuitem', { name: 'Assessment & grading' })).toHaveAttribute('aria-current', 'true');
+    const global = screen.getByRole('navigation', { name: 'Global navigation' });
+    expect(within(global).getByRole('link', { name: 'Studio' })).toHaveAttribute('href', '/studio');
+    expect(within(global).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+    expect(within(global).getByRole('link', { name: 'Teaching' })).toHaveAttribute('href', '/grading');
+    expect(within(global).getByRole('link', { name: 'Teaching' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('renders the bilingual forbidden fallback', () => {

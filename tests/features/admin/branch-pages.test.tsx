@@ -22,6 +22,8 @@ vi.mock('server-only', () => ({}));
 vi.mock('@/features/admin/context', () => ({ adminPageContext: mocks.context }));
 vi.mock('@/app/admin/branches/data', () => ({ schoolsDirectory: mocks.directory, schoolOverview: mocks.overview, schoolMembers: mocks.members }));
 vi.mock('@/features/admin/actions', () => ({ enterSchoolWorkspace: vi.fn() }));
+vi.mock('@/features/workspace/context', () => ({ gradingPageContext: mocks.context, studioPageContext: mocks.context }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => ({ value: 'central' }) }) }));
 vi.mock('@/features/admin/branches', () => ({ BranchIdSchema: { safeParse: (value: string) => /^[a-z0-9-]+$/.test(value) ? { success: true, data: value } : { success: false } } }));
 vi.mock('@/lib/permissions', () => ({
   can: (_actor: unknown, permission: string) => mocks.permissions.includes(permission),
@@ -33,17 +35,20 @@ vi.mock('next-intl/server', () => ({
   getLocale: async () => 'vi',
 }));
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   notFound: mocks.notFound,
   forbidden: mocks.forbidden,
   usePathname: () => '/admin/branches/ans',
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 import BranchesPage from '@/app/admin/branches/page';
 import BranchPage from '@/app/admin/branches/[branchId]/page';
 
 const school = { id: 'ans', name: 'ANS', city: 'Ha Noi', createdAt: '2026-09-01' };
+const memberId = (index: number) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
+const memberHref = (index: number) => `/account/school-context?branchId=ans&target=member&userId=${memberId(index)}`;
 const cells = { activeLearners30d: 12, enrollments: 40, completedEnrollments: 10, completionPercent: 25, pendingGrading: 3, averagePercent: 81.5 };
 
 function html(page: ReactElement) {
@@ -64,7 +69,11 @@ function branchPage(search: Record<string, string> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.permissions = ['branch.read', 'member.read', 'report.branch.read'];
-  mocks.context.mockImplementation(async () => ({ scope: { kind: 'central' }, actor: {}, permissions: ['branch.read', 'branch.manage', 'report.global.read'], branches: [school] }));
+  mocks.context.mockImplementation(async () => ({
+    scope: { kind: 'central' }, actor: { userId: 'operator' },
+    permissions: ['branch.read', 'branch.manage', 'report.global.read'], branches: [school],
+    options: [{ scope: { kind: 'branch', branchId: 'ans' }, label: 'ANS', permissions: ['admin.access', ...mocks.permissions] }],
+  }));
   mocks.directory.mockResolvedValue({ branches: [school], reports: { state: 'ready', rows: { ans: cells } } });
   mocks.overview.mockResolvedValue({ counts: { members: 7, enrollments: 40 }, report: { state: 'ready', cells } });
   mocks.members.mockResolvedValue({ items: [], page: 1, pageSize: 50, hasMore: false });
@@ -93,15 +102,16 @@ describe('/admin/branches', () => {
 
 describe('/admin/branches/[branchId]', () => {
   it('shows the school header with Enter school, its KPI row and a Reports tab to grading reports', async () => {
-    const markup = html(await branchPage());
+    const page = await branchPage();
+    const markup = html(page);
     expect(mocks.overview).toHaveBeenCalledWith(expect.objectContaining({ scope: { kind: 'branch', branchId: 'ans' } }), 'ans', { withReports: true });
     expect(markup).toContain('centralAdmin.enterSchool');
-    expect(markup).toContain('name="scope" value="branch:ans"');
+    expect(page.props.enter.navigation).toMatchObject({ workspace: 'admin', targetScope: { kind: 'branch', branchId: 'ans' }, destination: '/admin' });
     expect(markup).toContain('schoolDetail.stats.members');
     expect(markup).not.toContain('schoolDetail.stats.pendingGrading');
     expect(markup).toContain('25%');
     expect(markup).toContain('81.5%');
-    expect(markup).toContain('href="/grading/reports?branchId=ans"');
+    expect(markup).toContain('href="/account/school-context?branchId=ans&amp;target=reports"');
   });
 
   it('says Unavailable for a failed dashboard or report read instead of 0', async () => {
@@ -112,28 +122,55 @@ describe('/admin/branches/[branchId]', () => {
 
   it('pages members with ?page= instead of a 50-row cap', async () => {
     mocks.members.mockResolvedValue({
-      items: [{ id: 'm-1', displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [{ roleName: 'Teacher' }] }],
+      items: [{ id: memberId(1), displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [{ roleName: 'Teacher' }] }],
       page: 2, pageSize: 50, hasMore: true,
     });
     const page = await branchPage({ tab: 'members', page: '2' });
     const markup = html(page);
     expect(mocks.members).toHaveBeenCalledWith(expect.objectContaining({ scope: { kind: 'branch', branchId: 'ans' } }), { page: 2, staff: false });
-    expect(page.props.members.rows).toEqual([expect.objectContaining({ id: 'm-1', name: 'Lan', roles: 'Teacher', status: 'active', href: '/admin/users/m-1' })]);
+    expect(page.props.members.rows).toEqual([expect.objectContaining({ id: memberId(1), name: 'Lan', roles: 'Teacher', status: 'active', href: memberHref(1) })]);
     renderClientPage(page);
-    expect(await screen.findByRole('link', { name: 'Lan' })).toHaveAttribute('href', '/admin/users/m-1');
+    expect(await screen.findByRole('link', { name: 'Lan' })).toHaveAttribute('href', memberHref(1));
     expect(screen.getByRole('row', { name: /Lan/ })).toHaveTextContent('Teacher');
     expect(markup).toContain('Page 2');
     expect(markup).toContain('href="/admin/branches/ans?tab=members&amp;page=3"');
     expect(markup).toContain('href="/admin/branches/ans?tab=members"');
-    expect(markup).toContain('value="/admin/users"');
+    expect(page.props.enter.navigation.destination).toBe('/admin/users');
+  });
+
+  it('binds member, report and Enter school destinations to the viewed school B while A remains active', async () => {
+    const active = { kind: 'branch', branchId: 'school-a' };
+    mocks.context.mockResolvedValue({
+      actor: { userId: 'operator' }, scope: active,
+      permissions: ['admin.access', 'branch.read', 'member.read', 'report.branch.read'],
+      branches: [school],
+      options: [
+        { scope: active, label: 'School A', permissions: ['admin.access', 'member.read', 'report.branch.read'] },
+        { scope: { kind: 'branch', branchId: 'ans' }, label: 'ANS', permissions: ['admin.access', 'member.read', 'report.branch.read'] },
+      ],
+    });
+    mocks.members.mockResolvedValue({
+      items: [{ id: memberId(1), displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] }],
+      page: 1, pageSize: 50, hasMore: false,
+    });
+    const page = await branchPage({ tab: 'members' });
+    expect(mocks.members).toHaveBeenCalledWith(expect.objectContaining({ scope: { kind: 'branch', branchId: 'ans' } }), { page: 1, staff: false });
+    expect(page.props.members.rows[0]).toMatchObject({
+      id: memberId(1), href: memberHref(1),
+      navigation: { actorId: 'operator', activeScope: active, targetScope: { kind: 'branch', branchId: 'ans' }, workspace: 'admin', destination: `/admin/users/${memberId(1)}` },
+    });
+    expect(page.props.tabs.find((tab: { key: string }) => tab.key === 'reports').navigation).toMatchObject({
+      activeScope: active, targetScope: { kind: 'branch', branchId: 'ans' }, workspace: 'grading', destination: '/grading/reports?branchId=ans',
+    });
+    expect(page.props.enter.navigation).toMatchObject({ targetScope: { kind: 'branch', branchId: 'ans' }, destination: '/admin/users' });
   });
 
   it('shows the membership status in this school, not only the account status', async () => {
     mocks.members.mockResolvedValue({
       items: [
-        { id: 'm-1', displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'other', status: 'active' }, { branchId: 'ans', status: 'suspended' }], assignments: [] },
-        { id: 'm-2', displayName: 'Minh', email: 'minh@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] },
-        { id: 'm-3', displayName: 'An', email: 'an@example.test', accountStatus: 'suspended', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] },
+        { id: memberId(1), displayName: 'Lan', email: 'lan@example.test', accountStatus: 'active', memberships: [{ branchId: 'other', status: 'active' }, { branchId: 'ans', status: 'suspended' }], assignments: [] },
+        { id: memberId(2), displayName: 'Minh', email: 'minh@example.test', accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] },
+        { id: memberId(3), displayName: 'An', email: 'an@example.test', accountStatus: 'suspended', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] },
       ],
       page: 1, pageSize: 50, hasMore: false,
     });
@@ -149,12 +186,12 @@ describe('/admin/branches/[branchId]', () => {
 
     it('fills the overview with a members preview and the school\'s recent activity', async () => {
     mocks.overview.mockResolvedValue({
-      counts: { members: 7, recentActivity: [{ id: 'a1', action: 'user.role_granted', actorId: 'actor-1', targetType: 'user', targetId: 'm-1', at: '2026-09-20T00:00:00.000Z' }] },
+      counts: { members: 7, recentActivity: [{ id: 'a1', action: 'user.role_granted', actorId: 'actor-1', targetType: 'user', targetId: memberId(1), at: '2026-09-20T00:00:00.000Z' }] },
       report: { state: 'hidden' },
-      actors: { 'actor-1': { name: 'Trần Gia Bảo', avatarUrl: null }, 'm-1': { name: 'Lan', avatarUrl: null } },
+      actors: { 'actor-1': { name: 'Trần Gia Bảo', avatarUrl: null }, [memberId(1)]: { name: 'Lan', avatarUrl: null } },
     });
     mocks.members.mockResolvedValue({
-      items: Array.from({ length: 8 }, (_, index) => ({ id: `m-${index}`, displayName: `Member ${index}`, email: `m${index}@example.test`, accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] })),
+      items: Array.from({ length: 8 }, (_, index) => ({ id: memberId(index), displayName: `Member ${index}`, email: `m${index}@example.test`, accountStatus: 'active', memberships: [{ branchId: 'ans', status: 'active' }], assignments: [] })),
       page: 1, pageSize: 50, hasMore: true,
     });
     const page = await branchPage();
@@ -165,9 +202,9 @@ describe('/admin/branches/[branchId]', () => {
     expect(markup).toContain('đã cấp vai trò');
     // Five rows preview the list; the full list is one link away.
     expect(page.props.members.rows).toHaveLength(5);
-    expect(page.props.activity.items).toEqual([expect.objectContaining({ actor: { name: 'Trần Gia Bảo' }, target: 'Lan', href: '/admin/users/m-1' })]);
+    expect(page.props.activity.items).toEqual([expect.objectContaining({ actor: { name: 'Trần Gia Bảo' }, target: 'Lan', href: memberHref(1) })]);
     renderClientPage(page);
-    expect(await screen.findByRole('link', { name: 'Member 4' })).toHaveAttribute('href', '/admin/users/m-4');
+    expect(await screen.findByRole('link', { name: 'Member 4' })).toHaveAttribute('href', memberHref(4));
     expect(screen.queryByRole('link', { name: 'Member 5' })).not.toBeInTheDocument();
     expect(screen.getByText('Trần Gia Bảo')).toBeInTheDocument();
     expect(markup).toContain('href="/admin/branches/ans?tab=members"');

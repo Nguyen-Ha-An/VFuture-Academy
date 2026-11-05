@@ -195,6 +195,9 @@
       "previewLocked": "Có thể mở sau khi ghi danh",
       "outlineEmpty": "Khóa học này chưa có bài học hoặc hoạt động.",
       "duration": "Thời lượng dự kiến",
+      "durationHours": "{hours, number} giờ",
+      "durationHoursMinutes": "{hours, number} giờ {minutes, number} phút",
+      "durationMinutes": "{minutes, number} phút",
       "requirements": "Điều kiện hoàn thành",
       "enroll": "Ghi danh",
       "enrolling": "Đang ghi danh…",
@@ -217,6 +220,12 @@
         "exam_passed": "Đạt bài thi bắt buộc",
         "assignment_approved": "Bài tập được duyệt",
         "quiz_min_score": "Đạt điểm quiz yêu cầu"
+      },
+      "requirementTargets": {
+        "lessonsAll": "Hoàn thành tất cả bài học",
+        "lessonsSelected": "Hoàn thành các bài học sau",
+        "minimumScore": "ít nhất {percent, number}%",
+        "unresolvedId": "ID: {id}"
       },
       "review": "Ôn lại khóa học"
     },
@@ -1854,6 +1863,15 @@
       "first": "Lượt đầu tiên",
       "average": "Điểm trung bình các lượt"
     },
+    "recovery": {
+      "title": "Bản sao câu trả lời trên máy",
+      "description": "Máy chủ đã xác nhận lượt thi này kết thúc. Các câu trả lời trên máy khác với câu trả lời đã lưu và không được tính vào kết quả. Hãy tải bản sao của bạn; bản sao này không được áp dụng cho lượt thi khác.",
+      "unverified": "Đây là các câu trả lời trên máy của bạn. Chưa xác minh được chúng đã được tiếp nhận hay chưa. Bạn có thể tải bản sao trong khi kiểm tra kết quả; bản sao này không được áp dụng cho lượt thi khác.",
+      "download": "Tải câu trả lời trên máy — lượt {attempt}",
+      "storageUnavailable": "Trình duyệt không lưu được bản khôi phục mới nhất. Hãy tải bản sao trước khi rời trang. Bản sao hợp lệ trước đó, nếu có, vẫn được giữ lại.",
+      "leaveUnavailable": "Một số câu trả lời trên máy chưa lưu được vào trình duyệt. Hãy tải bản sao trước khi rời trang, hoặc vẫn rời trang và mất bản sao chưa lưu.",
+      "downloadError": "Không tải được bản sao trên máy. Câu trả lời vẫn được giữ trên trang này. Hãy thử tải lại."
+    },
     "player": {
       "timerLabel": "Thời gian còn lại",
       "noDeadline": "Không giới hạn thời gian",
@@ -1894,9 +1912,20 @@
       "confirm": "Nộp ngay",
       "submitting": "Đang nộp…",
       "submitError": "Không thể nộp bài. Vui lòng thử lại.",
+      "submissionUnknown": "Chưa xác nhận được trạng thái nộp bài. Câu trả lời của bạn được giữ lại. Hãy kiểm tra trạng thái trước khi tiếp tục.",
+      "checkSubmission": "Kiểm tra trạng thái nộp bài",
+      "checkingSubmission": "Đang kiểm tra trạng thái nộp bài…",
+      "waitForUploads": "Chờ tải tệp lên hoàn tất hoặc hủy tải tệp trước khi nộp bài.",
+      "terminalUnconfirmed": "Máy chủ chưa xác nhận lượt thi này đã kết thúc. Câu trả lời chưa lưu vẫn được giữ lại. Hãy kiểm tra trạng thái hoặc thử nộp lại khi tải tệp hoàn tất.",
+      "checkAttemptStatus": "Kiểm tra trạng thái lượt thi",
+      "checkingAttemptStatus": "Đang kiểm tra trạng thái lượt thi…",
+      "answerTooLarge": "Câu trả lời {number} vượt giới hạn dung lượng 64 KiB. Hãy rút gọn trước khi lưu hoặc nộp bài.",
+      "answerTooLargeGeneric": "Một câu trả lời vượt giới hạn dung lượng 64 KiB. Hãy rút gọn trước khi lưu hoặc nộp bài.",
+      "groupAnswerSizeLimit": "Các câu trả lời trong nhóm câu hỏi này dùng chung giới hạn.",
       "retrySubmit": "Thử nộp lại",
       "leaveTitle": "Rời bài thi?",
       "leaveBody": "Các câu trả lời đã lưu được giữ lại, nhưng đồng hồ vẫn tiếp tục chạy khi bạn rời đi.",
+      "leaveRecoveryUnavailable": "Một số câu trả lời chưa lưu không giữ được trong trình duyệt và có thể mất khi rời trang hoặc tải lại. Hãy tải bản sao trên máy trước, hoặc chọn Rời bài thi để rời đi mà không giữ bản sao.",
       "stay": "Ở lại bài thi",
       "leave": "Rời bài thi"
     },

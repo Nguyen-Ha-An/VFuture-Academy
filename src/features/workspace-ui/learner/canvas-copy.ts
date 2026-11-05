@@ -1,7 +1,7 @@
 import type { Locale } from '@/content-engine';
 
 const en = {
-  dashboard: 'Dashboard', welcome: 'Your learning, at a glance.', continueLearning: 'Continue learning',
+  dashboard: 'Dashboard', welcome: 'Your learning, at a glance.', continueLearning: 'Continue learning', resumeExam: 'Resume exam',
   courses: 'My courses', allCourses: 'All courses', tasks: 'To do', feedback: 'Recent feedback',
   noTasks: 'You have no upcoming tasks.', noFeedback: 'Feedback will appear here after your work is reviewed.',
   tasksTitle: 'All tasks', tasksDescription: 'Assignments and exams from your courses, including work without a due date.', noAllTasks: 'Your courses have no assignments or exams yet.',
@@ -25,7 +25,7 @@ const en = {
 };
 type Copy = typeof en;
 const vi: Copy = {
-  dashboard: 'Tổng quan', welcome: 'Theo dõi việc học của bạn.', continueLearning: 'Tiếp tục học',
+  dashboard: 'Tổng quan', welcome: 'Theo dõi việc học của bạn.', continueLearning: 'Tiếp tục học', resumeExam: 'Tiếp tục bài thi',
   courses: 'Khóa học của tôi', allCourses: 'Tất cả khóa học', tasks: 'Việc cần làm', feedback: 'Nhận xét gần đây',
   noTasks: 'Bạn chưa có nhiệm vụ sắp tới.', noFeedback: 'Nhận xét sẽ xuất hiện sau khi bài làm được đánh giá.',
   tasksTitle: 'Tất cả nhiệm vụ', tasksDescription: 'Bài tập và bài thi trong các khóa học, bao gồm cả hoạt động chưa có hạn nộp.', noAllTasks: 'Các khóa học của bạn chưa có bài tập hoặc bài thi.',

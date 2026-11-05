@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 import { cn } from "@/lib/ui-cn";
+import { useWorkspaceSurfaceTheme } from "./workspace-surface-context";
 
 const itemBase =
   "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground";
@@ -24,10 +25,12 @@ export function DropdownMenuTrigger(props: ComponentProps<typeof DropdownMenuPri
 }
 
 export function DropdownMenuContent({ className, sideOffset = 4, collisionPadding = 8, ...props }: ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const surfaceTheme = useWorkspaceSurfaceTheme();
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
+        data-canvas-surface={surfaceTheme ?? undefined}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
@@ -127,9 +130,11 @@ export function DropdownMenuSubTrigger({ className, inset, children, ...props }:
 }
 
 export function DropdownMenuSubContent({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  const surfaceTheme = useWorkspaceSurfaceTheme();
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
+        data-canvas-surface={surfaceTheme ?? undefined}
       className={cn(surface, "min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin)", className)}
       {...props}
     />

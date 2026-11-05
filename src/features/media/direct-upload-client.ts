@@ -1,7 +1,7 @@
 import type { UploadedFile, UploadProgress } from '@/content-engine/render/runtime';
 import { MAX_SUBMISSION_UPLOAD_MB } from '@/content-engine/schema/uploads';
 
-type UploadContext = { purpose: 'avatar' | 'project_cover' | 'submission'; courseId?: string; itemId?: string; blockId?: string | null };
+type UploadContext = { purpose: 'avatar' | 'project_cover' | 'submission'; courseId?: string; itemId?: string; blockId?: string | null; examAttemptId?: string; quizId?: string; rootQuestionId?: string; questionId?: string };
 type UploadOptions = { signal?: AbortSignal; onProgress?: (progress: UploadProgress) => void; fetchImpl?: typeof fetch };
 export type DirectUploadedFile = UploadedFile & { url?: string };
 type Permit = { uploadId: string; uploadUrl?: string; method?: 'PUT'; file?: DirectUploadedFile };

@@ -13,6 +13,8 @@ import { SupabaseBankSource, type BankDatabase } from './bank-source';
 import { createExamService } from './service';
 import { SupabaseExamRepo, type ExamDatabase } from './supabase-repo';
 import { pendingManualQuestionsForAttempt } from './studio';
+import { validateExamAnswerAttachments } from './attachments';
+import { createHistoricalExamReviewAuthorizer, type HistoricalReviewDatabase } from './historical-access';
 import type {
   ExamActor,
   ExamAttemptRecord,
@@ -160,6 +162,8 @@ export function createServerExamService() {
     clock: { now: () => new Date() },
     loadItem: examItemLoader(database),
     isEnrolled: createExamEnrollmentChecker(database),
+    validateAnswerAttachments: validateExamAnswerAttachments,
+    authorizeHistoricalReview: createHistoricalExamReviewAuthorizer(database as unknown as HistoricalReviewDatabase),
     recomputeProgress: createExamProgressHook(database),
     onExamPassed,
     awardXp: (attempt) => award(

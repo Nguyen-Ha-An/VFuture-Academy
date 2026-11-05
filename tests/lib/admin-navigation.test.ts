@@ -3,8 +3,34 @@ import { adminNavigation, firstAdminDestination } from '@/lib/admin-navigation';
 import { gradingNavigation, firstGradingDestination } from '@/lib/grading-navigation';
 import { studioNavigation, firstStudioDestination } from '@/lib/studio-navigation';
 import { workspaceNavigationFor } from '@/lib/workspace-navigation';
+import type { Permission } from '@/lib/authorization';
 
 describe('central administration entry point', () => {
+  it.each<Permission>([
+    'member.read', 'branch.read', 'role.definition.read', 'role.definition.manage',
+    'role.assignment.branch', 'audit.read', 'user.manage.branch', 'user.manage.global',
+  ])('does not advertise a strict management destination for %s without admin.access', (permission) => {
+    expect(firstAdminDestination([permission])).toBeNull();
+    expect(workspaceNavigationFor('admin', [permission])).toEqual([]);
+  });
+
+  it('keeps migration independent while hiding management destinations without admin.access', () => {
+    const held: Permission[] = ['course.publish', 'member.read', 'branch.read', 'audit.read'];
+    expect(firstAdminDestination(held)).toBe('/admin/enrollment-migration');
+    expect(workspaceNavigationFor('admin', held).map((item) => item.href))
+      .toEqual(['/admin/enrollment-migration']);
+    expect(held).not.toContain('admin.access');
+  });
+
+  it('does not substitute legacy management aliases for the actual page permissions', () => {
+    expect(workspaceNavigationFor('admin', ['admin.access', 'user.manage.global']).map((item) => item.href))
+      .toEqual(['/admin', '/admin/mcp']);
+    expect(workspaceNavigationFor('admin', ['admin.access', 'user.manage.branch']).map((item) => item.href))
+      .toEqual(['/admin']);
+    expect(workspaceNavigationFor('admin', ['admin.access', 'member.read', 'branch.read', 'role.definition.read', 'audit.read']).map((item) => item.href))
+      .toEqual(['/admin', '/admin/users', '/admin/branches', '/admin/roles', '/admin/audit']);
+  });
+
   it('requires independent Admin entry authority', () => {
     expect(firstAdminDestination(['submission.grade'])).toBeNull();
     expect(firstAdminDestination(['admin.access'])).toBe('/admin');
@@ -66,7 +92,8 @@ describe('central administration entry point', () => {
   it('shows MCP access administration only to global user managers', () => {
     const entry = adminNavigation.find(item => item.href === '/admin/mcp');
     expect(entry?.permissions).toEqual(['user.manage.global']);
-    expect(workspaceNavigationFor('admin', ['user.manage.global']).some(item => item.href === '/admin/mcp')).toBe(true);
+    expect(workspaceNavigationFor('admin', ['admin.access', 'user.manage.global']).some(item => item.href === '/admin/mcp')).toBe(true);
+    expect(workspaceNavigationFor('admin', ['user.manage.global']).some(item => item.href === '/admin/mcp')).toBe(false);
     expect(workspaceNavigationFor('admin', ['member.read']).some(item => item.href === '/admin/mcp')).toBe(false);
   });
 });

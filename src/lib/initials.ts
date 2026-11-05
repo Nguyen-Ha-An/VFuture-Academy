@@ -21,6 +21,11 @@ export function emailLocalPart(email: string | null | undefined): string {
  */
 export function initials(name: string | null | undefined, email?: string | null): string {
   const displayName = name?.normalize('NFC').trim();
-  if (displayName) return initialsOf(displayName.split(/\s+/u));
+  if (displayName) {
+    // Recognized VFuture organization/scope/role tags are displayed verbatim, but are not name words.
+    // Bracketed nicknames and unfamiliar annotations remain part of the name.
+    const nameWords = displayName.replace(/(?:\s*\[(?:VFU|VF)-[A-Z0-9]+(?:-[A-Z0-9]+)+\])+$/u, '').trim() || displayName;
+    return initialsOf(nameWords.split(/\s+/u));
+  }
   return initialsOf(emailLocalPart(email).normalize('NFC').split(/[._+\-\s]+/u));
 }

@@ -98,7 +98,8 @@ export async function buildDashboardData({ actor, locale, summary, catalog, name
     };
   });
 
-  const resumeFor = (courseId: string, courseTitle: string, itemId: string, itemTitle: string): DashboardResume => {
+  const resumeFor = (courseId: string, courseTitle: string, itemId: string, itemTitle: string,
+    kind?: LearningTarget['kind'], attemptId?: string): DashboardResume => {
     const detail = details.get(courseId);
     const where = locate(detail, itemId);
     return {
@@ -106,6 +107,9 @@ export async function buildDashboardData({ actor, locale, summary, catalog, name
       href: routes.learner.courseItem(courseId, itemId),
       courseTitle,
       part: partOf(courseId),
+      itemId,
+      ...(kind ? { kind } : {}),
+      ...(kind === 'exam' && attemptId ? { attemptId } : {}),
       position: where ? `M${where.moduleIndex + 1} · ${code(where.item, where.moduleIndex, where.itemIndex)}` : undefined,
       minutes: where && typeof where.item.estimatedMinutes === 'number' ? where.item.estimatedMinutes : undefined,
       progress: progressOf(detail, summary.upcomingExam, now),
@@ -114,8 +118,9 @@ export async function buildDashboardData({ actor, locale, summary, catalog, name
   // All caught up on required work: the anchor becomes the next unstarted (optional) item.
   const optional = target ? null : active.map(course => ({ course, item: nextItem(details.get(course.id)) })).find(entry => entry.item);
   const resume = target
-    ? resumeFor(target.courseId, target.courseTitle, target.itemId, target.itemTitle)
-    : optional?.item ? resumeFor(optional.course.id, optional.course.title, optional.item.id, optional.item.title) : null;
+    ? resumeFor(target.courseId, target.courseTitle, target.itemId, target.itemTitle, target.kind, target.attemptId)
+    : optional?.item ? resumeFor(optional.course.id, optional.course.title, optional.item.id, optional.item.title,
+      optional.item.type === 'exam' ? 'exam' : optional.item.type === 'assignment' ? 'assignment' : 'lesson') : null;
 
   const certificate = [...summary.rewards.certificates]
     .filter(entry => { const at = Date.parse(entry.issuedAt); return Number.isFinite(at) && now.getTime() - at >= 0 && now.getTime() - at <= COMPLETION_STRIP_MS; })

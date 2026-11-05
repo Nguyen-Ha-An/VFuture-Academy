@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import '@testing-library/jest-dom/vitest';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as DropdownPrimitive from '@radix-ui/react-dropdown-menu';
@@ -73,16 +74,26 @@ describe('classic primitives', () => {
     expect(Classic.DropdownMenuSeparator.displayName).toBe('DropdownMenuSeparator');
   });
 
-  it('re-exports the bare Radix menu, dialog and sheet parts', () => {
+  it('keeps bare Radix parts and the Content props/ref contract outside a Canvas surface', () => {
     expect(Classic.DropdownMenu).toBe(DropdownPrimitive.Root);
     expect(Classic.DropdownMenuTrigger).toBe(DropdownPrimitive.Trigger);
     expect(Classic.DropdownMenuPortal).toBe(DropdownPrimitive.Portal);
-    const parts = ['Root', 'Trigger', 'Portal', 'Overlay', 'Content', 'Title', 'Description', 'Close'] as const;
+    const parts = ['Root', 'Trigger', 'Portal', 'Overlay', 'Title', 'Description', 'Close'] as const;
     const names = { Root: '', Trigger: 'Trigger', Portal: 'Portal', Overlay: 'Overlay', Content: 'Content', Title: 'Title', Description: 'Description', Close: 'Close' };
     for (const part of parts) {
       expect(Classic[`Dialog${names[part]}` as keyof typeof Classic]).toBe(DialogPrimitive[part]);
       expect(Classic[`Sheet${names[part]}` as keyof typeof Classic]).toBe(DialogPrimitive[part]);
     }
+    expect(Classic.SheetContent).toBe(Classic.DialogContent);
+    const ref = createRef<HTMLDivElement>();
+    render(<Classic.Dialog open><Classic.DialogTrigger>Open confirmation</Classic.DialogTrigger><Classic.DialogContent ref={ref} id="classic-confirmation" className="caller-content" aria-describedby={undefined}><Classic.DialogTitle>Classic confirmation</Classic.DialogTitle><Classic.DialogClose>Close confirmation</Classic.DialogClose></Classic.DialogContent></Classic.Dialog>);
+    const content = screen.getByRole('dialog', { name: 'Classic confirmation' });
+    expect(ref.current).toBe(content);
+    expect(content).toHaveAttribute('id', 'classic-confirmation');
+    expect(content).toHaveClass('caller-content');
+    expect(content).not.toHaveAttribute('data-canvas-surface');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Close confirmation' })).toBeInTheDocument();
   });
 
   it('keeps the Table wrapper and classes without merging caller classes', () => {

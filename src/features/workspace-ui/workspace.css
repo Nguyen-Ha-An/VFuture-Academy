@@ -60,7 +60,7 @@
 :root:has(.vf-workspace) body { background: var(--vf-bg); color: var(--vf-ink); }
 /* Depth comes from hairlines, never shadows. */
 :root:has(.vf-workspace) :is(.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl) { --tw-shadow: 0 0 #0000; }
-:root:has(.vf-workspace) :is([data-radix-popper-content-wrapper] > *, [role="dialog"], [role="menu"]) { border: 1px solid var(--vf-line-strong); }
+:root:has(.vf-workspace) :is([data-radix-popper-content-wrapper] > *, [role="dialog"][data-state], [role="menu"][data-state]) { border: 1px solid var(--vf-line-strong); }
 
 .vf-workspace { min-height: 100dvh; background: var(--vf-bg); color: var(--vf-ink); font-family: "Be Vietnam Pro", sans-serif; font-size: 14px; line-height: 1.55; }
 .vf-workspace :focus-visible { outline: 2px solid var(--vf-signal); outline-offset: 2px; }

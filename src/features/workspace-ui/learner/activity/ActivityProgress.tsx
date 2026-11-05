@@ -27,6 +27,10 @@ export function ActivityProgressProvider({ initial, status, children }: { initia
   const [value, setValue] = useState(initial);
   const [current, setCurrent] = useState<ActivityStatus>(() => activityStatus(status));
   const [locked, setLocked] = useState(false);
+  // A server refresh changes authoritative primitives; a normal parent render
+  // with the same values must retain a locally confirmed active-attempt status.
+  useEffect(() => { setValue({ completed: initial.completed, total: initial.total }); }, [initial.completed, initial.total]);
+  useEffect(() => { setCurrent(activityStatus(status)); }, [status]);
   const report = useCallback((next: ActivityProgressValue, nextStatus?: ActivityStatus) => {
     setValue(next);
     if (nextStatus) setCurrent(nextStatus);

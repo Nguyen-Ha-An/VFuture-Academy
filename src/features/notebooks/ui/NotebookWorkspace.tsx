@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import * as Dialog from "@radix-ui/react-dialog";
+import * as Dialog from "@/components/ui/workspace-dialog-primitive";
 import { registerNavigationGuard } from "@/lib/navigation-guard";
 import { NotebookBridge } from "../bridge";
 import {
@@ -282,9 +282,10 @@ export function NotebookWorkspace({
     window.addEventListener("storage", signedOut);
     return () => window.removeEventListener("storage", signedOut);
   }, [t]);
+  const approvedDocument = useRef<AbortSignal | null>(null);
   useEffect(() => {
     const protect = (event: BeforeUnloadEvent) => {
-      if (dirtyRef.current) {
+      if (dirtyRef.current && !(approvedDocument.current && !approvedDocument.current.aborted)) {
         event.preventDefault();
         event.returnValue = "";
       }
@@ -296,20 +297,30 @@ export function NotebookWorkspace({
   // same navigation-guard pattern the item player uses. Studio keeps its own back link.
   const [leaveOpen, setLeaveOpen] = useState(false);
   const pendingLeave = useRef<((leave: boolean) => void) | null>(null);
+  const closingLeave = useRef<boolean | null>(null);
   const askLeave = useCallback(() => new Promise<boolean>((resolve) => {
     pendingLeave.current?.(false);
     pendingLeave.current = resolve;
+    closingLeave.current = null;
     setLeaveOpen(true);
   }), []);
   const decideLeave = (leave: boolean) => {
+    closingLeave.current = leave;
+    setLeaveOpen(false);
+  };
+  const finishLeave = () => {
     const resolve = pendingLeave.current;
     pendingLeave.current = null;
-    setLeaveOpen(false);
-    resolve?.(leave);
+    resolve?.(closingLeave.current === true);
+    closingLeave.current = null;
   };
   useEffect(() => {
     if (studio) return;
-    const remove = registerNavigationGuard(async () => !dirtyRef.current || askLeave());
+    const remove = registerNavigationGuard(async intent => {
+      const allowed = !dirtyRef.current || await askLeave();
+      if (allowed && intent?.kind === 'document' && !intent.signal.aborted) approvedDocument.current = intent.signal;
+      return allowed;
+    });
     return () => {
       remove();
       pendingLeave.current?.(false);
@@ -726,7 +737,7 @@ export function NotebookWorkspace({
             >
               {t("back")}
             </Link>
-            <h1 className="text-2xl font-semibold">{t("studioTitle")}</h1>
+            <h1 tabIndex={-1} className="text-2xl font-semibold">{t("studioTitle")}</h1>
           </div>
           <p role="status" className="text-sm text-muted-foreground">{saveState}</p>
         </header>
@@ -735,7 +746,7 @@ export function NotebookWorkspace({
         <Dialog.Root open={leaveOpen} onOpenChange={(open) => { if (!open) decideLeave(false); }}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm" />
-            <Dialog.Content className="fixed left-1/2 top-1/2 z-50 grid w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-3 rounded-[8px] border border-border border-l-2 border-l-warning-border bg-card p-6 text-card-foreground">
+            <Dialog.Content onCloseAutoFocus={finishLeave} className="fixed left-1/2 top-1/2 z-50 grid w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-3 rounded-[8px] border border-border border-l-2 border-l-warning-border bg-card p-6 text-card-foreground">
               <Dialog.Title className="text-xl font-medium">{t("leaveTitle")}</Dialog.Title>
               <Dialog.Description className="text-sm leading-6 text-muted-foreground">{t("leaveUnsaved")}</Dialog.Description>
               <div className="mt-2 flex flex-wrap gap-2">

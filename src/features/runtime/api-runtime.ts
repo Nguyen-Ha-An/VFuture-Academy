@@ -16,6 +16,7 @@ import type {
 } from '@/features/submissions/contracts';
 import type { QuestionResult } from '@/content-engine/grading/types';
 import { routes } from '@/lib/routes';
+import { canonicalAnswer, canonicalAnswers } from '@/features/learning/answer-canonical';
 
 const BLOCK_STATE_DEBOUNCE_MS = 800;
 const MAX_BLOCK_WRITE_ATTEMPTS = 3;
@@ -413,7 +414,7 @@ export function createApiRuntime(ctx: ApiRuntimeContext): ApiRuntime {
       courseId: ctx.courseId,
       itemId: ctx.itemId,
       quizId,
-      answers,
+      answers: canonicalAnswers(answers),
     }),
     checkQuestion: (quizId, questionId, answer) => requestJson<QuestionResult & { revealed: RevealedInfo }>(
       '/api/v1/quizzes/check',
@@ -423,7 +424,7 @@ export function createApiRuntime(ctx: ApiRuntimeContext): ApiRuntime {
         itemId: ctx.itemId,
         quizId,
         questionId,
-        answer,
+        answer: canonicalAnswer(answer),
       },
     ),
     submitAssignment: async (target, payload: AssignmentPayload, expectedLatestSubmissionId) => {
@@ -438,7 +439,9 @@ export function createApiRuntime(ctx: ApiRuntimeContext): ApiRuntime {
       return result;
     },
     uploadAssignmentFile: uploadAssignment,
-    uploadFile: (file: File) => uploadAssignment({ blockId: null }, file),
+    uploadFile: (file, options) => options?.quizId && options.rootQuestionId && options.questionId
+      ? directUploadFile(file, { purpose: 'submission', courseId: ctx.courseId, itemId: ctx.itemId, blockId: null, quizId: options.quizId, rootQuestionId: options.rootQuestionId, questionId: options.questionId }, { fetchImpl, signal: options.signal, onProgress: options.onProgress })
+      : uploadAssignment({ blockId: null }, file, options),
     resolveMedia: (ref: MediaRef) => ('url' in ref ? ref.url : mediaHref(ref.assetId)),
     hrefFor: (target: NextStepTarget | { kind: 'resource' | 'opportunity'; id: string }) => {
       if ('url' in target) return target.url;

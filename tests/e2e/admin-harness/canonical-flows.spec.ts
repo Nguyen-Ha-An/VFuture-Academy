@@ -84,15 +84,48 @@ test('role conflict requires loading and reviewing the latest revision before ex
 test('school overview previews real member records and entering school changes request scope', async ({ page }) => {
   await open(page, '/admin/branches/ans', { scenario: 'multi-school' });
   const preview = page.getByRole('region', { name: org.en.org.schoolDetail.previewTitle, exact: true });
-  await expect(preview.getByRole('link', { name: 'Nguyễn Minh Anh', exact: true })).toHaveAttribute('href', `/admin/users/${MEMBER}`);
+  const member = preview.getByRole('link', { name: 'Nguyễn Minh Anh', exact: true });
+  await expect(member).toHaveAttribute('href', `/account/school-context?branchId=ans&target=member&userId=${MEMBER}`);
   await expect(page.getByRole('region', { name: org.en.org.schoolDetail.activityTitle, exact: true })).toBeVisible();
+  await member.click();
+  await expect(page).toHaveURL(new RegExp(`/admin/users/${MEMBER}$`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Nguyễn Minh Anh', exact: true })).toBeVisible();
+  const memberReads = await page.evaluate(id => window.__adminFixture.requests.filter(request => request.method === 'GET' && request.path === `/api/v1/admin/users/${id}`), MEMBER);
+  expect(memberReads.length).toBeGreaterThan(0);
+  expect(memberReads.every(request => request.scope === 'branch:ans')).toBe(true);
+
+  await open(page, '/admin/branches/ans', { scenario: 'multi-school' });
   await page.getByRole('button', { name: en.centralAdmin.enterSchool, exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   const scopeChange = await page.evaluate(() => window.__adminFixture.requests.find((request) => request.path.endsWith('/scope')));
-  expect(scopeChange?.body).toMatchObject({ scope: 'branch:ans', destination: '/admin', actorId: ACTOR });
+  expect(scopeChange).toMatchObject({ path: '/api/v1/admin/scope', method: 'POST', scope: 'central', body: { scope: 'branch:ans' } });
   await page.goto(withQuery('/admin/users', { lang: 'en', scenario: 'multi-school', scope: 'branch:ans' }));
   await expect(page.getByRole('link', { name: 'Nguyễn Minh Anh', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Trần Gia Bảo', exact: true })).toHaveCount(0);
+});
+
+test('a new-tab school link requires explicit continuation and a saved matching scope needs no second POST', async ({ page, context }) => {
+  await open(page, '/admin/branches/ans', { scenario: 'multi-school' });
+  const entryHref = await page.getByRole('region', { name: org.en.org.schoolDetail.previewTitle, exact: true })
+    .getByRole('link', { name: 'Nguyễn Minh Anh', exact: true }).getAttribute('href');
+  expect(entryHref).toBe(`/account/school-context?branchId=ans&target=member&userId=${MEMBER}`);
+  const tab = await context.newPage();
+  try {
+    await tab.goto(withQuery(entryHref!, { lang: 'en', scenario: 'multi-school', scope: 'central' }));
+    await expect(tab.getByRole('heading', { level: 1, name: 'Continue to ANS · Hà Nội', exact: true })).toBeVisible();
+    await expect(tab.getByRole('heading', { level: 1, name: 'Nguyễn Minh Anh', exact: true })).toHaveCount(0);
+    expect(await tab.evaluate(() => window.__adminFixture.requests.filter(request => request.path.endsWith('/scope')))).toEqual([]);
+    await tab.getByRole('button', { name: 'Continue to ANS · Hà Nội', exact: true }).click();
+    await expect(tab).toHaveURL(new RegExp(`/admin/users/${MEMBER}$`));
+    await expect(tab.getByRole('heading', { level: 1, name: 'Nguyễn Minh Anh', exact: true })).toBeVisible();
+    const reads = await tab.evaluate(id => window.__adminFixture.requests.filter(request => request.method === 'GET' && request.path === `/api/v1/admin/users/${id}`), MEMBER);
+    expect(reads.length).toBeGreaterThan(0);
+    expect(reads.every(request => request.scope === 'branch:ans')).toBe(true);
+    expect(await tab.evaluate(() => window.__adminFixture.requests.filter(request => request.path.endsWith('/scope')))).toHaveLength(1);
+    await tab.goto(entryHref!);
+    await expect(tab).toHaveURL(new RegExp(`/admin/users/${MEMBER}$`));
+    expect(await tab.evaluate(() => window.__adminFixture.requests.filter(request => request.path.endsWith('/scope')))).toEqual([]);
+  } finally { await tab.close(); }
 });
 
 test('school fixture authority rejects foreign-school grants and hides global account tools', async ({ page }) => {

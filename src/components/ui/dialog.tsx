@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/ui-cn";
+import { useWorkspaceSurfaceTheme } from "./workspace-surface-context";
 
 export function Dialog(props: ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -38,11 +39,13 @@ export type DialogContentProps = ComponentProps<typeof DialogPrimitive.Content> 
 };
 
 export function DialogContent({ className, children, showCloseButton = true, closeLabel = "Close", ...props }: DialogContentProps) {
+  const surfaceTheme = useWorkspaceSurfaceTheme();
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-canvas-surface={surfaceTheme ?? undefined}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-lg border border-border bg-background p-6 text-foreground outline-none duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 motion-reduce:animate-none! sm:max-w-lg",
           className,

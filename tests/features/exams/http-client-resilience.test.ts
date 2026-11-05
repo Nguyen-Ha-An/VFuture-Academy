@@ -245,7 +245,7 @@ describe('Retry-After parsing', () => {
 
 describe('bounded retry with jitter', () => {
   it('retries a transient save failure with jittered exponential waits and then succeeds', async () => {
-    const fetcher = scripted(failure(503, 'UNAVAILABLE'), networkFailure, ok([answerRow]));
+    const fetcher = scripted(failure(503, 'UNAVAILABLE'), networkFailure, ok({format:'compact-v1',answers:[{questionId:answerRow.questionId,answer:answerRow.answer}]}));
     const { client, sleep } = build(fetcher, { random: () => 0.5 });
 
     const saved = await client.save({ 'concepts/q1': 'a' });
@@ -346,7 +346,7 @@ describe('bounded retry with jitter', () => {
 
   it('surfaces a long Retry-After immediately without sleeping', async () => {
     expect(EXAM_MAX_INLINE_RETRY_WAIT_MS).toBe(10_000);
-    const fetcher = scripted(failure(429, 'RATE_LIMITED', { 'retry-after': '60' }), ok([answerRow]));
+    const fetcher = scripted(failure(429, 'RATE_LIMITED', { 'retry-after': '60' }), ok({format:'compact-v1',answers:[{questionId:answerRow.questionId,answer:answerRow.answer}]}));
     const { client, sleep } = build(fetcher);
 
     await expect(client.save({ 'concepts/q1': 'a' })).rejects.toMatchObject({
@@ -607,6 +607,15 @@ describe('ambiguous submit reconciliation', () => {
     await expect(client.submit()).resolves.toMatchObject({ attemptId: 'attempt-2' });
 
     expect(calls(fetcher).slice(-2)).toEqual([SESSION, 'POST attempts/attempt-2/submit']);
+  });
+
+  it('does not rebind attempt A when inspecting a session whose latest attempt is B',async()=>{
+    const fetcher=scripted(ok(sessionBody('attempt-2','graded')),ok({format:'compact-v1',answers:[{questionId:'concepts/q1',answer:'a'}]}),ok(submitResult));
+    const {client}=build(fetcher);
+    await expect(client.session({bind:false})).resolves.toMatchObject({attempt:{attemptId:'attempt-2'}});
+    await client.save({'concepts/q1':'a'});
+    await client.submit();
+    expect(calls(fetcher)).toEqual([SESSION,`PUT attempts/${ATTEMPT}/answers`,SUBMIT]);
   });
 
   it('never reports a submit success the server did not return', async () => {

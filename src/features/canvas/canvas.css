@@ -66,10 +66,10 @@
 .vf-canvas .vf-l-main { max-width: 100rem; }
 @media (max-width: 767px) {
   .canvas-global-nav:not(.canvas-global-nav-mobile) { display: none; }
-  .canvas-global-nav-mobile { position: static; width: 100%; background: #064d53; color: #fff; }
-  .canvas-global-nav-mobile a { flex-direction: row; justify-content: flex-start; gap: 16px; min-height: 48px; padding: 10px 18px; color: #fff; font-size: 14px; text-align: left; }
-  .canvas-global-nav-mobile a:hover { background: #09616a; }
-  .canvas-global-nav-mobile a[aria-current='page'], .canvas-global-nav-mobile a[aria-current='page']:is(:hover, :focus, :active) { background: #fff; color: #075961; }
+  .canvas-global-nav-mobile { position: static; width: 100%; background: var(--vf-bg); color: var(--vf-ink); }
+  .canvas-global-nav-mobile a { flex-direction: row; justify-content: flex-start; gap: 16px; min-height: 48px; padding: 10px 18px; color: var(--vf-signal); font-size: 14px; text-align: left; }
+  .canvas-global-nav-mobile a:hover { background: var(--vf-raised); }
+  .canvas-global-nav-mobile a[aria-current='page'], .canvas-global-nav-mobile a[aria-current='page']:is(:hover, :focus, :active) { background: var(--vf-signal-soft); color: var(--vf-signal); }
   .canvas-learner-body, .vf-canvas.vf-staff { padding-left: 0; }
   .canvas-learner-header { padding: 10px 16px; }
   .canvas-learner-header-actions > .canvas-desktop-account { display: none; }
@@ -118,4 +118,25 @@
 .canvas-course-drawer { min-width: 0; }
 .canvas-course-drawer > [data-cid='DrawerLayout'] { min-height: 22rem; }
 
-@media (max-width: 767px) { .canvas-global-nav-mobile [data-cid='SideNavBar'] { min-height: 0; height: auto; } }
+
+/* Account is an action in the same native rail, not a profile navigation link. */
+.canvas-global-nav .canvas-account-trigger { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 67px; width: 100%; padding: 9px 5px; border: 0; text-align: center; font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+.canvas-global-nav .canvas-account-trigger[aria-expanded='true'] { box-shadow: inset 4px 0 0 #5ad2ce; }
+.canvas-global-nav .canvas-account-trigger:focus-visible { outline: 2px solid #f4d78a; outline-offset: -4px; }
+@media (max-width: 767px) { .canvas-global-nav-mobile .canvas-account-trigger { flex-direction: row; justify-content: flex-start; gap: 16px; min-height: 48px; padding: 10px 18px; font-size: 14px; text-align: left; } }
+
+/* The native desktop rail has one state owner; layout and portalled trays share its width. */
+:root:has(.vf-canvas .canvas-global-nav:not(.canvas-global-nav-mobile)[data-minimized='true']),
+.vf-canvas:has(.canvas-global-nav:not(.canvas-global-nav-mobile)[data-minimized='true']) { --canvas-rail: 56px; }
+.canvas-global-nav[data-minimized='true'] a, .canvas-global-nav[data-minimized='true'] .canvas-account-trigger { min-height: 56px; padding: 8px 4px; }
+
+@media (max-width: 767px) {
+  .canvas-global-nav-mobile a:focus-visible, .canvas-global-nav-mobile .canvas-account-trigger:focus-visible { outline-color: var(--vf-signal); }
+  .canvas-global-nav-mobile .canvas-account-trigger:is([aria-expanded='true'], [aria-current='page']) { background: var(--vf-signal-soft); color: var(--vf-signal); }
+}
+
+/* Overlay navigation is mounted in an owned viewport box, not the document-height content box. */
+.canvas-staff-overlay-mount { position: fixed; inset-block-start: 0; inset-inline-start: var(--canvas-rail, 84px); width: 208px; height: 100dvh; z-index: 45; pointer-events: none; contain: layout paint; }
+.canvas-staff-overlay-mount[data-open] { pointer-events: auto; }
+.canvas-staff-overlay-mount .canvas-context-navigation { height: 100dvh; min-height: 0; max-height: 100dvh; }
+@media (max-width: 767px) { .canvas-staff-overlay-mount { inset-inline-start: 0; } }

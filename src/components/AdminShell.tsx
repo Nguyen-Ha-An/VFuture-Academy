@@ -16,7 +16,7 @@ import {
 } from "@/components/ShellPrimitives";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { AdminScopeSelector } from "@/features/admin/components/AdminScopeSelector";
-import { adminGroups, adminNavigation } from "@/lib/admin-navigation";
+import { adminGroups, adminNavigation, adminNavigationFor } from "@/lib/admin-navigation";
 import type { AdminScope, AdminScopeOption } from "@/lib/admin-scope";
 import type { Permission } from "@/lib/permissions";
 import { routes } from "@/lib/routes";
@@ -46,16 +46,8 @@ function LegacyAdminShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const navigation = useMemo(
-    () =>
-      adminNavigation.filter(
-        (item) =>
-          item.key === "overview" ||
-          (item.key === "users" && activeScope ? permissions.includes("member.read")
-            : item.permissions.some((permission) =>
-                (permissions as readonly string[]).includes(permission),
-              )),
-      ),
-    [permissions, activeScope],
+    () => adminNavigationFor(permissions),
+    [permissions],
   );
   const items = useMemo<ShellNavItem[]>(
     () =>
@@ -163,6 +155,7 @@ function LegacyAdminShell({
           {accountActions(true)}
         </MobileNavigationDrawer>
         <main
+          tabIndex={-1}
           id="admin-main"
           className="min-w-0 px-4 py-7 sm:px-6 lg:px-10 lg:py-10"
         >

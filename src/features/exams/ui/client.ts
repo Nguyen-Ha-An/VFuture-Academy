@@ -1,3 +1,4 @@
+import { canonicalAnswers, sameCanonicalAnswer } from '@/features/learning/answer-canonical';
 import type {
   ExamReviewResult,
   ExamSessionResult,
@@ -10,14 +11,15 @@ import type {
 } from '../types';
 
 export interface ExamClient {
-  session(): Promise<ExamSessionResult>;
+  session(options?: {bind?:boolean}): Promise<ExamSessionResult>;
   start(): Promise<ExamStartResult>;
-  save(answers: Record<string, unknown>): Promise<ExamAnswerRecord[]>;
+  save(answers: Record<string, unknown>): Promise<ExamAnswerAck[]>;
   submit(): Promise<ExamSubmitResult>;
   review(): Promise<ExamReviewResult>;
   events(events: readonly ExamEventInput[]): Promise<{ accepted: number; dropped: number }>;
   serverNow(): Promise<Date>;
 }
+export type ExamAnswerAck=Pick<ExamAnswerRecord,'questionId'|'answer'>;
 
 /**
  * Per-attempt request timeout. It intentionally exceeds the gateway's 20 s JSON
@@ -144,11 +146,22 @@ function startResult(value: unknown): ExamStartResult {
   };
 }
 
-function answerRecords(value: unknown): ExamAnswerRecord[] {
-  if (!Array.isArray(value)) throw new Error('Exam API returned invalid answers');
-  return value.map((entry) => {
-    const answer = record(entry) as unknown as ExamAnswerRecord;
-    return { ...answer, updatedAt: dateValue(answer.updatedAt) };
+function compactAnswers(value:unknown,expected:Record<string,unknown>):ExamAnswerAck[] {
+  const result=record(value);
+  if(result?.format!=='compact-v1' || !Array.isArray(result.answers) || result.answers.length!==Object.keys(expected).length) {
+    throw new ExamRequestError(200,'INVALID_RESPONSE','Exam API did not acknowledge the saved batch',{ambiguous:true});
+  }
+  const seen=new Set<string>();
+  return result.answers.map(entry=>{
+    const answer=record(entry);
+    if(!answer || typeof answer.questionId!=='string' || !Object.hasOwn(answer,'answer')
+      || Object.keys(answer).some(key=>key!=='questionId' && key!=='answer')
+      || !Object.hasOwn(expected,answer.questionId) || seen.has(answer.questionId)
+      || !sameCanonicalAnswer(expected[answer.questionId],answer.answer)) {
+      throw new ExamRequestError(200,'INVALID_RESPONSE','Exam API did not acknowledge the saved batch',{ambiguous:true});
+    }
+    seen.add(answer.questionId);
+    return {questionId:answer.questionId,answer:answer.answer};
   });
 }
 
@@ -359,9 +372,9 @@ export function createHttpExamClient(options: HttpExamClientOptions): ExamClient
   }
 
   return {
-    async session() {
+    async session(sessionOptions) {
       const result = await fetchSession();
-      attemptId = result.attempt?.attemptId;
+      if(sessionOptions?.bind!==false) attemptId = result.attempt?.attemptId;
       return result;
     },
     async start() {
@@ -378,11 +391,13 @@ export function createHttpExamClient(options: HttpExamClientOptions): ExamClient
       return result;
     },
     async save(answers) {
-      return answerRecords(await request(attemptUrl('answers'), {
+      const canonical=canonicalAnswers(answers);
+      const response=await request(attemptUrl('answers'), {
         method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ answers }),
-      }, IDEMPOTENT_WRITE));
+        headers: { 'content-type': 'application/json', 'x-academy-exam-ack':'compact-v1' },
+        body: JSON.stringify({ answers: canonical }),
+      }, IDEMPOTENT_WRITE);
+      return compactAnswers(response,canonical);
     },
     async submit() {
       const id = activeAttemptId();

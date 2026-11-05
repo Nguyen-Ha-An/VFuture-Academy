@@ -11,7 +11,7 @@ import { resultsAvailable } from './result-availability';
 registerAll();
 
 export interface ExamReviewProps {
-  exam: LearnerExam;
+  exam: Pick<LearnerExam, 'title' | 'sections'>;
   review: ExamReviewResult;
   runtime: LessonRuntime;
   onStartNext?: () => void | Promise<void>;
@@ -20,7 +20,7 @@ export interface ExamReviewProps {
   hideTitle?: boolean;
 }
 
-function feedbackQuestionNumbers(exam: LearnerExam): Map<string, number> {
+function feedbackQuestionNumbers(exam: ExamReviewProps['exam']): Map<string, number> {
   const numbers = new Map<string, number>();
   let number = 0;
   const visit = (question: Record<string, unknown>, questionNumber: number) => {
@@ -61,7 +61,7 @@ export function ExamReview({ exam, review, runtime, onStartNext, startingNext = 
   return (
     <article className="min-w-0 overflow-hidden rounded-[8px] border border-border bg-card">
       <header className="border-b border-border px-5 py-6 min-[760px]:px-8">
-        {!hideTitle ? <Title className="text-2xl font-semibold leading-snug">{t('title')}</Title> : null}
+        {!hideTitle ? <Title tabIndex={headingLevel === 1 ? -1 : undefined} className="text-2xl font-semibold leading-snug">{t('title')}</Title> : null}
         <p className="mt-3 text-xl font-semibold tabular-nums">
           {review.score
             ? t('score', {

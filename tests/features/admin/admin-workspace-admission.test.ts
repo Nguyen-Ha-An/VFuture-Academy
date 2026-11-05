@@ -47,6 +47,7 @@ function actor(grants: Array<{ permissions: Permission[]; scope: Scope }>): Acto
 
 const central: Scope = { kind: 'central' };
 const schoolA: Scope = { kind: 'branch', branchId: 'school-a' };
+const schoolB: Scope = { kind: 'branch', branchId: 'school-b' };
 
 /** A publisher whose only administrative work is enrollment-version migration. */
 const publisher = () => actor([{ permissions: ['course.publish', 'course.read'], scope: central }]);
@@ -148,6 +149,84 @@ describe('strict Administration admission is unchanged for administrators', () =
 
     expect(context.scope).toEqual(schoolA);
     expect(context.options.map((option) => option.scope)).toEqual([schoolA]);
+  });
+
+  it.each([central, schoolA])('rejects a custom member reader without admin.access in %o', async (scope) => {
+    const reader = actor([{ permissions: ['member.read'], scope }]);
+    mocks.getActor.mockResolvedValue(reader);
+
+    await expect(getAdminWorkspaceContext()).rejects.toMatchObject({ status: 403 });
+    await expect(getAdminContext()).rejects.toMatchObject({ status: 403 });
+    await expect(adminPageContext('member.read')).rejects.toThrow('forbidden:403');
+    expect(reader.authorization?.assignments[0].permissions).toEqual(['member.read']);
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it('keeps shell and strict page in school A when a stale cookie selects non-admin school B', async () => {
+    mocks.getActor.mockResolvedValue(actor([
+      { permissions: ['admin.access', 'member.read'], scope: schoolA },
+      { permissions: ['member.read'], scope: schoolB },
+    ]));
+    mocks.cookie = 'branch:school-b';
+
+    const shell = await getAdminWorkspaceContext();
+    const strict = await getAdminContext();
+
+    expect(shell.scope).toEqual(schoolA);
+    expect(strict.scope).toEqual(schoolA);
+    expect(shell.options.map((option) => option.scope)).toEqual([schoolA]);
+    expect(strict.options.map((option) => option.scope)).toEqual([schoolA]);
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it('rejects a school B scope switch when B only holds member.read', async () => {
+    mocks.getActor.mockResolvedValue(actor([
+      { permissions: ['admin.access', 'member.read'], scope: schoolA },
+      { permissions: ['member.read'], scope: schoolB },
+    ]));
+    mocks.cookie = 'branch:school-a';
+
+    const response = await changeScope(new Request('http://localhost/api/v1/admin/scope', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scope: 'branch:school-b' }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['another-operator', 'branch:school-a', 'ACTOR_CHANGED'],
+    ['operator', 'branch:school-b', 'SCOPE_CHANGED'],
+  ])('does not mutate scope for stale navigation actor=%s scope=%s', async (actorId, scope, code) => {
+    mocks.getActor.mockResolvedValue(actor([
+      { permissions: ['admin.access', 'member.read'], scope: schoolA },
+      { permissions: ['admin.access', 'member.read'], scope: schoolB },
+    ]));
+    mocks.cookie = 'branch:school-a';
+    const query = new URLSearchParams({ actorId, scope });
+    const response = await changeScope(new Request(`http://localhost/api/v1/admin/scope?${query}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scope: 'branch:school-b' }),
+    }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code } });
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it.each(['branch:school-b', ''])('rejects a changed saved preference even if the authorized context still resolves to A (%s)', async (expectedSaved) => {
+    mocks.getActor.mockResolvedValue(actor([
+      { permissions: ['admin.access', 'member.read'], scope: schoolA },
+      { permissions: ['admin.access', 'member.read'], scope: schoolB },
+    ]));
+    mocks.cookie = 'branch:school-a';
+    const response = await changeScope(new Request('http://localhost/api/v1/admin/scope?actorId=operator&scope=branch%3Aschool-a', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-vfuture-expected-saved-scope': expectedSaved },
+      body: JSON.stringify({ scope: 'branch:school-b' }),
+    }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: 'SCOPE_CHANGED' } });
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
   it('prefers a scope holding admin.access so the shell and management pages agree', async () => {

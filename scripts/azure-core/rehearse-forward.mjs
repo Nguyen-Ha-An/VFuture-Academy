@@ -12,7 +12,7 @@ import { isPermission } from '../../src/lib/authorization.ts';
 const target = { AZURE_TARGET_HOST:'fixture.postgres.database.azure.com', AZURE_DATABASE_URL:'postgres://academy_admin:fixture@fixture.postgres.database.azure.com/academy?sslmode=verify-full' };
 const imported = '273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149';
 const teaching = new Set(['teaching.announcement.manage','teaching.schedule.manage']);
-const artifact = buildAzureSchema();
+const artifact = buildAzureSchema({through:'20261105020000_teaching_permissions_activation.sql'});
 const baseline = artifact.steps.filter(step => !/^supabase\/migrations\/20261105/.test(step.id));
 const root = mkdtempSync('/tmp/academy-forward-pg.');
 const data = join(root,'data'), socket = join(root,'socket');

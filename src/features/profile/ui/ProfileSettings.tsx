@@ -77,7 +77,7 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
     : state === 'error' ? <Notice tone="fault" label={t('errorLabel')}>{message}</Notice> : null;
 
   return (
-    <Card title={t('title')} titleId="profile-settings-heading" className="canvas-panel vf-l-settings">
+    <Card title={t('title')} titleId="profile-settings-heading" focusableTitle className="canvas-panel vf-l-settings">
       <p className="vf-l-prose vf-l-muted">{t('description')}</p>
       <div className="vf-l-settings-forms">
         <form onSubmit={saveHandle} className="vf-l-settings-form">

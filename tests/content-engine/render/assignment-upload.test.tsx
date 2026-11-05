@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AssignmentPayload, LessonRuntime } from '@/content-engine/render/runtime';
 import { SubmissionFields } from '@/content-engine/render/questions/UploadAnswer';
@@ -34,6 +34,52 @@ function Harness({ runtime: rt, hosts, accepts = ['file', 'link', 'text'] }: { r
 }
 
 describe('assignment submission fields', () => {
+  it('keeps each renderer transaction pending until its file and concurrent sibling text are committed', async () => {
+    const pending = new Map<string, (value: { assetId: string; name: string; size: number; mime: string }) => void>();
+    const upload = vi.fn<LessonRuntime['uploadAssignmentFile']>((_target, file) => new Promise(resolve => { pending.set(file.name, resolve); }));
+    const signals: Array<{ delta: number; answer: AssignmentPayload }> = [];
+    const busy: boolean[] = [];
+    let latest: AssignmentPayload = {};
+    const rt = { ...runtime(upload), onAnswerUploadPending: (delta: 1 | -1) => signals.push({ delta, answer: structuredClone(latest) }) };
+    function Field() {
+      const [value, setValue] = useState<AssignmentPayload>({});
+      return <SubmissionFields accepts={['file', 'text']} value={value} onChange={next => { latest = next; setValue(next); }} runtime={rt} assignmentTarget={{ blockId: 'inline-work' }} onUploadBusyChange={value => busy.push(value)} />;
+    }
+    render(<Field />);
+    const user = userEvent.setup();
+    await user.upload(screen.getByLabelText('Upload files'), [new File(['one'], 'one.pdf', { type: 'application/pdf' }), new File(['two'], 'two.pdf', { type: 'application/pdf' })]);
+    await user.type(screen.getByRole('textbox', { name: 'Notes' }), 'Sibling text');
+    expect(signals.map(signal => signal.delta)).toEqual([1, 1]);
+    await act(async () => pending.get('two.pdf')!({ assetId: 'asset_two', name: 'two.pdf', size: 3, mime: 'application/pdf' }));
+    await waitFor(() => expect(signals.map(signal => signal.delta)).toEqual([1, 1, -1]));
+    expect(signals[2].answer).toMatchObject({ text: 'Sibling text', files: [{ assetId: 'asset_two' }] });
+    expect(busy.at(-1)).toBe(true);
+    await act(async () => pending.get('one.pdf')!({ assetId: 'asset_one', name: 'one.pdf', size: 3, mime: 'application/pdf' }));
+    await waitFor(() => expect(signals.map(signal => signal.delta)).toEqual([1, 1, -1, -1]));
+    expect(signals[3].answer.text).toBe('Sibling text');
+    expect(signals[3].answer.files?.map(file => file.assetId)).toEqual(['asset_two', 'asset_one']);
+    expect(busy.at(-1)).toBe(false);
+  });
+
+  it('opens a saved attachment through the runtime media route without replacing the active page', async () => {
+    const resolveMedia = vi.fn(() => '/api/v1/media/asset_saved');
+    const rt = { ...runtime(vi.fn()), resolveMedia };
+    const file = { assetId: 'asset_saved', name: 'work.pdf', size: 2048, mime: 'application/pdf' };
+    const onChange = vi.fn();
+    const { rerender } = render(<SubmissionFields accepts={['file']} value={{ files: [file] }} onChange={onChange} runtime={rt} />);
+    const link = screen.getByRole('link', { name: 'work.pdf' });
+    expect(link).toHaveAttribute('href', '/api/v1/media/asset_saved');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(resolveMedia).toHaveBeenCalledWith({ assetId: 'asset_saved' });
+    expect(screen.getByText('(2 KB)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'remove' }));
+    expect(onChange).toHaveBeenCalledWith({ files: [] });
+    rerender(<SubmissionFields accepts={['file']} value={{ files: [file] }} onChange={onChange} runtime={rt} disabled />);
+    expect(screen.getByRole('link', { name: 'work.pdf' })).toHaveAttribute('href', '/api/v1/media/asset_saved');
+    expect(screen.queryByRole('button', { name: 'remove' })).not.toBeInTheDocument();
+  });
+
   it('renders only the input channels permitted by the published assignment', () => {
     render(<Harness runtime={runtime(vi.fn())} accepts={['text']} />);
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { describeStaffShell, expectUnclipped, messages, shellStrings, withQuery, type StaffRoute } from '../studio-harness/staff-ui-support';
+import { accountButton, openAccountTray, describeStaffShell, expectUnclipped, messages, shellStrings, withQuery, type StaffRoute } from '../studio-harness/staff-ui-support';
 
 /** Catmin staff shell (`?uiv2=1`) over the admin harness. */
 const { vi } = messages;
@@ -9,7 +9,7 @@ const ROUTES: StaffRoute[] = [
 
 describeStaffShell(ROUTES);
 
-test('12px Vietnamese sidebar group labels and the identity row render unclipped at line-height 1.4+', async ({ page }) => {
+test('12px Vietnamese sidebar labels and Account Tray identity render unclipped at line-height 1.4+', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(withQuery('/admin/users'));
   const labels = page.locator('[data-sidebar="group-label"]');
@@ -17,7 +17,13 @@ test('12px Vietnamese sidebar group labels and the identity row render unclipped
   for (const label of await labels.all()) {
     expect((await expectUnclipped(label)).fontSize).toBe(12);
   }
-  await expectUnclipped(page.locator('[data-slot="sidebar-footer"] [data-sidebar="menu-button"] .truncate').first());
+  const account = accountButton(page);
+  const tray = await openAccountTray(page);
+  await expect(tray.locator('.canvas-account-identity h3')).toHaveText('Nguyễn Thị Thanh Hương');
+  await expectUnclipped(tray.locator('.canvas-account-identity h3'));
+  await page.keyboard.press('Escape');
+  await expect(tray).toBeHidden();
+  await expect(account).toBeFocused();
 });
 
 test('the member profile breadcrumb ends with the person, not the raw id; a focused h1 draws no ring', async ({ page }) => {
@@ -37,8 +43,11 @@ test('the member profile breadcrumb ends with the person, not the raw id; a focu
 test('while a scope switch is in flight the overlay covers the whole page, top bar included', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(withQuery('/admin/users', { holdScope: '1' }));
-  await page.locator('[data-slot="sidebar-header"] [data-sidebar="menu-button"]').click();
-  await page.getByRole('menuitemradio', { name: 'ANS · Hà Nội' }).click();
+  await page.getByRole('combobox', { name: vi.centralAdmin.scope, exact: true }).click();
+  await expect(page.getByRole('option', { name: 'ANS · Hà Nội', exact: true })).toBeVisible();
+  // The context selector offers schools; global workspaces remain separate links.
+  await expect(page.getByRole('option', { name: /^(Studio|Giảng dạy|Quản trị)$/ })).toHaveCount(0);
+  await page.getByRole('option', { name: 'ANS · Hà Nội', exact: true }).click();
   const overlay = page.getByRole('status').filter({ hasText: vi.centralAdmin.switchingScope });
   await expect(overlay).toBeVisible();
   // Whatever sits under the banner's controls and the page body is the overlay, so nothing there takes a click.

@@ -1,6 +1,13 @@
 import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
+import { z } from 'zod';
+import { IdSchema } from '@/content-engine/schema/common';
+import { AttemptIdSchema } from '@/features/exams/http';
+import { canReadHistoricalExamMedia } from '@/features/exams/historical-media';
+import { createServerExamService } from '@/features/exams/server';
+import { ExamError } from '@/features/exams/types';
 import { ApiError, withHandler } from '@/lib/api';
 import { isEligibleResourceAsset, isEnrolledForAsset } from '@/features/media/access';
+import { checkBoundAssessmentOwnerAccess } from '@/features/media/assessment-owner';
 import { canReviewProjectCover, canViewProjectCover } from '@/features/projects/service';
 import { canGradeSubmissionBranch } from '@/features/submissions/permissions';
 import { requireApiUser } from '@/lib/auth';
@@ -8,6 +15,16 @@ import { can, getActor, type ResourceOwner } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 
 type RouteContext = { params: Promise<{ assetId: string }> };
+const historicalQuerySchema=z.object({attemptId:AttemptIdSchema,courseId:IdSchema,itemId:IdSchema}).strict();
+function historicalQuery(request:Request) {
+  const params=new URL(request.url).searchParams;
+  const keys=['historicalExamAttemptId','courseId','itemId'];
+  if(!keys.some(key=>params.has(key))) return null;
+  if(keys.some(key=>params.getAll(key).length!==1)) throw new ApiError(404,'NOT_FOUND','Media not found');
+  const parsed=historicalQuerySchema.safeParse({attemptId:params.get(keys[0]),courseId:params.get(keys[1]),itemId:params.get(keys[2])});
+  if(!parsed.success) throw new ApiError(404,'NOT_FOUND','Media not found');
+  return parsed.data;
+}
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -21,7 +38,15 @@ async function canReadSubmissionAsset(
   assetId: string,
   ownerId: string,
 ) {
-  if (actor.userId === ownerId) return true;
+  if (actor.userId === ownerId) {
+    try {
+      const assessmentAccess=await checkBoundAssessmentOwnerAccess(database,actor,assetId);
+      return assessmentAccess ?? true;
+    } catch(error) {
+      if(error instanceof ApiError && error.status===403) return false;
+      throw error;
+    }
+  }
   const filesResult = await database.from('submission_files')
     .select('user_id,submission_id')
     .eq('asset_id', assetId);
@@ -30,24 +55,33 @@ async function canReadSubmissionAsset(
     const row = record(value);
     return row?.user_id === ownerId && typeof row.submission_id === 'string' ? [row.submission_id] : [];
   });
-  if (!submissionIds.length) return false;
-  const submissions = await database.from('assignment_submissions')
-    .select('id,user_id,branch_id,branch_scope_known')
-    .in('id', submissionIds).eq('user_id', ownerId);
-  if (submissions.error) throw new Error('Submission history lookup failed');
-  return (Array.isArray(submissions.data) ? submissions.data : []).some(value => {
+  if (submissionIds.length) {
+    const submissions = await database.from('assignment_submissions')
+      .select('id,user_id,branch_id,branch_scope_known')
+      .in('id', submissionIds).eq('user_id', ownerId);
+    if (submissions.error) throw new Error('Submission history lookup failed');
+    if ((Array.isArray(submissions.data) ? submissions.data : []).some(value => {
+      const row = record(value);
+      if (row?.user_id !== ownerId || typeof row.id !== 'string' || !submissionIds.includes(row.id)) return false;
+      const branchId = row.branch_scope_known === true && typeof row.branch_id === 'string' ? row.branch_id : null;
+      return canGradeSubmissionBranch(actor, branchId);
+    })) return true;
+  }
+  const exams = await database.rpc('exam_attachment_gradeable_attempts', { p_asset: assetId, p_owner: ownerId });
+  if (exams.error) throw new Error('Exam attachment lookup failed');
+  return (Array.isArray(exams.data) ? exams.data : []).some(value => {
     const row = record(value);
-    if (row?.user_id !== ownerId || typeof row.id !== 'string' || !submissionIds.includes(row.id)) return false;
-    const branchId = row.branch_scope_known === true && typeof row.branch_id === 'string' ? row.branch_id : null;
+    const branchId = row?.branch_scope_known === true && typeof row.branch_id === 'string' ? row.branch_id : null;
     return canGradeSubmissionBranch(actor, branchId);
   });
 }
 
 /** Redirects an authenticated caller to a short-lived URL for a private asset. */
-export const GET = withHandler(async (_request, context) => {
+export const GET = withHandler(async (request, context) => {
     await requireApiUser();
     const actor = await getActor();
     if (!actor) throw new ApiError(401, 'UNAUTHENTICATED', 'Authentication required');
+    const historical=historicalQuery(request);
 
     const { params } = context as RouteContext;
     const { assetId } = await params;
@@ -68,7 +102,18 @@ export const GET = withHandler(async (_request, context) => {
       : data.ownership_kind === 'branch' && typeof data.owner_branch_id === 'string'
         ? { kind: 'branch', id: data.owner_branch_id }
         : null;
-    const canRead = data.bucket === 'submissions'
+    let historicalAccess=false;
+    if(historical) {
+      try {
+        historicalAccess=await canReadHistoricalExamMedia(createServerExamService(),{id:actor.userId,locale:'vi'},historical,assetId,{ownerId:data.owner_id,bucket:data.bucket});
+      } catch(error) {
+        if((error instanceof ExamError && (error.code==='FORBIDDEN' || error.code==='ATTEMPT_NOT_ACTIVE')) || (error instanceof ApiError && error.status===403)) {
+          throw new ApiError(404,'NOT_FOUND','Media not found');
+        }
+        throw error;
+      }
+    }
+    const canRead = historical ? historicalAccess : data.bucket === 'submissions'
       ? await canReadSubmissionAsset(database, actor, assetId, data.owner_id)
       : data.owner_id === actor.userId
         ? true

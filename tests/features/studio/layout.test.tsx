@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,7 +26,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/features/admin/components/AdminSessionGuard', () => ({ AdminSessionGuard: ({children}: {children: React.ReactNode}) => children }));
 vi.mock('server-only', () => ({}));
+vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-nonce': 'layout-request-nonce' }) }));
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   redirect: mocks.redirect,
   forbidden: mocks.forbidden,
   useRouter: () => ({ refresh: vi.fn() }),
@@ -92,8 +94,11 @@ describe('Studio layout gate', () => {
     render(<Provider>{await StudioLayout({ children: <p>Protected</p> })}</Provider>);
 
     expect(screen.getAllByRole('link', { name: 'Content library' })[0]).toHaveAttribute('href', '/studio/library');
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Studio' }), { button: 0, ctrlKey: false });
-    expect(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Assessment & grading' })).toHaveAttribute('href', '/grading');
+    const global = screen.getByRole('navigation', { name: 'Global navigation' });
+    expect(within(global).getByRole('link', { name: 'Teaching' })).toHaveAttribute('href', '/grading');
+    expect(within(global).getByRole('link', { name: 'Studio' })).toHaveAttribute('href', '/studio');
+    expect(within(global).getByRole('link', { name: 'Studio' })).toHaveAttribute('aria-current', 'page');
+    expect(within(global).queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
   it('keeps only content destinations for content permissions', () => {

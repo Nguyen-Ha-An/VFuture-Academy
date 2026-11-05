@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import createCache from '@emotion/cache';
-import { CacheProvider, InstUISettingsProvider } from '@instructure/emotion';
+import { InstUISettingsProvider } from '@instructure/emotion';
 import { dark, light, type NewThemeOverrideObject } from '@instructure/ui-themes';
 import { WORKSPACE_THEME_EVENT, workspaceThemes, type WorkspaceTheme } from '@/features/workspace-ui/theme';
+import { CanvasEmotionRegistry } from './CanvasEmotionRegistry';
+import { WorkspaceSurfaceContext } from '@/components/ui/workspace-surface-context';
 
 function subscribeToSystemTheme(callback: () => void) {
   if (typeof window.matchMedia !== 'function') return () => {};
@@ -32,7 +33,7 @@ export function canvasThemeOverride(isDark: boolean): NewThemeOverrideObject {
     sharedTokens: { focusOutline: { infoColor: brand } },
     // InstUI's default 20% lightening makes white text fail 4.5:1 on Academy teal.
     // Keep the actual component's hover/pressed states within the brand palette.
-    components: { ProgressBar: {
+    components: { Tray: { backgroundColor: isDark ? '#20262e' : '#fff', borderColor: isDark ? '#424b57' : '#d8dce1' }, ProgressBar: {
       meterColorBrand: brand, meterColorInfo: brand, meterColorSuccess: brand,
       borderColor: brand, trackColor: isDark ? '#203e43' : '#e9f4f4',
       borderRadius: '4px', textColor: isDark ? '#b3bdc9' : '#596570',
@@ -46,8 +47,8 @@ export function canvasThemeOverride(isDark: boolean): NewThemeOverrideObject {
   };
 }
 
-/** Emotion's streaming-compatible inline SSR styles are hydrated by the same per-tree cache. */
-export function CanvasProvider({ children, theme = 'system' }: { children: ReactNode; theme?: WorkspaceTheme }) {
+/** Request-local Emotion collection keeps late streamed styles out of component markup. */
+export function CanvasProvider({ children, theme = 'system', nonce }: { children: ReactNode; theme?: WorkspaceTheme; nonce?: string }) {
   const prefersDark = useSyncExternalStore(subscribeToSystemTheme, systemIsDark, () => false);
   const [liveTheme, setLiveTheme] = useState<{ base: WorkspaceTheme; value: WorkspaceTheme } | null>(null);
   useEffect(() => {
@@ -61,6 +62,5 @@ export function CanvasProvider({ children, theme = 'system' }: { children: React
   }, [theme]);
   const chosenTheme = liveTheme?.base === theme ? liveTheme.value : theme;
   const isDark = chosenTheme === 'dark' || chosenTheme === 'system' && prefersDark;
-  const [cache] = useState(() => createCache({ key: 'academy-instui' }));
-  return <CacheProvider value={cache}><InstUISettingsProvider theme={isDark ? dark : light} themeOverride={canvasThemeOverride(isDark)}>{children}</InstUISettingsProvider></CacheProvider>;
+  return <CanvasEmotionRegistry nonce={nonce}><WorkspaceSurfaceContext.Provider value={isDark ? 'dark' : 'light'}><InstUISettingsProvider theme={isDark ? dark : light} themeOverride={canvasThemeOverride(isDark)}>{children}</InstUISettingsProvider></WorkspaceSurfaceContext.Provider></CanvasEmotionRegistry>;
 }

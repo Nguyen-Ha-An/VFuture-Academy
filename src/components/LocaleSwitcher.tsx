@@ -15,26 +15,33 @@ export function localeCookie(locale: AppLocale, secure: boolean) {
  * Saves the locale on the profile, mirrors it in the `locale` cookie and reloads so server-rendered
  * copy follows. Shared by LocaleSwitcher and the staff user menu.
  */
+export type LocaleChangeOptions = { signal?: AbortSignal; onFailure?: () => void };
+
 export function useLocaleChange() {
   const locale = useLocale() as AppLocale;
   const t = useTranslations("locale");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function changeLocale(nextLocale: AppLocale) {
+  function changeLocale(nextLocale: AppLocale, options: LocaleChangeOptions = {}) {
     setError(null);
     startTransition(async () => {
       try {
+        if (options.signal?.aborted) return;
         const response = await fetch("/api/v1/profile/locale", {
+        ...(options.signal ? { signal: options.signal } : {}),
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: nextLocale }),
         });
         if (!response.ok) throw new Error('Locale update failed');
+        if (options.signal?.aborted) return;
         document.cookie = localeCookie(nextLocale, window.location.protocol === "https:");
         window.location.reload();
       } catch {
-        setError(t("updateError"));
+        const cancelled = options.signal?.aborted === true;
+        options.onFailure?.();
+        if (!cancelled) setError(t("updateError"));
       }
     });
   }

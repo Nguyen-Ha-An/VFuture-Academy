@@ -73,7 +73,7 @@ export function ExamIntro({
     <section className="grid min-w-0 gap-6" aria-label={hideTitle ? exam.title : undefined}>
       {!hideTitle || (runtime && exam.description) ? (
         <header className="grid gap-3">
-          {!hideTitle ? <Title className="text-2xl font-medium leading-snug tracking-[-0.01em]">{exam.title}</Title> : null}
+          {!hideTitle ? <Title tabIndex={headingLevel === 1 ? -1 : undefined} className="text-2xl font-medium leading-snug tracking-[-0.01em]">{exam.title}</Title> : null}
           {runtime && exam.description ? (
             // Authored headings sit below the exam title (the page h1 when the title is hidden).
             <RenderScope ownerLevel={hideTitle ? 1 : headingLevel} blocks={exam.description.blocks}>

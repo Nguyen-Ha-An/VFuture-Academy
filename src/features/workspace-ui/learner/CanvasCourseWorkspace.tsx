@@ -12,7 +12,7 @@ export function CanvasCourseWorkspace({ id, title, code, locale, tab, listContex
   const copy = canvasCopy(locale);
   const panels = { overview, modules, assignments, grades, announcements, calendar };
   return <article className="canvas-page canvas-learning canvas-course-workspace">
-    <header className="canvas-course-heading"><div>{header ?? <Link href={routes.learner.courses({ tab: 'learning' })} className="canvas-course-breadcrumb">{copy.courses}</Link>}{code && <p className="canvas-course-eyebrow">{code}</p>}<h1>{title}</h1></div>{action}</header>
+    <header className="canvas-course-heading"><div>{header ?? <Link href={routes.learner.courses({ tab: 'learning' })} className="canvas-course-breadcrumb">{copy.courses}</Link>}{code && <p className="canvas-course-eyebrow">{code}</p>}<h1 tabIndex={-1}>{title}</h1></div>{action}</header>
     <CanvasCourseLayout navigation={<nav className="canvas-course-links" aria-label={title}>{COURSE_TABS.map(key => <CanvasLink key={key} href={routes.learner.course(id, { ...listContext, view: key })} aria-current={tab === key ? 'page' : undefined}>{copy[key]}</CanvasLink>)}</nav>}>
     <section className="canvas-course-tab-panel" aria-labelledby={`course-${tab}-heading`}><h2 id={`course-${tab}-heading`} className="canvas-tab-title">{copy[tab]}</h2>{panels[tab]}</section></CanvasCourseLayout>
   </article>;

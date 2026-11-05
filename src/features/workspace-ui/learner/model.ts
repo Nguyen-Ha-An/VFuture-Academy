@@ -21,6 +21,10 @@ export type DashboardResume = {
   href: string;
   courseTitle: string;
   part: string;
+  kind?: 'lesson' | 'exam' | 'assignment';
+  itemId?: string;
+  /** Only supplied for a confirmed owned in-progress exam at its enrollment pin. */
+  attemptId?: string;
   /** `M2 · L2.3` when the outline is known. */
   position?: string;
   minutes?: number;

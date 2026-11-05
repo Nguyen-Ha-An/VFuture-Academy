@@ -168,7 +168,7 @@ describe('quiz routes', () => {
     expect(mocks.createQuizService).not.toHaveBeenCalled();
   });
 
-  it('rejects a check answer string longer than 4000 characters', async () => {
+  it('rejects a check answer over the 64 KiB value limit', async () => {
     const response = await checkQuiz(new Request('http://localhost/api/v1/quizzes/check', {
       method: 'POST',
       body: JSON.stringify({
@@ -176,7 +176,7 @@ describe('quiz routes', () => {
         itemId: 'what-is-ai',
         quizId: 'check-1',
         questionId: 'check-1/q1',
-        answer: 'a'.repeat(4001),
+        answer: 'a'.repeat(65_536),
       }),
     }));
 
@@ -391,5 +391,42 @@ describe('quiz routes', () => {
       error: { code: 'UNAUTHENTICATED', message: 'Authentication required' },
     });
     expect(mocks.createQuizService).not.toHaveBeenCalled();
+  });
+});
+
+describe('quiz answer renderer boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireApiUser.mockResolvedValue({id:'learner-1'});
+    mocks.supabaseService.mockReturnValue(rateLimitDatabase());
+    mocks.service.check.mockResolvedValue({status:'correct'});
+    mocks.service.submit.mockResolvedValue({attemptId:'attempt-one'});
+  });
+  const edges=[{left:'left-one',right:'right-one'}];
+  it.each([
+    ['matching',edges],
+    ['grouped matching',{'group/child':edges}],
+  ])('accepts %s through the actual check and submit handlers',async(_label,answer)=>{
+    const base={courseId:'course-one',itemId:'lesson-one',quizId:'quiz-one'};
+    const check=await checkQuiz(new Request('http://localhost/api/v1/quizzes/check',{
+      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...base,questionId:'quiz-one/question',answer}),
+    }));
+    const submit=await submitQuiz(new Request('http://localhost/api/v1/quizzes/submit',{
+      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...base,answers:{'quiz-one/question':answer}}),
+    }));
+    expect(check.status).toBe(200);expect(submit.status).toBe(200);
+    expect(mocks.service.check).toHaveBeenCalledWith(expect.anything(),'course-one','lesson-one','quiz-one','quiz-one/question',answer);
+    expect(mocks.service.submit).toHaveBeenCalledWith(expect.anything(),'course-one','lesson-one','quiz-one',{'quiz-one/question':answer});
+  });
+  it.each(['check','submit'] as const)('rejects dangerous keys and oversized values in %s',async mode=>{
+    const base={courseId:'course-one',itemId:'lesson-one',quizId:'quiz-one'};
+    const dangerous=JSON.parse('{"__proto__":"bad"}');
+    for(const answer of [dangerous,'x'.repeat(65_536)]) {
+      const body=mode==='check'?{...base,questionId:'quiz-one/question',answer}:{...base,answers:{'quiz-one/question':answer}};
+      const request=new Request(`http://localhost/api/v1/quizzes/${mode}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+      const response=await (mode==='check'?checkQuiz:submitQuiz)(request);
+      expect(response.status).toBe(400);
+    }
+    expect(mocks.service[mode]).not.toHaveBeenCalled();
   });
 });

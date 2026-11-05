@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as RTabs from '@radix-ui/react-tabs';
 import type { QuestionRendererProps, LearnerQuestion } from '../registry';
 import { RichContentView } from '../RichContentView';
@@ -11,11 +11,17 @@ import { engineStrings, tr } from '../strings';
 
 export function QuestionGroup(props: QuestionRendererProps<GroupQuestion>) {
   const { question: q, value, onChange, disabled, result, revealed, runtime, index, depth = 0 } = props;
-  const answers = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  const answers = useMemo(() => (value && typeof value === 'object' ? value : {}) as Record<string, unknown>, [value]);
+  const latestAnswers = useRef(answers);
+  useLayoutEffect(() => { latestAnswers.current = answers; }, [answers]);
   const tabs = q.display?.layout === 'tabs';
   const [active, setActive] = useState(q.questions[0]?.id ?? '');
   const numberLabel = (i: number) => (index !== undefined ? `${index + 1}.${i + 1}` : `${i + 1}`);
-  const childProps = (c: LearnerQuestion) => ({ question: c, value: answers[c.id], onChange: (v: unknown) => onChange({ ...answers, [c.id]: v }), disabled, result: result?.children?.find((r) => r.questionId === c.id), revealed, runtime, depth: depth + 1 });
+  const childProps = (c: LearnerQuestion) => ({ question: c, value: answers[c.id], onChange: (v: unknown) => {
+    const next = { ...latestAnswers.current, [c.id]: v };
+    latestAnswers.current = next;
+    onChange(next);
+  }, disabled, result: result?.children?.find((r) => r.questionId === c.id), revealed, runtime, depth: depth + 1, leafControls: props.leafControls });
   const child = (c: LearnerQuestion, i: number) => <div><p className="mb-1 text-sm font-semibold text-muted-foreground">{numberLabel(i)}</p><QuestionRenderer {...childProps(c)} /></div>;
   return (
     <section className={blockFrame(depth)} aria-label={plainText(q.sharedContent)}>

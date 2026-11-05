@@ -9,6 +9,7 @@ import {
   LEARNER_SKIPPED_SUBTREES,
 } from '../../content-engine/compile/project';
 import { drawPools, type DrawnPoolQuestion } from './pools';
+import { containsAttachmentReferences, validQuestionAnswer } from '@/features/learning/question-answer';
 import type {
   BankSource,
   Clock,
@@ -24,6 +25,8 @@ import { ExamError } from './types';
 import type { AnalyticsEventName, ServerAnalyticsProps } from '../../lib/analytics';
 
 export interface ExamServiceDependencies {
+  validateAnswerAttachments?: (actor: ExamActor, attempt: ExamAttemptRecord, answers: Record<string, unknown>) => Promise<void>;
+  authorizeHistoricalReview?: (actor: ExamActor, attempt: ExamAttemptRecord, courseId: string) => Promise<boolean>;
   repo: ExamRepo;
   clock: Clock;
   bank: BankSource;
@@ -108,9 +111,10 @@ export interface ExamCompleteGradingOutcome {
 export interface ExamService {
   session(actor: ExamActor, courseId: string, itemId: string): Promise<ExamSessionResult>;
   start(actor: ExamActor, courseId: string, itemId: string): Promise<ExamStartResult>;
-  save(actor: ExamActor, attemptId: string, answers: Record<string, unknown>): Promise<ExamAnswerRecord[]>;
+  save(actor: ExamActor, attemptId: string, answers: Record<string, unknown>, options?: { compact?: boolean }): Promise<ExamAnswerRecord[]>;
   submit(actor: ExamActor, attemptId: string): Promise<ExamSubmitResult>;
   review(actor: ExamActor, attemptId: string): Promise<ExamReviewResult>;
+  historicalReview(actor: ExamActor, attemptId: string, courseId: string, itemId: string): Promise<{ learner: LearnerItem; review: ExamReviewResult }>;
   release(actor: ExamActor, target: { itemId: string; courseVersionId: string } | { attemptId: string }): Promise<ExamReleaseResult>;
   /**
    * Saves ONE manual question's score and feedback as a draft. It never finalizes:
@@ -640,6 +644,15 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     return grade;
   }
 
+  async function repairTerminalAttempt(attempt: ExamAttemptRecord): Promise<void> {
+    // Grade is an upserted projection; production evidence and XP use unique
+    // reference keys. Retrying them also repairs an interrupted first request.
+    if (attempt.status === 'graded') await recomputeGrade(attempt);
+    await runPostCommitEffects([
+      { name: 'progress.recompute', run: () => recomputeProgress(attempt) },
+    ], attempt);
+  }
+
   async function start(actor: ExamActor, courseId: string, itemId: string): Promise<ExamStartResult> {
     const context = await loadItem(actor, courseId, itemId);
     if (!context || !context.enrolled || context.item.kind !== 'exam' || !context.item.grading.exam) {
@@ -760,7 +773,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     };
   }
 
-  async function save(actor: ExamActor, attemptId: string, answers: Record<string, unknown>) {
+  async function save(actor: ExamActor, attemptId: string, answers: Record<string, unknown>, options?: { compact?: boolean }) {
     const attempt = await attemptFor(actor, attemptId);
     if (attempt.status !== 'in_progress') {
       throw new ExamError('ATTEMPT_NOT_ACTIVE', 'Only an in-progress attempt can be saved.');
@@ -776,7 +789,18 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     if (Object.keys(answers).some((id) => isAfterSectionGrace(attempt, id, now))) {
       throw new ExamError('SECTION_DEADLINE_PASSED', 'The question section deadline and grace period have passed.');
     }
-    const existing = new Map((await repo.listAnswers(attemptId)).map((answer) => [answer.questionId, answer]));
+    if (Object.entries(answers).some(([id, value]) => {
+      const question = attempt.gradingSnapshot.questions[id];
+      return !question || !validQuestionAnswer(question, value);
+    })) {
+      throw new ExamError('INVALID_ANSWER', 'An answer does not match the pinned question.');
+    }
+    if (dependencies.validateAnswerAttachments) {
+      await dependencies.validateAnswerAttachments(actor, attempt, answers);
+    } else if (containsAttachmentReferences(answers)) {
+      throw new ExamError('FORBIDDEN', 'Exam attachments cannot be verified.');
+    }
+    const existing = new Map((await repo.listAnswers(attemptId, options?.compact ? Object.keys(answers) : undefined)).map((answer) => [answer.questionId, answer]));
     const records = Object.entries(answers).map(([id, answer]): ExamAnswerRecord => ({
       attemptId,
       questionId: id,
@@ -792,7 +816,9 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     }
     // Submission can finish before this response read. Saving authorizes an answer
     // acknowledgement, while grading details remain behind the review policy.
-    return (await repo.listAnswers(attemptId)).map((saved) => ({
+    const ids=options?.compact ? Object.keys(answers) : undefined;
+    const selected=await repo.listAnswers(attemptId,ids);
+    return selected.filter(saved=>!ids || ids.includes(saved.questionId)).map((saved) => ({
       attemptId: saved.attemptId,
       questionId: saved.questionId,
       answer: saved.answer,
@@ -811,6 +837,10 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
   ): Promise<ExamSubmitResult> {
     const attempt = await attemptFor(actor, attemptId, access);
     if (attempt.status === 'graded' || attempt.status === 'pending_manual') {
+      // Finalization can commit before the aggregate grade write fails. A retry
+      // recomputes durable state; production XP and skill evidence use unique
+      // reference keys, and progress recomputation is an idempotent projection.
+      await repairTerminalAttempt(attempt);
       return toSubmitResult(attempt);
     }
     if (attempt.status === 'expired') {
@@ -889,6 +919,9 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       if (updated.status === 'expired') {
         throw new ExamError('DEADLINE_PASSED', 'Late submissions are rejected for this exam.');
       }
+      if (updated.status === 'graded' || updated.status === 'pending_manual') {
+        await repairTerminalAttempt(updated);
+      }
       return toSubmitResult(updated);
     }
     if (!graded.pendingManual) await recomputeGrade(updated);
@@ -912,8 +945,8 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     return submitAttempt(actor, attemptId);
   }
 
-  async function review(actor: ExamActor, attemptId: string): Promise<ExamReviewResult> {
-    const attempt = await attemptFor(actor, attemptId, { permission: 'submission.grade' });
+  async function projectReview(actor: ExamActor, attempt: ExamAttemptRecord): Promise<ExamReviewResult> {
+    const attemptId = attempt.id;
     if (attempt.status === 'in_progress' || attempt.status === 'submitted') {
       throw new ExamError('ATTEMPT_NOT_ACTIVE', 'The attempt is not ready for review.');
     }
@@ -980,6 +1013,28 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
         },
       ),
     };
+  }
+
+  async function review(actor: ExamActor, attemptId: string): Promise<ExamReviewResult> {
+    return projectReview(actor, await attemptFor(actor, attemptId, { permission: 'submission.grade' }));
+  }
+
+  async function historicalReview(actor: ExamActor, attemptId: string, courseId: string, itemId: string) {
+    const attempt = await repo.getAttempt(attemptId);
+    if (!attempt || attempt.userId !== actor.id || attempt.itemId !== itemId) {
+      throw new ExamError('FORBIDDEN', 'The attempt is not available to this learner.');
+    }
+    if (!['graded', 'pending_manual', 'expired'].includes(attempt.status)) {
+      throw new ExamError('ATTEMPT_NOT_ACTIVE', 'The attempt is not ready for review.');
+    }
+    if (!dependencies.authorizeHistoricalReview || !(await dependencies.authorizeHistoricalReview(actor, attempt, courseId))) {
+      throw new ExamError('FORBIDDEN', 'The attempt is not available to this learner.');
+    }
+    const learner = sanitizeLearnerValue(attempt.questionSet.learner) as LearnerItem;
+    if (learner.kind !== 'exam' || learner.id !== attempt.itemId || !Array.isArray(learner.sections)) {
+      throw new ExamError('INVALID_EXAM_CONFIGURATION', 'The pinned exam projection is unavailable.');
+    }
+    return { learner, review: await projectReview(actor, attempt) };
   }
 
   async function release(
@@ -1257,6 +1312,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     save,
     submit,
     review,
+    historicalReview,
     release,
     manualGrade,
     completeGrading,

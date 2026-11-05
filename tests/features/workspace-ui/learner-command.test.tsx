@@ -6,7 +6,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '@/messages/en.json';
 import viMessages from '@/messages/vi.json';
-import { withBenchMessages } from '@/messages/bench';
+import { staffUiTestMessages } from '@/messages/staff-ui';
 
 const mocks = vi.hoisted(() => ({
   pathname: '/app',
@@ -15,10 +15,11 @@ const mocks = vi.hoisted(() => ({
   dialogLoads: 0,
 }));
 
-const messages = { en: withBenchMessages(en, 'en'), vi: withBenchMessages(viMessages, 'vi') };
+const messages = { en: staffUiTestMessages(en, 'en'), vi: staffUiTestMessages(viMessages, 'vi') };
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   usePathname: () => mocks.pathname,
   useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: mocks.push, replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }),
@@ -26,7 +27,6 @@ vi.mock('next/navigation', () => ({
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(async (namespace?: string) => createTranslator({ locale: 'en', messages: messages.en, namespace: namespace as never })),
 }));
-vi.mock('@/lib/navigation-guard', () => ({ requestNavigation: mocks.requestNavigation, registerNavigationGuard: () => () => {} }));
 // Counts evaluations of the lazily imported palette module (cmdk lives only there).
 vi.mock('@/features/workspace-ui/learner/command/LearnerCommandDialog', async importOriginal => {
   mocks.dialogLoads += 1;
@@ -34,7 +34,10 @@ vi.mock('@/features/workspace-ui/learner/command/LearnerCommandDialog', async im
 });
 
 import { AppShell } from '@/components/AppShell';
-import { LearnerAccountActions } from '@/components/LearnerAccountActions';
+import { registerNavigationGuard } from '@/lib/navigation-guard';
+import { LearnerCommandMenu } from '@/features/workspace-ui/learner/command/LearnerCommandMenu';
+import { AccountTray, useAccountTrayController } from '@/features/canvas/ui/AccountTray';
+import { CanvasProvider } from '@/features/canvas/ui/CanvasProvider';
 import ExplorePage from '@/app/app/explore/page';
 import { learnerCommandEntries } from '@/features/workspace-ui/learner/command/entries';
 import { applyWorkspaceTheme } from '@/features/workspace-ui/ui/ThemeSwitcher';
@@ -47,14 +50,20 @@ beforeAll(() => {
   Element.prototype.releasePointerCapture ??= () => {};
 });
 
+let unregisterGuard: () => void = () => {};
+
 beforeEach(() => {
   mocks.pathname = '/app';
   mocks.push.mockReset();
   mocks.requestNavigation.mockReset().mockResolvedValue(true);
+  // Keep the production dispatcher real; this registered consumer controls Stay/Leave.
+  unregisterGuard = registerNavigationGuard(mocks.requestNavigation);
+  window.history.replaceState({}, '', '/app');
 });
 
 afterEach(() => {
   cleanup();
+  unregisterGuard();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.cookie = 'vf-theme=; max-age=0; path=/';
@@ -66,6 +75,16 @@ function renderShell({ locale = 'en', extra }: { locale?: 'en' | 'vi'; extra?: R
   return render(<NextIntlClientProvider locale={locale} messages={messages[locale]} timeZone="Asia/Ho_Chi_Minh">
     <AppShell {...DESTINATIONS}><h1>Home</h1>{extra}</AppShell>
   </NextIntlClientProvider>);
+}
+
+// Real stateful command and account owners: closing the dialog is part of the contract.
+function AccountHandoffHarness({ onHandoff }: { onHandoff: () => void }) {
+  const account = useAccountTrayController();
+  return <>
+    <LearnerCommandMenu onOpenAccount={element => { onHandoff(); account.openFrom(element); }} />
+    <AccountTray open={account.open} onOpenChange={account.setOpen} restoreFocus={account.restoreFocus}
+      identity={{ name: 'Avery Nguyen', handle: 'avery' }} theme="system" />
+  </>;
 }
 
 const trigger = () => screen.getByRole('button', { name: 'Search or jump to…', hidden: true });
@@ -183,12 +202,12 @@ describe('learner command menu content', () => {
     renderShell();
     const dialog = await openPalette();
     expect([...dialog.querySelectorAll('[cmdk-group-heading]')].map(node => node.textContent)).toEqual(['Go to', 'Explore', 'Account', 'Workspaces', 'Preferences']);
-    for (const name of ['Learning', 'Courses', 'Explore', 'Resources', 'Opportunities', 'Projects', 'Profile', 'Certificates', 'XP', 'Leaderboard', 'Open Studio', 'Open assessment & grading', 'Open administration', 'Light theme', 'Dark theme', 'Tiếng Việt']) {
+    for (const name of ['Learning', 'Courses', 'Explore', 'Resources', 'Opportunities', 'Projects', 'Profile', 'Certificates', 'XP', 'Leaderboard', 'Open Studio', 'Open assessment & grading', 'Open administration', 'Light theme', 'Dark theme', 'Language and appearance']) {
       expect(option(name), name).toBeInTheDocument();
     }
     expect(option(/^Automatic theme\s*Current$/)).toBeInTheDocument();
-    expect(option(/^English\s*Current$/)).toBeInTheDocument();
-    expect(option('Tiếng Việt')).toHaveAttribute('lang', 'vi');
+    expect(option(/^English\s*Current$/)).not.toBeInTheDocument();
+    expect(option('Tiếng Việt')).not.toBeInTheDocument();
     const learning = option('Learning')!;
     expect(learning).toHaveTextContent('A1');
     expect(learning).toHaveTextContent('g then 1');
@@ -230,29 +249,46 @@ describe('learner command menu content', () => {
     await waitFor(() => expect(option(viMessages.learner.focus.resources)).toBeInTheDocument());
     fireEvent.change(input, { target: { value: 'giao dien toi' } });
     await waitFor(() => expect(option('Giao diện tối')).toBeInTheDocument());
+    fireEvent.change(input, { target: { value: 'ngon ngu' } });
+    await waitFor(() => expect(option('Ngôn ngữ và giao diện')).toBeInTheDocument());
+    expect(option('Tiếng Việt')).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: 'English' } });
+    await waitFor(() => expect(option('Ngôn ngữ và giao diện')).toBeInTheDocument());
     fireEvent.change(input, { target: { value: 'zzzz' } });
     expect(await within(dialog).findByText('Không có kết quả.')).toBeInTheDocument();
   });
 });
 
 describe('learner command menu actions', () => {
-  it('closes, asks the navigation guard, then pushes', async () => {
+  it('exits the real dialog before asking the navigation guard, then pushes once', async () => {
+    const dialogsAtGuard: Array<HTMLElement | null> = [];
+    mocks.requestNavigation.mockImplementation(async () => {
+      dialogsAtGuard.push(screen.queryByRole('dialog', { name: 'Command menu' }));
+      return true;
+    });
     renderShell();
     await openPalette();
     fireEvent.click(option('Resources')!);
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/resources'));
     expect(mocks.requestNavigation).toHaveBeenCalledTimes(1);
+    expect(dialogsAtGuard).toEqual([null]);
+    expect(mocks.push).toHaveBeenCalledOnce();
     expect(mocks.requestNavigation.mock.invocationCallOrder[0]).toBeLessThan(mocks.push.mock.invocationCallOrder[0]);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('stays put when the guard refuses', async () => {
-    mocks.requestNavigation.mockResolvedValue(false);
+    const dialogsAtGuard: Array<HTMLElement | null> = [];
+    mocks.requestNavigation.mockImplementation(async () => {
+      dialogsAtGuard.push(screen.queryByRole('dialog', { name: 'Command menu' }));
+      return false;
+    });
     renderShell();
     await openPalette();
     fireEvent.click(option('Leaderboard')!);
     await waitFor(() => expect(mocks.requestNavigation).toHaveBeenCalled());
     await act(async () => {});
+    expect(dialogsAtGuard).toEqual([null]);
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
@@ -260,7 +296,7 @@ describe('learner command menu actions', () => {
     window.history.pushState({}, '', '/app/profile');
     mocks.pathname = '/app/profile';
     try {
-      renderShell({ extra: <h2 id="certificates-heading">Certificates</h2> });
+      renderShell({ extra: <h2 id="certificates-heading" tabIndex={-1}>Certificates</h2> });
       await openPalette();
       fireEvent.click(option('Certificates')!);
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Certificates' })).toHaveFocus());
@@ -295,17 +331,52 @@ describe('learner command menu actions', () => {
     applyWorkspaceTheme('system');
   });
 
-  it('saves the language through the locale endpoint and keeps a failure visible', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: false }) as Response);
+  it('hands language preferences to the single shared Account owner without a locale mutation', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     renderShell();
     const dialog = await openPalette();
-    fireEvent.click(option('Tiếng Việt')!);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/profile/locale', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ locale: 'vi' }) })));
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(en.locale.updateError);
-    expect(screen.getByRole('dialog', { name: 'Command menu' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('option', { name: 'Tiếng Việt' })).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('option', { name: 'Language and appearance' }));
+    const account = await screen.findByRole('dialog', { name: 'Account' });
+    expect(screen.queryByRole('dialog', { name: 'Command menu' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('dialog', { name: 'Account' })).toHaveLength(1);
+    expect(within(account).getAllByRole('combobox')).toHaveLength(2);
+    expect(within(account).getByRole('combobox', { name: en.common.language })).toHaveValue(en.locale.en);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.requestNavigation).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
   });
+
+  it('calls the Account handoff only after the actual command dialog has exited', async () => {
+    const onHandoff = vi.fn(() => {
+      expect(screen.queryByRole('dialog', { name: 'Command menu' })).not.toBeInTheDocument();
+    });
+    render(<NextIntlClientProvider locale="en" messages={messages.en}><CanvasProvider theme="system">
+      <div className="vf-workspace vf-learner-refined"><AccountHandoffHarness onHandoff={onHandoff} /></div>
+    </CanvasProvider></NextIntlClientProvider>);
+    const dialog = await openPalette();
+    fireEvent.click(within(dialog).getByRole('option', { name: 'Language and appearance' }));
+    await screen.findByRole('dialog', { name: 'Account' });
+    expect(onHandoff).toHaveBeenCalledOnce();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('ignores an old route approval after the command menu reopens', async () => {
+    let finish: ((allowed: boolean) => void) | undefined;
+    mocks.requestNavigation.mockImplementation(() => new Promise<boolean>(resolve => { finish = resolve; }));
+    renderShell();
+    try {
+      await openPalette();
+      fireEvent.click(option('Resources')!);
+      await waitFor(() => expect(mocks.requestNavigation).toHaveBeenCalledOnce());
+      await openPalette();
+      await act(async () => { finish?.(true); });
+      expect(screen.getByRole('dialog', { name: 'Command menu' })).toBeInTheDocument();
+      expect(mocks.push).not.toHaveBeenCalled();
+    } finally { await act(async () => { finish?.(false); }); }
+  });
+
 });
 
 describe('learner command entries', () => {
@@ -321,10 +392,19 @@ describe('learner command entries', () => {
     expect(entries.filter(entry => entry.group === 'goTo').map(entry => [entry.code, entry.shortcutKey])).toEqual([['A1', '1'], ['A2', '2'], ['A3', '3']]);
   });
 
-  it('uses the account menu hrefs for Account and Workspaces', () => {
-    render(<NextIntlClientProvider locale="en" messages={messages.en}><LearnerAccountActions stacked {...DESTINATIONS} /></NextIntlClientProvider>);
-    const links = screen.getAllByRole('link').map(link => link.getAttribute('href'));
-    expect([...hrefs('account'), ...hrefs('workspaces')]).toEqual(links);
+  it('keeps account links in the tray, workspace destinations on the rail and XP in command search', async () => {
+    renderShell();
+    const rail = screen.getByRole('navigation', { name: 'Global navigation' });
+    const railHrefs = within(rail).getAllByRole('link').map(link => link.getAttribute('href'));
+    expect(railHrefs).toEqual(expect.arrayContaining(hrefs('workspaces')));
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    const tray = await screen.findByRole('dialog', { name: 'Account' });
+    const links = within(tray).getAllByRole('link').map(link => link.getAttribute('href'));
+    expect(links).toEqual(['/app/profile', '/app/profile#profile-settings-heading', '/app/profile#certificates-heading', '/app/leaderboard']);
+    expect(links.filter(href => href !== '/app/profile#profile-settings-heading')).toEqual(hrefs('account').filter(href => href !== '/app/profile#xp-heading'));
+    for (const href of hrefs('workspaces')) expect(links).not.toContain(href);
+    expect(within(tray).queryByRole('link', { name: 'XP' })).not.toBeInTheDocument();
+    expect(entries.find(entry => entry.id === 'account:xp')).toMatchObject({ group: 'account', href: '/app/profile#xp-heading', label: 'XP' });
   });
 
   it('uses the explore page hrefs for Explore', async () => {

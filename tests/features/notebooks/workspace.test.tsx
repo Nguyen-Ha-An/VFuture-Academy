@@ -220,6 +220,21 @@ describe("NotebookWorkspace async state", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
+  it("grants document reload only after confirmed leave, and restores unsaved protection if that operation aborts", async () => {
+    const bridge = await renderWorkspace();
+    act(() => bridge.onChange(notebook("unsaved edit")));
+    const operation = new AbortController();
+    const decision = requestNavigation({ kind: 'document', signal: operation.signal });
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'leaveTitle' })).getByRole('button', { name: 'leaveAnyway' }));
+    await expect(decision).resolves.toBe(true);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'leaveTitle' })).not.toBeInTheDocument());
+    const approved = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(approved);
+    expect(approved.defaultPrevented).toBe(false);
+    operation.abort();
+    const protectedAgain = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(protectedAgain);
+    expect(protectedAgain.defaultPrevented).toBe(true);
+  });
+
   it("shows an existing submission awaiting review in the refined learner workspace", async () => {
     const initial = session({
       assignment: {

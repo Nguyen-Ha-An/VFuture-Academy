@@ -43,7 +43,7 @@ import { CourseCreationInputSchema, type CourseCreationInput } from './course-cr
 import { decodeAnyImport } from './content-transfer';
 import { readBoundedZipEntry } from './bounded-zip';
 
-type DatabaseError = { message?: string; code?: string } | null;
+type DatabaseError = { message?: string; code?: string; schema?: string; table?: string; constraint?: string } | null;
 type QueryResult = { data: unknown; error: DatabaseError };
 
 interface QueryLike extends PromiseLike<QueryResult> {
@@ -176,6 +176,18 @@ function databaseFailure(message: string): never {
   throw new ApiError(500, 'DATABASE_ERROR', message);
 }
 
+/** PostgREST exposes the native constraint in its message; native adapters also
+ * carry structured metadata. Other uniqueness failures are not course-ID conflicts.
+ */
+function isCourseIdentityConflict(error: NonNullable<DatabaseError>): boolean {
+  if (error.code !== '23505'
+    || (error.schema !== undefined && error.schema !== 'public')
+    || (error.table !== undefined && error.table !== 'courses')) return false;
+  const constraint = error.constraint
+    ?? error.message?.match(/^duplicate key value violates unique constraint "(courses_pkey|courses_slug_key)"$/)?.[1];
+  return constraint === 'courses_pkey' || constraint === 'courses_slug_key';
+}
+
 function parseDocumentText(text: string, doc: string | DocumentRef): unknown {
   const parsed = parseJsonDocument(text, doc);
   if (parsed.errors.length) {
@@ -259,7 +271,10 @@ export async function createCourse(input: unknown, actor: Actor, deps?: StudioDe
     p_actor_id: actor.userId,
     p_manifest: validation.doc,
   });
-  if (error) databaseFailure('Unable to create course');
+  if (error) {
+    if (isCourseIdentityConflict(error)) throw new ApiError(409, 'COURSE_EXISTS', 'A course with this id already exists');
+    databaseFailure('Unable to create course');
+  }
   const created = object(data);
   const course = object(created?.course);
   const draft = object(created?.draft);

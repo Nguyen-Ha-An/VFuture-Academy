@@ -1,6 +1,6 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
+import * as Dialog from "@/components/ui/workspace-dialog-primitive";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -49,7 +49,7 @@ export const MenuButton = forwardRef<HTMLButtonElement, { onClick: () => void; c
 });
 
 /** `closeAt` is the media query at which the bar shows its own nav, so the drawer closes (staff bars: 64rem). */
-export function MobileNavigationDrawer({ children, open, onOpenChange, title, id, returnFocusRef, themeClassName, closeAt = '(min-width: 64rem)' }: { children: ReactNode; open: boolean; onOpenChange: (open: boolean) => void; title: string; id: string; returnFocusRef: RefObject<HTMLButtonElement | null>; themeClassName?: string; closeAt?: string }) {
+export function MobileNavigationDrawer({ children, open, onOpenChange, title, id, returnFocusRef, themeClassName, closeAt = '(min-width: 64rem)', onAfterClose }: { children: ReactNode; open: boolean; onOpenChange: (open: boolean) => void; title: string; id: string; returnFocusRef: RefObject<HTMLButtonElement | null>; themeClassName?: string; closeAt?: string; onAfterClose?: () => boolean }) {
   const common = useTranslations("common");
   const closeReason = useRef<'dismiss' | 'breakpoint' | 'navigate'>('dismiss');
   useEffect(() => {
@@ -73,14 +73,15 @@ export function MobileNavigationDrawer({ children, open, onOpenChange, title, id
       if (link && link.target !== '_blank' && (link.href !== window.location.href || new URL(link.href).hash)) closeReason.current = 'navigate';
     }} onCloseAutoFocus={event => {
       event.preventDefault();
+      if (onAfterClose?.()) return;
       if (closeReason.current === 'navigate') return;
       if (closeReason.current === 'breakpoint') {
         // Selector lists use document order (main precedes its h1), not fallback priority.
         const target = ['header a[aria-current="page"]', 'main h1', 'main']
           .flatMap(selector => [...document.querySelectorAll<HTMLElement>(selector)])
-          .find(node => node.isConnected && !node.closest('[hidden], [inert], [aria-hidden="true"]')
+          .find(node => node.matches('a[href], button, input, select, textarea, [tabindex]') && node.isConnected && !node.closest('[hidden], [inert], [aria-hidden="true"]')
             && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden');
-        if (target) { if (!target.matches('a, button, input, select, textarea')) target.tabIndex = -1; target.focus({ preventScroll: true }); }
+        if (target) target.focus({ preventScroll: true });
         return;
       }
       returnFocusRef.current?.focus();

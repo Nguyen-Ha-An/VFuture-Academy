@@ -11,7 +11,6 @@ import { markEnrollHandoff, takeEnrollHandoff } from '@/features/learner/ui/enro
 function focusFallback(status: HTMLElement | null) {
   const target = status?.closest('article')?.querySelector('h1') ?? document.querySelector('h1') ?? status;
   if (!target) return;
-  if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
   target.focus();
 }
 
@@ -49,6 +48,6 @@ export function CourseCta({ courseId, enrolled, cta, prerequisites }: {
     {enrolled
       ? cta ? <Link ref={link} href={cta.href} className="vf-btn vf-btn-primary vf-btn-lg">{cta.label}</Link> : null
       : <EnrollButton courseId={courseId} prerequisites={prerequisites} onEnrolled={() => { justEnrolled.current = true; markEnrollHandoff(courseId); }} />}
-    <p ref={status} role="status" className="sr-only">{announcement}</p>
+    <p ref={status} tabIndex={-1} role="status" className="sr-only">{announcement}</p>
   </>;
 }

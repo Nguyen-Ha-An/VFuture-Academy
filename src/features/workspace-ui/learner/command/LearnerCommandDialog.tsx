@@ -1,11 +1,9 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { useLocaleChange } from '@/components/LocaleSwitcher';
-import type { AppLocale } from '@/i18n/request';
 import { requestNavigation } from '@/lib/navigation-guard';
 import { commandFilter } from '@/lib/search-text';
 import { workspaceThemes, type WorkspaceTheme } from '../../theme';
@@ -18,10 +16,11 @@ export type LearnerCommandDialogProps = {
   destinations?: LearnerCommandDestinations;
   /** Where focus goes on close unless a same-page hash target takes it (the trigger). */
   returnFocus?: () => void;
+  /** Opens the shared account owner after the command focus scope exits. */
+  onOpenAccount?: () => void;
 };
 
 const GROUPS = ['goTo', 'explore', 'account', 'workspaces'] as const satisfies readonly LearnerCommandGroup[];
-const LOCALES = ['vi', 'en'] as const satisfies readonly AppLocale[];
 
 /** The applied theme, read from the learner surface that applyWorkspaceTheme updates. */
 function currentTheme(): WorkspaceTheme {
@@ -35,66 +34,70 @@ function currentTheme(): WorkspaceTheme {
  * from learnerCommandEntries (the nav and account menu hrefs); preferences reuse the account menu's
  * theme and language plumbing.
  */
-export function LearnerCommandDialog({ open, onOpenChange, destinations, returnFocus }: LearnerCommandDialogProps) {
+export function LearnerCommandDialog({ open, onOpenChange, destinations, returnFocus, onOpenAccount }: LearnerCommandDialogProps) {
   const t = useTranslations('bench.learner.command');
   const focus = useTranslations('learner.focus');
   const common = useTranslations('common');
-  const localeT = useTranslations('locale');
   const router = useRouter();
-  const { locale, changeLocale, isPending, error } = useLocaleChange();
   const [theme, setTheme] = useState<WorkspaceTheme>(currentTheme);
+  const pendingExit = useRef<{ kind: 'route'; href: string; from: string } | { kind: 'account' } | null>(null);
+  const generation = useRef(0);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   // The dialog stays mounted between openings, so re-read the theme each time it opens: the account
   // menu or drawer may have changed it meanwhile.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setTheme(currentTheme());
+    if (open) { setTheme(currentTheme()); generation.current += 1; pendingExit.current = null; }
   }
-  /** A same-page hash target (profile → Certificates) that takes focus instead of the trigger. */
-  const hashTarget = useRef<string | null>(null);
 
   const keywords = (key: string) => (t.has(`keywords.${key}`) ? t(`keywords.${key}`) : '');
   const entries = learnerCommandEntries({ focus: key => focus(key), common: key => common(key), command: key => t(key), keywords }, destinations);
 
-  async function go(href: string) {
-    const url = new URL(href, window.location.href);
-    if (url.pathname === window.location.pathname && url.search === window.location.search) {
-      // Same page: update the hash without a guard and focus the target once the dialog lets go.
-      if (url.hash) {
-        hashTarget.current = url.hash.slice(1);
-        if (url.hash !== window.location.hash) window.location.hash = url.hash;
-      }
-      onOpenChange(false);
-      return;
-    }
+  function go(href: string) {
+    pendingExit.current = { kind: 'route', href, from: window.location.pathname + window.location.search };
     onOpenChange(false);
-    // The unsaved-changes guard only intercepts link clicks and form submits, so ask it explicitly.
-    if (!(await requestNavigation())) return;
-    router.push(href);
   }
 
   function restoreFocus(event: Event) {
-    const id = hashTarget.current;
-    hashTarget.current = null;
-    let target: HTMLElement | null = null;
-    try { target = id ? document.getElementById(decodeURIComponent(id)) : null; } catch { /* Malformed hash: back to the trigger. */ }
-    if (!target && !returnFocus) return;
     event.preventDefault();
-    if (!target) { returnFocus?.(); return; }
-    target.tabIndex = -1;
-    target.focus({ preventScroll: true });
-    target.scrollIntoView?.({ block: 'start' });
+    const action = pendingExit.current;
+    pendingExit.current = null;
+    const closingGeneration = generation.current;
+    // Radix dispatches this callback during focus-scope cleanup. Finish that commit
+    // before another owner opens its dialog or an unsaved-work guard is requested.
+    queueMicrotask(() => {
+      if (!mounted.current || openRef.current || generation.current !== closingGeneration) return;
+      if (!action) { returnFocus?.(); return; }
+      if (action.kind === 'account') { onOpenAccount?.(); return; }
+      if (window.location.pathname + window.location.search !== action.from) return;
+      const url = new URL(action.href, window.location.href);
+      if (url.pathname === window.location.pathname && url.search === window.location.search) {
+        if (!url.hash) { returnFocus?.(); return; }
+        let id = '';
+        try { id = decodeURIComponent(url.hash.slice(1)); } catch { returnFocus?.(); return; }
+        if (url.hash !== window.location.hash) window.location.hash = url.hash;
+        const target = document.getElementById(id);
+        if (target) { target.focus({ preventScroll: true }); target.scrollIntoView?.({ block: 'start' }); }
+        else returnFocus?.();
+        return;
+      }
+      void requestNavigation().then(allowed => {
+        if (!mounted.current || openRef.current || generation.current !== closingGeneration
+          || window.location.pathname + window.location.search !== action.from) return;
+        if (allowed) router.push(action.href);
+        else returnFocus?.();
+      });
+    });
   }
 
   function chooseTheme(next: WorkspaceTheme) {
     setTheme(next);
     applyWorkspaceTheme(next);
     onOpenChange(false);
-  }
-
-  function chooseLocale(next: AppLocale) {
-    // Saving reloads the page; the palette stays open meanwhile so a failure stays visible.
-    if (next === locale) onOpenChange(false); else changeLocale(next);
   }
 
   return <CommandDialog open={open} onOpenChange={onOpenChange} title={t('title')} description={t('description')} closeLabel={common('close')}
@@ -120,13 +123,12 @@ export function LearnerCommandDialog({ open, onOpenChange, destinations, returnF
           <span className="truncate">{t(`theme.${option}`)}</span>
           {theme === option ? <CurrentMark label={t('current')} /> : null}
         </PaletteItem>)}
-        {LOCALES.map(option => <PaletteItem key={option} value={`language:${option}`} lang={option} disabled={isPending} keywords={[localeT(option), keywords('language')]} onSelect={() => chooseLocale(option)}>
-          <span className="truncate">{localeT(option)}</span>
-          {locale === option ? <CurrentMark label={t('current')} /> : null}
-        </PaletteItem>)}
+        {onOpenAccount ? <PaletteItem value="account:preferences" keywords={[t('accountPreferences'), keywords('language'), keywords('theme')]} onSelect={() => {
+          pendingExit.current = { kind: 'account' };
+          onOpenChange(false);
+        }}><span className="truncate">{t('accountPreferences')}</span></PaletteItem> : null}
       </CommandGroup>
     </CommandList>
-    {error ? <p role="alert" className="vf-l-command-error">{error}</p> : null}
     <p className="vf-l-command-footer" aria-hidden="true">{t('hint')}</p>
   </CommandDialog>;
 }

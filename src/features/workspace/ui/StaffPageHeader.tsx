@@ -24,7 +24,7 @@ export function StaffPageHeader({ title, description, eyebrow, actions, children
   return <header className="staff-page-header [.vf-staff_&]:mb-6 [.vf-staff_&]:flex [.vf-staff_&]:flex-wrap [.vf-staff_&]:items-start [.vf-staff_&]:justify-between [.vf-staff_&]:gap-x-6 [.vf-staff_&]:gap-y-4">
     <div className="flex min-w-0 flex-1 flex-col gap-2 [.vf-staff_&]:basis-80 [.vf-staff_&]:gap-1">
       {eyebrow ? <p className="text-xs font-semibold tracking-wide text-primary [.vf-staff_&]:font-medium [.vf-staff_&]:leading-normal [.vf-staff_&]:tracking-normal [.vf-staff_&]:text-muted-foreground">{eyebrow}</p> : null}
-      <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl [.vf-staff_&]:font-bold [.vf-staff_&]:leading-[1.4] [.vf-staff_&]:sm:text-2xl">{title}</h1>
+      <h1 tabIndex={-1} className="break-words text-2xl font-semibold tracking-tight sm:text-3xl [.vf-staff_&]:font-bold [.vf-staff_&]:leading-[1.4] [.vf-staff_&]:sm:text-2xl">{title}</h1>
       {description ? <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base [.vf-staff_&]:leading-normal [.vf-staff_&]:sm:text-sm">{description}</p> : null}
       {children}
     </div>

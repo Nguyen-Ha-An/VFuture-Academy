@@ -37,9 +37,15 @@ function listOwnedMigrationNames(directory){
 export function azureSchemaStepNames(){
   return ['bootstrap.sql',...listOwnedMigrationNames(new URL('supabase/migrations/',root)).map(name=>`supabase/migrations/${name}`),...suffixSteps.map(([id])=>id)];
 }
-export function buildAzureSchema() {
+/** Build all current migrations unless an explicit historical release boundary is requested.
+ * @param {{through?:string}} options
+ */
+export function buildAzureSchema(options = {}) {
   const migrationDir = new URL('supabase/migrations/', root);
-  const files = listOwnedMigrationNames(migrationDir);
+  const owned = listOwnedMigrationNames(migrationDir);
+  const boundary = options.through === undefined ? owned.length - 1 : owned.indexOf(options.through);
+  if (boundary < 0) throw new Error('Unknown migration boundary');
+  const files = owned.slice(0, boundary + 1);
   /** @type {{file:string,sourceSha256:string,azureSha256:string}[]} */
   const migrations = [];
   const receipt = { version: 1, migrations, omissions: omissions.map(({ file, text, reason }) => ({ file, sha256: hash(text), reason })) };

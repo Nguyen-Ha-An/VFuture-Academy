@@ -1,4 +1,5 @@
 import { staffShellVariant } from "@/features/workspace/presentation";
+import { headers } from "next/headers";
 import { AdminSessionGuard } from "@/features/admin/components/AdminSessionGuard";
 import { StudioShell } from "@/components/StudioShell";
 import { readStaffChrome } from "@/features/staff-ui/chrome.server";
@@ -15,9 +16,10 @@ export default async function StudioLayout({
 }) {
   const variant = staffShellVariant("studio");
   // Chrome (theme, rail, identity) is read only for the Catmin shell, alongside the context.
-  const [context, chrome] = await Promise.all([
+  const [context, chrome, requestHeaders] = await Promise.all([
     studioPageContext(),
     variant === "catmin" ? readStaffChrome() : null,
+    headers(),
   ]);
   if (chrome) {
     preloadStaffFonts();
@@ -28,6 +30,7 @@ export default async function StudioLayout({
         destination={routes.studio.dashboard()}
       >
         <StaffWorkspaceShell
+          nonce={requestHeaders.get('x-nonce') ?? undefined}
           key={`${context.actor.userId}:${scopeKey(context.scope)}`}
           workspace="studio"
           chrome={chrome}

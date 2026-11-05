@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   usePathname: () => mocks.pathname,
   useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -141,7 +142,7 @@ describe('route-change focus', () => {
     const view = render(provider(<PageSkeleton variant="directory" label="Loading" />));
     expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
     expect(document.activeElement?.tagName).not.toBe('H1');
-    view.rerender(provider(<h1>Resources</h1>));
+    view.rerender(provider(<h1 tabIndex={-1}>Resources</h1>));
     await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Resources' })).toHaveFocus());
   });
 });

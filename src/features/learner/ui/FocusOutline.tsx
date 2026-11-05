@@ -1,6 +1,6 @@
 'use client';
 
-import * as Dialog from '@radix-ui/react-dialog';
+import * as Dialog from '@/components/ui/workspace-dialog-primitive';
 import { List, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';

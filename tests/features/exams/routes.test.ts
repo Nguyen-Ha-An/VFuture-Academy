@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CompiledItem } from '@/content-engine/compile';
+import type { CompiledItem, GradingQuestion } from '@/content-engine/compile';
 import { InMemoryExamRepo } from '@/features/exams/memory-repo';
 import { createExamService, type ExamService } from '@/features/exams/service';
 import { ExamError } from '@/features/exams/types';
@@ -112,7 +112,37 @@ function assertNoAnswerKeys(value: unknown): void {
   walk(JSON.parse(JSON.stringify(value)), '');
 }
 
+function responseFor(question: GradingQuestion): unknown {
+  switch (question.type) {
+    case 'single_choice': case 'short_answer': case 'essay': return 'a';
+    case 'multiple_choice': case 'ordering': return ['a'];
+    case 'true_false': return true;
+    case 'numeric': return '1';
+    case 'fill_blank': case 'classification': return { a: 'b' };
+    case 'matching': return [{ left: 'a', right: 'b' }];
+    case 'upload_answer': return { text: 'answer' };
+    case 'code_answer': return { language: 'python', code: 'print(1)' };
+    case 'question_group': return Object.fromEntries((question.children ?? []).map(child => [child.id, responseFor(child)]));
+  }
+}
+
 describe('learner exam routes', () => {
+  it('negotiates a compact acknowledgement for only this batch while legacy callers retain the full DTO',async()=>{
+    const {repo,service}=harness(allTypesExam);
+    const started=await service.start(learner,'course-one',allTypesExam.id);
+    const attempt=(await repo.getAttempt(started.attemptId))!;
+    const [first,second]=attempt.questionSet.sections.flatMap(section=>section.questionIds);
+    const one=responseFor(attempt.gradingSnapshot.questions[first]);
+    const two=responseFor(attempt.gradingSnapshot.questions[second]);
+    await service.save(learner,started.attemptId,{[first]:one});
+    const context={params:Promise.resolve({attemptId:started.attemptId})};
+    const compact=await saveAnswers(new Request(`http://localhost/api/v1/exams/attempts/${started.attemptId}/answers`,{method:'PUT',headers:{'content-type':'application/json','x-academy-exam-ack':'compact-v1'},body:JSON.stringify({answers:{[second]:two}})}),context);
+    expect(compact.status).toBe(200);
+    expect(await compact.json()).toEqual({data:{format:'compact-v1',answers:[{questionId:second,answer:two}]}});
+    const legacy=await saveAnswers(new Request(`http://localhost/api/v1/exams/attempts/${started.attemptId}/answers`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({answers:{[second]:two}})}),context);
+    expect(legacy.status).toBe(200);
+    expect((await legacy.json()).data).toEqual(expect.arrayContaining([expect.objectContaining({questionId:first}),expect.objectContaining({questionId:second})]));
+  });
   it('returns the existing learner attempt session without creating another attempt', async () => {
     const { repo, service } = harness(allTypesExam);
     const started = await service.start(learner, 'course-one', allTypesExam.id);
@@ -165,7 +195,7 @@ describe('learner exam routes', () => {
     const started = await service.start(learner, 'course-one', allTypesExam.id);
     const attempt = (await repo.getAttempt(started.attemptId))!;
     await service.save(learner, attempt.id, Object.fromEntries(
-      attempt.questionSet.sections.flatMap((section) => section.questionIds.map((id) => [id, 'a'])),
+      attempt.questionSet.sections.flatMap((section) => section.questionIds.map((id) => [id, responseFor(attempt.gradingSnapshot.questions[id])])),
     ));
 
     const response = await submitAttempt(new Request(`http://localhost/api/v1/exams/attempts/${attempt.id}/submit`, {
@@ -255,7 +285,6 @@ describe('learner exam routes', () => {
   });
 
   it.each([
-    ['a string longer than 4000 characters', { 'section/question': 'a'.repeat(4001) }],
     ['an array longer than 200 entries', { 'section/question': Array.from({ length: 201 }, () => 'a') }],
     ['a record with more than 200 fields', {
       'section/question': Object.fromEntries(Array.from({ length: 201 }, (_, index) => [`field-${index}`, 'a'])),

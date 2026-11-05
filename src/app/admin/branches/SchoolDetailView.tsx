@@ -4,6 +4,8 @@ import { ArrowUpRightIcon, LogInIcon } from "lucide-react";
 
 import { CanvasButton as Button } from "@/features/canvas/ui";
 import { SchoolMembersTable } from "@/features/admin/ui/SchoolMembersTable";
+import { SchoolScopeContinue, SchoolScopeLink } from "@/features/admin/components/SchoolScopeNavigation";
+import type { SchoolNavigation } from "@/features/admin/school-navigation";
 import {
   ActivityFeed,
   DataCard,
@@ -24,6 +26,7 @@ export type SchoolDetailTab = {
   current: boolean;
   /** Opens another workspace (e.g. grading reports) instead of a tab on this page. */
   external?: boolean;
+  navigation?: SchoolNavigation;
 };
 
 export type SchoolDetailStat = {
@@ -41,6 +44,7 @@ export type SchoolMemberRow = {
   href: string;
   roles: string;
   status: MemberStatus;
+  navigation?: SchoolNavigation;
 };
 
 export type SchoolDetailViewProps = {
@@ -48,11 +52,12 @@ export type SchoolDetailViewProps = {
   tabs: SchoolDetailTab[];
   tabsLabel: string;
   /** "Enter school": a form posting the scope key and destination to a server action. */
-  enter: {
-    action: (form: FormData) => void | Promise<void>;
-    scope: string;
-    destination: string;
+  enter?: {
+    action?: (form: FormData) => void | Promise<void>;
+    scope?: string;
+    destination?: string;
     label: string;
+    navigation?: SchoolNavigation;
   };
   stats?: SchoolDetailStat[];
   unavailableLabel: string;
@@ -84,18 +89,23 @@ export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavai
         title={school.name}
         description={school.description}
         actions={
-          <form action={enter.action}>
+          enter?.navigation ? <SchoolScopeContinue navigation={enter.navigation} label={enter.label} /> : enter?.action ? <form action={enter.action}>
             <input type="hidden" name="scope" value={enter.scope} />
             <input type="hidden" name="destination" value={enter.destination} />
             <Button type="submit">
               <LogInIcon aria-hidden="true" />
               {enter.label}
             </Button>
-          </form>
+          </form> : undefined
         }
       />
       <nav aria-label={tabsLabel} className="flex flex-nowrap gap-1 overflow-x-auto border-b border-border">
-        {tabs.map((tab) => (
+        {tabs.map((tab) => tab.navigation ? (
+          <SchoolScopeLink key={tab.key} navigation={tab.navigation} current={tab.current ? "page" : undefined}
+            className={cn("-mb-px inline-flex shrink-0 items-center gap-1 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none", tab.current ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            {tab.label}{tab.external ? <ArrowUpRightIcon aria-hidden="true" className="size-3.5" /> : null}
+          </SchoolScopeLink>
+        ) : (
           <Link
             key={tab.key}
             href={tab.href}

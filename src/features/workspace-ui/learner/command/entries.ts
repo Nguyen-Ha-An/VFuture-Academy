@@ -1,9 +1,9 @@
 import { routes } from '@/lib/routes';
 
 /**
- * The learner command menu's destinations. The hrefs are the ones the bench nav (AppShell) and the
- * account menu (LearnerAccountActions) link to, so the palette never offers a route the shell lacks;
- * tests/features/workspace-ui/learner-command.test.tsx keeps the three lists equal. Pure, so the
+ * The learner command menu's authorized destinations. Global navigation owns workspace entry;
+ * command search also exposes useful Profile section shortcuts such as XP. Preferences hand off
+ * to the shared Account owner instead of duplicating its mutation controls. Pure, so the
  * trigger chunk can import it without cmdk.
  */
 

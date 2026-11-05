@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { createServerExamService, learnerExamActor } from '@/features/exams/server';
-import { examOperation, ExamItemIdSchema } from '@/features/exams/http';
+import { examOperation, ExamItemIdSchema, streamExamJson } from '@/features/exams/http';
 import { IdSchema } from '@/content-engine/schema/common';
 import { parseBody, withHandler } from '@/lib/api';
 import { requireApiUser } from '@/lib/auth';
@@ -22,7 +22,7 @@ export const GET = withHandler(async (request, context) => {
   );
   const itemId = ExamItemIdSchema.parse((await (context as RouteContext).params).itemId);
   const actor = await learnerExamActor(user.id);
-  return examOperation(() => createServerExamService().session(actor, courseId, itemId));
+  return streamExamJson(await examOperation(() => createServerExamService().session(actor, courseId, itemId)));
 });
 
 export const POST = withHandler(async (request, context) => {
@@ -36,5 +36,5 @@ export const POST = withHandler(async (request, context) => {
   );
   const itemId = ExamItemIdSchema.parse((await (context as RouteContext).params).itemId);
   const actor = await learnerExamActor(user.id);
-  return examOperation(() => createServerExamService().start(actor, courseId, itemId));
+  return streamExamJson(await examOperation(() => createServerExamService().start(actor, courseId, itemId)));
 });

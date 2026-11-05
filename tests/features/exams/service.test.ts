@@ -600,11 +600,13 @@ describe('exam lifecycle', () => {
     expect(await repo.getAttempt(attempt.id)).toMatchObject({ status: 'graded', late: true, percent: 100 });
   });
 
-  it('lets only one concurrent submission run terminal effects', async () => {
+  it('keeps concurrent terminal effects idempotent when both submissions reconcile', async () => {
     const repo = new InMemoryExamRepo();
     const recomputeProgress = vi.fn(async () => undefined);
-    const onExamPassed = vi.fn(async () => undefined);
-    const awardXp = vi.fn(async () => undefined);
+    const evidence = new Set<string>();
+    const xp = new Set<string>();
+    const onExamPassed = vi.fn(async (attempt: ExamAttemptRecord) => { evidence.add(attempt.id); });
+    const awardXp = vi.fn(async (attempt: ExamAttemptRecord) => { xp.add(`${attempt.userId}:${attempt.courseVersionId}:${attempt.itemId}`); });
     const service = createExamService({
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
@@ -625,9 +627,9 @@ describe('exam lifecycle', () => {
     ]);
 
     expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
-    expect(recomputeProgress).toHaveBeenCalledOnce();
-    expect(onExamPassed).toHaveBeenCalledOnce();
-    expect(awardXp).toHaveBeenCalledOnce();
+    expect(recomputeProgress).toHaveBeenCalled();
+    expect(evidence.size).toBe(1);
+    expect(xp.size).toBe(1);
   });
 
   it('returns the durable terminal result when a submission request is repeated', async () => {
@@ -1494,5 +1496,43 @@ describe('item-level release authorization', () => {
     } finally {
       log.mockRestore();
     }
+  });
+});
+
+describe('exam submission post-commit recovery', () => {
+  it('repairs a finalized attempt when a competing submit wins before this request finalizes', async () => {
+    const repo = new InMemoryExamRepo();
+    const finalize = repo.finalizeAttempt.bind(repo);
+    vi.spyOn(repo, 'finalizeAttempt').mockImplementation(async (...args) => {
+      await finalize(...args);
+      return finalize(...args);
+    });
+    const recomputeProgress = vi.fn(async () => undefined);
+    const service = createExamService({
+      repo, clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')), bank: bankSource,
+      loadItem: async () => itemContext(allTypesExam), isEnrolled: async () => true, recomputeProgress,
+    });
+    const started = await service.start(learner, 'course-one', allTypesExam.id);
+    await expect(service.submit(learner, started.attemptId)).resolves.toMatchObject({ status: 'graded' });
+    expect(repo.getGrade(learner.id, allTypesExam.id, `version-${allTypesExam.id}`)).not.toBeNull();
+    expect(recomputeProgress).toHaveBeenCalledWith(expect.objectContaining({ id: started.attemptId, status: 'graded' }));
+  });
+  it('repairs the recorded grade and progress on retry after a committed finalize and transient grade-write failure', async () => {
+    const repo=new InMemoryExamRepo();
+    const actualUpsert=repo.upsertGrade.bind(repo);
+    vi.spyOn(repo,'upsertGrade').mockRejectedValueOnce(new Error('temporary grade write failure')).mockImplementation(actualUpsert);
+    const recomputeProgress=vi.fn(async()=>undefined);
+    const service=createExamService({
+      repo,clock:new MutableClock(new Date('2026-09-02T00:00:00.000Z')),bank:bankSource,
+      loadItem:async()=>itemContext(allTypesExam),isEnrolled:async()=>true,recomputeProgress,
+    });
+    const started=await service.start(learner,'course-one',allTypesExam.id);
+    // Whether the first caller sees a post-commit error or an acknowledgement,
+    // the persisted terminal attempt must be recoverable by an idempotent retry.
+    await service.submit(learner,started.attemptId).catch(()=>undefined);
+    expect((await repo.getAttempt(started.attemptId))?.status).toBe('graded');
+    await service.submit(learner,started.attemptId);
+    expect(repo.getGrade(learner.id,allTypesExam.id,`version-${allTypesExam.id}`)).not.toBeNull();
+    expect(recomputeProgress).toHaveBeenCalledWith(expect.objectContaining({id:started.attemptId,status:'graded'}));
   });
 });

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { compileCourse } from '../../../src/content-engine/compile';
 import { fixtureResolver } from '../../../src/content-engine/fixtures';
-import { describeStaffShell, expectUnclipped, KNOWN_CODEMIRROR_FINDING, messages, shellStrings, shot, withQuery, type StaffRoute } from './staff-ui-support';
+import { accountButton, describeStaffShell, expectUnclipped, KNOWN_CODEMIRROR_FINDING, messages, openAccountTray, shellStrings, shot, withQuery, type StaffRoute } from './staff-ui-support';
 
 /** Catmin staff shell (`?uiv2=1`) over the studio harness: authoring, the course editor and grading. */
 const { vi, en } = messages;
@@ -30,9 +30,16 @@ test('a 12px Vietnamese string with stacked diacritics renders unclipped at line
   const eyebrow = page.getByText('Studio — Nguyễn Thị Thanh Hương', { exact: true });
   await expect(eyebrow).toBeVisible();
   expect((await expectUnclipped(eyebrow)).fontSize).toBe(12);
-  // The shell's own small Vietnamese text: the identity row and the page title.
-  await expectUnclipped(page.locator('[data-slot="sidebar-footer"] [data-sidebar="menu-button"] .truncate').first());
   await expectUnclipped(page.getByRole('heading', { level: 1, name: vi.studio.courses.title }));
+  // Identity now lives in Account; its full Vietnamese name wraps instead of truncating.
+  const account = await openAccountTray(page);
+  const identity = account.locator('.canvas-account-identity h3');
+  await expect(identity).toHaveText('Nguyễn Thị Thanh Hương');
+  await expectUnclipped(identity);
+  expect((await expectUnclipped(account.locator('.canvas-account-identity p'))).fontSize).toBe(12);
+  await page.keyboard.press('Escape');
+  await expect(account).toBeHidden();
+  await expect(accountButton(page)).toBeFocused();
 });
 
 test.describe('on macOS', () => {

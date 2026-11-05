@@ -3,6 +3,7 @@ import 'server-only';
 import { resolveL10nString, type L10nString, type Locale } from '@/content-engine';
 import { listCertificateRecords, type CertificateDatabase } from '@/features/certificates/service';
 import { loadBranchId } from '@/features/learning/shared';
+import { assertEnrollmentMembershipAccess } from '@/features/learning/membership-access';
 import {
   createOpportunityService,
   type LocalizedOpportunity,
@@ -62,6 +63,10 @@ export type LearningTarget = {
   itemId: string;
   itemTitle: string;
   kind: 'lesson' | 'exam' | 'assignment';
+  /** Present only for an owned, active exam attempt at the enrollment's exact pin. */
+  attemptId?: string;
+  courseVersionId?: string;
+  startedAt?: string;
 };
 
 function titleOf(value: unknown, locale: Locale, defaultLocale: Locale): string {
@@ -203,7 +208,7 @@ export async function readLearnerHome(
   const [rewards, enrollmentResult, branchId] = await Promise.all([
     readLearnerRewards(actor, locale, database),
     database.from('enrollments')
-      .select('course_id,course_version_id,status,enrolled_at')
+      .select('course_id,course_version_id,status,enrolled_at,branch_id,branch_scope_known')
       .eq('user_id', actor.userId)
       .in('status', ['active', 'completed'])
       .order('enrolled_at', { ascending: false }),
@@ -254,7 +259,7 @@ export async function readLearnerHome(
   const renderLocales = [...new Set<Locale>([locale, ...outlines.map((outline) => outline.defaultLocale)])];
   const emptyResult = { data: [], error: null };
 
-  const [lessonsResult, examsResult, assignmentsResult, activityResult, rendersResult] = await Promise.all([
+  const [lessonsResult, examsResult, assignmentsResult, activityResult, rendersResult, activeAttemptsResult] = await Promise.all([
     activeVersionIds.length > 0 ? database.from('lesson_progress')
       .select('course_version_id,item_id,status,started_at,completed_at')
       .eq('user_id', actor.userId)
@@ -281,6 +286,13 @@ export async function readLearnerHome(
         .in('item_id', examIds)
         .in('locale', renderLocales)
       : Promise.resolve({ data: [], error: null }),
+    examIds.length > 0 ? database.from('exam_attempts')
+      .select('id,user_id,course_version_id,item_id,status,started_at')
+      .eq('user_id', actor.userId)
+      .in('course_version_id', activeVersionIds)
+      .eq('status', 'in_progress')
+      .order('started_at', { ascending: false })
+      .order('id', { ascending: false }) : Promise.resolve(emptyResult),
   ]);
   const lessons = lessonsResult.error ? [] : recordsOf(lessonsResult.data);
   const exams = examsResult.error ? [] : recordsOf(examsResult.data);
@@ -294,6 +306,32 @@ export async function readLearnerHome(
       && recordsOf(row.grades).some((grade) => grade.released === true && grade.decision === 'approved'));
   };
   const strip = ({ versionId: _versionId, required: _required, enrollmentStatus: _enrollmentStatus, ...target }: (typeof targets)[number]): LearningTarget => target;
+  // The additional read can improve resume priority, but cannot remove the existing
+  // lesson/required-work fallback or change any completion fact when unavailable.
+  const activeAttempts = (activeAttemptsResult.error ? [] : recordsOf(activeAttemptsResult.data))
+    .filter((attempt) => attempt.user_id === actor.userId && attempt.status === 'in_progress'
+      && typeof attempt.id === 'string' && typeof attempt.started_at === 'string'
+      && Number.isFinite(Date.parse(attempt.started_at)))
+    .sort((left, right) => Date.parse(right.started_at as string) - Date.parse(left.started_at as string)
+      || (right.id as string).localeCompare(left.id as string));
+  let activeExamResume: LearningTarget | null = null;
+  for (const attempt of activeAttempts) {
+    const target = targets.find((candidate) => candidate.kind === 'exam'
+      && candidate.versionId === attempt.course_version_id && candidate.itemId === attempt.item_id);
+    if (!target) continue;
+    const enrollment = enrollments.find((candidate) => candidate.status === 'active'
+      && candidate.course_id === target.courseId && candidate.course_version_id === target.versionId);
+    if (!enrollment) continue;
+    try {
+      await assertEnrollmentMembershipAccess(actor, enrollment, database);
+    } catch {
+      // Suspension or an unavailable membership read cannot authorize a new resume target.
+      continue;
+    }
+    activeExamResume = { ...strip(target), attemptId: attempt.id as string,
+      courseVersionId: target.versionId, startedAt: attempt.started_at as string };
+    break;
+  }
   const nextRequiredTarget = targets.find((target) => target.required && !complete(target));
   const recentTarget = (activityResult.error ? [] : recordsOf(activityResult.data)).reduce<(typeof targets)[number] | undefined>((found, activity) => (
     found ?? targets.find((target) => (
@@ -336,7 +374,7 @@ export async function readLearnerHome(
 
   return {
     rewards,
-    continueLearning: recentTarget ? strip(recentTarget) : nextRequiredTarget ? strip(nextRequiredTarget) : null,
+    continueLearning: activeExamResume ?? (recentTarget ? strip(recentTarget) : nextRequiredTarget ? strip(nextRequiredTarget) : null),
     nextRequired: nextRequiredTarget ? strip(nextRequiredTarget) : null,
     upcomingExam: examWindows[0] ?? null,
     feedback: releasedFeedback(assignmentTargets, assignmentHistories, locale),

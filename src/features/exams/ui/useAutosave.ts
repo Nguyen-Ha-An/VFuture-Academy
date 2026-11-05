@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { ExamRequestError, type ExamClient } from './client';
+import { canonicalAnswers, sameCanonicalAnswer } from '@/features/learning/answer-canonical';
 import type { PendingExamDraftStore } from './pending-draft';
+import { answerBatches, ExamAnswerTooLargeError } from './answer-batches';
 
 export type SaveStatus = 'saved' | 'saving' | 'retrying' | 'failed';
+export type TerminalResolution = {confirmed:boolean;preserveRecovery?:boolean};
 
 /** After n consecutive failures the automatic wait is random(0, min(30s, 1s * 2^(n - 1))). */
 const AUTOSAVE_BACKOFF_BASE_MS = 1_000;
@@ -40,7 +43,7 @@ interface UseAutosaveOptions {
   client: Pick<ExamClient, 'save'>;
   draftStore: PendingExamDraftStore;
   initialAcceptedAnswers: Record<string, unknown>;
-  onTerminal?: () => void | Promise<void>;
+  onTerminal?: () => void | TerminalResolution | Promise<void | TerminalResolution>;
   /** Jitter source in [0, 1); injectable so tests are deterministic. */
   random?: () => number;
   revision: number;
@@ -49,7 +52,7 @@ interface UseAutosaveOptions {
 
 function sameAnswer(left: unknown, right: unknown): boolean {
   try {
-    return JSON.stringify(left) === JSON.stringify(right);
+    return sameCanonicalAnswer(left,right);
   } catch {
     return false;
   }
@@ -81,15 +84,6 @@ function errorCode(error: unknown): string | null {
     : null;
 }
 
-function answerBatches(delta: Record<string, unknown>, groups: Record<string, string>) {
-  const batches = new Map<string, Record<string, unknown>>();
-  for (const [questionId, answer] of Object.entries(delta)) {
-    const group = groups[questionId] ?? questionId;
-    batches.set(group, { ...(batches.get(group) ?? {}), [questionId]: answer });
-  }
-  return [...batches.entries()].map(([group, answers]) => ({ group, answers }));
-}
-
 export function useAutosave({
   answerGroups,
   answersRef,
@@ -107,6 +101,8 @@ export function useAutosave({
   ));
   const [recoveryUnavailable, setRecoveryUnavailable] = useState(false);
   const [closedGroups, setClosedGroups] = useState<Set<string>>(() => new Set());
+  const [oversizedQuestionId, setOversizedQuestionId] = useState<string | null>(null);
+  const oversizedRef = useRef<string | null>(null);
   const saveGenerationRef = useRef(0);
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const terminalHandledRef = useRef(false);
@@ -120,19 +116,24 @@ export function useAutosave({
   const mountedRef = useRef(true);
 
   const retainPendingDraft = useCallback((answers: Record<string, unknown>) => {
-    const pending = pendingAnswers(answers, acceptedAnswersRef.current);
+    const pending = pendingAnswers(canonicalAnswers(answers), acceptedAnswersRef.current);
     const retained = draftStore.write(pending);
     setRecoveryUnavailable(Object.keys(pending).length > 0 && !retained);
     return pending;
   }, [draftStore]);
 
   const handleTerminal = useCallback(async () => {
-    draftStore.clear();
-    setClosedGroups(new Set());
-    setRecoveryUnavailable(false);
     if (terminalHandledRef.current) return;
     terminalHandledRef.current = true;
-    await onTerminal?.();
+    let resolution:void | TerminalResolution;
+    try { resolution=await onTerminal?.(); }
+    catch { terminalHandledRef.current=false;return; }
+    if(resolution && !resolution.confirmed) { terminalHandledRef.current=false;return; }
+    if(!resolution || !resolution.preserveRecovery) {
+      draftStore.clear();
+      setRecoveryUnavailable(false);
+    }
+    setClosedGroups(new Set());
   }, [draftStore, onTerminal]);
 
   const recordSaveSuccess = useCallback(() => {
@@ -150,11 +151,12 @@ export function useAutosave({
   }, [random]);
 
   const persistAnswers = useCallback((retrying = false): Promise<boolean> => {
+    if (oversizedRef.current !== null) return Promise.resolve(false);
     if (Object.keys(answersRef.current).length === 0) {
       setSaveStatus('saved');
       return Promise.resolve(true);
     }
-    const snapshot = structuredClone(answersRef.current);
+    const snapshot = canonicalAnswers(structuredClone(answersRef.current));
     const generation = ++saveGenerationRef.current;
     retainPendingDraft(snapshot);
     setSaveStatus(retrying ? 'retrying' : 'saving');
@@ -162,13 +164,33 @@ export function useAutosave({
       const delta = pendingAnswers(snapshot, acceptedAnswersRef.current);
       let sectionFailure = false;
       lastSaveErrorCodeRef.current = null;
-      for (const { group, answers: batch } of answerBatches(delta, answerGroups)) {
+      let batches: ReturnType<typeof answerBatches>;
+      try { batches=answerBatches(delta, answerGroups); }
+      catch(error) {
+        if (!(error instanceof ExamAnswerTooLargeError)) throw error;
+        retainPendingDraft(answersRef.current);
+        if(saveGenerationRef.current===generation) {
+          oversizedRef.current=error.questionId;
+          setOversizedQuestionId(error.questionId);
+          lastSaveErrorCodeRef.current=error.code;
+          setSaveStatus('failed');
+        }
+        return false;
+      }
+      for (const { group, answers: batch } of batches) {
         try {
           const records = await client.save(batch);
-          acceptedAnswersRef.current = Object.fromEntries(records.map((answer) => [answer.questionId, answer.answer]));
-          if (Object.keys(pendingAnswers(batch, acceptedAnswersRef.current)).length > 0) {
+          const received=new Map<string,unknown>();
+          for(const answer of records) {
+            if(!Object.hasOwn(batch,answer.questionId)) continue;
+            if(received.has(answer.questionId)) throw new ExamRequestError(200,'INVALID_RESPONSE','Duplicate answer acknowledgement',{ambiguous:true});
+            received.set(answer.questionId,answer.answer);
+          }
+          if(Object.entries(batch).some(([id,value])=>!received.has(id) || !sameAnswer(value,received.get(id)))) {
             throw new ExamRequestError(200, 'INVALID_RESPONSE', 'Exam API did not acknowledge saved answers', { ambiguous: true });
           }
+          acceptedAnswersRef.current={...acceptedAnswersRef.current,...Object.fromEntries(received)};
+          retainPendingDraft(answersRef.current);
           recordSaveSuccess();
           setClosedGroups((current) => {
             if (!current.has(group)) return current;
@@ -208,16 +230,21 @@ export function useAutosave({
 
   const markDirty = useCallback(() => {
     saveGenerationRef.current += 1;
+    oversizedRef.current=null;
+    setOversizedQuestionId(null);
+    lastSaveErrorCodeRef.current=null;
     retainPendingDraft(answersRef.current);
     // While a failure is outstanding the edit is not being sent yet; do not claim progress.
     setSaveStatus(consecutiveFailuresRef.current > 0 ? 'failed' : 'saving');
   }, [answersRef, retainPendingDraft]);
 
-  const markSubmitted = useCallback(() => {
+  const markSubmitted = useCallback((options?:{preserveRecovery?:boolean}) => {
     saveGenerationRef.current += 1;
-    draftStore.clear();
+    oversizedRef.current=null;
+    setOversizedQuestionId(null);
+    if(!options?.preserveRecovery) draftStore.clear();
     setClosedGroups(new Set());
-    setRecoveryUnavailable(false);
+    if(!options?.preserveRecovery) setRecoveryUnavailable(false);
     setSaveStatus('saved');
   }, [draftStore]);
 
@@ -229,7 +256,7 @@ export function useAutosave({
    * deferred attempt for when it ends (the save is postponed, never dropped).
    */
   const requestAutomaticSave = useCallback((retrying: boolean) => {
-    if (submittingRef.current || !mountedRef.current) return;
+    if (submittingRef.current || !mountedRef.current || oversizedRef.current !== null) return;
     if (automaticSaveInFlightRef.current) {
       automaticSavePendingRef.current = true;
       return;
@@ -289,5 +316,6 @@ export function useAutosave({
     recoveryUnavailable,
     retryNow,
     saveStatus,
+    oversizedQuestionId,
   };
 }

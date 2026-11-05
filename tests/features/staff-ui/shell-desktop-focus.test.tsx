@@ -9,7 +9,7 @@ import { StaffWorkspaceShell } from '@/features/staff-ui/ui/StaffWorkspaceShell'
 import { staffUiTestMessages } from '@/messages/staff-ui';
 import en from '@/messages/en.json';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/studio', useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({ useServerInsertedHTML: () => undefined, usePathname: () => '/studio', useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 vi.mock('@/features/staff-ui/ui/WorkspaceScopeSwitcher', () => ({ WorkspaceScopeSwitcher: () => <button>Workspace scope</button> }));
 vi.mock('@/features/staff-ui/ui/StaffUserMenu', () => ({ StaffUserMenu: () => <button>Account</button> }));
 vi.mock('@/features/staff-ui/ui/StaffCommandMenu', () => ({ StaffCommandMenu: () => <button>Search</button> }));

@@ -26,8 +26,8 @@ import minimalLesson from '../../../../src/content-engine/fixtures/minimal/items
 import '../../../../src/app/fonts.css';
 import '../../../../src/app/globals.css';
 
-const en = withStaffUiMessages(enBase, 'en');
-const vi = withStaffUiMessages(viBase, 'vi');
+const en = withBenchMessages(withStaffUiMessages(enBase, 'en'), 'en');
+const vi = withBenchMessages(withStaffUiMessages(viBase, 'vi'), 'vi');
 
 function draft(): WorkspaceDraft {
   const manifest = CourseDocumentSchema.parse(structuredClone(minimalManifest));
@@ -99,7 +99,8 @@ function Shell({ workspace, redesigned, permissions, activeScope, scopeOptions, 
 function App() {
   const initialDraft = useMemo(draft, []);
   const params = new URLSearchParams(location.search);
-  const locale = params.get('lang') === 'en' ? 'en' : 'vi';
+  const localeCookie = document.cookie.split('; ').find(entry => entry.startsWith('locale='))?.slice('locale='.length);
+  const locale = (params.get('lang') ?? localeCookie) === 'en' ? 'en' : 'vi';
   const fixtureLocale = ((location.pathname.startsWith('/grading/') && !['/grading/announcements', '/grading/schedule'].includes(location.pathname) && location.pathname !== '/grading/reports' && !params.has('lang')) || location.pathname.startsWith('/studio/grading/')) ? 'en' : locale;
   useEffect(() => { document.documentElement.lang = fixtureLocale; }, [fixtureLocale]);
   const readOnly = params.get('readonly') === '1';

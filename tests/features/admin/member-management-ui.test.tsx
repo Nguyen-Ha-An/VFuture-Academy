@@ -26,6 +26,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, 1280, 900));
 });
 vi.mock('next/navigation', () => ({
+  useServerInsertedHTML: () => undefined,
   useSearchParams: () => new URLSearchParams(navigation.search),
 }));
 

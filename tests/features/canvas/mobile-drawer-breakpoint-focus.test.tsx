@@ -27,7 +27,7 @@ it.each([
     return <NextIntlClientProvider locale="en" messages={en}>
       <button ref={trigger} onClick={() => setOpen(true)}>Open menu</button>
       {header && <header hidden={hidden}><Link data-testid="header" href="/app" aria-current="page">Dashboard</Link></header>}
-      <main data-testid="main">{heading && <h1 data-testid="heading">Dashboard</h1>}</main>
+      <main data-testid="main" tabIndex={-1}>{heading && <h1 data-testid="heading" tabIndex={-1}>Dashboard</h1>}</main>
       <MobileNavigationDrawer id="breakpoint-drawer" title="Navigation" open={open} onOpenChange={setOpen} returnFocusRef={trigger} closeAt="(min-width: 48rem)"><Link href="/app/courses">Courses</Link></MobileNavigationDrawer>
     </NextIntlClientProvider>;
   }

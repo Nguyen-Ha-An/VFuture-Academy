@@ -4,12 +4,15 @@ export function isArchiveMetadataPath(path){
 }
 const migrationFiles=new Set([
   'scripts/azure-core/cutover.mjs','build/azure-core/private/cutover-manifest.json',
-  'package.json','infra/azure-core/migration/probe.mjs','infra/azure-core/postgres-roots.crt',
+  'package.json','package-lock.json','infra/azure-core/migration/probe.mjs','infra/azure-core/postgres-roots.crt',
   'scripts/azure-core/migrate.mjs','scripts/azure-core/target.mjs','scripts/azure-core/diagnostics.mjs',
   'scripts/azure-core/configure-authenticator.mjs','scripts/azure-core/restore.mjs','scripts/azure-core/schema.mjs',
   'scripts/azure-core/snapshot.mjs','scripts/azure-core/bootstrap.sql','scripts/azure-core/storage.sql',
   'scripts/azure-core/media-delete.sql','scripts/azure-core/account-access.sql',
   'scripts/azure-core/forward.mjs','scripts/azure-core/forward-cli.mjs',
+  'scripts/azure-core/forward-53.mjs','scripts/azure-core/forward-53-cli.mjs','scripts/azure-core/forward-53-provenance.mjs',
+  'scripts/azure-core/forward-53-package.mjs','scripts/azure-core/forward-53-artifact.mjs','scripts/azure-core/forward-53-job.mjs',
+  'build/azure-core/private/forward-53-plan.json','build/azure-core/private/forward-53-v1-evidence.json','build/azure-core/private/forward-53-source-manifest.json',
   'build/azure-core/private/forward-plan.json','build/azure-core/private/forward-deployment-evidence.json',
   'src/lib/identity/schema.sql','src/lib/identity/admin-schema.sql','build/azure-core/private/source-snapshot.json'
 ]);
@@ -50,6 +53,27 @@ export const FORWARD_ACTIONS=Object.freeze({
   'forward-activation-plan':Object.freeze({mode:'plan-activate',phase:'activate',resultAction:'forward-plan'}),
   'forward-activate':Object.freeze({mode:'apply-activate',phase:'activate',resultAction:'forward-activate'}),
 });
+export const ASSESSMENT_ACTIONS=Object.freeze({
+  'forward-53-plan':Object.freeze({mode:'plan',resultAction:'forward-53-plan'}),
+  'forward-53-apply':Object.freeze({mode:'apply',resultAction:'forward-53-apply'}),
+});
+export function validateAssessmentReceipt(value,action,{transport=false}={}){
+ const selected=Object.hasOwn(ASSESSMENT_ACTIONS,action)?ASSESSMENT_ACTIONS[action]:null;
+ const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+ const keys=(value,allowed)=>object(value)&&Object.keys(value).every(key=>allowed.includes(key));
+ const sha=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+ const source=value=>keys(value,['sourceClean','sourceCommit','sourceTree'])&&value.sourceClean===true&&/^[a-f0-9]{40}$/.test(value.sourceCommit??'')&&/^[a-f0-9]{40}$/.test(value.sourceTree??'');
+ const file='20261105030000_exam_attachment_bindings.sql';
+ const transportKeys=transport?['encryptedPackageSha256','sourceManifestSha256']:[];
+ if(!selected||!object(value)||value.action!==selected.resultAction||!source(value.source)||!sha(value.packageContentSha256))throw new Error('invalid_assessment_receipt');
+ if(transport&&(!sha(value.encryptedPackageSha256)||!sha(value.sourceManifestSha256)))throw new Error('invalid_assessment_receipt');
+ if(action==='forward-53-plan'){
+  const plan=value.plan;
+  if(!keys(value,['action','source','plan','packageContentSha256',...transportKeys])||!keys(plan,['action','filename','sourceSha256','azureSha256','baseline','activationSha','priorReceiptDigest','roleCount','roleDigest','source','receiptSourceCommit','receiptSourceTree'])||!['apply','noop'].includes(plan.action)||plan.filename!==file||!sha(plan.sourceSha256)||!sha(plan.azureSha256)||plan.baseline!=='273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149'||!/^[a-f0-9]{40}$/.test(plan.activationSha??'')||!sha(plan.priorReceiptDigest)||!sha(plan.roleDigest)||!Number.isSafeInteger(plan.roleCount)||plan.roleCount<3||!source(plan.source)||JSON.stringify(plan.source)!==JSON.stringify(value.source))throw new Error('invalid_assessment_receipt');
+  if(plan.action==='noop'? !/^[a-f0-9]{40}$/.test(plan.receiptSourceCommit??'')||!/^[a-f0-9]{40}$/.test(plan.receiptSourceTree??'') : Object.hasOwn(plan,'receiptSourceCommit')||Object.hasOwn(plan,'receiptSourceTree'))throw new Error('invalid_assessment_receipt');
+ }else if(!keys(value,['action','outcome','filename','source','packageContentSha256',...transportKeys])||!['applied','noop'].includes(value.outcome)||value.filename!==file)throw new Error('invalid_assessment_receipt');
+ return value;
+}
 export function validateForwardReceipt(value,action){
   const selected=Object.hasOwn(FORWARD_ACTIONS,action)?FORWARD_ACTIONS[action]:null;
   const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);

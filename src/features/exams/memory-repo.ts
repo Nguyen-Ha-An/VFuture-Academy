@@ -169,9 +169,9 @@ export class InMemoryExamRepo implements ExamRepo {
     for (const answer of answers) this.answers.set(answerKey(answer), clone(answer));
   }
 
-  async listAnswers(attemptId: string) {
+  async listAnswers(attemptId: string, questionIds?: readonly string[]) {
     return [...this.answers.values()]
-      .filter((answer) => answer.attemptId === attemptId)
+      .filter((answer) => answer.attemptId === attemptId && (questionIds === undefined || questionIds.includes(answer.questionId)))
       .sort((a, b) => a.questionId.localeCompare(b.questionId))
       .map(clone);
   }

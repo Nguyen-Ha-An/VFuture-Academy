@@ -54,7 +54,8 @@ test('mobile drawer keeps theme and closes at desktop breakpoint', async ({ page
   await page.getByRole('button', { name: en.common.menu, exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  const rootToken = await page.locator('#learner-main').evaluate((element) => getComputedStyle(element).getPropertyValue('--background'));
+  const rootToken = await page.locator('#learner-main').evaluate((element) => getComputedStyle(element).getPropertyValue('--card'));
+  await expect(dialog).toHaveAttribute('data-canvas-surface', 'dark');
   expect(await dialog.evaluate((element) => getComputedStyle(element).getPropertyValue('--background'))).toBe(rootToken);
   const rootColor = await page.locator('#learner-main').evaluate((element) => getComputedStyle(element).color);
   await expect(dialog).toHaveCSS('color', rootColor);

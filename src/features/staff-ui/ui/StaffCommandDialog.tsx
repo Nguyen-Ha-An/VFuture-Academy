@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -40,10 +40,11 @@ export type StaffCommandDialogProps = {
   workspace: StaffWorkspace;
   permissions: Permission[];
   entries: WorkspaceEntries;
+  returnFocus?: () => void;
 };
 
 const WORKSPACE_LABEL = { studio: "workspaceStudio", grading: "workspaceGrading", admin: "workspaceAdmin" } as const satisfies Record<StaffWorkspace, string>;
-/** Same labels and icons as the sidebar's WorkspaceScopeSwitcher. */
+/** Authorized workspace shortcuts remain in command search as well as global navigation. */
 const WORKSPACE_ICON = { studio: PenLineIcon, grading: ClipboardCheckIcon, admin: ShieldCheckIcon } as const satisfies Record<StaffWorkspace, LucideIcon>;
 
 type QuickAction = { key: "newCourse" | "inviteMember" | "gradeNext"; href: string; icon: LucideIcon; permissions: readonly Permission[] };
@@ -74,11 +75,19 @@ function currentTheme(): WorkspaceTheme {
  * The cmdk half of the staff command menu. Loaded lazily by StaffCommandMenu so
  * cmdk never ships in the initial shell chunk.
  */
-export function StaffCommandDialog({ open, onOpenChange, workspace, permissions, entries }: StaffCommandDialogProps) {
+export function StaffCommandDialog({ open, onOpenChange, workspace, permissions, entries, returnFocus }: StaffCommandDialogProps) {
   const t = useTranslations("staffUi.shell.command");
   const common = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
+  const pendingRoute = useRef<{ href: string; from: string } | null>(null);
+  const generation = useRef(0);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const mounted = useRef(true);
+  const [previousOpen, setPreviousOpen] = useState(open);
+  if (previousOpen !== open) { setPreviousOpen(open); if (open) { generation.current += 1; pendingRoute.current = null; } }
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const navigation = useStaffNavigation(workspace, permissions);
   const [initialTheme] = useState<WorkspaceTheme>(currentTheme);
   // Stays in step with the top-bar and user-menu theme controls while the palette is mounted.
@@ -107,12 +116,27 @@ export function StaffCommandDialog({ open, onOpenChange, workspace, permissions,
   const workspaceItems = enterable.length >= 2 ? enterable : [];
   const actions = QUICK_ACTIONS.filter((action) => action.permissions.some((permission) => permissions.includes(permission)));
 
-  async function go(href: string) {
+  function go(href: string) {
+    pendingRoute.current = href === pathname ? null : { href, from: window.location.pathname + window.location.search };
     onOpenChange(false);
-    if (href === pathname) return;
-    // The unsaved-changes guard only intercepts link clicks and form submits, so ask it explicitly.
-    if (!(await requestNavigation())) return;
-    router.push(href);
+  }
+
+  function afterClose(event: Event) {
+    event.preventDefault();
+    const route = pendingRoute.current;
+    pendingRoute.current = null;
+    const closingGeneration = generation.current;
+    queueMicrotask(() => {
+      if (!mounted.current || openRef.current || generation.current !== closingGeneration) return;
+      if (!route) { returnFocus?.(); return; }
+      if (window.location.pathname + window.location.search !== route.from) return;
+      void requestNavigation().then(allowed => {
+        if (!mounted.current || openRef.current || generation.current !== closingGeneration
+          || window.location.pathname + window.location.search !== route.from) return;
+        if (allowed) router.push(route.href);
+        else returnFocus?.();
+      });
+    });
   }
 
   function chooseTheme(next: WorkspaceTheme) {
@@ -125,6 +149,7 @@ export function StaffCommandDialog({ open, onOpenChange, workspace, permissions,
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
+      onCloseAutoFocus={afterClose}
       title={t("title")}
       description={t("description")}
       closeLabel={common("close")}

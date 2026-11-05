@@ -71,7 +71,7 @@ describe('staff workspace admission', () => {
     expect(workspaceEntries(publisher)).toEqual({ studio: '/studio', grading: null, admin: '/admin' });
     expect(firstWorkspaceDestination('admin', ['course.publish'])).toBe('/admin/enrollment-migration');
     expect(firstWorkspaceDestination('admin', ['admin.access'])).toBe('/admin');
-    expect(firstWorkspaceDestination('admin', ['audit.read'])).toBe('/admin/audit');
+    expect(firstWorkspaceDestination('admin', ['audit.read'])).toBeNull();
   });
 
   it('offers only a landing page, never a destination another scope cannot reach', () => {
@@ -83,6 +83,26 @@ describe('staff workspace admission', () => {
     expect(workspaceEntries(split).grading).toBe('/grading');
     expect(Object.values(workspaceEntries(split)).filter(Boolean))
       .toEqual(expect.not.arrayContaining(['/grading/queue', '/grading/reports']));
+  });
+
+  it.each([central, branchA])('does not offer Administration for a custom member reader in %o', (scope) => {
+    const reader = actor([{ permissions: ['member.read'], scope }]);
+    expect(canEnter(reader, 'admin')).toBe(false);
+    expect(workspaceEntries(reader).admin).toBeNull();
+    expect(reader.authorization?.assignments[0].permissions).toEqual(['member.read']);
+  });
+
+  it('does not combine admin admission in one school with member rights in another', () => {
+    const split = actor([
+      { permissions: ['admin.access'], scope: branchA },
+      { permissions: ['member.read'], scope: branchB },
+    ]);
+    expect(workspaceEntries(split).admin).toBe('/admin');
+    expect(firstWorkspaceDestination('admin', ['member.read'])).toBeNull();
+    expect(split.authorization?.assignments).toEqual([
+      expect.objectContaining({ scope: branchA, permissions: ['admin.access'] }),
+      expect.objectContaining({ scope: branchB, permissions: ['member.read'] }),
+    ]);
   });
 
   it('resolves every workspace for a multi-branch operator with mixed roles', () => {

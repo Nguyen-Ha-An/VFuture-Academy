@@ -1,5 +1,7 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import en from '../../../src/messages/en.json';
+import vi from '../../../src/messages/vi.json';
 
 const name = 'A very long learner name used to verify account menu geometry and truncation behavior';
 const normalName = 'Avery Nguyen';
@@ -22,6 +24,31 @@ const routes = [
   // C12: every lesson block inside the activity frame, so both theme runs check engine contrast.
   '/app/courses/ai-basics/items/lesson-blocks',
 ];
+
+const accountLabel = (locale: string) => locale === 'vi' ? vi.learner.focus.account : en.learner.focus.account;
+const accountDialog = (page: Page, locale: string) => page.getByRole('dialog', { name: accountLabel(locale), exact: true });
+const accountTrigger = (page: Page, locale: string) => page.locator('.canvas-global-nav:not(.canvas-global-nav-mobile)')
+  .getByRole('button', { name: accountLabel(locale), exact: true });
+
+async function openAccount(page: Page, locale: string) {
+  if (page.viewportSize()!.width < desktopNavigationWidth) {
+    await page.locator('button[aria-controls="learner-mobile-navigation"]').click();
+    const drawer = page.getByRole('dialog', { name: locale === 'vi' ? vi.common.learnerNavigation : en.common.learnerNavigation, exact: true });
+    await drawer.getByRole('button', { name: accountLabel(locale), exact: true }).click();
+    await expect(drawer).toHaveCount(0);
+  } else await accountTrigger(page, locale).click();
+  const tray = accountDialog(page, locale);
+  await expect(tray).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  return tray;
+}
+
+async function chooseTheme(tray: ReturnType<Page['getByRole']>, value: string, locale = 'en') {
+  const select = tray.getByRole('combobox', { name: locale === 'vi' ? 'Giao diện' : 'Theme', exact: true });
+  await select.click();
+  await tray.getByRole('option', { name: value, exact: true }).click();
+  await expect(select).toHaveValue(value);
+}
 
 async function open(page: Page, path: string, locale: string) {
   const [base, hash] = path.split('#');
@@ -149,53 +176,65 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
       await expect(trigger).toBeFocused();
     });
 
-    test('account menu or drawer geometry focus and native signout', async ({ page }, info) => {
+    test('shared Account tray, mobile handoff, geometry, focus and native signout', async ({ page }, info) => {
       await open(page, '/app?longName=1', locale);
       await screenshot(page, info, 'before-navigation-open');
-      // The Canvas rail/account controls take over from the mobile drawer at768px.
+      const messages = locale === 'vi' ? vi : en;
       const menuButton = page.locator('button[aria-controls="learner-mobile-navigation"]');
+      const global = page.getByRole('navigation', { name: locale === 'en' ? 'Global navigation' : 'Điều hướng toàn cục', exact: true });
       if (width >= desktopNavigationWidth) {
-        await expect(page.getByRole('navigation', { name: locale === 'en' ? 'Global navigation' : 'Điều hướng toàn cục', exact: true })).toBeVisible();
+        await expect(global).toBeVisible();
         await expect(menuButton).toBeHidden();
-        await expect(page.getByRole('button', { name }).locator('.vf-l-account-initials')).toHaveText('TB');
-        await expect(page.getByRole('button', { name }).locator('.vf-l-account-name')).toBeVisible({ visible: width >= 1100 });
+        await expect(accountTrigger(page, locale)).toBeVisible();
+        for (const href of ['/studio', '/grading', '/admin']) await expect(global.locator('a[href="' + href + '"]')).toBeVisible();
       } else {
-        await expect(page.getByRole('navigation', { name: locale === 'en' ? 'Global navigation' : 'Điều hướng toàn cục', exact: true })).toBeHidden();
+        await expect(global).toBeHidden();
         await expect(menuButton).toBeVisible();
-      }
-      let surface;
-      if (width >= desktopNavigationWidth) {
-        await page.getByRole('button', { name }).click();
-        surface = page.getByRole('menu');
-        await expect(surface).toBeVisible();
-        await expect(surface.getByText('@fixture-learner')).toBeVisible();
-        const languages = surface.getByRole('menuitemradio').and(surface.locator('[lang]'));
-        await expect(languages).toHaveCount(2);
-        await expect(languages.and(page.locator(`[lang="${locale}"]`))).toHaveAttribute('aria-checked', 'true');
-        const rows = await surface.getByRole('menuitem').evaluateAll(nodes => nodes.map(node => { const r = node.getBoundingClientRect(); return { text: node.textContent, x: r.x, y: r.y, width: r.width, height: r.height }; }));
-        await info.attach('account-row-geometry', { body: JSON.stringify(rows, null, 2), contentType: 'application/json' });
-        expect(rows).toHaveLength(8);
-        for (let i = 0; i < rows.length; i++) {
-          // Subpixel transform math can produce 43.999969 for an exact 44px target.
-          expect.soft(rows[i].height, `${rows[i].text} height (0.1px numeric epsilon)`).toBeGreaterThanOrEqual(43.9);
-          if (i) expect.soft(rows[i].y, 'rows vertically stacked without overlap').toBeGreaterThanOrEqual(rows[i - 1].y + rows[i - 1].height - 1);
-        }
-      } else {
-        const trigger = page.locator('button[aria-controls="learner-mobile-navigation"]');
-        await trigger.click();
-        surface = page.getByRole('dialog');
-        await expect(surface).toBeVisible();
+        await menuButton.click();
+        const drawer = page.getByRole('dialog', { name: messages.common.learnerNavigation, exact: true });
+        await expect(drawer).toBeVisible();
+        await selectedNavigationContrast(drawer, locale, info);
+        for (const href of ['/studio', '/grading', '/admin']) await expect(drawer.locator('a[href="' + href + '"]')).toBeVisible();
         await page.keyboard.press('Escape');
-        await expect(surface).toBeHidden();
-        await expect(trigger).toBeFocused();
-        await trigger.click();
-        const themeTargets = await surface.locator('.vf-theme-option:not([lang])').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
-        expect(themeTargets).toHaveLength(3);
-        for (const height of themeTargets) expect(height).toBeGreaterThanOrEqual(43.9);
-        const languageTargets = await surface.locator('.vf-theme-option[lang]').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
-        expect(languageTargets).toHaveLength(2);
-        for (const height of languageTargets) expect(height).toBeGreaterThanOrEqual(43.9);
+        await expect(drawer).toBeHidden();
+        await expect(menuButton).toBeFocused();
+        await menuButton.click();
+        await page.setViewportSize({ width: desktopNavigationWidth, height: 900 });
+        await expect(drawer).toBeHidden();
+        await expect(page.locator('main h1')).toBeFocused();
+        await screenshot(page, info, 'after-resize-768');
+        await page.setViewportSize({ width, height: 900 });
       }
+      let surface = await openAccount(page, locale);
+      await expect(surface.getByRole('heading', { name, exact: true })).toBeVisible();
+      await expect(surface.locator('.canvas-account-avatar')).toContainText('TB');
+      await expect(surface.getByText('@fixture-learner', { exact: true })).toBeVisible();
+      await expect(surface.getByRole('button', { name: messages.common.close, exact: true })).toBeFocused();
+      const accountLinks = surface.getByRole('navigation', { name: accountLabel(locale), exact: true }).getByRole('link');
+      await expect(accountLinks).toHaveCount(4);
+      expect(await accountLinks.evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname + new URL((link as HTMLAnchorElement).href).hash))).toEqual([
+        '/app/profile', '/app/profile#profile-settings-heading', '/app/profile#certificates-heading', '/app/leaderboard',
+      ]);
+      const rows = await accountLinks.evaluateAll(nodes => nodes.map(node => { const r = node.getBoundingClientRect(); return { text: node.textContent, x: r.x, y: r.y, width: r.width, height: r.height }; }));
+      await info.attach('account-row-geometry', { body: JSON.stringify(rows, null, 2), contentType: 'application/json' });
+      for (let i = 0; i < rows.length; i++) {
+        expect.soft(rows[i].height, rows[i].text + ' height (0.1px numeric epsilon)').toBeGreaterThanOrEqual(43.9);
+        if (i) expect.soft(rows[i].y, 'rows vertically stacked without overlap').toBeGreaterThanOrEqual(rows[i - 1].y + rows[i - 1].height - 1);
+      }
+      const language = surface.getByRole('combobox', { name: messages.common.language, exact: true });
+      const selectedLanguage = messages.locale[locale];
+      await expect(language).toHaveValue(selectedLanguage);
+      await language.click();
+      await expect(surface.getByRole('option')).toHaveCount(2);
+      await surface.getByRole('option', { name: selectedLanguage, exact: true }).click();
+      const theme = surface.getByRole('combobox', { name: locale === 'vi' ? 'Giao diện' : 'Theme', exact: true });
+      await expect(theme).toBeVisible();
+      const selectedTheme = await theme.inputValue();
+      await theme.click();
+      await expect(surface.getByRole('option')).toHaveCount(3);
+      await surface.getByRole('option', { name: selectedTheme, exact: true }).click();
+      await expect(surface).toBeVisible();
+      for (const control of [language, theme]) expect.soft((await control.boundingBox())!.height, 'native preference target').toBeGreaterThanOrEqual(43.9);
       const bounds = await surface.boundingBox();
       expect(bounds).not.toBeNull();
       expect.soft(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -204,44 +243,29 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
       expect.soft(bounds!.y + bounds!.height).toBeLessThanOrEqual(901);
       expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'browser received reduced-motion preference').toBe(true);
       expect.soft(await surface.evaluate(node => getComputedStyle(node).animationName)).toBe('none');
-      await screenshot(page, info, 'after-navigation-open');
-      if (width < desktopNavigationWidth) await selectedNavigationContrast(surface, locale, info);
-      await axe(page, info, 'navigation-open');
-      if (width < desktopNavigationWidth) {
-        await page.setViewportSize({ width: desktopNavigationWidth, height: 900 });
-        await expect(surface).toBeHidden();
-        // CSS hides the drawer before matchMedia and Radix finish restoring
-        // focus. Wait for the actual desktop target instead of sampling once.
-        await expect(page.locator('main h1')).toBeFocused();
-        await screenshot(page, info, 'after-resize-768');
-        await page.setViewportSize({ width, height: 900 });
-        await page.locator('button[aria-controls="learner-mobile-navigation"]').click();
-        surface = page.getByRole('dialog');
-      }
-      // Actual account links: cross-route certificates, same-page XP, repeat same hash.
+      await screenshot(page, info, 'after-account-open');
+      await axe(page, info, 'account-open');
       await surface.locator('a[href="/app/profile#certificates-heading"]').click();
-      await expect(page.locator('#certificates-heading')).toBeFocused();
       await expect(surface).toBeHidden();
-      const reopen = async () => {
-        if (width >= desktopNavigationWidth) await page.getByRole('button', { name }).click();
-        else await page.locator('button[aria-controls="learner-mobile-navigation"]').click();
-        return width >= desktopNavigationWidth ? page.getByRole('menu') : page.getByRole('dialog');
-      };
+      await expect(page.locator('#certificates-heading')).toBeFocused();
+      // The shared tray exposes Account settings; XP remains covered by the direct hash test.
       for (let i = 0; i < 2; i++) {
-        surface = await reopen();
-        await surface.locator('a[href="/app/profile#xp-heading"]').click();
+        surface = await openAccount(page, locale);
+        await surface.locator('a[href="/app/profile#profile-settings-heading"]').click();
         await expect(surface).toBeHidden();
-        await info.attach(`hash-focus-attempt-${i + 1}`, { body: JSON.stringify(await page.evaluate(() => ({ hash: location.hash, active: document.activeElement?.outerHTML }))), contentType: 'application/json' });
-        await expect(page.locator('#xp-heading')).toBeFocused();
+        await info.attach('hash-focus-attempt-' + (i + 1), { body: JSON.stringify(await page.evaluate(() => ({ hash: location.hash, active: document.activeElement?.outerHTML }))), contentType: 'application/json' });
+        await expect(page.locator('#profile-settings-heading')).toBeFocused();
       }
       await screenshot(page, info, 'after-account-hash-focus');
-      surface = await reopen();
+      surface = await openAccount(page, locale);
       await page.keyboard.press('Escape');
       await expect(surface).toBeHidden();
-      await expect(width >= desktopNavigationWidth ? page.getByRole('button', { name }) : page.locator('button[aria-controls="learner-mobile-navigation"]')).toBeFocused();
-      surface = await reopen();
-      const signout = surface.locator('button[type="submit"]');
-      expect(await signout.evaluate((button: HTMLButtonElement) => ({ method: button.form?.method, action: new URL(button.form!.action).pathname }))).toEqual({ method: 'post', action: '/auth/signout' });
+      await expect(width >= desktopNavigationWidth ? accountTrigger(page, locale) : menuButton).toBeFocused();
+      surface = await openAccount(page, locale);
+      const signout = surface.getByRole('button', { name: messages.common.signOut, exact: true });
+      const nativeForm = page.locator('form[action="/auth/signout"][method="post"]');
+      await expect(nativeForm).toHaveCount(1);
+      expect(await nativeForm.evaluate((form: HTMLFormElement) => ({ method: form.method, action: new URL(form.action).pathname }))).toEqual({ method: 'post', action: '/auth/signout' });
       await page.route('**/auth/signout', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Fixture signed out</title><h1>Fixture signed out</h1>' }));
       const request = page.waitForRequest(request => new URL(request.url()).pathname === '/auth/signout');
       await signout.click();
@@ -292,48 +316,61 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
 test.describe('refined learner theme state', () => {
   test.use({ colorScheme: 'light' });
 
-  test('mobile drawer reflects the theme selected before reopening', async ({ page }) => {
+  test('mobile Account tray reflects the theme selected before reopening', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await open(page, '/app', 'en');
-    const trigger = page.locator('button[aria-controls="learner-mobile-navigation"]');
-    await trigger.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Dark', exact: true }).click();
+    let tray = await openAccount(page, 'en');
+    await chooseTheme(tray, 'Dark');
     await expect(page.locator('.vf-workspace')).toHaveAttribute('data-theme', 'dark');
+    expect((await page.context().cookies()).find(cookie => cookie.name === 'vf-theme')?.value).toBe('dark');
     await page.keyboard.press('Escape');
-    await trigger.click();
-    await expect(page.getByRole('dialog').getByRole('button', { name: 'Dark', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(tray).toBeHidden();
+    await expect(page.locator('button[aria-controls="learner-mobile-navigation"]')).toBeFocused();
+    tray = await openAccount(page, 'en');
+    await expect(tray.getByRole('combobox', { name: 'Theme', exact: true })).toHaveValue('Dark');
   });
 
-  test('desktop account menu reflects the theme selected before reopening', async ({ page }) => {
+  test('desktop Account tray reflects the theme selected before reopening', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/app', 'en');
-    const trigger = page.getByRole('button', { name: normalName, exact: true });
-    await trigger.click();
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    let tray = await openAccount(page, 'en');
+    await expect(tray.getByRole('heading', { name: normalName, exact: true })).toBeVisible();
+    await chooseTheme(tray, 'Dark');
     await expect(page.locator('.vf-workspace')).toHaveAttribute('data-theme', 'dark');
+    expect((await page.context().cookies()).find(cookie => cookie.name === 'vf-theme')?.value).toBe('dark');
     await page.keyboard.press('Escape');
-    await trigger.click();
-    await expect(page.getByRole('menuitemradio', { name: 'Dark', exact: true })).toHaveAttribute('aria-checked', 'true');
+    await expect(tray).toBeHidden();
+    await expect(accountTrigger(page, 'en')).toBeFocused();
+    tray = await openAccount(page, 'en');
+    await expect(tray.getByRole('combobox', { name: 'Theme', exact: true })).toHaveValue('Dark');
   });
 
-  // Portals carry no token class: they inherit the learner tokens (radius, raised surface) from :root, before and after a theme switch.
-  test('account menu portal reads the learner tokens in both themes', async ({ page }) => {
+  // The shared native Tray uses the learner surface/ink tokens in its portal.
+  test('Account tray portal reads the learner surface tokens in both themes', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/app', 'en');
-    const trigger = page.getByRole('button', { name: normalName, exact: true });
-    const menuStyle = () => page.getByRole('menu').evaluate(element => {
-      const style = getComputedStyle(element);
-      const probe = document.createElement('span'); probe.style.backgroundColor = 'var(--popover)'; document.body.append(probe); const expectedBackground = getComputedStyle(probe).backgroundColor; probe.remove();
-      return { radius: style.borderTopLeftRadius, expectedRadius: getComputedStyle(document.documentElement).getPropertyValue('--radius-md').trim(), background: style.backgroundColor, expectedBackground, inClass: Boolean(element.closest('.vf-workspace')) };
+    const trayStyle = () => accountDialog(page, 'en').evaluate(element => {
+      const panel = element.querySelector<HTMLElement>('.canvas-account-panel')!;
+      const style = getComputedStyle(panel);
+      const probe = document.createElement('span');
+      const root = document.querySelector('.vf-workspace');
+      if (!root) throw new Error('Expected the owning learner workspace');
+      probe.style.backgroundColor = 'var(--vf-surface)'; probe.style.color = 'var(--vf-ink)'; root.append(probe);
+      const expected = getComputedStyle(probe);
+      const result = { background: style.backgroundColor, expectedBackground: expected.backgroundColor, color: style.color,
+        expectedColor: expected.color, inOwnedMount: Boolean(element.closest('.canvas-account-mount')), inWorkspace: element.closest('.vf-workspace') === root };
+      probe.remove();
+      return result;
     });
-    await trigger.click();
-    const light = await menuStyle();
-    expect(light.inClass).toBe(false); expect(light.radius).toBe(light.expectedRadius); expect(light.background).toBe(light.expectedBackground);
-    await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+    let tray = await openAccount(page, 'en');
+    const light = await trayStyle();
+    expect(light.inOwnedMount).toBe(true); expect(light.inWorkspace).toBe(true); expect(light.background).toBe(light.expectedBackground); expect(light.color).toBe(light.expectedColor);
+    await chooseTheme(tray, 'Dark');
     await page.keyboard.press('Escape');
-    await trigger.click();
-    const dark = await menuStyle();
-    expect(dark.inClass).toBe(false); expect(dark.radius).toBe(dark.expectedRadius); expect(dark.background).toBe(dark.expectedBackground);
+    await expect(tray).toBeHidden();
+    tray = await openAccount(page, 'en');
+    const dark = await trayStyle();
+    expect(dark.inOwnedMount).toBe(true); expect(dark.inWorkspace).toBe(true); expect(dark.background).toBe(dark.expectedBackground); expect(dark.color).toBe(dark.expectedColor);
     expect(dark.background).not.toBe(light.background);
   });
 });
