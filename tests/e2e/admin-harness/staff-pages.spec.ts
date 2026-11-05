@@ -15,7 +15,7 @@ const library = studioHome.vi.library;
 
 const PAGES: StaffPage[] = [
   {
-    harness: 'admin', key: 'overview', path: '/admin', heading: vi.centralAdmin.overview, kpis: true,
+    harness: 'admin', key: 'overview', path: '/admin', heading: vi.centralAdmin.overview,
     actions: (page) => [page.getByRole('link', { name: vi.centralAdmin.invite, exact: true })],
   },
   {

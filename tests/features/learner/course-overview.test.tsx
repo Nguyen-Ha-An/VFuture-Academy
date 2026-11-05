@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render as rtlRender, screen } from '@testing-library/react';
+import { cleanup, render as rtlRender, screen, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '@/messages/en.json';
 import type { ReactElement } from 'react';
@@ -25,6 +25,7 @@ vi.mock('next-intl/server', () => ({
   }),
 }));
 vi.mock('@/lib/auth', () => ({ requireUser: mocks.requireUser }));
+vi.mock('@/features/coursework/service', () => ({ listCourseTasks: vi.fn(async () => []), listCourseResults: vi.fn(async () => []), listLearningAnnouncements: vi.fn(async () => []), listLearningCalendar: vi.fn(async () => ({ events: [] })) }));
 vi.mock('@/features/catalog/service', () => ({ getCourse: mocks.getCourse }));
 vi.mock('@/features/learner/ui/EnrollButton', () => ({ EnrollButton: () => <button>Enroll</button> }));
 
@@ -46,19 +47,22 @@ describe('learner course overview', () => {
         { id: 'next', title: 'Next', type: 'lesson', required: false, status: 'in_progress' },
       ] }] },
     });
-    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
-    expect(screen.getByText('Course information')).toBeInTheDocument();
+    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }), searchParams: Promise.resolve({ view: 'modules' }) }));
+    expect(mocks.getCourse).toHaveBeenCalledWith({ userId: 'learner-1', roles: [] }, 'course-1', 'en');
     expect(screen.getByRole('link', { name: /Done.*Lesson.*Required.*Completed/i })).toHaveAttribute('href', '/app/courses/course-1/items/done');
-    expect(screen.getByRole('link', { name: /Next.*Lesson.*Optional.*In progress/i })).toBeInTheDocument();
-    // .vf-title wraps long titles (overflow-wrap: anywhere) inside the shared page head.
-    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('vf-title');
-    expect(screen.getByRole('heading', { level: 1 }).closest('header')).toHaveClass('vf-page-head');
+    expect(screen.getByRole('link', { name: /Next.*Lesson.*Optional.*In progress/i })).toHaveAttribute('href', '/app/courses/course-1/items/next');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('AI');
     const completedRow = screen.getByRole('link', { name: /Done.*Lesson.*Required.*Completed/i });
-    // Mono kind code (decorative), then the wrapping title block, then the status tag.
+    // The type icon is decorative; the complete row still exposes its localized kind and state.
     expect(completedRow.firstElementChild).toHaveAttribute('aria-hidden', 'true');
-    expect(completedRow.firstElementChild).toHaveTextContent('LSN');
-    expect(completedRow.children[1]).toHaveClass('min-w-0', 'break-words');
-    expect(completedRow.lastElementChild).toHaveClass('shrink-0');
+    expect(completedRow.firstElementChild?.querySelector('svg')).not.toBeNull();
+    expect(within(completedRow).getByText('Completed')).toBeVisible();
+    const disclosure = screen.getByRole('heading', { name: 'Module', level: 3 }).closest('details')!;
+    expect(within(disclosure).getAllByRole('link')).toHaveLength(2);
+    cleanup();
+    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
+    expect(screen.getByRole('heading', { name: 'Course information' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Continue learning' })).toHaveAttribute('href', '/app/courses/course-1/items/next');
   });
 
   it('uses Review course for completed enrollment and the first item', async () => {

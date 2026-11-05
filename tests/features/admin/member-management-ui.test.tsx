@@ -4,16 +4,27 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import { StrictMode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MembersDirectory } from '@/features/admin/components/MembersDirectory';
 import { MemberProfile } from '@/features/admin/components/MemberProfile';
 import { RoleManager } from '@/features/admin/components/RoleManager';
+import { CanvasProvider } from '@/features/canvas/ui';
 
 import productionMessages from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
 
 const navigation = vi.hoisted(() => ({ search: '' }));
+const originalScrollIntoView = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
+const originalRootFontSize = document.documentElement.style.fontSize;
+// JSDOM has no layout/scrolling; browser geometry tests establish actual tab reachability.
+beforeAll(() => { Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() }); });
+afterAll(() => { if (originalScrollIntoView) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', originalScrollIntoView); else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
+// These request/state tests use a measured desktop; Chromium proves actual responsive geometry.
+beforeEach(() => {
+  document.documentElement.style.fontSize = '16px';
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, 1280, 900));
+});
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }));
@@ -52,7 +63,7 @@ const member = {
 };
 
 function Provider({ children }: { children: React.ReactNode }) {
-  return <NextIntlClientProvider locale="en" messages={staffUiTestMessages(messages, 'en')}>{children}</NextIntlClientProvider>;
+  return <NextIntlClientProvider locale="en" messages={staffUiTestMessages(messages, 'en')} timeZone="Asia/Ho_Chi_Minh"><CanvasProvider theme="light">{children}</CanvasProvider></NextIntlClientProvider>;
 }
 
 function data(value: unknown, status = 200) {
@@ -65,6 +76,7 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  document.documentElement.style.fontSize = originalRootFontSize;
 });
 
 describe('MembersDirectory', () => {
@@ -84,7 +96,7 @@ describe('MembersDirectory', () => {
     await waitFor(() => expect(String(fetchMock.mock.calls[0]?.[0])).toContain('scope=branch%3Aans'));
 
     await user.click(await screen.findByRole('button', { name: 'Invite member' }));
-    await user.type(within(screen.getByRole('dialog')).getByLabelText('Email address'), 'new@example.com');
+    await user.type(within(screen.getByRole('dialog')).getByRole('textbox', { name: 'Email address' }), 'new@example.com');
     await user.click(screen.getByRole('button', { name: 'Create invite' }));
     expect(await screen.findByRole('button', { name: 'Copy invite link' })).toBeInTheDocument();
   });
@@ -106,7 +118,7 @@ describe('MembersDirectory', () => {
     render(<Provider><MembersDirectory scope={scope} /></Provider>);
 
     await user.click(await screen.findByRole('button', { name: 'Invite member' }));
-    const email = await screen.findByLabelText('Email address');
+    const email = await screen.findByRole('textbox', { name: 'Email address' });
     await user.type(email, 'retry@example.com');
     await user.click(screen.getByRole('button', { name: 'Create invite' }));
 
@@ -123,7 +135,7 @@ describe('MembersDirectory', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     const view = render(<Provider><MembersDirectory scope={scope} /></Provider>);
-    await screen.findByRole('status');
+    await screen.findByRole('heading', { name: 'No matching members.' });
 
     navigation.search = 'memberQuery=returning&memberStatus=suspended&memberPage=2';
     view.rerender(<Provider><MembersDirectory scope={scope} /></Provider>);
@@ -131,8 +143,8 @@ describe('MembersDirectory', () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) =>
       String(url).includes('query=returning') && String(url).includes('status=suspended') && String(url).includes('page=2'),
     )).toBe(true));
-    expect(screen.getByLabelText('Search')).toHaveValue('returning');
-    expect(screen.getByLabelText('Status')).toHaveValue('suspended');
+    expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveValue('returning');
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('Suspended');
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/options'))).toHaveLength(1);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/users?') && String(url).includes('query=returning'))).toHaveLength(1);
   });
@@ -157,7 +169,8 @@ describe('MembersDirectory', () => {
     );
 
     await waitFor(() => expect(memberRequests).toBe(2));
-    expect(await screen.findAllByText('No matching members.')).toHaveLength(2);
+    expect(await screen.findAllByText('No matching members.')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'No matching members.' })).toBeInTheDocument();
   });
 
   it('reloads members when the administrative scope or actor changes with the same URL filters', async () => {
@@ -195,7 +208,7 @@ describe('MembersDirectory', () => {
     render(<Provider><MembersDirectory scope={scope} /></Provider>);
 
     await user.click(await screen.findByRole('button', { name: 'Invite member' }));
-    await user.type(await screen.findByLabelText('Email address'), 'new@example.com');
+    await user.type(await screen.findByRole('textbox', { name: 'Email address' }), 'new@example.com');
     const form = screen.getByRole('button', { name: 'Create invite' }).closest('form');
     expect(form).not.toBeNull();
     await act(async () => {
@@ -298,7 +311,7 @@ describe('MembersDirectory', () => {
     const user = userEvent.setup();
     render(<Provider><MembersDirectory scope={scope} /></Provider>);
     await user.click(await screen.findByRole('button', { name: 'Invite member' }));
-    expect(await screen.findByLabelText('Email address')).toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: 'Email address' })).toBeInTheDocument();
   });
 });
 
@@ -320,7 +333,7 @@ describe('MembersDirectory (staff refresh)', () => {
     render(<Provider><MembersDirectory scope={scope} /></Provider>);
 
     const sheet = await screen.findByRole('dialog', { name: 'Invite member' });
-    expect(within(sheet).getByLabelText('Email address')).toBeInTheDocument();
+    expect(within(sheet).getByRole('textbox', { name: 'Email address' })).toBeInTheDocument();
     expect(within(sheet).getByRole('button', { name: 'Create invite' })).toBeInTheDocument();
 
     await user.click(within(sheet).getByRole('button', { name: 'Cancel' }));
@@ -358,7 +371,7 @@ describe('MembersDirectory (staff refresh)', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Invite member' }));
     const sheet = screen.getByRole('dialog', { name: 'Invite member' });
-    await user.type(within(sheet).getByLabelText('Email address'), 'new@example.com');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Email address' }), 'new@example.com');
     await user.click(within(sheet).getByRole('button', { name: 'Create invite' }));
     await user.click(await within(sheet).findByRole('button', { name: 'Copy invite link' }));
     expect(writeText).toHaveBeenCalledWith('https://example.test/invite/token');
@@ -368,7 +381,7 @@ describe('MembersDirectory (staff refresh)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const invitations = screen.getByRole('region', { name: 'Invitations' });
     expect(within(invitations).getByText('new@example.com')).toBeInTheDocument();
-    expect(within(invitations).getByText('Pending')).toHaveAttribute('data-tone', 'warning');
+    for (const status of within(invitations).getAllByText('Pending')) expect(status).toHaveAttribute('data-tone', 'warning');
     expect(screen.queryByText('https://example.test/invite/token')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Invite member' }));
@@ -391,7 +404,7 @@ describe('MembersDirectory (staff refresh)', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Invite member' }));
     const sheet = screen.getByRole('dialog', { name: 'Invite member' });
-    await user.type(within(sheet).getByLabelText('Email address'), 'new@example.com');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Email address' }), 'new@example.com');
     await user.click(within(sheet).getByRole('button', { name: 'Create invite' }));
     await within(sheet).findByRole('button', { name: 'Copy invite link' });
     expect(within(kpi()).getByText('3')).toBeInTheDocument();
@@ -508,8 +521,10 @@ describe('MemberProfile', () => {
     const user = userEvent.setup();
     render(<Provider><MemberProfile userId="member-1" scope={scope} /></Provider>);
     await user.click(await screen.findByRole('tab', { name: 'Schools & roles' }));
-    await user.selectOptions(screen.getByLabelText('Role'), 'central-reviewer');
-    expect(screen.getByLabelText('School')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    await user.click(screen.getByRole('combobox', { name: 'Role' }));
+    await user.click(await screen.findByRole('option', { name: 'Central reviewer' }));
+    expect(screen.getByLabelText('School')).toHaveValue('Central');
     expect(screen.getByLabelText('School')).toBeDisabled();
   });
 });
@@ -622,7 +637,7 @@ describe('MemberProfile (staff refresh)', () => {
     await user.click(await screen.findByRole('tab', { name: 'Submissions & results' }));
     expect(screen.getByRole('link', { name: 'Open in grading' })).toHaveAttribute('href', '/grading/assignments/sub%201');
     expect(screen.getByText('In review')).toHaveAttribute('data-tone');
-    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(await screen.findByText('80%')).toBeInTheDocument();
   });
 });
 
@@ -640,7 +655,7 @@ describe('RoleManager', () => {
     // The editor lives in a Sheet behind "New role"; the confirm step sits in the sheet footer.
     await user.click(await screen.findByRole('button', { name: 'New role' }));
     const sheet = screen.getByRole('dialog', { name: 'Create role' });
-    await user.type(within(sheet).getByLabelText('Role name'), 'Mentor');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Role name' }), 'Mentor');
     await user.click(within(sheet).getByRole('button', { name: 'Create role' }));
     const confirm = within(sheet).getByRole('region', { name: 'Confirm change' });
     expect(confirm).toHaveTextContent('Mentor');
@@ -656,8 +671,9 @@ describe('RoleManager', () => {
     await screen.findByRole('heading', { name: 'Roles & permissions' });
     await user.click(await screen.findByRole('button', { name: 'New role' }));
     const sheet = screen.getByRole('dialog', { name: 'Create role' });
-    await user.type(within(sheet).getByLabelText('Role name'), 'Mentor');
-    await user.selectOptions(within(sheet).getByLabelText('Scope'), 'central');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Role name' }), 'Mentor');
+    await user.click(within(sheet).getByRole('combobox', { name: 'Scope' }));
+    await user.click(await screen.findByRole('option', { name: 'Central' }));
     await user.click(within(sheet).getByRole('button', { name: 'Create role' }));
     const confirm = within(sheet).getByRole('region', { name: 'Confirm change' });
     expect(confirm).toHaveTextContent('Central');

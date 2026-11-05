@@ -19,6 +19,8 @@ export const PERMISSION_DEFINITIONS = {
   'grading.read': { group: 'grading', scope: 'any' },
   'grading.manage': { group: 'grading', scope: 'any' },
   'submission.grade': { group: 'grading', scope: 'any' },
+  'teaching.announcement.manage': { group: 'grading', scope: 'any' },
+  'teaching.schedule.manage': { group: 'grading', scope: 'any' },
   'exam.release': { group: 'grading', scope: 'any' },
   'report.branch.read': { group: 'reporting', scope: 'any' },
   'report.global.read': { group: 'reporting', scope: 'central' },
@@ -95,6 +97,8 @@ export const BRANCH_SCOPED_PERMISSIONS = [
   'grading.read',
   'grading.manage',
   'submission.grade',
+  'teaching.announcement.manage',
+  'teaching.schedule.manage',
   'exam.release',
   'report.branch.read',
   'audit.read',
@@ -148,6 +152,7 @@ export const BUILT_IN_ROLE_PERMISSIONS = {
   teacher: [
     'admin.access', 'branch.read', 'learning.read', 'grading.read', 'grading.manage',
     'submission.grade', 'exam.release', 'report.branch.read', 'analytics.branch.read',
+    'teaching.announcement.manage', 'teaching.schedule.manage',
   ],
   member: [],
 } as const satisfies Record<string, readonly Permission[]>;

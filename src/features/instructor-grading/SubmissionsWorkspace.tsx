@@ -4,12 +4,10 @@ import Link from 'next/link';
 
 import { Eye, FileText, Inbox, ListFilter, LoaderCircle, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { CanvasNumberInput, CanvasRadioInput, CanvasRadioInputGroup, CanvasSelect, CanvasProgressBar } from '@/features/canvas/ui';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DataCard, EmptyState, StatusBadge } from '@/features/staff-ui/components';
 import { registerContentBlocks } from '@/content-engine/render/blocks';
@@ -184,6 +182,8 @@ export function normalizeSubmissionRows(
       attemptNo: attemptNo as number,
       status,
       submittedAt,
+      dueAtSnapshot: typeof row.dueAtSnapshot === 'string' ? row.dueAtSnapshot : typeof row.due_at_snapshot === 'string' ? row.due_at_snapshot : null,
+      late: typeof row.late === 'boolean' ? row.late : null,
       payload: {
         ...(typeof payload.text === 'string' ? { text: payload.text } : {}),
         ...(record(payload.notebook) && typeof record(payload.notebook)?.assetId === 'string' ? { notebook: payload.notebook as SubmissionQueueItem['payload']['notebook'] } : {}),
@@ -235,55 +235,41 @@ export function RubricScoreEditor({
   const locale = useLocale();
   const t = useTranslations('studio.grading');
   const total = computeRubricTotal(rubric, scores);
+  const groupId = useId();
+  // Persistence stores points only. Keep the clicked level identity locally when
+  // several rubric levels award the same points; a reload cannot recover that choice.
+  const [selectedLevels, setSelectedLevels] = useState<Record<string, number>>({});
 
   return (
     <div className="space-y-5">
+      {rubric.criteria.length > 0 ? <CanvasProgressBar size="x-small" screenReaderLabel={locale === 'vi' ? 'Tiến độ chấm tiêu chí' : 'Criteria scoring progress'} renderValue={({ valueNow, valueMax }) => <span className="text-xs text-muted-foreground">{locale === 'vi' ? `Đã chấm ${valueNow}/${valueMax} tiêu chí` : `${valueNow} of ${valueMax} criteria scored`}</span>} valueMax={rubric.criteria.length} valueNow={rubric.criteria.filter(criterion => Number.isFinite(scores[criterion.id]) && scores[criterion.id] >= 0 && scores[criterion.id] <= criterion.maxPoints).length} /> : null}
       {rubric.criteria.map((criterion) => {
         const name = localized(criterion.name, locale);
+        const localIndex = selectedLevels[criterion.id];
+        const matchingLevels = criterion.levels?.flatMap((level, index) => level.points === scores[criterion.id] ? [index] : []) ?? [];
+        const selectedIndex = localIndex !== undefined && criterion.levels?.[localIndex]?.points === scores[criterion.id]
+          ? localIndex
+          : matchingLevels.length === 1 ? matchingLevels[0] : -1;
         return (
           <fieldset key={criterion.id} className="rounded-lg border border-border p-4">
             <legend className="px-1 text-sm font-medium leading-normal">{name}</legend>
+            <p className="mb-3 text-xs text-muted-foreground tabular-nums">{locale === 'vi' ? `Từ 0 đến ${criterion.maxPoints} điểm` : `0–${criterion.maxPoints} points`}</p>
             {criterion.description ? (
               <p className="mb-3 text-sm leading-normal text-muted-foreground">{localized(criterion.description, locale)}</p>
             ) : null}
+            {selectedIndex < 0 && matchingLevels.length > 1 ? <p className="mb-3 text-xs text-muted-foreground">{locale === 'vi' ? `Điểm: ${scores[criterion.id]}. Nhiều mức rubric có cùng số điểm này; mức đã chọn không được lưu.` : `Score: ${scores[criterion.id]}. Several rubric levels award this score; the selected level was not stored.`}</p> : null}
             {criterion.levels?.length ? (
-              <RadioGroup
-                aria-label={name}
-                className="gap-2"
-                value={scores[criterion.id] === undefined ? '' : String(scores[criterion.id])}
-                onValueChange={(value) => onChange({ ...scores, [criterion.id]: Number(value) })}
-                disabled={disabled}
-              >
-                {criterion.levels.map((level, levelIndex) => {
-                  const label = localized(level.label, locale);
-                  const id = `rubric-${criterion.id}-${levelIndex}`;
-                  return (
-                    <label key={id} htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-md border border-border p-3 transition-colors hover:bg-accent has-[[data-state=checked]]:border-primary motion-reduce:transition-none">
-                      <RadioGroupItem aria-label={label} id={id} value={String(level.points)} className="mt-0.5" />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-3 text-sm font-medium leading-normal"><span>{label}</span><span className="shrink-0 tabular-nums">{level.points} / {criterion.maxPoints}</span></span>
-                        {level.description ? <span className="mt-1 block text-xs leading-normal text-muted-foreground">{localized(level.description, locale)}</span> : null}
-                      </span>
-                    </label>
-                  );
-                })}
-              </RadioGroup>
+              <CanvasRadioInputGroup name={`${groupId}-${criterion.id}`} description={<span className="sr-only">{name}</span>} value={selectedIndex < 0 ? '' : String(selectedIndex)} disabled={disabled} onChange={(_event, value) => {
+                const index = Number(value);
+                const level = criterion.levels?.[index];
+                if (!level) return;
+                setSelectedLevels(current => ({ ...current, [criterion.id]: index }));
+                onChange({ ...scores, [criterion.id]: level.points });
+              }}>
+                {criterion.levels.map((level, levelIndex) => <CanvasRadioInput key={levelIndex} id={`${groupId}-${criterion.id}-${levelIndex}`} value={String(levelIndex)} label={<span className="block min-w-0"><span className="block text-sm font-medium">{localized(level.label, locale)} · {level.points} / {criterion.maxPoints}</span>{level.description ? <span className="mt-1 block text-xs text-muted-foreground">{localized(level.description, locale)}</span> : null}</span>} />)}
+              </CanvasRadioInputGroup>
             ) : (
-              <Input
-                aria-label={name}
-                type="number"
-                min={0}
-                max={criterion.maxPoints}
-                step="0.01"
-                className="tabular-nums"
-                value={scores[criterion.id] ?? ''}
-                disabled={disabled}
-                onChange={(event) => {
-                  const next={...scores};
-                  if(event.target.value==='')delete next[criterion.id];else next[criterion.id]=Number(event.target.value);
-                  onChange(next);
-                }}
-              />
+              <CanvasNumberInput renderLabel={<span className="sr-only">{name} ({locale === 'vi' ? `0 đến ${criterion.maxPoints} điểm` : `0 to ${criterion.maxPoints} points`})</span>} messages={scores[criterion.id] !== undefined && (!Number.isFinite(scores[criterion.id]) || scores[criterion.id] < 0 || scores[criterion.id] > criterion.maxPoints) ? [{ type: 'error', text: locale === 'vi' ? `Nhập điểm từ 0 đến ${criterion.maxPoints}.` : `Enter a score from 0 to ${criterion.maxPoints}.` }] : undefined} min={0} max={criterion.maxPoints} step={0.01} showArrows={false} value={scores[criterion.id] ?? ''} interaction={disabled ? 'disabled' : 'enabled'} onChange={(_event, value) => { const next = { ...scores }; if (value === '') delete next[criterion.id]; else next[criterion.id] = Number(value); onChange(next); }} />
             )}
           </fieldset>
         );
@@ -353,7 +339,7 @@ export function SubmissionsTable({
               <TableCell className="whitespace-normal py-3 md:min-w-48 max-md:col-span-2 max-md:row-start-2 max-md:min-w-0"><span className="sr-only md:hidden">{t('table.courseItem')}: </span><span className="block break-words font-medium leading-normal">{courseTitle}</span><span className="block break-words text-xs leading-normal text-muted-foreground">{itemTitle}</span></TableCell>
               <TableCell className="hidden tabular-nums lg:table-cell max-md:col-start-1 max-md:row-start-3 max-md:!block max-md:text-xs max-md:text-muted-foreground"><span className="md:hidden">{t('table.attempt')} </span>{item.attemptNo}</TableCell>
               <TableCell className="hidden whitespace-nowrap text-muted-foreground tabular-nums sm:table-cell max-md:col-start-2 max-md:row-start-3 max-md:!block max-md:whitespace-normal max-md:text-right max-md:text-xs"><span className="sr-only md:hidden">{t('table.submittedAt')}: </span>{date.format(new Date(item.submittedAt))}</TableCell>
-              <TableCell className="max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end"><StatusBadge kind="submission" value={item.status} label={t(`status.${item.status}`)} /></TableCell>
+              <TableCell className="max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end"><StatusBadge kind="submission" value={item.status} label={t(`status.${item.status}`)} />{item.late === true ? <span className="mt-1 block text-xs text-muted-foreground">{t("lateSnapshot")}</span> : null}</TableCell>
               {canGrade ? <TableCell className="max-md:col-span-2 max-md:row-start-4 max-md:pt-2">
                 <div className="flex items-center gap-2">
                   {/* Outline, not primary: one black primary per page, never one per row. */}
@@ -406,7 +392,7 @@ function learnerRuntime(locale: 'vi' | 'en'): LessonRuntime {
   } as LessonRuntime;
 }
 
-export function SubmissionResponse({ item }: { item: SubmissionQueueItem }) {
+export function SubmissionResponse({ item, hideHeading = false }: { item: SubmissionQueueItem; hideHeading?: boolean }) {
   const locale = useLocale() === 'vi' ? 'vi' : 'en';
   const t = useTranslations('studio.grading');
   const runtime = learnerRuntime(locale);
@@ -415,11 +401,11 @@ export function SubmissionResponse({ item }: { item: SubmissionQueueItem }) {
     return url ? [{ ...link, url }] : [];
   }) ?? [];
   return (
-    <section aria-labelledby="submission-response-title" className="space-y-4">
-      <h3 id="submission-response-title" className="text-base font-semibold">{t('response')}</h3>
+    <section aria-label={t('response')} className="space-y-4">
+      {!hideHeading ? <h3 className="text-base font-semibold">{t('response')}</h3> : null}
       {item.payload.notebook ? <NotebookSubmissionPreview key={item.id} submissionId={item.id} /> : null}
       {item.payload.text ? (
-        <div className="rounded-lg border border-border bg-background p-4">
+        <div className={hideHeading ? "max-w-prose py-2 text-base leading-relaxed" : "rounded-lg border border-border bg-background p-4"}>
           <RichContentView content={textContent(item.payload.text)} runtime={runtime} path="/submission/text" />
         </div>
       ) : null}
@@ -671,34 +657,10 @@ export function SubmissionsWorkspace({
           toolbar={<section aria-label={t('filters.label')}>
             <h3 className="mb-4 flex items-center gap-2 text-sm font-medium leading-normal text-foreground"><ListFilter aria-hidden="true" className="size-4 text-muted-foreground" />{t('filters.label')}</h3>
             <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${preview ? 'lg:grid-cols-4 xl:grid-cols-2' : 'lg:grid-cols-4'}`}>
-              <label className="grid min-w-0 gap-1.5 text-xs font-medium leading-normal text-muted-foreground" htmlFor="submission-branch-filter">
-                <span>{t('filters.branch')}</span>
-                <NativeSelect id="submission-branch-filter" className="min-h-11" wrapperClassName="w-full" value={branchId} onChange={(event) => setBranchId(event.target.value)}>
-                  {branches.length > 1 ? <NativeSelectOption value="">{t('filters.allBranches')}</NativeSelectOption> : null}
-                  {branches.map((branch) => <NativeSelectOption key={branch.id} value={branch.id}>{branch.name}</NativeSelectOption>)}
-                </NativeSelect>
-              </label>
-              <label className="grid min-w-0 gap-1.5 text-xs font-medium leading-normal text-muted-foreground" htmlFor="submission-course-filter">
-                <span>{t('filters.course')}</span>
-                <NativeSelect id="submission-course-filter" className="min-h-11" wrapperClassName="w-full" value={courseId} onChange={(event) => chooseCourse(event.target.value)}>
-                  <NativeSelectOption value="">{t('filters.allCourses')}</NativeSelectOption>
-                  {courses.map((course) => <NativeSelectOption key={course.id} value={course.id}>{course.title}</NativeSelectOption>)}
-                </NativeSelect>
-              </label>
-              <label className="grid min-w-0 gap-1.5 text-xs font-medium leading-normal text-muted-foreground" htmlFor="submission-assignment-filter">
-                <span>{t('filters.assignment')}</span>
-                <NativeSelect id="submission-assignment-filter" className="min-h-11" wrapperClassName="w-full" value={assignmentFilter} onChange={(event) => setAssignmentFilter(event.target.value)}>
-                  <NativeSelectOption value="">{t('filters.allAssignments')}</NativeSelectOption>
-                  {assignmentChoices.map((assignment) => <NativeSelectOption key={`${assignment.courseId}:${assignment.assignmentId}`} value={assignment.assignmentId}>{assignmentLabels.get(assignment.assignmentId)}</NativeSelectOption>)}
-                </NativeSelect>
-              </label>
-              <label className="grid min-w-0 gap-1.5 text-xs font-medium leading-normal text-muted-foreground" htmlFor="submission-status-filter">
-                <span>{t('filters.status')}</span>
-                <NativeSelect id="submission-status-filter" className="min-h-11" wrapperClassName="w-full" value={status} onChange={(event) => setStatus(event.target.value)}>
-                  <NativeSelectOption value="">{t('filters.allStatuses')}</NativeSelectOption>
-                  {queueStatusFilters.map((value) => <NativeSelectOption key={value} value={value}>{value === 'pending' ? home('queue.statusPending') : t(`status.${value}`)}</NativeSelectOption>)}
-                </NativeSelect>
-              </label>
+              <CanvasSelect label={t('filters.branch')} value={branchId} onChange={setBranchId} options={[...(branches.length > 1 ? [{ value: '', label: t('filters.allBranches') }] : []), ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} />
+              <CanvasSelect label={t('filters.course')} value={courseId} onChange={chooseCourse} options={[{ value: '', label: t('filters.allCourses') }, ...courses.map(course => ({ value: course.id, label: course.title }))]} />
+              <CanvasSelect label={t('filters.assignment')} value={assignmentFilter} onChange={setAssignmentFilter} options={[{ value: '', label: t('filters.allAssignments') }, ...assignmentChoices.map(assignment => ({ value: assignment.assignmentId, label: assignmentLabels.get(assignment.assignmentId) ?? assignment.assignmentId }))]} />
+              <CanvasSelect label={t('filters.status')} value={status} onChange={setStatus} options={[{ value: '', label: t('filters.allStatuses') }, ...queueStatusFilters.map(value => ({ value, label: value === 'pending' ? home('queue.statusPending') : t(`status.${value}`) }))]} />
             </div>
           </section>}
           footer={nextCursor ? <div className="flex justify-center"><Button variant="outline" className="max-sm:min-h-11 max-sm:w-full" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? t('loadingMore') : t('loadMore')}</Button></div> : undefined}

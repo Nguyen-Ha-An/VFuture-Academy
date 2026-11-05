@@ -1,5 +1,7 @@
 'use client';
 
+import { CanvasButton } from '@/features/canvas/ui';
+
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 
@@ -43,9 +45,9 @@ export function ProjectInterestButton({
 
   return (
     <div>
-      <button type="button" className={interested ? 'vf-btn vf-btn-lg' : 'vf-btn vf-btn-primary vf-btn-lg'} aria-pressed={interested} disabled={pending} onClick={update}>
+      <CanvasButton type="button" variant={interested ? 'secondary' : 'default'} aria-pressed={interested} disabled={pending} onClick={update}>
         {pending ? t('saving') : interested ? t('added') : t('add')}
-      </button>
+      </CanvasButton>
       <p role="status" aria-live="polite" data-tone={failed ? 'fault' : undefined}>{message}</p>
     </div>
   );

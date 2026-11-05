@@ -4,8 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import { SearchIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CanvasButton as Button, CanvasTextInput } from "@/features/canvas/ui";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { cn } from "@/lib/ui-cn";
 import { ViewToggle, type ViewMode } from "./ViewToggle";
@@ -213,23 +212,20 @@ function ToolbarView({
     >
       {searchParam ? (
         <div className="relative min-w-48 flex-1 sm:max-w-xs">
-          <label htmlFor={searchId} className="sr-only">
-            {searchLabel ?? t("search")}
-          </label>
-          <SearchIcon aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <CanvasTextInput
+            label={<span className="sr-only">{searchLabel ?? t("search")}</span>}
+            renderBeforeInput={<SearchIcon aria-hidden="true" className="size-4 text-muted-foreground" />}
             id={searchId}
             type="search"
             value={draft}
             placeholder={searchPlaceholder ?? t("searchPlaceholder")}
-            onChange={(event) => onSearchChange(event.target.value)}
+            onChange={onSearchChange}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
                 sendSearch(draft);
               }
             }}
-            className="pl-8"
           />
         </div>
       ) : null}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import '@testing-library/jest-dom/vitest';
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi as vitest } from "vitest";
@@ -35,8 +35,8 @@ afterEach(() => {
 describe("application shells", () => {
   it("renders the focused learner navigation and account menu", () => {
     render(<Provider><AppShell><p>content</p></AppShell></Provider>);
-    expect(screen.getByRole("navigation", { name: vi.common.learnerNavigation })).toBeDefined();
-    expect(screen.getByRole("link", { name: "Học tập" }).getAttribute("href")).toBe("/app");
+    expect(screen.getByRole("navigation", { name: "Điều hướng toàn cục" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Tổng quan" }).getAttribute("href")).toBe("/app");
     expect(screen.getByRole("link", { name: "Khóa học" }).getAttribute("href")).toBe("/app/courses");
     expect(screen.getByRole("link", { name: "Khám phá" }).getAttribute("href")).toBe("/app/explore");
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Tài khoản' }), { button: 0, ctrlKey: false });
@@ -45,7 +45,7 @@ describe("application shells", () => {
 
   it('uses the real English focus translations for navigation and account destinations', () => {
     render(<Provider locale="en"><AppShell><p>content</p></AppShell></Provider>);
-    expect(screen.getByRole('link', { name: 'Learning' })).toHaveAttribute('href', '/app');
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
     expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Account' }), { button: 0, ctrlKey: false });
     expect(screen.getByRole('menuitem', { name: 'Certificates' })).toHaveAttribute('href', '/app/profile#certificates-heading');
@@ -54,16 +54,17 @@ describe("application shells", () => {
   it("marks the active learner navigation link with aria-current", () => {
     render(<Provider><AppShell><h1>Home</h1></AppShell></Provider>);
 
-    expect(document.querySelector('nav a[href="/app"]')).toHaveAttribute("aria-current", "page");
-    expect(document.querySelector('nav a[href="/app/courses"]')).not.toHaveAttribute("aria-current");
+    const navigation = screen.getByRole('navigation', { name: 'Điều hướng toàn cục' });
+    expect(within(navigation).getByRole('link', { name: 'Tổng quan' })).toHaveAttribute('aria-current', 'page');
+    expect(within(navigation).getByRole('link', { name: 'Khóa học' })).not.toHaveAttribute('aria-current');
   });
 
-  it("removes global navigation and breadcrumbs in focused item workspaces", () => {
+  it("keeps the global rail in focused item workspaces", () => {
     navigationMocks.pathname = "/app/courses/ai-foundations/items/lesson-1";
 
     render(<Provider><AppShell><h1>Lesson</h1></AppShell></Provider>);
 
-    expect(screen.queryByRole('navigation', { name: vi.common.learnerNavigation })).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Điều hướng toàn cục' })).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Đường dẫn trang" })).toBeNull();
   });
 
@@ -71,6 +72,12 @@ describe("application shells", () => {
     render(<Provider><AppShell><h1>Trang học</h1></AppShell></Provider>);
 
     expect(screen.getByRole('heading', { name: 'Trang học' })).toHaveFocus();
+  });
+
+  it.each(['/app/resources/research', '/app/opportunities/open', '/app/projects/project-1'])('keeps Explore active for %s', (pathname) => {
+    navigationMocks.pathname = pathname;
+    render(<Provider><AppShell><h1>Discovery detail</h1></AppShell></Provider>);
+    expect(document.querySelector('nav li a[href="/app/explore"]')).toHaveAttribute('aria-current', 'page');
   });
 
   it("renders content authoring destinations in Studio and no grading or reporting entry", () => {
@@ -176,7 +183,7 @@ describe("application shells", () => {
     fireEvent.click(trigger);
 
     expect(screen.getByRole("dialog", { name: "Điều hướng học viên" })).toBeInTheDocument();
-    expect(screen.getAllByRole("navigation", { name: "Điều hướng học viên" })).toHaveLength(1);
+    expect(screen.getAllByRole("navigation", { name: "Điều hướng toàn cục" })).toHaveLength(1);
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Điều hướng học viên" })).toBeNull();
     await waitFor(() => expect(trigger).toHaveFocus());
@@ -200,8 +207,8 @@ describe("application shells", () => {
     fireEvent.click(trigger);
     expect(screen.getByRole('dialog', { name: 'Điều hướng học viên' })).toBeInTheDocument();
 
-    // The learner bar shows its own nav from 760px, so the drawer closes there (staff bars keep 64rem).
-    expect(window.matchMedia).toHaveBeenCalledWith('(min-width: 47.5rem)');
+    // Canvas global navigation appears from 768px; the drawer closes at the same breakpoint.
+    expect(window.matchMedia).toHaveBeenCalledWith('(min-width: 48rem)');
     listener?.({ matches: true } as MediaQueryListEvent);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(trigger).not.toHaveFocus();

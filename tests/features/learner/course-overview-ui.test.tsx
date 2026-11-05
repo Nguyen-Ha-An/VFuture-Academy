@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render as rtlRender, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '@/messages/en.json';
 import type { ReactElement } from 'react';
@@ -16,6 +17,7 @@ vi.mock('next-intl/server', () => ({ getLocale: vi.fn().mockResolvedValue('en'),
   return messages[`${namespace}.${key}`] ?? key;
 }) }));
 vi.mock('@/lib/auth', () => ({ requireUser: mocks.requireUser }));
+vi.mock('@/features/coursework/service', () => ({ listCourseTasks: vi.fn(async () => []), listCourseResults: vi.fn(async () => []), listLearningAnnouncements: vi.fn(async () => []), listLearningCalendar: vi.fn(async () => ({ events: [] })) }));
 vi.mock('@/features/catalog/service', () => ({ getCourse: mocks.getCourse, listCatalog: mocks.listCatalog }));
 vi.mock('@/features/learner/ui/EnrollButton', () => ({ EnrollButton: ({ prerequisites = [] }: { prerequisites?: Array<{ id: string; label: string }> }) => <button data-prerequisites={prerequisites.map((course) => `${course.id}=${course.label}`).join(',')}>Enroll</button> }));
 import LearnerCoursePage from '@/app/app/courses/[courseId]/page';
@@ -45,8 +47,7 @@ describe('learner course overview', () => {
   });
   it('uses localized information and makes every enrolled outline row a complete status link', async () => {
     mocks.getCourse.mockResolvedValue(course({ status: 'active' }));
-    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
-    expect(screen.getByText('Course information')).toBeVisible();
+    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }), searchParams: Promise.resolve({ view: 'modules' }) }));
     const row = screen.getByRole('link', { name: /first.*Lesson.*Required.*Completed/i });
     expect(row).toHaveAttribute('href', '/app/courses/course-1/items/first');
     expect(within(row).getByText('Completed')).toBeVisible();
@@ -96,38 +97,46 @@ describe('learner course overview', () => {
     expect(screen.getByText('Explain the model')).toBeVisible();
   });
 
-  it('kicks the header with the pathway alone, or "{code} · {pathway}" when an authored code exists', async () => {
+  it('shows the pathway or authored course code in the Canvas course heading', async () => {
     mocks.getCourse.mockResolvedValue(course({ status: 'active' }));
     const plain = render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
-    expect(plain.container.querySelector('.vf-page-head .vf-kicker')).toHaveTextContent(/^AI & Emerging Technology$/);
+    expect(plain.container.querySelector('.canvas-course-heading .canvas-course-eyebrow')).toHaveTextContent(/^AI & Emerging Technology$/);
     plain.unmount();
 
     mocks.getCourse.mockResolvedValue({ ...course({ status: 'active' }), meta: { ...course({ status: 'active' }).meta, code: 'AI-101' } });
     const coded = render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
-    expect(coded.container.querySelector('.vf-page-head .vf-kicker')).toHaveTextContent(/^AI-101 · AI & Emerging Technology$/);
+    expect(coded.container.querySelector('.canvas-course-heading .canvas-course-eyebrow')).toHaveTextContent(/^AI-101$/);
   });
 
-  it('puts each module in one card with a mono M01 code and an h3, and never nests cards', async () => {
+  it('groups required and optional activities in a collapsible module and retains overview requirements and the continue action', async () => {
+    const user = userEvent.setup();
     mocks.getCourse.mockResolvedValue({
       ...course({ status: 'active' }),
       meta: { ...course({ status: 'active' }).meta, learningOutcomes: ['Explain the model'] },
       completion: { ...course({ status: 'active' }).completion, requirements: [{ rule: { type: 'all_items' }, satisfied: true, progress: { done: 2, total: 2 } }] },
     });
-    const { container } = render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
-
+    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }), searchParams: Promise.resolve({ view: 'modules' }) }));
     const moduleHeading = screen.getByRole('heading', { level: 3, name: 'Module one' });
-    expect(moduleHeading.closest('.vf-card')).not.toBeNull();
-    expect(within(moduleHeading).getByText('M01')).toHaveAttribute('aria-hidden', 'true');
-    expect(container.querySelector('.vf-card .vf-card')).toBeNull();
-    // Completion requirements: a MET StateTag with a mono n/m.
+    const disclosure = moduleHeading.closest('details')!;
+    expect(disclosure).toHaveAttribute('open');
+    const required = within(disclosure).getByRole('link', { name: /first.*Lesson.*Required.*Completed/i });
+    const optional = within(disclosure).getByRole('link', { name: /second.*Lesson.*Optional.*Not started/i });
+    expect(required).toHaveAttribute('href', '/app/courses/course-1/items/first');
+    expect(optional).toHaveAttribute('href', '/app/courses/course-1/items/second');
+    await user.click(disclosure.querySelector('summary')!);
+    expect(disclosure).not.toHaveAttribute('open');
+    expect(required).not.toBeVisible();
+    await user.click(disclosure.querySelector('summary')!);
+    expect(required).toBeVisible();
+    expect(optional).toBeVisible();
+    cleanup();
+    render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
     const requirements = screen.getByRole('region', { name: 'Completion requirements' });
-    expect(within(requirements).getByText('Met')).toHaveClass('vf-tag');
-    expect(within(requirements).getByText('2 of 2')).toHaveClass('vf-meta');
-    // The action panel hosts the one primary CTA.
-    const action = container.querySelector('[data-area="action"]') as HTMLElement;
-    expect(within(action).getByRole('heading', { name: 'Next step' })).toBeVisible();
-    expect(within(action).getByRole('link', { name: 'Continue learning' })).toHaveClass('vf-btn', 'vf-btn-primary');
-    expect(container.querySelector('aside[data-area="aside"]')).not.toBeNull();
+    expect(within(requirements).getByText('Met')).toBeVisible();
+    expect(within(requirements).getByText('2 of 2')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Continue learning' })).toHaveAttribute('href', '/app/courses/course-1/items/second');
+    expect(screen.getByRole('heading', { name: 'Next step' })).toBeVisible();
+    expect(screen.getByRole('complementary', { name: 'Course information' })).toBeVisible();
   });
 
   it('labels prerequisite links with the authored code (else title) for an unenrolled course', async () => {

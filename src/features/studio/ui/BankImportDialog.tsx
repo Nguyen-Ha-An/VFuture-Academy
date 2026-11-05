@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button } from '@/features/canvas/ui';
 import {
   Dialog,
   DialogClose,

@@ -65,8 +65,8 @@ describe('grading queue list', () => {
     render(<NextIntlClientProvider locale="en" messages={messages}><SubmissionsWorkspace branches={props.branches} courses={props.courses} assignments={[]} canGrade embedded/></NextIntlClientProvider>);
 
     const status = screen.getByLabelText('Status');
-    expect(screen.getByRole('option', { name: 'Waiting' })).toHaveValue('pending');
-    await user.selectOptions(status, 'pending');
+    await user.click(status);
+    await user.click(screen.getByRole('option', { name: 'Waiting' }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('status=pending'))).toBe(true));
     expect(window.location.search).toContain('status=pending');
   });
@@ -77,7 +77,7 @@ describe('grading queue list', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<NextIntlClientProvider locale="en" messages={messages}><SubmissionsWorkspace branches={props.branches} courses={props.courses} assignments={[]} canGrade embedded/></NextIntlClientProvider>);
 
-    await waitFor(() => expect(screen.getByLabelText('Status')).toHaveValue('pending'));
+    await waitFor(() => expect(screen.getByLabelText('Status')).toHaveValue('Waiting'));
     await waitFor(() => expect(String(fetchMock.mock.calls.at(-1)?.[0])).toContain('status=pending'));
   });
 

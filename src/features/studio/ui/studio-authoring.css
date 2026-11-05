@@ -1,0 +1,11 @@
+/* InstUI Grid resets inherited typography. Keep native HTML inspector content
+   aligned with the Academy typeface without overriding InstUI control internals. */
+.studio-visual-editor :is([data-authoring-field], details, summary) {
+  font-family: var(--app-font-sans), sans-serif;
+}
+.studio-visual-editor [data-authoring-field] {
+  min-width: 0;
+}
+.studio-visual-editor summary {
+  line-height: 1.5;
+}

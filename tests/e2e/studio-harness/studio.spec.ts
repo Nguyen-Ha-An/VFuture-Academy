@@ -39,6 +39,9 @@ async function mockStudioApi(page: Page) {
 }
 
 async function open(page: Page, query = '') {
+  // These contracts intentionally exercise the manual JSON editor.
+  await page.addInitScript(() => localStorage.setItem('academy.canvas.editor-mode', 'json'));
+
   await page.goto(`/studio/courses/minimal${query}`);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   if (!query.includes('readonly=1') && !query.includes('workflow=pending')) {
@@ -64,6 +67,7 @@ async function replaceManifest(page: Page, value: unknown) {
 }
 
 test.describe('Studio browser harness', () => {
+  test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('academy.canvas.editor-mode', 'json')); });
   for (const viewport of [{ width: 1440, height: 650 }, { width: 390, height: 844 }]) {
     test(`JSON scrolls inside its pane with errors open at ${viewport.width}px`, async ({ page }) => {
       await mockStudioApi(page);
@@ -72,7 +76,7 @@ test.describe('Studio browser harness', () => {
       await replaceManifest(page, { ...manifestWith('Scroll test'), unexpected: Array.from({ length: 180 }, (_, i) => `line-${i}`) });
       await page.getByRole('button', { name: 'Lưu nháp', exact: true }).click();
       await expect(page.getByRole('alert')).toBeVisible();
-      await page.locator('#studio-json summary').click();
+      await page.locator('#studio-editor summary').click();
       const scroller = page.locator('.cm-scroller');
       await scroller.evaluate(node => { node.scrollTop = 0; });
       await scroller.hover();
@@ -96,9 +100,9 @@ test.describe('Studio browser harness', () => {
     await mockStudioApi(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
-    const panes = page.locator('#studio-json').locator('..');
+    const panes = page.locator('#studio-editor').locator('..');
     await expect(panes).toHaveCSS('display', 'grid');
-    await expect(panes).toHaveCSS('grid-template-columns', /240px/);
+    await expect(panes).toHaveCSS('grid-template-columns', /220px/);
     expect(await page.locator('body').evaluate(node => node.scrollWidth <= node.clientWidth)).toBeTruthy();
     await page.screenshot({ path: testInfo.outputPath('studio-desktop.png'), fullPage: true });
   });
@@ -148,7 +152,7 @@ test.describe('Studio browser harness', () => {
     // Wait for the initial worker result, then position the cursor before starting
     // Event Timing. Click and Ctrl/Meta+End are setup interactions over a 120 KB
     // CodeMirror document; including them does not measure the edit handler.
-    await expect.poll(async () => (await page.locator('#studio-json summary').textContent())?.startsWith('0 errors')).toBe(false);
+    await expect.poll(async () => (await page.locator('#studio-editor summary').textContent())?.startsWith('0 errors')).toBe(false);
     await page.locator('.cm-content').click();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -216,7 +220,7 @@ test.describe('Studio browser harness', () => {
     await mockStudioApi(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page);
-    await page.getByRole('tab', { name: 'Xem trước' }).click();
+    await page.getByRole('button', { name: 'Xem trước', exact: true }).click();
     await expect(page.locator('#studio-preview')).toBeVisible();
     await page.getByRole('button', { name: 'Nội dung khóa học' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();

@@ -36,7 +36,7 @@ describe('student navigation regressions', () => {
     const trigger = screen.getByRole('button', { name: en.common.menu });
     fireEvent.click(trigger);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(matchMedia).toHaveBeenCalledWith('(min-width: 47.5rem)');
+    expect(matchMedia).toHaveBeenCalledWith('(min-width: 48rem)');
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     act(() => onChange?.({ matches: true }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());

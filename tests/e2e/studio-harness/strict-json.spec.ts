@@ -64,6 +64,9 @@ async function mockApi(page: Page) {
 }
 
 async function open(page: Page, query = '') {
+  // These contracts intentionally exercise the manual JSON editor.
+  await page.addInitScript(() => localStorage.setItem('academy.canvas.editor-mode', 'json'));
+
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(String(error)));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -120,8 +123,8 @@ test.describe('strict JSON in the browser', () => {
     const errors = await open(page);
     await replaceEditor(page, DUPLICATE_TITLE_MANIFEST);
 
-    await page.locator('#studio-json summary').click();
-    await expect(page.locator('#studio-json li', { hasText: /khai báo|declared/i }).first()).toBeVisible();
+    await page.locator('#studio-editor summary').click();
+    await expect(page.locator('#studio-editor li', { hasText: /khai báo|declared/i }).first()).toBeVisible();
 
     // Format must not reinterpret rejected text.
     const before = await editorText(page);
@@ -156,8 +159,8 @@ test.describe('strict JSON in the browser', () => {
     const errors = await open(page);
     await replaceEditor(page, JSON.stringify({ ...manifestWith('x'), modules: 'not-a-list' }, null, 2));
 
-    await page.locator('#studio-json summary').click();
-    const first = page.locator('#studio-json li button').first();
+    await page.locator('#studio-editor summary').click();
+    const first = page.locator('#studio-editor li button').first();
     await expect(first).toBeVisible();
     await first.click();
 
@@ -274,7 +277,7 @@ test.describe('an item whose id is literally `manifest`', () => {
     expect(body).toContain('"id": "manifest"');
     expect(body).toContain('"kind": "lesson"');
 
-    await page.getByRole('button', { name: 'Course manifest' }).click();
+    await page.getByRole('button', { name: 'Course settings' }).click();
     await expect.poll(() => api.previews.at(-1)?.selectedRef, { timeout: 20_000 }).toEqual({ kind: 'course' });
     expect(await editorText(page)).toContain('"kind": "course"');
     expect(errors).toEqual([]);

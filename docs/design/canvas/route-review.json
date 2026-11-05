@@ -1,0 +1,3587 @@
+{
+  "summary": {
+    "entrypoints": 85,
+    "substantiveRenderingEntries": 53,
+    "notFoundBoundaryEntries": 1,
+    "redirectAliases": 31,
+    "missingEntries": [],
+    "duplicateEntries": [],
+    "scope": "Complete source/fixture binding inventory, not 85 unique screens or a universal live end-to-end claim. Actual modules, local transports and stubs remain explicit. Owner capture notes preserve their historical review timing; final local composition acceptance and targeted flows are distinct from those notes and from deployed-server proof."
+  },
+  "routes": [
+    {
+      "route": "/app",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/LearnerDashboardView.tsx",
+      "componentExport": "LearnerDashboardView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app?lang=en&theme=light&fixture=dense",
+      "actualModules": [
+        "LearnerHomePage",
+        "LearnerDashboardBench",
+        "LearnerDashboardView",
+        "AppShell",
+        "actual InstUI controls"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data"
+      ],
+      "states": [
+        "baseline",
+        "dense",
+        "sparse",
+        "empty",
+        "mixed-error",
+        "tasks-error",
+        "longName=1"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-current-dashboard-desktop-1440.png",
+        "/tmp/academy-current-dashboard-phone-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Listed PNGs are rejected pre-Astra baseline, not final current UI acceptance",
+        "Current sole4287 is student config; core learner config must be scheduled explicitly",
+        "Unique task -> outline -> item -> pinned session identity now passes headless checks; actual click-through browser proof remains scheduled"
+      ]
+    },
+    {
+      "route": "/app/courses",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/courses/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/courses",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/CatalogBenchView.tsx",
+      "componentExport": "CatalogBenchView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/courses?tab=learning&lang=en&theme=light&fixture=dense",
+      "actualModules": [
+        "LearnerCatalogPage",
+        "CatalogBenchView",
+        "Semantic HTML course articles and links styled by learner-routes.css",
+        "Existing filter controls; no native InstUI course-card dependency"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data"
+      ],
+      "states": [
+        "tab=learning",
+        "tab=discover",
+        "level/pathway/difficulty/language filters",
+        "filtered-empty difficulty=advanced",
+        "fixture=empty"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-current-catalog-learning-1440.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Final native filter/navigation review pending Astra slot"
+      ]
+    },
+    {
+      "route": "/app/courses/[courseId]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/courses/[courseId]/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/courses/[courseId]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/CanvasCourseWorkspace.tsx",
+      "componentExport": "CanvasCourseWorkspace",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/courses/active?view=modules&lang=en&theme=light&fixture=dense",
+      "actualModules": [
+        "LearnerCoursePage",
+        "CanvasCourseWorkspace",
+        "CanvasTasks",
+        "CanvasResultTable",
+        "CanvasCalendar",
+        "CanvasAnnouncements",
+        "CourseCta"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "Learner EnrollButton uses actual component; browser POST must be explicitly intercepted to avoid wrong local HTML response"
+      ],
+      "states": [
+        "view=overview|modules|assignments|grades|announcements|calendar",
+        "available unenrolled gate",
+        "completed review CTA",
+        "sparse/empty secondary reads",
+        "mixed-error results/announcements",
+        "tasks-error tasks/calendar"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-current-course-overview-1440.png",
+        "/tmp/academy-current-course-modules-1440.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "STUDENT main only dispatches ai-basics course detail; active/data/design/systems return generic unavailable there",
+        "Final drawer links/catalog query/month preservation browser review pending",
+        "Unique task -> outline -> item -> pinned session identity now passes headless checks; actual click-through browser proof remains scheduled"
+      ]
+    },
+    {
+      "route": "/app/courses/[courseId]/items/[itemId]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/courses/[courseId]/items/[itemId]/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/courses/[courseId]/items/[itemId]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/activity/ActivityFrame.tsx",
+      "componentExport": "ActivityFrame",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/courses/assignment-course/items/assignment?lang=en&theme=light&assignmentState=feedback",
+      "actualModules": [
+        "Production LearnerItemPage",
+        "ActivityFrame",
+        "FocusOutline",
+        "actual LessonRenderer",
+        "actual AssignmentRenderer",
+        "actual embedded AssignmentBlockRenderer",
+        "actual ExamFlow -> ExamIntro/ExamPlayer/ExamReview"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "ItemPlayer import remains an explicit fixture bridge, NOT production ItemPlayer orchestrator",
+        "Bridge formerly static lesson/direct ExamPlayer; now production renderer components and actual ExamFlow",
+        "Assignment/Exam clients and progress storage are typed local transports; no real upload/storage/submission/grading proof",
+        "Exam review scores are deterministic local display fixtures, not backend grading of the edited answers"
+      ],
+      "states": [
+        "active/items/first|optional|long actual lesson",
+        "active/items/exam?examState=intro|active|review|unreleased|restore-error|start-error|submit-error|review-error",
+        "assignment-course/items/assignment?assignmentState=draft|submitted|unreleased|feedback|approved|late|unavailable|submit-error|submit-pending",
+        "assignment-course/items/inline preserves embedded-work block identity",
+        "upload=pending|error then interact with real file input",
+        "Baseline task links: active/items/research-assignment|research-journal|reflection-assignment and exam",
+        "Dense unique targets: active/assignment-1|assignment-5|exam; data/exam|assignment-6|assignment-10; design/assignment-3|assignment-7|exam; systems/assignment-4|exam|assignment-12"
+      ],
+      "transports": [
+        "createActivityRuntime local session/state/upload progress/abort/retry; immutable published assignment-fixture-published-v1",
+        "createFixtureExamClient local start/resume/save/submit/review; real ExamFlow receives typed responses",
+        "Existing STUDENT runtime.html separately imports production ItemPlayer reflection/save guard fixture",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "New bridge actual renderer components are mounted in React Testing Library; browser matrix remains pending after replacement",
+        "Production ItemPlayer transport/orchestration is not established by core bridge",
+        "STUDENT generic /items paths mount FocusPage+QuizRenderer and must not count as actual lesson/assignment/exam route proof"
+      ]
+    },
+    {
+      "route": "/app/courses/[courseId]/items/[itemId]/notebook",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/courses/[courseId]/items/[itemId]/notebook/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/courses/[courseId]/items/[itemId]/notebook",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/notebooks/ui/NotebookWorkspace.tsx",
+      "componentExport": "NotebookWorkspace",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/courses/ai-basics/items/notebook-lab/notebook?lang=en&theme=light",
+      "actualModules": [
+        "NotebookWorkspaceFixture mirrors canonical ActivityFrame",
+        "actual NotebookWorkspace",
+        "actual NotebookViewer"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "Canonical RSC notebook page is not imported by student fixture; ActivityFrame/NotebookWorkspace are direct real UI components",
+        "GET /api/v1/notebooks/session must use existing tests/e2e/student-harness/notebook-ui.check.ts session fixture",
+        "notebook-frame.html is a documented editor stand-in"
+      ],
+      "states": [
+        "ready with explicit notebook/session mock",
+        "unavailable without session mock",
+        "import/download/save/submit need local interceptors",
+        "runtime iframe stand-in"
+      ],
+      "transports": [
+        "Explicit disposable notebook session/upload/save/submit HTTP mocks; no storage writes"
+      ],
+      "evidencePaths": [],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "No live JupyterLite execution, Python runtime or Colab behavior proof",
+        "Core learner main does not dispatch notebook route; generic Item path is NOT notebook evidence",
+        "Pending new visual matrix of real notebook ready/error/recovery/submitted states"
+      ]
+    },
+    {
+      "route": "/app/tasks",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/tasks/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/tasks",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/CanvasLearningLists.tsx",
+      "componentExport": "CanvasTasks",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/tasks?lang=en&theme=light&fixture=dense",
+      "actualModules": [
+        "actual LearnerTasksPage",
+        "CanvasTasks"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data"
+      ],
+      "states": [
+        "all statuses",
+        "unscheduled",
+        "stored late",
+        "empty",
+        "tasks-error"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Final Astra UI browser acceptance pending; service authorization/database/live deployment not proven",
+        "Unique task -> outline -> item -> pinned session identity now passes headless checks; actual click-through browser proof remains scheduled"
+      ]
+    },
+    {
+      "route": "/app/results",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/results/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/results",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/CanvasResultTable.tsx",
+      "componentExport": "CanvasResultTable",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/results?lang=en&theme=light&fixture=dense",
+      "actualModules": [
+        "actual LearnerResultsPage",
+        "CanvasResults",
+        "native InstUI Table/Responsive"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data"
+      ],
+      "states": [
+        "recorded raw score including zero",
+        "sparse/empty",
+        "mixed-error"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Final Astra UI browser acceptance pending; service authorization/database/live deployment not proven"
+      ]
+    },
+    {
+      "route": "/app/calendar",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/calendar/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/calendar",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/CanvasCalendar.tsx",
+      "componentExport": "CanvasCalendar",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/calendar?month=2026-11&lang=en&theme=light&fixture=dense",
+      "actualModules": [
+        "actual LearnerCalendarPage",
+        "CanvasCalendar",
+        "ICT month/agenda"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data"
+      ],
+      "states": [
+        "month/agenda",
+        "course filter",
+        "date navigation",
+        "empty month",
+        "tasks-error"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Final Astra UI browser acceptance pending; service authorization/database/live deployment not proven"
+      ]
+    },
+    {
+      "route": "/app/explore",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/explore/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/explore",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/learner/ExploreBenchView.tsx",
+      "componentExport": "ExploreBenchView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/learner-harness/vite.config.ts",
+      "fixtureUrl": "/app/explore?lang=en&theme=light",
+      "actualModules": [
+        "actual ExplorePage",
+        "ExploreBenchView"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data"
+      ],
+      "states": [
+        "four actual destinations"
+      ],
+      "transports": [
+        "Local fixture reads only; no live backend proof",
+        "Test-only fixture/lang/theme/longName session continuity through unchanged native/Next link URLs; explicit fixture=baseline reset; independent cases use fresh contexts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/explore-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/explore-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/profile",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/profile/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/profile",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/profile/ProfileBenchView.tsx",
+      "componentExport": "ProfileBenchView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/profile?lang=en&theme=light&supportState=dense",
+      "actualModules": [
+        "LearnerProfilePage",
+        "ProfileBenchView",
+        "ProfileSettings",
+        "CalibrationCertificate"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/profile-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/profile-certificates-certificates-en-light-1440.png",
+        "/tmp/academy-support-final-review/profile-certificates-dense-dense-certificates-en-light-1440.png",
+        "/tmp/academy-support-final-review/profile-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/leaderboard",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/leaderboard/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/leaderboard",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/workspace-ui/profile/LeaderboardBoard.tsx",
+      "componentExport": "LeaderboardBoard",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/leaderboard?lang=en&theme=light&supportState=dense",
+      "actualModules": [
+        "LeaderboardPage",
+        "LeaderboardBenchHead",
+        "LeaderboardBoard"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/leaderboard-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/leaderboard-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/resources",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/resources/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/resources",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/learner/ui/ResourceDiscovery.tsx",
+      "componentExport": "ResourceDiscoveryList",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/resources?lang=en&theme=light",
+      "actualModules": [
+        "ResourcesPage",
+        "ResourceDiscoveryList"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/resources-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/resources-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/resources/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/resources/[id]/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/resources/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/learner/ui/ResourceDetail.tsx",
+      "componentExport": "ResourceDetail",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/resources/fixture-resource?lang=en&theme=light",
+      "actualModules": [
+        "ResourceDetailPage",
+        "ResourceDetail"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/resource-detail-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/resource-detail-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/opportunities",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/opportunities/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/opportunities",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/learner/ui/OpportunityDiscovery.tsx",
+      "componentExport": "OpportunityDiscoveryList",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/opportunities?lang=en&theme=light",
+      "actualModules": [
+        "OpportunitiesPage",
+        "OpportunityDiscoveryList"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/opportunities-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/opportunities-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/opportunities/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/opportunities/[id]/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/opportunities/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/learner/ui/OpportunityDetail.tsx",
+      "componentExport": "OpportunityDetail",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/opportunities/fixture-opportunity?lang=en&theme=light",
+      "actualModules": [
+        "OpportunityDetailPage",
+        "OpportunityDetail"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/opportunity-detail-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/opportunity-detail-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/projects",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/projects/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/projects",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/projects/ui/ProjectsBenchView.tsx",
+      "componentExport": "ProjectsBenchView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/projects?lang=en&theme=light",
+      "actualModules": [
+        "BuildPage",
+        "ProjectsBenchView"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/projects-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/projects-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/projects/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/projects/[id]/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/projects/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/projects/ui/ProjectDetailBenchView.tsx",
+      "componentExport": "ProjectDetailBenchView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/projects/fixture-project?lang=en&theme=light",
+      "actualModules": [
+        "BuildDetailPage",
+        "ProjectDetailBenchView"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/project-detail-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/project-detail-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested"
+      ]
+    },
+    {
+      "route": "/app/projects/new",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/projects/new/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/projects/new",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/projects/ui/ProjectProposalForm.tsx",
+      "componentExport": "ProjectProposalForm",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/tests/e2e/student-harness/vite.config.ts",
+      "fixtureUrl": "/app/projects/new?lang=en&theme=light",
+      "actualModules": [
+        "NewProjectPage",
+        "ProjectProposalForm"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "profile/projects/resources/opportunities/ecosystem/me/xp/skills service aliases are student-harness local modules",
+        "support HTTP actions require explicit disposable transport handlers"
+      ],
+      "states": [
+        "supportState=empty|error|dense|pending|no-branch|private|unranked|public",
+        "supportMutation=success|pending|error|retry|conflict|rate-limit",
+        "lang=en|vi; theme=light|dark; explicit baseline reset"
+      ],
+      "transports": [
+        "student-harness canonical UI imports with synthetic service projections",
+        "tests/e2e/support/support-transport.ts and support-review-state.ts stateful local mutations/session fallback; no live backend"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-support-final-review/HANDOFF.md",
+        "/tmp/academy-support-final-review/matrix.json",
+        "/tmp/academy-support-final-review/proposal.json",
+        "/tmp/academy-support-final-review/flows.json",
+        "/tmp/academy-support-final-review/states.json",
+        "/tmp/support-final-tests.log",
+        "/tmp/support-final-lint-closure.log",
+        "/tmp/academy-support-final-review/proposal-baseline-en-light-1440.png",
+        "/tmp/academy-support-final-review/proposal-baseline-en-light-390.png"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Support owner reports192clean main captures and16corrected proposal recaptures;13/13 local browser flows;101focusedtests/lintclean",
+        "Supplemental states:165clean captures completed,10records interrupted_by_slot_release; remaining supplemental matrix incomplete",
+        "All records/mutations synthetic local; no live auth/database writes, upload reserve/blob/finalize, PDFbytes or publicverification destination proof",
+        "Error UI is actual component but does not prove Next SSR/streaming boundary; dirty Back only cancelable Navigation API Chromium behavior tested",
+        "Use corrected proposal.json images; the earlier main matrix proposal captures are superseded"
+      ]
+    },
+    {
+      "route": "/app/[...missing]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/[...missing]/page.tsx",
+      "kind": "canonical",
+      "canonicalRoute": "/app/[...missing]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/app/[...missing]/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual MissingLearnerRoute default calls notFound"
+      ],
+      "stubs": [
+        "Disposable auth/user read; no production login or database access",
+        "next/link and next/navigation browser-history fixtures",
+        "next-intl/server localized fixture reads",
+        "Authorized service return records are deterministic fixture data",
+        "next/navigation.notFound mocked to throwing sentinel in actual-page unit test"
+      ],
+      "states": [
+        "unknown learner URL"
+      ],
+      "transports": [
+        "No browser fallback is accepted as missing-route proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Actual Next HTTP404 response remains a server/release check"
+      ]
+    },
+    {
+      "route": "/home",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/home/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/home/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/learn",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/learn/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/courses",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/learn/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/learn/[courseId]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/learn/[courseId]/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/courses/[courseId]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/learn/[courseId]/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/learn/[courseId]/items/[itemId]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/learn/[courseId]/items/[itemId]/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/courses/[courseId]/items/[itemId]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/learn/[courseId]/items/[itemId]/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/profile",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/profile/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/profile",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/profile/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/leaderboard",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/leaderboard/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/leaderboard",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/leaderboard/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/build",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/build/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/projects",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/build/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/build/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/build/[id]/page.tsx",
+      "kind": "legacy-redirect",
+      "canonicalRoute": "/app/projects/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/(learner)/build/[id]/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": null,
+      "fixtureUrl": null,
+      "actualModules": [
+        "Actual imported Next legacy page default",
+        "routes canonical URL builders"
+      ],
+      "stubs": [
+        "next/navigation.redirect mocked to throwing sentinel"
+      ],
+      "states": [
+        "query preservation incl repeated values",
+        "encoded route segment preservation"
+      ],
+      "transports": [
+        "Actual route default executed in tests/lib/learner-aliases.test.ts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-learner-headless-coverage.log"
+      ],
+      "ownerLane": "learner",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unit route-function proof, not deployed HTTP redirect proof"
+      ]
+    },
+    {
+      "route": "/studio",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/StudioHomeView.tsx",
+      "componentExport": "StudioHomeView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/StudioHomeView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "seeded StudioHomeData"
+      ],
+      "states": [
+        "ready"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-home-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-home-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-home-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-home-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/courses",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/courses/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/courses",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/CoursesView.tsx",
+      "componentExport": "CoursesView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/courses?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/CoursesView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "seeded courses/review-stage rows"
+      ],
+      "states": [
+        "ready",
+        "new-course sheet"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-courses-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-courses-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-courses-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-courses-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/courses/[courseId]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/courses/[courseId]/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/courses/[courseId]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/Workspace.tsx",
+      "componentExport": "Workspace",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/courses/minimal?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/Workspace.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "API mocks supplied by browser specs or local /tmp bridge"
+      ],
+      "states": [
+        "visual",
+        "JSON",
+        "preview",
+        "invalid JSON",
+        "recovery",
+        "conflict",
+        "review-locked",
+        "read-only",
+        "versions"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-courses-minimal-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-courses-minimal-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-courses-minimal-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-courses-minimal-390-vi-light.png",
+        "/tmp/academy-studio-audit/focused-browser.log",
+        "/tmp/academy-studio-audit/scroll-rerun.log",
+        "/tmp/academy-studio-audit/visual-version-rerun.log",
+        "/tmp/academy-studio-audit/visual-scroll-check.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success",
+        "Matrix images precede final bounded nativeTabs sizing patch; unchanged scrolling + longvisual tests validate that patch separately"
+      ]
+    },
+    {
+      "route": "/studio/courses/[courseId]/notebooks/[itemId]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/courses/[courseId]/notebooks/[itemId]/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/courses/[courseId]/notebooks/[itemId]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/notebooks/ui/NotebookWorkspace.tsx",
+      "componentExport": "NotebookWorkspace",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/courses/minimal/notebooks/hello?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/notebooks/ui/NotebookWorkspace.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "local NotebookSession with no template/runtime"
+      ],
+      "states": [
+        "unconfigured",
+        "runtime-unavailable",
+        "service-error"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-courses-minimal-notebooks-hello-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-courses-minimal-notebooks-hello-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-courses-minimal-notebooks-hello-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-courses-minimal-notebooks-hello-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success",
+        "Matrix had a duplicate test-only Notebook configuration H1; removed afterward to match actual NotebookWorkspace-owned header",
+        "Runtime/template/code execution not modeled; unconfigured + runtime-unavailable UI only"
+      ]
+    },
+    {
+      "route": "/studio/bank",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/bank/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/bank",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/content/BankListView.tsx",
+      "componentExport": "BankListView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/bank?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/content/BankListView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "seeded bank rows; server filter execution not reproduced"
+      ],
+      "states": [
+        "ready",
+        "empty"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-bank-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-bank-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-bank-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-bank-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/bank/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/bank/[id]/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/bank/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/BankQuestionEditor.tsx",
+      "componentExport": "BankQuestionEditor",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/bank/pattern-question?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/BankQuestionEditor.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "compiled bilingual question seed; in-memory workflow/version saves"
+      ],
+      "states": [
+        "visual",
+        "JSON",
+        "pending-review",
+        "published-revision",
+        "service-error"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-bank-pattern-question-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-bank-pattern-question-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-bank-pattern-question-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-bank-pattern-question-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success",
+        "Bank matrix outer fixture header was Publishing readiness; corrected afterward to match actual page Untitled fallback and finalQuestion editor copy, so matrix is not final header evidence"
+      ]
+    },
+    {
+      "route": "/studio/library",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/library/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/library",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/admin/components/ContentReviewWorkspace.tsx",
+      "componentExport": "ContentInventory",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/library?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/admin/components/ContentReviewWorkspace.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "seeded mixed content rows/current scope"
+      ],
+      "states": [
+        "ready",
+        "empty",
+        "workflow sheet"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-library-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-library-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-library-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-library-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/resources",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/resources/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/resources",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/content/ContentListView.tsx",
+      "componentExport": "ContentListView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/resources?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/content/ContentListView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "resource list projection"
+      ],
+      "states": [
+        "ready",
+        "empty"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-resources-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-resources-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-resources-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-resources-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/resources/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/resources/[id]/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/resources/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/resources/ui/ResourceEditor.tsx",
+      "componentExport": "ResourceEditor",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/resources/course-guide?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/resources/ui/ResourceEditor.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "schema-validated resource seed; in-memory version acknowledgment"
+      ],
+      "states": [
+        "edit",
+        "new via id=new",
+        "pending-review",
+        "published-revision",
+        "service-error"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-resources-course-guide-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-resources-course-guide-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-resources-course-guide-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-resources-course-guide-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/opportunities",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/opportunities/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/opportunities",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/content/ContentListView.tsx",
+      "componentExport": "ContentListView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/opportunities?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/content/ContentListView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "opportunity list projection"
+      ],
+      "states": [
+        "ready",
+        "empty"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-opportunities-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-opportunities-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-opportunities-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-opportunities-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/opportunities/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/opportunities/[id]/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/opportunities/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/opportunities/ui/OpportunityEditor.tsx",
+      "componentExport": "OpportunityEditor",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/opportunities/research-cohort?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/opportunities/ui/OpportunityEditor.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "schema-validated opportunity seed; in-memory version acknowledgment"
+      ],
+      "states": [
+        "edit",
+        "new via id=new",
+        "pending-review",
+        "published-revision",
+        "service-error"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-opportunities-research-cohort-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-opportunities-research-cohort-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-opportunities-research-cohort-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-opportunities-research-cohort-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/projects",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/projects/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/projects",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/content/ContentListView.tsx",
+      "componentExport": "ContentListView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/projects?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/content/ContentListView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "project list projection"
+      ],
+      "states": [
+        "ready",
+        "empty"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-projects-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-projects-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-projects-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-projects-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/projects/new",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/projects/new/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/projects/new",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/projects/ui/StudioProjectForm.tsx",
+      "componentExport": "StudioProjectForm",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/projects/new?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/projects/ui/StudioProjectForm.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "actual create form, local transport"
+      ],
+      "states": [
+        "empty create",
+        "structured member/output rows"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-projects-new-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-projects-new-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-projects-new-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-projects-new-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/projects/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/projects/[id]/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/projects/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/projects/ui/StudioProjectForm.tsx",
+      "componentExport": "StudioProjectForm",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/projects/climate-dashboard?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/projects/ui/StudioProjectForm.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "seeded members/output links; in-memory revision acknowledgment"
+      ],
+      "states": [
+        "edit",
+        "pending-review",
+        "published-revision",
+        "service-error"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-projects-climate-dashboard-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-projects-climate-dashboard-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-projects-climate-dashboard-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-projects-climate-dashboard-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/media",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/media/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/media",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/content/MediaLibraryView.tsx",
+      "componentExport": "MediaLibraryView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/media?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/content/MediaLibraryView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "existing isolated media fixture transport"
+      ],
+      "states": [
+        "ready",
+        "details",
+        "alt text",
+        "workflow"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-media-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-media-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-media-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-media-390-vi-light.png",
+        "/tmp/academy-studio-audit/media-rerun.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/reviews",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/reviews/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/reviews",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/admin/components/ContentReviewWorkspace.tsx",
+      "componentExport": "ReviewQueue",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/reviews?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/admin/components/ContentReviewWorkspace.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "immutable seeded review snapshots; local decision statuses"
+      ],
+      "states": [
+        "queue",
+        "empty",
+        "preview",
+        "changes",
+        "decision",
+        "publish checklist"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-reviews-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-reviews-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-reviews-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-reviews-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success"
+      ]
+    },
+    {
+      "route": "/studio/mcp",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/mcp/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/mcp",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/studio/ui/McpSetupView.tsx",
+      "componentExport": "McpSetupView",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/mcp?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/studio/ui/McpSetupView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "display-only fixture; no actual MCP connection"
+      ],
+      "states": [
+        "enabled Azure fixture",
+        "unavailable"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-mcp-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-mcp-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-mcp-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-mcp-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success",
+        "Endpoint/configuration states are display fixtures, not real MCP availability or client authorization"
+      ]
+    },
+    {
+      "route": "/studio/connect/authorize",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/connect/authorize/page.tsx",
+      "kind": "render",
+      "canonicalRoute": "/studio/connect/authorize",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/features/oauth-consent/ConsentPanel.tsx",
+      "componentExport": "ConsentPanel",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/playwright.studio.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/connect/authorize?uiv2=1&lang=en&theme=light",
+      "actualModules": [
+        "src/features/oauth-consent/ConsentPanel.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "display-only Azure branch; no consent transaction"
+      ],
+      "states": [
+        "Microsoft informational state"
+      ],
+      "transports": [
+        "Actual owning client components + actual shared StaffWorkspaceShell, isolated fixture data/API; no live backend",
+        "4 actual-module captures; each checks headings/body, page/console errors and document overflow, not HTTP200alone"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-review/matrix-connect-authorize-1440-en-light.png",
+        "/tmp/academy-studio-review/matrix-connect-authorize-1024-vi-dark.png",
+        "/tmp/academy-studio-review/matrix-connect-authorize-768-en-dark.png",
+        "/tmp/academy-studio-review/matrix-connect-authorize-390-vi-light.png"
+      ],
+      "ownerLane": "studio",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Server authorization/admission/loaders and live persistence are not proved",
+        "View matrix is4scenarios (1440ENlight,1024VIdark,768ENdark,390VIlight), not full Cartesian viewport/locale/theme coverage",
+        "Published/review/conflict/action states beyond the listed focused checks are not inferred from screenshot success",
+        "Microsoft informational state only; no consent transaction or authorization-loader proof"
+      ]
+    },
+    {
+      "route": "/studio/analytics",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/analytics/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/reports",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/grading/reports/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/analytics?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/analytics/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/assessments",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/assessments/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/assessments",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/grading/assessments/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/assessments?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/assessments/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/audit",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/audit/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/admin/audit",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/admin/audit/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/audit?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/audit/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/branches",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/branches/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/admin/branches",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/admin/branches/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/branches?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/branches/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/enrollment-migration",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/enrollment-migration/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/admin/enrollment-migration",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/admin/enrollment-migration/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/enrollment-migration?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/enrollment-migration/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/exams",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/exams/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/assessments",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/grading/assessments/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/exams?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/exams/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/grading",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/grading/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/queue",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/grading/queue/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/grading?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/grading/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/grading/[kind]/[id]",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/grading/[kind]/[id]/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/{assignments|exams}/[id]",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/grading/assignments/[id]/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/grading/assignments/fixture-record?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/grading/[kind]/[id]/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target",
+        "valid assignments/exams kinds",
+        "unknown kind rejects"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/submissions",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/submissions/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/queue",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/grading/queue/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/submissions?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/submissions/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/studio/users",
+      "sourceFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/studio/users/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/admin/users",
+      "componentFile": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/src/app/admin/users/page.tsx",
+      "componentExport": "default",
+      "fixtureConfig": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/vitest.config.ts",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/users?uiv2=1&lang=en",
+      "actualModules": [
+        "src/app/studio/users/page.tsx",
+        "src/lib/routes.ts",
+        "src/lib/staff-legacy-redirects.ts"
+      ],
+      "stubs": [
+        "next/navigation redirect and notFound mocked as throwing sentinels"
+      ],
+      "states": [
+        "query preservation",
+        "canonical target"
+      ],
+      "transports": [
+        "12passing tests invoke actual Studio alias pagefunctions with throwing next/navigation sentinels",
+        "1 browser HTTP307contract records from authoritative Vitealias mirror; not source-guess/URL200proof"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-studio-review/matrix.json",
+        "/tmp/academy-studio-contract-tests.log"
+      ],
+      "ownerLane": "studio",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Canonical destination authorization/data admission remains owning Admin/Teaching responsibility",
+        "Both grading assignment/exam kinds and unknown-kind rejection have unitroutefunction coverage; browser samples are bounded"
+      ]
+    },
+    {
+      "route": "/admin",
+      "sourceFile": "src/app/admin/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin",
+      "componentFile": "src/features/admin/ui/AdminOverviewView.tsx",
+      "componentExport": "AdminOverviewView",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/admin/ui/AdminOverviewView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "dense",
+        "sparse",
+        "empty",
+        "error",
+        "read-only",
+        "central",
+        "branch:ans",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/overview-vi-light-1024.png",
+        "/tmp/academy-admin-audit-20261105/overview-vi-light-1440.png",
+        "/tmp/academy-admin-audit-20261105/overview-vi-light-390.png",
+        "/tmp/academy-admin-audit-20261105/overview-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/overview-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json",
+        "/tmp/academy-admin-refined-20261105/final-flows/overview-central-390.png",
+        "/tmp/academy-admin-refined-20261105/final-flows/overview-entered-school-390.png"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/users",
+      "sourceFile": "src/app/admin/users/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/users",
+      "componentFile": "src/features/admin/components/MembersDirectory.tsx",
+      "componentExport": "MembersDirectory",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/users?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/admin/components/MembersDirectory.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx",
+        "src/features/admin/components/AccountControls.tsx",
+        "src/features/canvas/ui/controls.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "dense",
+        "sparse",
+        "empty",
+        "long",
+        "multi-school",
+        "read-only",
+        "failed read",
+        "pending read",
+        "invitation create/revoke/reissue",
+        "Azure account create/retry",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/admin/options",
+        "/api/v1/admin/users",
+        "/api/v1/admin/invitations",
+        "/api/v1/admin/accounts"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/members-vi-light-1024.png",
+        "/tmp/academy-admin-audit-20261105/members-vi-light-1440.png",
+        "/tmp/academy-admin-audit-20261105/members-vi-light-390.png",
+        "/tmp/academy-admin-audit-20261105/members-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/members-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json",
+        "/tmp/academy-admin-refined-20261105/final-flows/invitation-reissued-390.png"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/users/[userId]",
+      "sourceFile": "src/app/admin/users/[userId]/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/users/[userId]",
+      "componentFile": "src/features/admin/components/MemberProfile.tsx",
+      "componentExport": "MemberProfile",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/users/00000000-0000-4000-8000-000000000101?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/admin/components/MemberProfile.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx",
+        "src/features/admin/components/AccountControls.tsx",
+        "src/features/canvas/ui/controls.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "information",
+        "memberships",
+        "learning",
+        "submissions",
+        "history",
+        "empty",
+        "read-only",
+        "Azure active/disabled/deleted/pending",
+        "role/membership mutation",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/admin/users/:userId",
+        "/api/v1/admin/options",
+        "/api/v1/admin/accounts/:userId"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/member-detail-information-1440.png",
+        "/tmp/academy-admin-audit-20261105/member-detail-information-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/profile-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json",
+        "/tmp/academy-admin-refined-20261105/final-flows/account-pending-region-390.png",
+        "/tmp/academy-admin-refined-20261105/final-flows/profile-empty-learning-390.png",
+        "/tmp/academy-admin-refined-20261105/final-flows/profile-empty-results-390.png",
+        "/tmp/academy-admin-refined-20261105/final-flows/profile-empty-results-panel-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-0-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-1-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-2-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-3-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/final-profile/tab-4-vi-light-390.png"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established.",
+        "Current40focused-tab states passed at390/1024, bothlocales/themes; these establish local browser tab reachability only."
+      ]
+    },
+    {
+      "route": "/admin/branches",
+      "sourceFile": "src/app/admin/branches/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/branches",
+      "componentFile": "src/features/admin/components/BranchesManager.tsx",
+      "componentExport": "BranchesManager",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/branches?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/admin/components/BranchesManager.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "dense",
+        "sparse",
+        "empty",
+        "unavailable reports",
+        "read-only",
+        "school create/edit/write failure",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/studio/branches",
+        "/api/v1/studio/branches/:branchId"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/school-new-1440.png",
+        "/tmp/academy-admin-audit-20261105/school-new-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/schools-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json",
+        "/tmp/academy-admin-refined-20261105/final-flows/new-school-after-native-reload-390.png"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/branches/[branchId]",
+      "sourceFile": "src/app/admin/branches/[branchId]/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/branches/[branchId]",
+      "componentFile": "src/app/admin/branches/SchoolDetailView.tsx",
+      "componentExport": "SchoolDetailView",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/branches/ans?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/app/admin/branches/SchoolDetailView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx",
+        "src/features/admin/ui/SchoolMembersTable.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "overview member preview",
+        "recent activity",
+        "members",
+        "staff",
+        "cms",
+        "empty",
+        "unavailable members",
+        "read-only",
+        "enter-school scope action",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/admin/scope"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/school-members-1440.png",
+        "/tmp/academy-admin-audit-20261105/school-members-390.png",
+        "/tmp/academy-admin-audit-20261105/school-new-1440.png",
+        "/tmp/academy-admin-audit-20261105/school-new-390.png",
+        "/tmp/academy-admin-audit-20261105/school-vi-light-1024.png",
+        "/tmp/academy-admin-audit-20261105/school-vi-light-1440.png",
+        "/tmp/academy-admin-audit-20261105/school-vi-light-390.png",
+        "/tmp/academy-admin-audit-20261105/school-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/school-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json",
+        "/tmp/academy-admin-refined-20261105/final-flows/new-school-after-native-reload-390.png"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/roles",
+      "sourceFile": "src/app/admin/roles/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/roles",
+      "componentFile": "src/features/admin/components/RoleManager.tsx",
+      "componentExport": "RoleManager",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/roles?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/admin/components/RoleManager.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "built-in",
+        "custom",
+        "permission view",
+        "create",
+        "edit",
+        "confirmation",
+        "read-only",
+        "write failure",
+        "revision conflict",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/admin/options",
+        "/api/v1/admin/roles",
+        "/api/v1/admin/roles/:roleId"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/role-new-1440.png",
+        "/tmp/academy-admin-audit-20261105/role-new-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/roles-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json",
+        "/tmp/academy-admin-refined-20261105/final-flows/role-reload-failure-retained-390.png",
+        "/tmp/academy-admin-refined-20261105/flows/role-popup-near-bottom-390.png"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/mcp",
+      "sourceFile": "src/app/admin/mcp/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/mcp",
+      "componentFile": "src/features/admin/components/McpBlockView.tsx",
+      "componentExport": "McpBlockView",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/mcp?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/admin/components/McpBlockView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "UUID validation",
+        "available",
+        "blocked",
+        "reason",
+        "confirmation",
+        "retry",
+        "forbidden school scope",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/admin/mcp/blocks"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-audit-20261105/mcp-block-confirm-1440.png",
+        "/tmp/academy-admin-audit-20261105/mcp-block-confirm-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/mcp-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/audit",
+      "sourceFile": "src/app/admin/audit/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/audit",
+      "componentFile": "src/app/admin/audit/AuditView.tsx",
+      "componentExport": "AuditView",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/audit?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/app/admin/audit/AuditView.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "dense",
+        "filtered",
+        "empty",
+        "actor filter",
+        "page navigation",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/audit-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established."
+      ]
+    },
+    {
+      "route": "/admin/enrollment-migration",
+      "sourceFile": "src/app/admin/enrollment-migration/page.tsx",
+      "kind": "screen",
+      "canonicalRoute": "/admin/enrollment-migration",
+      "componentFile": "src/features/enrollment/EnrollmentMigrationPanel.tsx",
+      "componentExport": "EnrollmentMigrationPanel",
+      "fixtureConfig": "tests/e2e/admin-harness/vite.config.ts (ACADEMY_FIXTURE_BACKEND=azure for actual account controls)",
+      "fixtureUrl": "http://127.0.0.1:4286/admin/enrollment-migration?uiv2=1&lang=vi&theme=light&scenario=dense",
+      "actualModules": [
+        "src/features/enrollment/EnrollmentMigrationPanel.tsx",
+        "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+        "src/features/canvas/ui/CanvasProvider.tsx"
+      ],
+      "stubs": [
+        "Server-page authentication/data reads replaced by explicitly authorized synthetic fixture props; production UI component itself is rendered.",
+        "Typed in-memory browser API transport; no live identity/database/email.",
+        "Fixture permission checks exercise client handling only; production Auth/RLS/RPC invariants are covered separately and are not established by this mock."
+      ],
+      "states": [
+        "course selection",
+        "empty courses",
+        "pending migration",
+        "success with skipped learner",
+        "repeat result",
+        "failed mutation",
+        "publisher-only permission",
+        "schema-versioned synthetic session continuity; reset=1 current-backend/scenario only"
+      ],
+      "transports": [
+        "/api/v1/studio/courses/:courseId/enrollments/migrate"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-light-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-dark-1440.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-light-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-dark-1024.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-light-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-dark-768.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-en-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-light-390.png",
+        "/tmp/academy-admin-refined-20261105/matrix/migration-vi-dark-390.png",
+        "/tmp/academy-admin-refined-20261105/evidence-index.json"
+      ],
+      "ownerLane": "admin",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Lead-owned Graphify refresh/check, full verify:local and final integration review remain pending.",
+        "Initial144matrix captures precede final scope/count/session updates; current targeted7navigation/state checks and7canonicalbrowserflows passed per evidence-index, not a new144case full rerun.",
+        "All mutation/browser evidence is local synthetic fixture evidence; no live Azure identity, production database or deployment correctness is established.",
+        "No real enrollment or version was migrated; typed local migration responses only."
+      ]
+    },
+    {
+      "route": "/admin/analytics",
+      "sourceFile": "src/app/admin/analytics/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/reports",
+      "componentFile": "src/features/reporting/ui/LearningReports.tsx",
+      "componentExport": "LearningReports",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/reports?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/grading/reports/page.tsx",
+        "src/features/reporting/ui/LearningReports.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/submissions",
+      "sourceFile": "src/app/admin/submissions/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/queue",
+      "componentFile": "src/features/instructor-grading/GradingOperations.tsx",
+      "componentExport": "GradingOperations",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/queue?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/grading/queue/page.tsx",
+        "src/features/instructor-grading/GradingOperations.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/exams",
+      "sourceFile": "src/app/admin/exams/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/grading/assessments",
+      "componentFile": "src/features/instructor-grading/AssessmentsWorkspace.tsx",
+      "componentExport": "AssessmentsWorkspace",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/assessments?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/grading/assessments/page.tsx",
+        "src/features/instructor-grading/AssessmentsWorkspace.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/cms",
+      "sourceFile": "src/app/admin/cms/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/library",
+      "componentFile": "src/features/admin/components/ContentReviewWorkspace.tsx",
+      "componentExport": "ContentInventory",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/library?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/studio/library/page.tsx",
+        "src/features/admin/components/ContentReviewWorkspace.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/reviews",
+      "sourceFile": "src/app/admin/reviews/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/reviews",
+      "componentFile": "src/features/admin/components/ContentReviewWorkspace.tsx",
+      "componentExport": "ReviewQueue",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/reviews?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/studio/reviews/page.tsx",
+        "src/features/admin/components/ContentReviewWorkspace.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/bank",
+      "sourceFile": "src/app/admin/bank/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/bank",
+      "componentFile": "src/features/studio/ui/content/BankListView.tsx",
+      "componentExport": "BankListView",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/bank?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/studio/bank/page.tsx",
+        "src/features/studio/ui/content/BankListView.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/bank/[id]",
+      "sourceFile": "src/app/admin/bank/[id]/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/bank/[id]",
+      "componentFile": "src/features/studio/ui/BankQuestionEditor.tsx",
+      "componentExport": "BankQuestionEditor",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": null,
+      "actualModules": [
+        "src/app/studio/bank/[id]/page.tsx",
+        "src/features/studio/ui/BankQuestionEditor.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "encoded identifier"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/resources",
+      "sourceFile": "src/app/admin/resources/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/resources",
+      "componentFile": "src/features/studio/ui/content/ContentListView.tsx",
+      "componentExport": "ContentListView",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/resources?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/studio/resources/page.tsx",
+        "src/features/studio/ui/content/ContentListView.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/resources/[id]",
+      "sourceFile": "src/app/admin/resources/[id]/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/resources/[id]",
+      "componentFile": "src/features/resources/ui/ResourceEditor.tsx",
+      "componentExport": "ResourceEditor",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": null,
+      "actualModules": [
+        "src/app/studio/resources/[id]/page.tsx",
+        "src/features/resources/ui/ResourceEditor.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "encoded identifier"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/opportunities",
+      "sourceFile": "src/app/admin/opportunities/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/opportunities",
+      "componentFile": "src/features/studio/ui/content/ContentListView.tsx",
+      "componentExport": "ContentListView",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/opportunities?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/studio/opportunities/page.tsx",
+        "src/features/studio/ui/content/ContentListView.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/opportunities/[id]",
+      "sourceFile": "src/app/admin/opportunities/[id]/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/opportunities/[id]",
+      "componentFile": "src/features/opportunities/ui/OpportunityEditor.tsx",
+      "componentExport": "OpportunityEditor",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": null,
+      "actualModules": [
+        "src/app/studio/opportunities/[id]/page.tsx",
+        "src/features/opportunities/ui/OpportunityEditor.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "encoded identifier"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/projects",
+      "sourceFile": "src/app/admin/projects/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/projects",
+      "componentFile": "src/features/studio/ui/content/ContentListView.tsx",
+      "componentExport": "ContentListView",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": "http://127.0.0.1:4284/studio/projects?uiv2=1&lang=vi&theme=light",
+      "actualModules": [
+        "src/app/studio/projects/page.tsx",
+        "src/features/studio/ui/content/ContentListView.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "canonical collection destination"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/admin/projects/[id]",
+      "sourceFile": "src/app/admin/projects/[id]/page.tsx",
+      "kind": "redirect",
+      "canonicalRoute": "/studio/projects/[id]",
+      "componentFile": "src/features/projects/ui/StudioProjectForm.tsx",
+      "componentExport": "StudioProjectForm",
+      "fixtureConfig": "tests/e2e/admin-harness/src/canonical-routes.ts plus canonical target owner fixture",
+      "fixtureUrl": null,
+      "actualModules": [
+        "src/app/studio/projects/[id]/page.tsx",
+        "src/features/projects/ui/StudioProjectForm.tsx"
+      ],
+      "stubs": [
+        "Only next/navigation.redirect mocked in direct production route-function unit contract; query arrays and encoded id asserted.",
+        "Review-only alias navigation goes to actual canonical owner preview; no substitute Admin screen."
+      ],
+      "states": [
+        "redirect with repeated query values",
+        "encoded identifier"
+      ],
+      "transports": [],
+      "evidencePaths": [
+        "tests/lib/admin-aliases.test.ts",
+        "/tmp/academy-admin-unit.log"
+      ],
+      "ownerLane": "admin",
+      "entryType": "redirect",
+      "captureLimitationsAndHistoricalNotes": [
+        "Only actual redirectfunction calls and query/id preservation are established by Admin unit contracts; canonical target runtime evidence belongs to its Studio/Teaching lane."
+      ]
+    },
+    {
+      "route": "/grading",
+      "kind": "overview",
+      "actualModules": [
+        "src/features/grading/ui/GradingHomeView.tsx"
+      ],
+      "stubs": [
+        "GradingHomeFixture overview and scope"
+      ],
+      "states": [
+        "overview populated"
+      ],
+      "transports": [
+        "in-memory props"
+      ],
+      "evidencePaths": [],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "GradingHomeView",
+      "fixtureConfig": "StaffWorkspaceShell via ?uiv2=1",
+      "fixtureUrl": "http://127.0.0.1:4285/grading?uiv2=1&lang=en",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Fixture data is not a live grading overview or authorization proof."
+      ]
+    },
+    {
+      "route": "/grading/assessments",
+      "kind": "assessments and exam release",
+      "actualModules": [
+        "src/features/instructor-grading/AssessmentsWorkspace.tsx",
+        "src/features/instructor-grading/ExamsWorkspace.tsx",
+        "src/features/instructor-grading/TeachingForbidden.tsx"
+      ],
+      "stubs": [
+        "AssessmentsFixture metadata, permissions, attempts and release response"
+      ],
+      "states": [
+        "exam legacy unreleased",
+        "release dialog",
+        "assignment tab",
+        "other school scoped denial",
+        "transport error",
+        "forbidden boundary"
+      ],
+      "transports": [
+        "in-memory intercepted attempts and release"
+      ],
+      "evidencePaths": [],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/assessments/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "AssessmentsWorkspace and ExamsWorkspace",
+      "fixtureConfig": "StaffWorkspaceShell with ?uiv2=1; ?fixture=error or forbidden",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/assessments?uiv2=1&lang=en",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Fixture permissions are props, not server authorization proof; no live release was performed.",
+        "Older screenshots named assessments-1440/390 predate route fixture and show the wrong component; do not use them."
+      ]
+    },
+    {
+      "route": "/grading/queue",
+      "kind": "assignment and exam queue",
+      "actualModules": [
+        "src/features/instructor-grading/GradingOperations.tsx",
+        "src/features/instructor-grading/SubmissionsWorkspace.tsx",
+        "src/features/instructor-grading/ExamsWorkspace.tsx"
+      ],
+      "stubs": [
+        "GradingQueueFixture and in-memory paged rows"
+      ],
+      "states": [
+        "populated assignment queue",
+        "exam tab",
+        "filters",
+        "load more"
+      ],
+      "transports": [
+        "fixture queue response"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-teaching-review/queue-1440.png",
+        "/tmp/academy-teaching-review/queue-390.png"
+      ],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/queue/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "GradingOperations",
+      "fixtureConfig": "StaffWorkspaceShell with ?uiv2=1",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/queue?uiv2=1&lang=en",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Fixture is not a live database or permission test; release action intentionally unavailable from queue."
+      ]
+    },
+    {
+      "route": "/grading/assignments/[id]",
+      "kind": "assignment workbench",
+      "actualModules": [
+        "src/features/instructor-grading/GradingWorkbench.tsx",
+        "src/features/instructor-grading/SubmissionsWorkspace.tsx"
+      ],
+      "stubs": [
+        "GradingFixture pinned source, submission and grade mutation"
+      ],
+      "states": [
+        "unscored",
+        "draft saved",
+        "completed",
+        "busy content",
+        "recorded late"
+      ],
+      "transports": [
+        "in-memory grading detail and grade response"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-teaching-review/workbench-1440.png",
+        "/tmp/academy-teaching-review/workbench-390.png",
+        "/tmp/academy-teaching-review/workbench-draft-1440.png",
+        "/tmp/academy-teaching-review/workbench-completed-1440.png"
+      ],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/assignments/[id]/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "GradingWorkbench assignment",
+      "fixtureConfig": "StaffWorkspaceShell; ?fixture=busy for long text, rubric, code and upload link",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/assignments/fixture-submission?uiv2=1&lang=en&fixture=busy",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Fixture file is a link only; attachment media opening is not proven.",
+        "Production route resolves actor, permission and historical source server-side; fixture bypasses those guards.",
+        "Canonical modern assignment workbench is /grading/assignments/[id]; legacy /studio/grading/[kind]/[id] is a separate compatibility route and is not this fixture."
+      ]
+    },
+    {
+      "route": "/grading/exams/[id]",
+      "kind": "exam workbench",
+      "actualModules": [
+        "src/features/instructor-grading/GradingWorkbench.tsx",
+        "src/features/instructor-grading/ExamsWorkspace.tsx"
+      ],
+      "stubs": [
+        "GradingFixture exam detail and per-question scoring/completion"
+      ],
+      "states": [
+        "manual draft",
+        "completed",
+        "malformed completion",
+        "busy essay/code/upload"
+      ],
+      "transports": [
+        "in-memory exam and grading responses"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-teaching-review/exam-draft-1440.png",
+        "/tmp/academy-teaching-review/exam-completed-1440.png",
+        "/tmp/academy-teaching-review/exam-draft-390.png",
+        "/tmp/academy-teaching-review/exam-completed-390.png"
+      ],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/exams/[id]/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "GradingWorkbench exam",
+      "fixtureConfig": "StaffWorkspaceShell; ?fixture=busy for eight questions; ?completion=malformed for invalid completion",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/exams/fixture-attempt?uiv2=1&lang=en&fixture=busy",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Those captures precede busy fixture; confirm busy states separately.",
+        "Upload link rendering does not prove attachment open.",
+        "Legacy unreleased result release belongs to assessments, not queue completion.",
+        "Canonical modern exam workbench is /grading/exams/[id]; legacy /studio/grading/[kind]/[id] compatibility route is not this fixture."
+      ]
+    },
+    {
+      "route": "/grading/reports",
+      "kind": "learning reports",
+      "actualModules": [
+        "src/features/reporting/ui/ReportPanels.tsx"
+      ],
+      "stubs": [
+        "ReportFixture hardcoded report and scope"
+      ],
+      "states": [
+        "overview populated",
+        "report tabs"
+      ],
+      "transports": [
+        "static report fixture"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-teaching-review/reports-1440.png",
+        "/tmp/academy-teaching-review/reports-390.png"
+      ],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/reports/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "ReportFixture and reporting UI",
+      "fixtureConfig": "StaffWorkspaceShell with ?uiv2=1",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/reports?uiv2=1&lang=en",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Returned period is hardcoded independently of filters; no real filter or source correctness evidence.",
+        "No weighted aggregate grade is inferred."
+      ]
+    },
+    {
+      "route": "/grading/announcements",
+      "kind": "school and course announcements",
+      "actualModules": [
+        "src/features/instructor-grading/AnnouncementsWorkspace.tsx",
+        "src/features/studio/ui/useUnsavedChanges.tsx"
+      ],
+      "stubs": [
+        "TeachingFixture school, course and revisioned announcement"
+      ],
+      "states": [
+        "empty",
+        "draft",
+        "published",
+        "stale conflict",
+        "unsaved guard"
+      ],
+      "transports": [
+        "in-memory revisioned create/edit/publish/archive responses"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-teaching-review/announcement-draft-1440.png",
+        "/tmp/academy-teaching-review/announcement-published-1440.png",
+        "/tmp/academy-teaching-review/announcement-unsaved-before.png",
+        "/tmp/academy-teaching-review/announcement-unsaved-after.png"
+      ],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/announcements/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "AnnouncementsWorkspace",
+      "fixtureConfig": "StaffWorkspaceShell; ?fixture=seeded or stale",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/announcements?uiv2=1&lang=en&fixture=seeded",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Unsaved before/after captures predate guard fix and document earlier bug only.",
+        "Fixture cannot prove backend concurrency or school authorization; those require API/SQL tests."
+      ]
+    },
+    {
+      "route": "/grading/schedule",
+      "kind": "school course-version deadlines",
+      "actualModules": [
+        "src/features/instructor-grading/ScheduleWorkspace.tsx",
+        "src/features/instructor-grading/schedule-time.ts"
+      ],
+      "stubs": [
+        "TeachingFixture options and schedule rows"
+      ],
+      "states": [
+        "empty",
+        "populated",
+        "deadline save",
+        "unsaved guard"
+      ],
+      "transports": [
+        "in-memory options and schedule PUT"
+      ],
+      "evidencePaths": [
+        "/tmp/academy-teaching-review/schedule-1440.png",
+        "/tmp/academy-teaching-review/schedule-390.png",
+        "/tmp/academy-teaching-review/schedule-populated-1440.png",
+        "/tmp/academy-teaching-review/schedule-populated-390.png"
+      ],
+      "ownerLane": "teaching",
+      "sourceFile": "src/app/grading/schedule/page.tsx",
+      "canonicalRoute": true,
+      "componentFile": "ScheduleWorkspace",
+      "fixtureConfig": "StaffWorkspaceShell; ?fixture=busy for two assignments",
+      "fixtureUrl": "http://127.0.0.1:4285/grading/schedule?uiv2=1&lang=en&fixture=busy",
+      "entryType": "render-or-boundary",
+      "captureLimitationsAndHistoricalNotes": [
+        "Fixture bypasses backend school/version checks and does not establish hosted state.",
+        "Timezone/date and snapshot semantics require the independent unit/SQL checks."
+      ]
+    }
+  ]
+}

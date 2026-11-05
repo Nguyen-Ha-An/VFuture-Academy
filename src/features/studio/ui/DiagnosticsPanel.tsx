@@ -4,7 +4,7 @@ import { Check, Clipboard, CircleAlert, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { formatDiagnostic, type Diagnostic, type Range, type ValidationReport } from "@/content-engine/diagnostics";
 
 export function DiagnosticsPanel({ report, locale, onSelect }: {

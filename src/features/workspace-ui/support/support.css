@@ -1,0 +1,42 @@
+.canvas-support-table { min-width: 0; width: 100%; overflow-wrap: anywhere; }
+.canvas-support-table table { width: 100%; }
+.canvas-support-table [aria-current="true"] { background: var(--vf-signal-soft, #eaf4fb); }
+.canvas-support-table .vf-l-row-title { font-family: inherit; font-size: 1rem; line-height: 1.5; font-weight: 600; margin: 0; }
+.canvas-support-table .vf-l-row-link { display: block; color: var(--vf-signal); text-decoration: none; }
+.canvas-support-table .vf-l-row-link:hover { text-decoration: underline; }
+.canvas-support-table .vf-l-row-summary { max-width: 64ch; margin: .4rem 0; line-height: 1.5; }
+.canvas-support-table .vf-l-row-meta { font-family: inherit; font-size: .875rem; line-height: 1.5; text-transform: none; letter-spacing: normal; }
+.canvas-support-table .vf-l-next { white-space: nowrap; font-family: inherit; font-size: .875rem; }
+.canvas-support-profile .vf-profile-identity .vf-card { border: 0; box-shadow: none; padding: 0; margin-top: 1.5rem; }
+.canvas-support-profile .vf-profile-trace { margin-top: .5rem; }
+.canvas-support-profile .vf-meta, .canvas-support-proposal .vf-meta { font-family: inherit; letter-spacing: normal; text-transform: none; }
+.vf-proposal.canvas-support-proposal { gap: 1.75rem; }
+.canvas-support-proposal .vf-proposal-section { border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; padding: 1.5rem 0 0; }
+.canvas-support-proposal .vf-proposal-legend { font-family: inherit; font-size: 1.125rem; font-weight: 600; letter-spacing: normal; text-transform: none; padding: 0 .75rem 0 0; }
+.canvas-support-proposal .vf-proposal-field { min-width: 0; }
+.canvas-support-proposal .vf-proposal-submit { gap: .75rem; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .canvas-support-table .vf-l-row-summary { max-width: none; }
+  .canvas-support-table .vf-lb-name { font-size: 1rem; }
+  .canvas-support-profile .vf-skill { grid-template-columns: minmax(0, 1fr); }
+}
+
+.canvas-support-table .vf-sub { display: block; margin-top: .25rem; }
+
+/* Profile content reads as sections rather than nested panels. */
+.canvas-support-profile .vf-profile-identity { padding-top: 0; }
+.canvas-support-profile .vf-xp-total { border: 0; padding: 0; background: transparent; }
+.canvas-support-profile .vf-cert { box-shadow: none; }
+/* The proposal has one reading column, with separators between its three field groups. */
+.vf-card.vf-proposal-card:has(.canvas-support-proposal) { border: 0; box-shadow: none; padding: 0; background: transparent; }
+.canvas-support-proposal .vf-proposal-section:first-child { border-top: 0; padding-top: 0; }
+.canvas-support-profile .vf-empty { border: 0; background: transparent; padding: .5rem 0; min-height: 0; }
+.canvas-support-profile .vf-empty-title { font-size: 1rem; font-weight: 400; }
+.canvas-support-profile .vf-state-actions { margin-top: .75rem; }
+
+/* Course names need more room than the short project status/skill selections. */
+@media (min-width: 1100px) {
+  .vf-projects-bench .vf-l-filter-form[data-cols="3"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(17rem, 1.2fr) auto;
+  }
+}

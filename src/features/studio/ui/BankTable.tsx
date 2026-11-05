@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button } from '@/features/canvas/ui';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CanvasTable } from '@/features/canvas/ui';
+import { StudioResponsiveTable } from './StudioResponsiveTable';
+import { authoringFieldLabel } from '@/features/studio/authoring-labels';
 import { QUESTION_TYPES } from '@/content-engine/schema/questions';
 import { DataCard, DataPagination, EmptyState, StatusBadge } from '@/features/staff-ui/components';
 
@@ -50,6 +52,8 @@ function pageHref(filters: BankTableFilters, page: number): string {
  */
 export function BankTable({ questions, filters }: { questions: BankListItem[]; filters: BankTableFilters }) {
   const t = useTranslations('studio.bank');
+  const locale = useLocale() === 'vi' ? 'vi' : 'en';
+  const questionTypeLabel = (value: string) => (QUESTION_TYPES as readonly string[]).includes(value) ? authoringFieldLabel(value, locale) : value;
   const review = useTranslations('studioReview.bank');
   const content = useTranslations('staffUi.studio.content.bank');
   const page = filters.page ?? 1;
@@ -61,7 +65,7 @@ export function BankTable({ questions, filters }: { questions: BankListItem[]; f
         <label className="text-sm font-medium leading-normal" htmlFor="bank-type-filter">{t('filters.type')}</label>
         <NativeSelect id="bank-type-filter" name="type" defaultValue={filters.types?.[0] ?? 'all'} wrapperClassName="w-full">
           <NativeSelectOption value="all">{t('filters.allTypes')}</NativeSelectOption>
-          {QUESTION_TYPES.map((value) => <NativeSelectOption key={value} value={value}>{value}</NativeSelectOption>)}
+          {QUESTION_TYPES.map((value) => <NativeSelectOption key={value} value={value}>{questionTypeLabel(value)}</NativeSelectOption>)}
         </NativeSelect>
       </div>
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -102,35 +106,35 @@ export function BankTable({ questions, filters }: { questions: BankListItem[]; f
       {questions.length === 0 ? (
         <div className="p-6"><EmptyState title={t('emptyFiltered')} /></div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead scope="col">{t('table.id')}</TableHead>
-              <TableHead scope="col" className="hidden md:table-cell">{t('table.type')}</TableHead>
-              <TableHead scope="col" className="hidden lg:table-cell">{t('table.tags')}</TableHead>
-              <TableHead scope="col" className="hidden sm:table-cell">{t('table.difficulty')}</TableHead>
-              <TableHead scope="col">{t('table.status')}</TableHead>
-              <TableHead scope="col" className="text-right">{t('table.usages')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <StudioResponsiveTable caption={content('title')}>
+          <CanvasTable.Head>
+            <CanvasTable.Row className="hover:bg-transparent">
+              <CanvasTable.ColHeader id="bank-column-1" scope="col">{t('table.id')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="bank-column-2" scope="col" className="">{t('table.type')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="bank-column-3" scope="col" className="">{t('table.tags')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="bank-column-4" scope="col" className="">{t('table.difficulty')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="bank-column-5" scope="col">{t('table.status')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader textAlign="end" id="bank-column-6" scope="col" className="text-right">{t('table.usages')}</CanvasTable.ColHeader>
+            </CanvasTable.Row>
+          </CanvasTable.Head>
+          <CanvasTable.Body>
             {questions.map((question) => {
               const knownStatus = (STATUSES as readonly string[]).includes(question.status);
               const knownDifficulty = question.difficulty !== null && (DIFFICULTIES as readonly string[]).includes(question.difficulty);
               return (
-                <TableRow key={question.id} className="align-top">
-                  <TableCell className="py-3">
+                <CanvasTable.Row key={question.id} className="align-top">
+                  <CanvasTable.Cell className="py-3">
                     <Link href={`/studio/bank/${encodeURIComponent(question.id)}`} className="break-all font-medium leading-normal underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{question.id}</Link>
-                  </TableCell>
-                  <TableCell className="hidden py-3 text-muted-foreground md:table-cell">{question.type}</TableCell>
-                  <TableCell className="hidden py-3 lg:table-cell">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell className="py-3 text-muted-foreground">{questionTypeLabel(question.type)}</CanvasTable.Cell>
+                  <CanvasTable.Cell className="py-3">
                     <div className="flex max-w-xs flex-wrap gap-1">{question.tags.map((value) => <Badge key={value} variant="neutral">{value}</Badge>)}</div>
-                  </TableCell>
-                  <TableCell className="hidden py-3 text-muted-foreground sm:table-cell">{knownDifficulty ? t(`difficulty.${question.difficulty}`) : '—'}</TableCell>
-                  <TableCell className="py-3">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell className="py-3 text-muted-foreground">{knownDifficulty ? t(`difficulty.${question.difficulty}`) : '—'}</CanvasTable.Cell>
+                  <CanvasTable.Cell className="py-3">
                     <StatusBadge kind="content" value={question.status} label={knownStatus ? t(`status.${question.status}`) : question.status} />
-                  </TableCell>
-                  <TableCell className="py-3 text-right">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell textAlign="end" className="py-3 text-right">
                     <span className="tabular-nums">{question.usages.length}</span>
                     {question.usages.length > 0 ? (
                       <ul className="mt-1 flex flex-col gap-1 text-xs leading-normal">
@@ -143,12 +147,12 @@ export function BankTable({ questions, filters }: { questions: BankListItem[]; f
                         ))}
                       </ul>
                     ) : null}
-                  </TableCell>
-                </TableRow>
+                  </CanvasTable.Cell>
+                </CanvasTable.Row>
               );
             })}
-          </TableBody>
-        </Table>
+          </CanvasTable.Body>
+        </StudioResponsiveTable>
       )}
     </DataCard>
   );

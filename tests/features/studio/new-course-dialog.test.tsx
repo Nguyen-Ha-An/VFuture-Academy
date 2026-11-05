@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
@@ -73,9 +73,11 @@ describe('NewCourseDialog', () => {
     await user.click(screen.getByRole('button', { name: 'New course' }));
     await user.type(screen.getByLabelText('Course ID'), 'course');
     await user.type(screen.getByLabelText('Vietnamese title'), 'Khoá học');
-    await user.selectOptions(screen.getByLabelText('Default language'), 'en');
+    await user.click(screen.getByRole('combobox', { name: 'Default language' }));
+    await user.click(screen.getByRole('option', { name: en.studio.courses.language.en }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Enter a title in the selected default language');
+    expect(screen.getByLabelText('English title')).toBeInvalid();
+    expect(screen.getByLabelText('English title')).toHaveAccessibleDescription(en.studio.courses.defaultTitleRequired);
     expect(screen.getByRole('button', { name: 'Create course' })).toBeDisabled();
   });
 
@@ -89,9 +91,12 @@ describe('NewCourseDialog', () => {
     await user.type(screen.getByLabelText('Course ID'), 'future-thinking');
     await user.type(screen.getByLabelText('Vietnamese title'), 'Tư duy tương lai');
     await user.type(screen.getByLabelText('English title'), 'Future thinking');
-    await user.selectOptions(screen.getByLabelText('Default language'), 'en');
-    await user.selectOptions(screen.getByLabelText('Pathway'), 'research-innovation');
-    await user.selectOptions(screen.getByLabelText('Level'), 'specialization');
+    await user.click(screen.getByRole('combobox', { name: 'Default language' }));
+    await user.click(screen.getByRole('option', { name: en.studio.courses.language.en }));
+    await user.click(screen.getByRole('combobox', { name: 'Pathway' }));
+    await user.click(screen.getByRole('option', { name: en.studio.courses.pathwayOptions['research-innovation'] }));
+    await user.click(screen.getByRole('combobox', { name: 'Level' }));
+    await user.click(screen.getByRole('option', { name: en.studio.courses.levelOptions.specialization }));
     await user.click(screen.getByRole('button', { name: 'Create course' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -108,4 +113,32 @@ describe('NewCourseDialog', () => {
     }));
     expect(mocks.push).toHaveBeenCalledWith('/studio/courses/future-thinking');
   });
+  it('locks pending fields and retains the full create form after a duplicate response before a successful retry', async () => {
+    const fetchMock = vi.mocked(fetch);
+    let respond!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { respond = resolve; }));
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: { course: { id: 'retry-course' }, draft: {} } }), { status: 200 }));
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole('button', { name: 'New course' }));
+    await user.type(screen.getByLabelText('Course ID'), 'existing-course');
+    await user.type(screen.getByLabelText('Vietnamese title'), 'Khóa học được giữ lại');
+    await user.type(screen.getByLabelText('English title'), 'Retained course');
+    await user.click(screen.getByRole('button', { name: 'Create course' }));
+    expect(screen.getByLabelText('Course ID')).toBeDisabled();
+    expect(screen.getByLabelText('English title')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await act(async () => respond(new Response(JSON.stringify({ error: { code: 'COURSE_ID_CONFLICT', message: 'Course ID already exists.' } }), { status: 409 })));
+    await waitFor(() => expect(screen.getByLabelText('Course ID')).toBeEnabled());
+    expect(screen.getByText('Course ID already exists.')).toBeVisible();
+    expect(screen.getByLabelText('Course ID')).toHaveValue('existing-course');
+    expect(screen.getByLabelText('Vietnamese title')).toHaveValue('Khóa học được giữ lại');
+    expect(screen.getByLabelText('English title')).toHaveValue('Retained course');
+    await user.clear(screen.getByLabelText('Course ID'));
+    await user.type(screen.getByLabelText('Course ID'), 'retry-course');
+    await user.click(screen.getByRole('button', { name: 'Create course' }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/studio/courses/retry-course'));
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/studio/courses', expect.objectContaining({ method: 'POST', body: JSON.stringify({ id: 'retry-course', title: { vi: 'Khóa học được giữ lại', en: 'Retained course' }, languages: ['vi', 'en'], defaultLanguage: 'vi', pathway: 'core-future-skills', level: 'foundation' }) }));
+  });
+
 });

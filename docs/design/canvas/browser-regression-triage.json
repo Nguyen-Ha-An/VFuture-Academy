@@ -1,0 +1,1423 @@
+{
+  "scope": "Individual dispositions for all74 failures from the frozen browser collection. Real product defects were fixed, and obsolete DOM/composition expectations were adapted while preserving permissions, data, keyboard/focus, errors, dirty state, timers, exact scores, dates and navigation. This evidence does not replace the fresh ordered repository verifier or establish live integration.",
+  "initialCases": 74,
+  "resolvedCases": 74,
+  "groups": {
+    "studio_shared": 18,
+    "admin_workflow": 1,
+    "learner_student": 55
+  },
+  "currentBrowserEvidence": {
+    "studio": {
+      "passed": 93,
+      "failed": 0,
+      "log": "/tmp/academy-studio-full-post-repair.log"
+    },
+    "admin": {
+      "passed": 67,
+      "failed": 0,
+      "existingAzureOnlySkip": 1,
+      "log": "/tmp/academy-admin-full-post-repair.log"
+    },
+    "learner": {
+      "passed": 24,
+      "failed": 0,
+      "authoritativeLeadSession": 10408
+    },
+    "student": {
+      "collectionPassed": 71,
+      "collectionFailed": 2,
+      "subsequentFocusedPassed": 2,
+      "subsequentFocusedFailed": 0,
+      "note": "Not represented as a single clean73-case run. The fresh ordered verifier must rerun the entire config.",
+      "collectionLog": "/tmp/academy-browser-full-student-closure.log",
+      "focusedLog": "/tmp/academy-student-profile-gutter-closure.log"
+    },
+    "richNext": {
+      "passed": 4,
+      "failed": 0,
+      "log": "/tmp/academy-rich-instui-async-boundary-final.log",
+      "note": "Actual page.goto SSR response IDs are compared with client hook values; all console/page/hydration guards retained."
+    },
+    "runtime": {
+      "passed": 10,
+      "failed": 0,
+      "log": "/tmp/academy-browser-runtime-full-collection.log"
+    }
+  },
+  "productAndFixtureRepairs": [
+    {
+      "behavior": "Responsive exact-width return preserves form state and schedules native listener renewal outside ResizeObserver delivery, with stale generation and unmount cancellation.",
+      "source": "src/features/canvas/ui/CanvasResponsive.tsx",
+      "evidence": "Six shared regressions; actual Admin768 resize zero runtime errors; rich Next844→390→844 passes."
+    },
+    {
+      "behavior": "Permanent desktop staff navigation does not steal initial focus; firstTab skip link and mobile containment remain intact.",
+      "source": "src/features/staff-ui/ui/StaffWorkspaceShell.tsx",
+      "evidence": "62 unit cases and exact Studio/Admin focus contracts passed."
+    },
+    {
+      "behavior": "Version restore closes only after canonical application; refusal, late locks, close/reopen and course identity changes reject stale operations without overwriting work. Legacy inline assignment data remains preserved after canonical splitting.",
+      "source": "src/features/studio/ui/VersionsDrawer.tsx",
+      "evidence": "12 lifecycle regressions; exact full manifest/items/baseVersionId browser assertions; independent source review."
+    },
+    {
+      "behavior": "Mobile selected global navigation retains an AA foreground/background pair across normal, hover and focus states.",
+      "source": "src/features/canvas/canvas.css",
+      "evidence": "Actual computed navigation contrast and full mobile Axe checks retained."
+    },
+    {
+      "behavior": "Light Canvas code uses the intended white surface in the same important CSS layer as the transparent utility. Syntax colors and dark behavior are preserved.",
+      "source": "src/app/globals.css",
+      "evidence": "88 actual syntax leaf tokens across EN/VI×390/1440×light/dark all pass AA; minimum4.574:1 light and5.064:1 dark; eight full Axe scans have zero violations; /tmp/academy-student-postfix-dom-diagnostic.json."
+    },
+    {
+      "behavior": "Drawer closure at the desktop breakpoint focuses the intended visible header, heading or main fallback in explicit priority order, preserving dismiss and navigation behavior.",
+      "source": "src/components/ShellPrimitives.tsx",
+      "evidence": "31 focused unit cases; actual resize active element is H1; all four phone account cases pass."
+    },
+    {
+      "behavior": "The project course filter receives enough desktop width without reducing type size or44px control height; narrow layouts remain responsive.",
+      "source": "src/features/workspace-ui/support/support.css",
+      "evidence": "51 focused units; actual1100/1280/768/390 selected text fits, no overflow, desktop single row; /tmp/academy-project-postfix-widths.json."
+    },
+    {
+      "behavior": "Local fixtures import production fonts and retain one React root during HMR. Native tables, semantic brand links, display:contents ordering and padded identity panels are measured through their actual rendered structure.",
+      "source": "tests/e2e/student-harness/student.spec.ts",
+      "evidence": "No forced clicks, skipped assertions or timeout weakening; exact score, source, validation, keyboard, native signout and query-state checks retained."
+    }
+  ],
+  "cases": [
+    {
+      "id": "B001",
+      "config": "studio",
+      "originalTitle": "saves an assignment draft, then completes it and shows the score and feedback",
+      "currentTitle": "saves an assignment draft, then completes it and shows the score and feedback",
+      "classification": "intentional disclosure, range-aware label and completed read-only composition",
+      "preservedBehaviorAndChanges": "Open actual summary with ordinary click; exact bounded score name; preserve private draft, invalid completion disabled, saved feedback, server completion and immutability; assert feedback/score/save/complete controls absent after completion.",
+      "investigationEvidence": "Collected snapshot shows Pinned instructions summary closed, rubric input Quality (0 to 4 points); source completed branch renders canonical result and removes editors/actions.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B002",
+      "config": "studio",
+      "originalTitle": "mobile grading separates prompt from scoring and completes without page overflow",
+      "currentTitle": "mobile grading separates prompt from scoring and completes without page overflow",
+      "classification": "intentional disclosure, range-aware label and completed read-only composition",
+      "preservedBehaviorAndChanges": "Open actual summary with ordinary click; exact bounded score name; preserve private draft, invalid completion disabled, saved feedback, server completion and immutability; assert feedback/score/save/complete controls absent after completion.",
+      "investigationEvidence": "Collected snapshot shows Pinned instructions summary closed, rubric input Quality (0 to 4 points); source completed branch renders canonical result and removes editors/actions.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B003",
+      "config": "studio",
+      "originalTitle": "studio page interactions › exam workbench: question navigation and manual scoring fit at 320px",
+      "currentTitle": "studio page interactions › exam workbench: question navigation and manual scoring fit at 320px",
+      "classification": "intentional responsive native Questions select",
+      "preservedBehaviorAndChanges": "Normal combobox/Essay option click; assert selected Essay and saved2in bounded manual score; preserve Grading panel/completion reachability/no horizontal overflow.",
+      "investigationEvidence": "320px snapshot exposes combobox Questions and hides desktop question buttons; source manual points renderLabel is Points / 4.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B004",
+      "config": "studio",
+      "originalTitle": "studio courses (/studio/courses) › 1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names",
+      "currentTitle": "studio courses (/studio/courses) › 1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names",
+      "classification": "obsolete navigation test contracts repaired; actual fresh desktop focus regression fixed by Astra Shell owner and original bodyfocus+firstTabskiplink now pass",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B005",
+      "config": "studio",
+      "originalTitle": "studio courses (/studio/courses) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "currentTitle": "studio courses (/studio/courses) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B006",
+      "config": "studio",
+      "originalTitle": "studio courses (/studio/courses) › screenshots",
+      "currentTitle": "studio courses (/studio/courses) › screenshots",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B007",
+      "config": "studio",
+      "originalTitle": "studio editor (/studio/courses/minimal) › the course editor forces the icon rail and fits the viewport without page scroll",
+      "currentTitle": "studio editor (/studio/courses/minimal) › the course editor forces the icon rail and fits the viewport without page scroll",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B008",
+      "config": "studio",
+      "originalTitle": "studio editor (/studio/courses/minimal) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "currentTitle": "studio editor (/studio/courses/minimal) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B009",
+      "config": "studio",
+      "originalTitle": "studio editor (/studio/courses/minimal) › axe (light): no serious or critical findings with the user menu and ⌘K open",
+      "currentTitle": "studio editor (/studio/courses/minimal) › axe (light): no serious or critical findings with the user menu and ⌘K open",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B010",
+      "config": "studio",
+      "originalTitle": "studio editor (/studio/courses/minimal) › axe (dark): no serious or critical findings with the user menu and ⌘K open",
+      "currentTitle": "studio editor (/studio/courses/minimal) › axe (dark): no serious or critical findings with the user menu and ⌘K open",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B011",
+      "config": "studio",
+      "originalTitle": "studio editor (/studio/courses/minimal) › screenshots",
+      "currentTitle": "studio editor (/studio/courses/minimal) › screenshots",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B012",
+      "config": "studio",
+      "originalTitle": "studio queue (/grading/queue) › 1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names",
+      "currentTitle": "studio queue (/grading/queue) › 1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B013",
+      "config": "studio",
+      "originalTitle": "studio queue (/grading/queue) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "currentTitle": "studio queue (/grading/queue) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B014",
+      "config": "studio",
+      "originalTitle": "studio queue (/grading/queue) › screenshots",
+      "currentTitle": "studio queue (/grading/queue) › screenshots",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B015",
+      "config": "studio",
+      "originalTitle": "published versions restore through the canonical Workspace snapshot",
+      "currentTitle": "published versions restore through the canonical Workspace snapshot",
+      "classification": "fixture missing required mutable workflow transport; product refusal reporting repaired by Astra owner separately",
+      "preservedBehaviorAndChanges": "Required mutable workflow/compiled preview/canonical autosave transport; wait unique actualcourseTitle by accessible name and source value to be enabled. Restore legacy inline source, compare whole normalized rawmanifest, fullPUTmanifest+intro+hello+baseVersionUUID and originalhello instructions/submission; preserve readerdownloads/noRestore.",
+      "investigationEvidence": "Collected snapshot workflow GET returned Vite HTML with JSON parse error; canonical lock disables visual inputs and refuses replace; owner boolean apply fix keeps restore drawer open on refused/cancelled/locked application.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Studio config: 93 passed, exit 0; /tmp/academy-studio-full-post-repair.log."
+    },
+    {
+      "id": "B016",
+      "config": "admin",
+      "originalTitle": "admin users (/admin/users) › 1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names",
+      "currentTitle": "admin users (/admin/users) › 1440: the rail starts expanded, collapses on toggle, survives a reload and keeps link names",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Admin config: 67 passed, one existing Azure-only case skipped under legacy fixtures, exit 0. This case passed; /tmp/academy-admin-full-post-repair.log."
+    },
+    {
+      "id": "B017",
+      "config": "admin",
+      "originalTitle": "admin users (/admin/users) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "currentTitle": "admin users (/admin/users) › dark: follows the OS with theme=system and pins with theme=dark, portalled menus included",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Admin config: 67 passed, one existing Azure-only case skipped under legacy fixtures, exit 0. This case passed; /tmp/academy-admin-full-post-repair.log."
+    },
+    {
+      "id": "B018",
+      "config": "admin",
+      "originalTitle": "admin users (/admin/users) › screenshots",
+      "currentTitle": "admin users (/admin/users) › screenshots",
+      "classification": "intentional native staff navigation architecture; obsolete DOM/geometry/account access expectations",
+      "preservedBehaviorAndChanges": "Use actual context/global geometry and accessible current workspace; retain body initialfocus and add firstTab skiplink;57px alignedheaders; cookiefalse across reload; open context then verify original contextual destination/name/aria-current; open context before account/theme/axe; capture collapsed labelled global navigation rather than removed iconrailtooltip. Mobile Escape/focus/reflow/axe assertions unchanged.",
+      "investigationEvidence": "Source native contextual navigation208px fully closes;84px labelled global SideNavBar persists. Old sidebar-container256/48 and sidebar-inner nodes removed. Account resides inside context, absent when editor forces it closed.",
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Admin config: 67 passed, one existing Azure-only case skipped under legacy fixtures, exit 0. This case passed; /tmp/academy-admin-full-post-repair.log."
+    },
+    {
+      "id": "B019",
+      "config": "admin",
+      "originalTitle": "member directory opens the matching profile and retains the scoped learning data",
+      "currentTitle": "member directory opens the matching profile and retains the scoped learning data",
+      "classification": "stale exact fixture display-title assertion and obsolete fixture-shell target; observed matching member/learning record was present",
+      "preservedBehaviorAndChanges": [
+        "Imported existing withQuery helper without editing it; test uses uiv2=1, vi/light, branch:ans, dense and a fixed1440x900 desktop viewport.",
+        "Asserted actual vf-staff/vf-canvas shell, exact memberUUID101 href and resulting URL, exact Nguyễn Minh Anh heading, active profile status.",
+        "Asserted the component-generated member GET requests use branch:ans before issuing any additional fixture read.",
+        "Targeted the real learning row by exact full bilingual rowheader, then asserted exact3/8 cell and active learning state; no partial/substr title relaxation.",
+        "Asserted independently known member account/membership status, permitted readLearning, withheld readSubmissions, pinned course/version/branch/progress and absence of submissions in a typed local contract read."
+      ],
+      "investigationEvidence": {
+        "readOnlyTriage": "/tmp/academy-admin-current-browser-triage.json",
+        "initialCollectionLog": "/tmp/academy-browser-admin-full-collection.log",
+        "initialErrorContext": "/Users/an/.codex/worktrees/academy-canvas-redesign/VFuture-Academy/test-results-admin/workflows-member-directory-4900e-ns-the-scoped-learning-data-chromium/error-context.md",
+        "observedRow": "Python cơ bản / Python foundations;3/8;Đang học;matchedUUID101",
+        "currentSourceFile": "tests/e2e/admin-harness/workflows.spec.ts",
+        "productOrTransportChanges": false
+      },
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact Admin config: 67 passed, one existing Azure-only case skipped under legacy fixtures, exit 0. This case passed; /tmp/academy-admin-full-post-repair.log."
+    },
+    {
+      "id": "B020",
+      "config": "learner",
+      "originalTitle": "Canvas course tabs, real results and calendar en light",
+      "currentTitle": "Canvas course tabs, real results and calendar en light",
+      "classification": "obsolete_removed_resume_wrapper_selector_with_masked_native_table_name",
+      "preservedBehaviorAndChanges": [
+        "Resume intent selector no longer depends on removed giant-card wrapper; actual link destination checked.",
+        "Preserve allsix realLEFTcoursehrefs,currentselection,optionalstatus/tasklinks; add actualtaskclick→AssignmentRenderer fields/disabledemptySubmit.",
+        "Rawrecordedscore query scopedtosamerecordrow supports native stacked localizedcolumnlabels; recordeddate/nofake75% andoverflowretained.",
+        "Calendar09:00Z→16:00ICT,actualagendaeventdestination/mobileAXE/fullglobaldrawerflow kept."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-learner-full-collection.log",
+        "/tmp/academy-learner-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact learner config: 24 passed, exit 0 (lead session10408)."
+    },
+    {
+      "id": "B021",
+      "config": "learner",
+      "originalTitle": "Canvas course tabs, real results and calendar en dark",
+      "currentTitle": "Canvas course tabs, real results and calendar en dark",
+      "classification": "obsolete_removed_resume_wrapper_selector_with_masked_native_table_name",
+      "preservedBehaviorAndChanges": [
+        "Resume intent selector no longer depends on removed giant-card wrapper; actual link destination checked.",
+        "Preserve allsix realLEFTcoursehrefs,currentselection,optionalstatus/tasklinks; add actualtaskclick→AssignmentRenderer fields/disabledemptySubmit.",
+        "Rawrecordedscore query scopedtosamerecordrow supports native stacked localizedcolumnlabels; recordeddate/nofake75% andoverflowretained.",
+        "Calendar09:00Z→16:00ICT,actualagendaeventdestination/mobileAXE/fullglobaldrawerflow kept."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-learner-full-collection.log",
+        "/tmp/academy-learner-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact learner config: 24 passed, exit 0 (lead session10408)."
+    },
+    {
+      "id": "B022",
+      "config": "learner",
+      "originalTitle": "Canvas course tabs, real results and calendar vi light",
+      "currentTitle": "Canvas course tabs, real results and calendar vi light",
+      "classification": "obsolete_removed_resume_wrapper_selector_with_masked_native_table_name",
+      "preservedBehaviorAndChanges": [
+        "Resume intent selector no longer depends on removed giant-card wrapper; actual link destination checked.",
+        "Preserve allsix realLEFTcoursehrefs,currentselection,optionalstatus/tasklinks; add actualtaskclick→AssignmentRenderer fields/disabledemptySubmit.",
+        "Rawrecordedscore query scopedtosamerecordrow supports native stacked localizedcolumnlabels; recordeddate/nofake75% andoverflowretained.",
+        "Calendar09:00Z→16:00ICT,actualagendaeventdestination/mobileAXE/fullglobaldrawerflow kept."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-learner-full-collection.log",
+        "/tmp/academy-learner-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact learner config: 24 passed, exit 0 (lead session10408)."
+    },
+    {
+      "id": "B023",
+      "config": "learner",
+      "originalTitle": "Canvas course tabs, real results and calendar vi dark",
+      "currentTitle": "Canvas course tabs, real results and calendar vi dark",
+      "classification": "obsolete_removed_resume_wrapper_selector_with_masked_native_table_name",
+      "preservedBehaviorAndChanges": [
+        "Resume intent selector no longer depends on removed giant-card wrapper; actual link destination checked.",
+        "Preserve allsix realLEFTcoursehrefs,currentselection,optionalstatus/tasklinks; add actualtaskclick→AssignmentRenderer fields/disabledemptySubmit.",
+        "Rawrecordedscore query scopedtosamerecordrow supports native stacked localizedcolumnlabels; recordeddate/nofake75% andoverflowretained.",
+        "Calendar09:00Z→16:00ICT,actualagendaeventdestination/mobileAXE/fullglobaldrawerflow kept."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-learner-full-collection.log",
+        "/tmp/academy-learner-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Exact learner config: 24 passed, exit 0 (lead session10408)."
+    },
+    {
+      "id": "B024",
+      "config": "student",
+      "originalTitle": "en light 390 › command menu shortcut, geometry and axe",
+      "currentTitle": "en light 390 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-390-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-390-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B025",
+      "config": "student",
+      "originalTitle": "en light 390 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "en light 390 › account menu or drawer geometry focus and native signout",
+      "classification": "mixed_real_selected_navigation_contrast_and_obsolete_breakpoint",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor.",
+        "Keep axe color-contrast rule and add actual selected-link aria-current plus computed contrast>=4.5 default/hover/focus; AstraShell must fix light mobile selected fg#08666a/bg#064f55 ratio1.38."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-390-accou-cb65b-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-390-accou-cb65b-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B026",
+      "config": "student",
+      "originalTitle": "en light 390 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "en light 390 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-390-real--ed68a--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-390-real--ed68a--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B027",
+      "config": "student",
+      "originalTitle": "en light 768 › real pages geometry and axe",
+      "currentTitle": "en light 768 › real pages geometry and axe",
+      "classification": "real_shiki_keyword_color_contrast",
+      "preservedBehaviorAndChanges": [
+        "Do not weaken or exclude axe color-contrast; preserve real pages/breadcrumbs/hash/overflow checks.",
+        "Gate actual lesson-blocks highlight with [data-code-block] .shiki and document.fonts.ready before axe; prior ENlight390pass may have captured unhighlighted fallback.",
+        "AstraCore restores compatible light github-light background/token contrast; dark unchanged."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-real-pages-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-real-pages-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B028",
+      "config": "student",
+      "originalTitle": "en light 768 › command menu shortcut, geometry and axe",
+      "currentTitle": "en light 768 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B029",
+      "config": "student",
+      "originalTitle": "en light 768 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "en light 768 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-accou-67391-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-accou-67391-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B030",
+      "config": "student",
+      "originalTitle": "en light 768 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "en light 768 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-real--cb70b--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-768-real--cb70b--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B031",
+      "config": "student",
+      "originalTitle": "en light 1440 › real pages geometry and axe",
+      "currentTitle": "en light 1440 › real pages geometry and axe",
+      "classification": "real_shiki_keyword_color_contrast",
+      "preservedBehaviorAndChanges": [
+        "Do not weaken or exclude axe color-contrast; preserve real pages/breadcrumbs/hash/overflow checks.",
+        "Gate actual lesson-blocks highlight with [data-code-block] .shiki and document.fonts.ready before axe; prior ENlight390pass may have captured unhighlighted fallback.",
+        "AstraCore restores compatible light github-light background/token contrast; dark unchanged."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-real-pages-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-real-pages-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B032",
+      "config": "student",
+      "originalTitle": "en light 1440 › command menu shortcut, geometry and axe",
+      "currentTitle": "en light 1440 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B033",
+      "config": "student",
+      "originalTitle": "en light 1440 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "en light 1440 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-acco-97199-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-acco-97199-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B034",
+      "config": "student",
+      "originalTitle": "en light 1440 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "en light 1440 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-real-fe6ec--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-light-1440-real-fe6ec--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B035",
+      "config": "student",
+      "originalTitle": "en dark 390 › command menu shortcut, geometry and axe",
+      "currentTitle": "en dark 390 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-390-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-390-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B036",
+      "config": "student",
+      "originalTitle": "en dark 390 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "en dark 390 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_760_drawer_breakpoint",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-390-accoun-85faf-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-390-accoun-85faf-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B037",
+      "config": "student",
+      "originalTitle": "en dark 390 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "en dark 390 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-390-real-o-7fd61--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-390-real-o-7fd61--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B038",
+      "config": "student",
+      "originalTitle": "en dark 768 › command menu shortcut, geometry and axe",
+      "currentTitle": "en dark 768 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-768-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-768-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B039",
+      "config": "student",
+      "originalTitle": "en dark 768 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "en dark 768 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-768-accoun-7a5bb-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-768-accoun-7a5bb-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B040",
+      "config": "student",
+      "originalTitle": "en dark 768 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "en dark 768 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-768-real-o-0a7b8--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-768-real-o-0a7b8--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B041",
+      "config": "student",
+      "originalTitle": "en dark 1440 › command menu shortcut, geometry and axe",
+      "currentTitle": "en dark 1440 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-1440-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-1440-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B042",
+      "config": "student",
+      "originalTitle": "en dark 1440 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "en dark 1440 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-1440-accou-44e14-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-1440-accou-44e14-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B043",
+      "config": "student",
+      "originalTitle": "en dark 1440 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "en dark 1440 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-1440-real--0db8c--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-en-dark-1440-real--0db8c--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B044",
+      "config": "student",
+      "originalTitle": "vi light 390 › real pages geometry and axe",
+      "currentTitle": "vi light 390 › real pages geometry and axe",
+      "classification": "real_shiki_keyword_color_contrast",
+      "preservedBehaviorAndChanges": [
+        "Do not weaken or exclude axe color-contrast; preserve real pages/breadcrumbs/hash/overflow checks.",
+        "Gate actual lesson-blocks highlight with [data-code-block] .shiki and document.fonts.ready before axe; prior ENlight390pass may have captured unhighlighted fallback.",
+        "AstraCore restores compatible light github-light background/token contrast; dark unchanged."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-real-pages-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-real-pages-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B045",
+      "config": "student",
+      "originalTitle": "vi light 390 › command menu shortcut, geometry and axe",
+      "currentTitle": "vi light 390 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B046",
+      "config": "student",
+      "originalTitle": "vi light 390 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "vi light 390 › account menu or drawer geometry focus and native signout",
+      "classification": "mixed_real_selected_navigation_contrast_and_obsolete_breakpoint",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor.",
+        "Keep axe color-contrast rule and add actual selected-link aria-current plus computed contrast>=4.5 default/hover/focus; AstraShell must fix light mobile selected fg#08666a/bg#064f55 ratio1.38."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-accou-35616-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-accou-35616-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B047",
+      "config": "student",
+      "originalTitle": "vi light 390 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "vi light 390 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-real--79e06--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-390-real--79e06--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B048",
+      "config": "student",
+      "originalTitle": "vi light 768 › real pages geometry and axe",
+      "currentTitle": "vi light 768 › real pages geometry and axe",
+      "classification": "real_shiki_keyword_color_contrast",
+      "preservedBehaviorAndChanges": [
+        "Do not weaken or exclude axe color-contrast; preserve real pages/breadcrumbs/hash/overflow checks.",
+        "Gate actual lesson-blocks highlight with [data-code-block] .shiki and document.fonts.ready before axe; prior ENlight390pass may have captured unhighlighted fallback.",
+        "AstraCore restores compatible light github-light background/token contrast; dark unchanged."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-real-pages-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-real-pages-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B049",
+      "config": "student",
+      "originalTitle": "vi light 768 › command menu shortcut, geometry and axe",
+      "currentTitle": "vi light 768 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B050",
+      "config": "student",
+      "originalTitle": "vi light 768 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "vi light 768 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-accou-6b873-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-accou-6b873-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B051",
+      "config": "student",
+      "originalTitle": "vi light 768 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "vi light 768 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-real--3ccb9--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-768-real--3ccb9--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B052",
+      "config": "student",
+      "originalTitle": "vi light 1440 › real pages geometry and axe",
+      "currentTitle": "vi light 1440 › real pages geometry and axe",
+      "classification": "real_shiki_keyword_color_contrast",
+      "preservedBehaviorAndChanges": [
+        "Do not weaken or exclude axe color-contrast; preserve real pages/breadcrumbs/hash/overflow checks.",
+        "Gate actual lesson-blocks highlight with [data-code-block] .shiki and document.fonts.ready before axe; prior ENlight390pass may have captured unhighlighted fallback.",
+        "AstraCore restores compatible light github-light background/token contrast; dark unchanged."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-real-pages-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-real-pages-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B053",
+      "config": "student",
+      "originalTitle": "vi light 1440 › command menu shortcut, geometry and axe",
+      "currentTitle": "vi light 1440 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B054",
+      "config": "student",
+      "originalTitle": "vi light 1440 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "vi light 1440 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-acco-377d3-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-acco-377d3-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B055",
+      "config": "student",
+      "originalTitle": "vi light 1440 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "vi light 1440 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-real-4b84a--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-light-1440-real-4b84a--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B056",
+      "config": "student",
+      "originalTitle": "vi dark 390 › command menu shortcut, geometry and axe",
+      "currentTitle": "vi dark 390 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-390-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-390-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B057",
+      "config": "student",
+      "originalTitle": "vi dark 390 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "vi dark 390 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_760_drawer_breakpoint",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-390-accoun-683f9-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-390-accoun-683f9-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B058",
+      "config": "student",
+      "originalTitle": "vi dark 390 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "vi dark 390 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-390-real-o-6e7ce--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-390-real-o-6e7ce--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B059",
+      "config": "student",
+      "originalTitle": "vi dark 768 › command menu shortcut, geometry and axe",
+      "currentTitle": "vi dark 768 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-768-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-768-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B060",
+      "config": "student",
+      "originalTitle": "vi dark 768 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "vi dark 768 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-768-accoun-09bef-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-768-accoun-09bef-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B061",
+      "config": "student",
+      "originalTitle": "vi dark 768 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "vi dark 768 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-768-real-o-8b47d--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-768-real-o-8b47d--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B062",
+      "config": "student",
+      "originalTitle": "vi dark 1440 › command menu shortcut, geometry and axe",
+      "currentTitle": "vi dark 1440 › command menu shortcut, geometry and axe",
+      "classification": "obsolete_bench_header_search_selector",
+      "preservedBehaviorAndChanges": [
+        "Use actual Canvas header search button/aria-keyshortcuts rather than nonexistent vf-bench-right.",
+        "Retain Meta/Ctrl+K open/close, focus/return, >10 options, >=44px targets, viewport bounds, filtering, reduced-motion and full axe.",
+        "Wait actual production fonts before geometry/axe; replay all locale/theme/width variants."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-1440-command-menu-shortcut-geometry-and-axe-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-1440-command-menu-shortcut-geometry-and-axe-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B063",
+      "config": "student",
+      "originalTitle": "vi dark 1440 › account menu or drawer geometry focus and native signout",
+      "currentTitle": "vi dark 1440 › account menu or drawer geometry focus and native signout",
+      "classification": "obsolete_bench_navigation_and_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Use real global rail/header account landmarks; desktop breakpoint768 from AppShell closeAt48rem.",
+        "This geometry stress case explicitly requests longName=1; ordinary theme tests use normalAvery identity.",
+        "Retain target sizing, stacked row geometry/language/theme checks, hash focus twice, close/focus return, native form-associated POST signout and signed-out marker.",
+        "At breakpoint close assert main h1 focus (actual controller fallback), not a removed header nav anchor."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-1440-accou-99437-ry-focus-and-native-signout-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-1440-accou-99437-ry-focus-and-native-signout-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B064",
+      "config": "student",
+      "originalTitle": "vi dark 1440 › real outline and quiz preserves answer on check failure then retries",
+      "currentTitle": "vi dark 1440 › real outline and quiz preserves answer on check failure then retries",
+      "classification": "obsolete_global_single_dialog_trigger_assumption",
+      "preservedBehaviorAndChanges": [
+        "Scope unique outline trigger assertion to actual Activity nav; global Canvas search/mobile menu remain present.",
+        "Keep actual FocusOutline open/close/focus, quiz check failure preserving selected answer, retry, exact local checks2/answeryes and axe.",
+        "Label layer correctly: actual FocusBar/FocusOutline/QuizRenderer in student FocusPage, not canonical ItemPlayer/Assignment/Exam."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-1440-real--ef42a--check-failure-then-retries-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-vi-dark-1440-real--ef42a--check-failure-then-retries-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B065",
+      "config": "student",
+      "originalTitle": "refined learner theme state › desktop account menu reflects the theme selected before reopening",
+      "currentTitle": "refined learner theme state › desktop account menu reflects the theme selected before reopening",
+      "classification": "obsolete_implicit_long_name_fixture",
+      "preservedBehaviorAndChanges": [
+        "Select normal default accountAvery Nguyen in this non-stress theme-state case; keep explicit longName=1 geometry coverage separately.",
+        "Preserve Dark selection, live surface update, close/reopen and aria-checked state."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-refined-learner-th-c2195-e-selected-before-reopening-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-refined-learner-th-c2195-e-selected-before-reopening-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B066",
+      "config": "student",
+      "originalTitle": "refined learner theme state › account menu portal reads the learner tokens in both themes",
+      "currentTitle": "refined learner theme state › account menu portal reads the learner tokens in both themes",
+      "classification": "obsolete_name_and_old_bench_token_values",
+      "preservedBehaviorAndChanges": [
+        "Use actual normal account trigger; compare portalled menu to resolved root popover/radius tokens, not old hard-coded8px/#172125.",
+        "Retain portal outside vf-workspace, real theme switch/reopen and native colors."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-refined-learner-th-28a15-arner-tokens-in-both-themes-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-refined-learner-th-28a15-arner-tokens-in-both-themes-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B067",
+      "config": "student",
+      "originalTitle": "shared left edge › brand, crumbs and h1 align at 1440",
+      "currentTitle": "shared left edge › content gutters and global rail stay coherent at 1440",
+      "classification": "obsolete_brand_and_content_share_absolute_edge",
+      "preservedBehaviorAndChanges": [
+        "Assert title/crumb/content gutters relative to actual global rail width and main padding; brand remains within rail, not aligned to content.",
+        "Retain cross-route content alignment, no overflow, frame within available viewport, actual detail aside bounds/gap; do not blindly replace40with124."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-brand-crumbs-and-h1-align-at-1440-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-brand-crumbs-and-h1-align-at-1440-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Profile identity panel inset checked against actual computed border/padding; both 1440/768 targeted cases passed, exit 0; /tmp/academy-student-profile-gutter-closure.log."
+    },
+    {
+      "id": "B068",
+      "config": "student",
+      "originalTitle": "shared left edge › brand, crumbs and h1 align at 768",
+      "currentTitle": "shared left edge › content gutters and global rail stay coherent at 768",
+      "classification": "obsolete_brand_and_content_share_absolute_edge",
+      "preservedBehaviorAndChanges": [
+        "Assert title/crumb/content gutters relative to actual global rail width and main padding; brand remains within rail, not aligned to content.",
+        "Retain cross-route content alignment, no overflow, frame within available viewport, actual detail aside bounds/gap; do not blindly replace40with124."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-brand-crumbs-and-h1-align-at-768-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-brand-crumbs-and-h1-align-at-768-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Profile identity panel inset checked against actual computed border/padding; both 1440/768 targeted cases passed, exit 0; /tmp/academy-student-profile-gutter-closure.log."
+    },
+    {
+      "id": "B069",
+      "config": "student",
+      "originalTitle": "shared left edge › learner tokens resolve on the surface element light",
+      "currentTitle": "shared left edge › learner tokens resolve on the surface element light",
+      "classification": "obsolete_bench_radius_and_dark_signal_constants",
+      "preservedBehaviorAndChanges": [
+        "Preserve root/surface token equality and input foreground vs ink.",
+        "Assert current declared Canvas palette08666a/72d5d7 and Canvas radius4; separate native InstUI submit control from legacy Clear link rather than pretending vf-btn is actual native button."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-l-8386e-n-the-surface-element-light-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-l-8386e-n-the-surface-element-light-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B070",
+      "config": "student",
+      "originalTitle": "shared left edge › learner tokens resolve on the surface element dark",
+      "currentTitle": "shared left edge › learner tokens resolve on the surface element dark",
+      "classification": "obsolete_bench_radius_and_dark_signal_constants",
+      "preservedBehaviorAndChanges": [
+        "Preserve root/surface token equality and input foreground vs ink.",
+        "Assert current declared Canvas palette08666a/72d5d7 and Canvas radius4; separate native InstUI submit control from legacy Clear link rather than pretending vf-btn is actual native button."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-l-9b012-on-the-surface-element-dark-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-l-9b012-on-the-surface-element-dark-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B071",
+      "config": "student",
+      "originalTitle": "shared left edge › dashboard frame and readout at 1440",
+      "currentTitle": "shared left edge › task-first dashboard main and sidebar at 1440",
+      "classification": "obsolete_trace_resume_readout_structure",
+      "preservedBehaviorAndChanges": [
+        "Use actual task-first dashboard main/sidebar/compactresume; check header/primary content aligned to rail-relative gutter.",
+        "At1440 actual270px sidebar+30gap; at1024 sidebar follows main and widthmatches per current max1199 responsive composition.",
+        "Use real tasks-error state for fallback alignment instead of injected fake vf-l-fault div; preserve actual status/counter unknown semantics."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-dashboard-frame-and-readout-at-1440-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-dashboard-frame-and-readout-at-1440-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B072",
+      "config": "student",
+      "originalTitle": "shared left edge › dashboard frame and readout at 1024",
+      "currentTitle": "shared left edge › task-first dashboard main and sidebar at 1024",
+      "classification": "obsolete_trace_resume_readout_structure",
+      "preservedBehaviorAndChanges": [
+        "Use actual task-first dashboard main/sidebar/compactresume; check header/primary content aligned to rail-relative gutter.",
+        "At1440 actual270px sidebar+30gap; at1024 sidebar follows main and widthmatches per current max1199 responsive composition.",
+        "Use real tasks-error state for fallback alignment instead of injected fake vf-l-fault div; preserve actual status/counter unknown semantics."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-dashboard-frame-and-readout-at-1024-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-shared-left-edge-dashboard-frame-and-readout-at-1024-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B073",
+      "config": "student",
+      "originalTitle": "directory filter geometry › vi /app/projects at 1280: fields and actions share one row",
+      "currentTitle": "directory filter geometry › vi /app/projects at 1280: fields and actions share one row",
+      "classification": "unresolved_fractional_native_select_text_measurement",
+      "preservedBehaviorAndChanges": [
+        "Attach raw text width, raw room, client/bounding widths, padding/border and selected label plus font state; keep current clipping assertion until measured.",
+        "Original ceil(text)=215 and floor(room)=214 can produce a1px false boundary; screenshot visibly shows completeworld label, but no raw floats were captured.",
+        "No blanket+1 allowance or source width change until replay establishes true clipping vs conservative arrow/rounding heuristic."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-directory-filter-g-42d4f-s-and-actions-share-one-row-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-directory-filter-g-42d4f-s-and-actions-share-one-row-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    },
+    {
+      "id": "B074",
+      "config": "student",
+      "originalTitle": "directory filter geometry › stacked rows never leave the lead alone on a line at 375",
+      "currentTitle": "directory filter geometry › stacked rows never leave the lead alone on a line at 375",
+      "classification": "obsolete_course_table_expectation_after_semantic_card_layout",
+      "preservedBehaviorAndChanges": [
+        "For catalog Learning/Discover assert actual semantic course list/card title, meta, open destination and bounds; do not require nonexistent vf-l-dir-table rows.",
+        "For Projects retain existing stacked table lead/title geometry and no-orphan checks; preserve both actual component families."
+      ],
+      "investigationEvidence": [
+        "/tmp/academy-browser-student-full-collection.log",
+        "tests/e2e/student-harness/artifacts/results/student-directory-filter-g-3829b-lead-alone-on-a-line-at-375-chromium/error-context.md",
+        "tests/e2e/student-harness/artifacts/results/student-directory-filter-g-3829b-lead-alone-on-a-line-at-375-chromium/test-failed-1.png",
+        "/tmp/academy-student-current-browser-triage.json"
+      ],
+      "status": "resolved in bounded browser evidence; fresh ordered repository verifier required",
+      "confirmation": "Passed in exact Student config collection (71 passed; two separate profile inset assertions subsequently repaired and passed). Full ordered verifier reruns all73 cases; /tmp/academy-browser-full-student-closure.log."
+    }
+  ],
+  "frameworkBoundaryRegression": {
+    "finding": "A cold Next15 development async proof-page boundary introduced a different React ancestor ID path before all production providers. Native Tabs, Radix and plain form IDs inherited it; manual IDs/provider counter overrides were not used.",
+    "unchangedProductionExperiment": "Local Next production build/start of the original async page: cold Studio/learner plus warm repeats had matching root/native hook IDs and zero errors; /tmp/academy-next-id-production-diagnostic.json.",
+    "fixtureRepair": "Synchronous proof Page returns an explicit server Suspense boundary around its async query reader. Actual server content/styles/native framework remain rendered. Cold/warm dev root/native IDs match; /tmp/academy-next-suspense-diagnostic.json. Production providers/layouts were unchanged.",
+    "regression": "Full4-case rich Next proof passes with exact navigation-response SSR/client ID equality and zero runtime/hydration errors. This does not establish deployed-server behavior."
+  }
+}

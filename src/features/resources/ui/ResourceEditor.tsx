@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { StructuredContentEditor } from "@/features/studio/ui/VisualEditor";
 import { SectionCard } from "@/features/staff-ui/components";
 import { ContentWorkflowPanel } from "@/features/content-review/ContentWorkflowPanel";
 import { ContentSaveIndicator } from "@/features/content-review/ContentSaveIndicator";
@@ -106,7 +107,7 @@ export function ResourceEditor({
   const scope = doc?.branchScope ?? { scope: "global" as const };
 
   const patch = (change: (value: Record<string, unknown>) => void) => {
-    if (!raw) return;
+    if (!raw || workflowLocked || currentText.current !== text || parseJsonDocument(text, itemRef(fixedId)).errors.length) return;
     const next = structuredClone(raw);
     change(next);
     setText(JSON.stringify(next, null, 2));
@@ -286,9 +287,9 @@ export function ResourceEditor({
     : null;
   const fieldLabel = "flex min-w-0 flex-col gap-1.5 text-sm font-medium leading-normal";
   return (
-    <div className="flex flex-col gap-6">
+    <div className="canvas-page flex flex-col gap-6">
       {/* The one save indicator for this editor, above every section. */}
-      <div className="rounded-lg border border-border bg-card px-4 py-3">
+      <div className="canvas-toolbar px-4 py-3">
         <ContentSaveIndicator
           state={saveState}
           valid={valid}
@@ -342,6 +343,9 @@ export function ResourceEditor({
                 ))}
               </NativeSelect>
             </label>
+          </SectionCard>
+          <SectionCard title={sections("content")} columns={1}>
+            {doc && !parseJsonDocument(text, itemRef(fixedId)).errors.length ? <StructuredContentEditor value={doc.body} locale={locale} defaultLanguage={doc.defaultLanguage ?? locale} disabled={disabled} label={sections("content")} onChange={body => patch(next => { next.body = body; })} /> : <p role="status" className="text-sm text-muted-foreground">{t("fixJson")}</p>}
           </SectionCard>
           <SectionCard title={sections("audience")}>
             {(["tags", "skills"] as const).map((key) => (
@@ -525,6 +529,8 @@ export function ResourceEditor({
               );
             })}
           </SectionCard>
+
+          <details className="rounded-md border border-border"><summary className="cursor-pointer px-5 py-4 text-sm font-medium">{t("advanced")}</summary>
           <SectionCard
             title={t("advanced")}
             columns={1}
@@ -555,6 +561,7 @@ export function ResourceEditor({
               </ul>
             ) : null}
           </SectionCard>
+          </details>
           <div role="status" aria-live="polite" className="text-sm leading-normal text-muted-foreground">
             {message}
           </div>
@@ -577,10 +584,11 @@ export function ResourceEditor({
               getExpectedRevision={() => updatedAt.current}
               onLockChange={setWorkflowLocked}
               refreshKey={saveState.revision ?? undefined}
-              className="rounded-lg border border-border bg-card p-6"
+              className="canvas-panel p-4 sm:p-6"
             />
           ) : null}
-          <aside aria-label={t("previewTitle")} className="rounded-lg border border-border bg-card p-6">
+          <aside aria-label={t("previewTitle")} className="canvas-panel p-4 sm:p-6">
+            <h2 className="mb-4 text-sm font-semibold leading-normal">{t("previewTitle")}</h2>
             {previewBody ? (
               <StaticRichContent content={previewBody} />
             ) : (

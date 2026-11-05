@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render as renderUI, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProfileSettings } from '@/features/profile/ui/ProfileSettings';
+import { CanvasProvider } from '@/features/canvas/ui';
+import type { ReactNode } from 'react';
 import { PublicProfileView } from '@/features/profile/ui/PublicProfileView';
 import en from '@/messages/en.json';
+
+const render = (ui: ReactNode) => renderUI(<CanvasProvider theme="light">{ui}</CanvasProvider>);
 
 afterEach(() => {
   cleanup();
@@ -53,7 +57,7 @@ describe('profile UI', () => {
     expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(2);
   });
 
-  it('renders the public profile settings as one card with vf-label labels and vf-btn buttons', () => {
+  it('keeps one settings card and native validation when rendering InstUI controls', () => {
     const { container } = render(
       <NextIntlClientProvider locale="en" messages={en}>
         <ProfileSettings initial={{ handle: 'future_builder', displayName: 'Future Builder', profilePublic: true }} />
@@ -63,9 +67,9 @@ describe('profile UI', () => {
     const card = screen.getByRole('region', { name: 'Public profile settings' });
     expect(card).toHaveClass('vf-card');
     expect(container.querySelector('.vf-card .vf-card')).toBeNull();
-    expect(screen.getByText('Public handle')).toHaveClass('vf-label');
-    for (const button of screen.getAllByRole('button', { name: 'Save' })) expect(button).toHaveClass('vf-btn', 'vf-btn-primary');
-    expect(container.querySelector('[class*="rounded-md"]')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Public handle' })).toBeRequired();
+    expect(screen.getByRole('textbox', { name: 'Public handle' })).toHaveAttribute('pattern', '[a-z0-9][a-z0-9_-]{2,31}');
+    for (const button of screen.getAllByRole('button', { name: 'Save' })) expect(button).toHaveAttribute('type', 'submit');
   });
 
   it('confirms a saved handle with a Notice and broadcasts it to the profile head', async () => {
@@ -79,6 +83,7 @@ describe('profile UI', () => {
       </NextIntlClientProvider>,
     );
 
+    await user.type(screen.getByRole('textbox', { name: 'Public handle' }), '_new');
     await user.click(screen.getAllByRole('button', { name: 'Save' })[0]);
 
     const notice = (await screen.findByText('Saved.')).closest('.vf-notice');
@@ -103,6 +108,7 @@ describe('profile UI', () => {
       </NextIntlClientProvider>,
     );
 
+    await user.type(screen.getByRole('textbox', { name: 'Public handle' }), '_new');
     await user.click(screen.getAllByRole('button', { name: 'Save' })[0]);
 
     const notice = (await screen.findByText(message)).closest('.vf-notice');

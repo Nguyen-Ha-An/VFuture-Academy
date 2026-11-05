@@ -1,17 +1,18 @@
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import './learner-routes.css';
+import { useLocale, useTranslations } from 'next-intl';
 import { PATHWAYS } from '@/content-engine/schema/course';
 import type { CatalogFilters } from '@/features/catalog/service';
 import { routes } from '@/lib/routes';
 import { filterStateKey } from '@/lib/search-params';
 import { coursePartLabel } from '../format';
+import { canvasCopy } from './canvas-copy';
 import { BenchState } from '../ui/BenchState';
 import { PageHeader } from '../ui/PageHeader';
 import { EmptyBench, StateTag } from '../ui/primitives';
 import { Segmented } from '../ui/Segmented';
 import { catalogFilterChips, type ChipTranslate } from './directory/chips';
 import { DirectoryPage } from './directory/DirectoryPage';
-import { DirectoryTable, type DirectoryRow } from './directory/DirectoryTable';
 import { FilterLink, type FilterField } from './directory/FilterBar';
 
 const filterOptions = [
@@ -24,6 +25,7 @@ const filterOptions = [
 export type CatalogBenchCourse = {
   id: string;
   title: string;
+  summary?: string;
   level: string;
   difficulty: string;
   pathway: string;
@@ -42,37 +44,22 @@ function CatalogTable({ courses, listContext, caption }: { courses: CatalogBench
   const t = useTranslations('learner.catalog');
   const bench = useTranslations('bench.learner.catalog');
   const enums = useTranslations('learner.enums');
-  const showDepends = courses.some(course => course.unmetPrerequisites?.length);
-  const rows = courses.map((course): DirectoryRow => {
+  const copy = canvasCopy(useLocale());
+  return <div className="canvas-catalog-grid" role="list" aria-label={caption}>{courses.map(course => {
     const completed = course.enrollment?.status === 'completed';
     const languages = course.languages.filter((language): language is 'vi' | 'en' => language === 'vi' || language === 'en').map(language => language.toUpperCase()).join('/');
-    return {
-      id: course.id,
-      lead: coursePartLabel(course),
-      title: course.title,
-      meta: [
+    const meta = [
         enums(`level.${course.level}` as 'level.foundation'),
         enums(`difficulty.${course.difficulty}` as 'difficulty.beginner'),
         course.estimatedMinutes ? t('minutes', { count: course.estimatedMinutes }) : null,
         languages || null,
-      ].filter((entry): entry is string => Boolean(entry)),
-      extra: course.unmetPrerequisites?.length
-        ? <StateTag tone="pending">{bench('needs', { parts: course.unmetPrerequisites.join(', ') })}</StateTag>
-        : undefined,
-      status: {
-        tone: course.enrollment && !completed ? 'signal' : 'neutral',
-        label: completed ? t('completed') : course.enrollment ? t('enrolled') : t('notEnrolled'),
-      },
-      href: routes.learner.course(course.id, listContext),
-      cta: bench('open'),
-      ctaLabel: t('openCourse', { title: course.title }),
-    };
-  });
-  return <DirectoryTable
-    caption={caption}
-    columns={{ lead: bench('columns.part'), title: bench('columns.course'), extra: showDepends ? bench('columns.dependsOn') : undefined, status: bench('columns.status'), cta: bench('columns.next') }}
-    rows={rows}
-  />;
+      ].filter((entry): entry is string => Boolean(entry));
+    return <article key={course.id} role="listitem" className="canvas-panel canvas-course-card" data-pathway={course.pathway}><div className="canvas-course-color" aria-hidden="true">{coursePartLabel(course)}</div><div className="canvas-course-body">
+      <h3><Link href={routes.learner.course(course.id, listContext)}>{course.title}</Link></h3><p className="canvas-muted">{meta.join(' · ')}</p>{course.summary && <p className="canvas-catalog-summary">{course.summary}</p>}
+      <div className="canvas-catalog-status"><StateTag tone={course.enrollment && !completed ? 'signal' : 'neutral'}>{completed ? t('completed') : course.enrollment ? t('enrolled') : t('notEnrolled')}</StateTag>{course.unmetPrerequisites?.length ? <p className="canvas-muted">{bench('needs', { parts: course.unmetPrerequisites.join(', ') })}</p> : null}</div>
+      <Link href={routes.learner.course(course.id, listContext)} className="canvas-course-next" aria-label={t('openCourse', { title: course.title })}>{copy.viewCourse}</Link>
+    </div></article>;
+  })}</div>;
 }
 
 /** /app/courses on the directory kit: segmented Learning/Discover, filters, results line, spec tables. */
@@ -100,7 +87,7 @@ export function CatalogBenchView({ courses, tab, filters }: { courses: CatalogBe
     options: options.map(option => ({ value: option, label: enums(`${name}.${option}` as 'level.foundation') })),
   }));
 
-  return <DirectoryPage
+  return <div className="canvas-page canvas-learning canvas-catalog"><DirectoryPage
     header={<PageHeader as="section" kicker={bench('kicker')} title={t('title')} titleId="catalog-title" lead={t('description')} />}
     tabs={<Segmented label={focus('courses')} items={(['learning', 'discover'] as const).map(key => ({ key, label: focus(key === 'learning' ? 'learningTab' : 'discoverTab'), href: routes.learner.courses(queryForTab(key)), current: tab === key }))} />}
     filters={{
@@ -139,5 +126,5 @@ export function CatalogBenchView({ courses, tab, filters }: { courses: CatalogBe
       <div className="vf-block-head"><h2 id="available-courses-heading" className="vf-h3">{t('availableCourses')}</h2></div>
       <CatalogTable courses={availableCourses} listContext={listContext} caption={t('availableCourses')} />
     </section>}
-  </DirectoryPage>;
+  </DirectoryPage></div>;
 }

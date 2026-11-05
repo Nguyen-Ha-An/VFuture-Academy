@@ -1,5 +1,9 @@
+import './editor-source';
 import { ReportFixture } from './report-fixture';
 import { GradingFixture } from './grading-fixture';
+import { TeachingFixture } from './teaching-fixture';
+import { AssessmentsFixture } from './teaching-assessments-fixture';
+import { StudioContentFixture } from './studio-content-fixture';
 import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { NextIntlClientProvider } from 'next-intl';
@@ -13,6 +17,7 @@ import { GradingShell } from '../../../../src/components/GradingShell';
 import type { AdminScope, AdminScopeOption } from '../../../../src/lib/admin-scope';
 import type { StaffWorkspace } from '../../../../src/lib/workspaces';
 import type { Permission } from '../../../../src/lib/permissions';
+import { BUILT_IN_ROLE_PERMISSIONS } from '../../../../src/lib/authorization';
 import { Workspace, type WorkspaceDraft } from '../../../../src/features/studio/ui/Workspace';
 import { emptySummary } from '../../../../src/content-engine/diagnostics';
 import { CourseDocumentSchema } from '../../../../src/content-engine/schema/course';
@@ -50,7 +55,7 @@ function draft(): WorkspaceDraft {
 }
 
 /** Permissions of an operator who both grades and reads reports, so the whole sidebar renders. */
-const GRADING_PERMISSIONS: Permission[] = ['submission.grade', 'exam.release', 'report.branch.read'];
+const GRADING_PERMISSIONS: Permission[] = ['submission.grade', 'exam.release', 'report.branch.read', 'teaching.announcement.manage', 'teaching.schedule.manage'];
 /** Every workspace enterable, so the switcher renders all three entries. */
 const WORKSPACE_ENTRIES = { studio: '/studio', grading: '/grading', admin: '/admin' } as const;
 /** `?uiv2=1` renders the Catmin StaffWorkspaceShell (UI_V2_SURFACES) in place of the legacy shells. */
@@ -80,7 +85,7 @@ const QueuedWorkbenchFixture = lazy(() => pagesFixture().then(module => ({ defau
 /** Harness clock zone; matches the product's report zone so relative and absolute times read the same everywhere. */
 const TIME_ZONE = 'Asia/Ho_Chi_Minh';
 /** A reviewer-author who reaches every Studio page view (home, courses, library, media, reviews). */
-const STUDIO_PAGE_PERMISSIONS: Permission[] = ['content.read', 'content.create', 'content.review', 'content.publish', 'course.read', 'course.create', 'course.edit', 'media.upload', 'resource.edit'];
+const STUDIO_PAGE_PERMISSIONS: Permission[] = ['content.read', 'content.create', 'content.review', 'content.publish', 'course.read', 'course.create', 'course.edit', 'media.upload', 'resource.edit', 'opportunity.edit', 'project.edit', 'bank.edit', 'content.review.request'];
 
 type ShellProps = { workspace: StaffWorkspace; redesigned: boolean; permissions: Permission[]; activeScope: AdminScope; scopeOptions: AdminScopeOption[]; children: React.ReactNode };
 
@@ -95,7 +100,7 @@ function App() {
   const initialDraft = useMemo(draft, []);
   const params = new URLSearchParams(location.search);
   const locale = params.get('lang') === 'en' ? 'en' : 'vi';
-  const fixtureLocale = ((location.pathname.startsWith('/grading/') && location.pathname !== '/grading/reports') || location.pathname.startsWith('/studio/grading/')) ? 'en' : locale;
+  const fixtureLocale = ((location.pathname.startsWith('/grading/') && !['/grading/announcements', '/grading/schedule'].includes(location.pathname) && location.pathname !== '/grading/reports' && !params.has('lang')) || location.pathname.startsWith('/studio/grading/')) ? 'en' : locale;
   useEffect(() => { document.documentElement.lang = fixtureLocale; }, [fixtureLocale]);
   const readOnly = params.get('readonly') === '1';
   // Reports and grading live in the assessment workspace, so the fixture must mount the real
@@ -107,19 +112,24 @@ function App() {
   const studioScope = { activeScope: { kind: 'central' } as AdminScope, scopeOptions: [{ scope: { kind: 'central' }, label: 'Central', permissions: STUDIO_PAGE_PERMISSIONS }] as AdminScopeOption[] };
   // Grading defaults to English like the workbench fixtures below; `?lang=vi|en` switches.
   const gradingLocale = params.get('lang') === 'vi' ? 'vi' : params.get('lang') === 'en' ? 'en' : null;
+  if (location.pathname === '/grading/announcements' || location.pathname === '/grading/schedule') return page(locale, 'grading', GRADING_PERMISSIONS, gradingScope, <TeachingFixture kind={location.pathname.endsWith('schedule') ? 'schedule' : 'announcements'} locale={locale} />);
+  if (location.pathname === '/grading/assessments') return page(gradingLocale ?? 'en', 'grading', GRADING_PERMISSIONS, gradingScope, <AssessmentsFixture locale={gradingLocale ?? 'en'} />);
   if (location.pathname === '/grading') return page(gradingLocale ?? 'vi', 'grading', GRADING_PERMISSIONS, gradingScope, <GradingHomeFixture />);
   if (location.pathname === '/grading/queue') return page(gradingLocale ?? 'en', 'grading', GRADING_PERMISSIONS, gradingScope, <GradingQueueFixture />);
   if (/^\/grading\/assignments\/sub-\d+$/.test(location.pathname)) return page(gradingLocale ?? 'en', 'grading', GRADING_PERMISSIONS, gradingScope, <QueuedWorkbenchFixture id={location.pathname.split('/').at(-1)!} />);
   if (location.pathname === '/studio') return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <StudioHomeFixture />);
   if (location.pathname === '/studio/media') return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <MediaFixture />);
+  if (/^\/studio\/(?:bank(?:\/[^/]+)?|library|resources(?:\/[^/]+)?|opportunities(?:\/[^/]+)?|projects(?:\/[^/]+)?|reviews|mcp|connect\/authorize)$/.test(location.pathname) || /^\/studio\/courses\/[^/]+\/notebooks\/[^/]+$/.test(location.pathname)) return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <StudioContentFixture path={location.pathname} />);
+  if (location.pathname === '/admin/audit') return page(locale, 'admin', [...BUILT_IN_ROLE_PERMISSIONS.central_admin], studioScope, <StudioContentFixture path={location.pathname} />);
+
   // `?fixture=diacritics` keeps the plain list page whose 12px Vietnamese eyebrow the shell's clipping check reads.
   if (location.pathname === '/studio/courses' && params.get('fixture') !== 'diacritics') return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <CoursesListFixture />);
   if(location.pathname==='/studio/analytics'||location.pathname==='/grading/reports'){const reportLocale=params.get('lang')==='en'?'en':'vi';return <NextIntlClientProvider locale={reportLocale} messages={reportLocale==='en'?en:vi} timeZone={TIME_ZONE}><Shell workspace="grading" redesigned={params.has('redesigned')} permissions={GRADING_PERMISSIONS} activeScope={{kind:'branch',branchId:'school'}} scopeOptions={[{scope:{kind:'branch',branchId:'school'},label:'Trường VFuture',permissions:GRADING_PERMISSIONS}]}><ReportFixture/></Shell></NextIntlClientProvider>;}
-  if(location.pathname.startsWith('/studio/grading/')||location.pathname.startsWith('/grading/'))return <NextIntlClientProvider locale="en" messages={en} timeZone={TIME_ZONE}><Shell workspace="grading" redesigned={params.has('redesigned')} permissions={GRADING_PERMISSIONS} activeScope={{kind:'branch',branchId:'school'}} scopeOptions={[{scope:{kind:'branch',branchId:'school'},label:'VFuture school',permissions:GRADING_PERMISSIONS}]}><GradingFixture kind={location.pathname.includes('/exams/')?'exams':'assignments'}/></Shell></NextIntlClientProvider>;
+  if(location.pathname.startsWith('/studio/grading/')||location.pathname.startsWith('/grading/'))return page(gradingLocale ?? 'en', 'grading', GRADING_PERMISSIONS, gradingScope, <GradingFixture locale={gradingLocale ?? 'en'} kind={location.pathname.includes('/exams/')?'exams':'assignments'}/>);
   if (location.pathname.startsWith('/app')) return <NextIntlClientProvider locale={locale} messages={withBenchMessages(locale === 'en' ? en : vi, locale)} timeZone={TIME_ZONE}><AppShell studioDestination="/studio" gradingDestination="/grading" adminDestination="/admin" userName="Nguyễn An" initials="NA"><h1>Học tập</h1><p>Account menu browser fixture</p></AppShell></NextIntlClientProvider>;
   return <NextIntlClientProvider locale={locale} messages={locale === 'en' ? en : vi} timeZone={TIME_ZONE}>
     <Shell workspace="studio" redesigned={params.has('redesigned')} permissions={['course.read', 'course.edit']} activeScope={{kind:'central'}} scopeOptions={[{scope:{kind:'central'},label:'Central',permissions:['course.read','course.edit']}]}>
-      {location.pathname === '/studio/courses' ? <Suspense fallback={null}><CoursesFixture /></Suspense> : <Workspace initialDraft={initialDraft} initialReport={{ ok: true, errors: [], warnings: [], summary: emptySummary() }} readOnly={readOnly} accountId={params.get('account') ?? 'browser-author'} scopeKey={params.get('scope') ?? 'central'} />}
+      {location.pathname === '/studio/courses' ? <Suspense fallback={null}><CoursesFixture /></Suspense> : /^\/studio\/courses\/[^/]+$/.test(location.pathname) ? <Workspace initialDraft={initialDraft} initialReport={{ ok: true, errors: [], warnings: [], summary: emptySummary() }} readOnly={readOnly} accountId={params.get('account') ?? 'browser-author'} scopeKey={params.get('scope') ?? 'central'} /> : <p data-fixture-unavailable>Fixture unavailable for {location.pathname}. This is not the course Workspace.</p>}
     </Shell>
   </NextIntlClientProvider>;
 }

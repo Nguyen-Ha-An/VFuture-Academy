@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, type ComponentProps, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
+import { CanvasButton } from '@/features/canvas/ui';
 import { compactSearchParams } from '@/lib/search-params';
 
 export type FilterSelectField = {
@@ -120,7 +121,7 @@ export function PagerFocus({ page, resultsId }: { page: number; resultsId?: stri
  * `<select>` (F2). Without JavaScript it is a plain GET form.
  */
 export function FilterBar({
-  label, summary, fields, hidden, stateKey, activeCount, clearHref, columns = 4, applyLabel, clearLabel, action, resultsId,
+  label, summary, fields, hidden, stateKey, clearHref, columns = 4, applyLabel, clearLabel, action, resultsId,
 }: FilterBarProps) {
   const t = useTranslations('learner.directory');
   const router = useRouter();
@@ -134,17 +135,17 @@ export function FilterBar({
   const leading = carried.filter(([name]) => !fieldNames.has(name));
   const fallbacks = carried.filter(([name]) => fieldNames.has(name));
 
-  // Open state is imperative (never a controlled attribute): open when filters apply or the
-  // viewport is wide, re-evaluated when either changes.
+  // Keep applied filters visible as chips while the phone disclosure stays compact.
+  // Desktop filters remain open; manually opening on a phone survives pagination.
   useEffect(() => {
     const details = detailsRef.current;
     if (!details) return;
     const media = typeof window.matchMedia === 'function' ? window.matchMedia(WIDE) : null;
-    const sync = () => { details.open = activeCount > 0 || Boolean(media?.matches); };
+    const sync = () => { details.open = Boolean(media?.matches); };
     sync();
     media?.addEventListener?.('change', sync);
     return () => media?.removeEventListener?.('change', sync);
-  }, [activeCount]);
+  }, []);
 
   // Keyboard and screen-reader users keep their place: after the applied filters change, focus the
   // results header. Not on first mount, unless this bar just submitted and the page remounted it.
@@ -152,6 +153,7 @@ export function FilterBar({
     const previous = shownKey.current;
     shownKey.current = stateKey;
     const pending = takePendingFocus();
+    if (previous !== stateKey && detailsRef.current && typeof window.matchMedia === 'function' && !window.matchMedia(WIDE).matches) detailsRef.current.open = false;
     if (previous === null ? pending !== null && sameUrl(pending, window.location.href) : previous !== stateKey) focusResults(resultsId);
   }, [stateKey, resultsId]);
 
@@ -166,6 +168,7 @@ export function FilterBar({
     }
     const query = compactSearchParams(data).toString();
     const href = query ? `${target}?${query}` : target;
+    if (detailsRef.current && typeof window.matchMedia === 'function' && !window.matchMedia(WIDE).matches) detailsRef.current.open = false;
     if (sameUrl(href, window.location.href)) {
       // Nothing changes, so nothing remounts: hand focus over now instead of leaving it pending.
       pendingFocus = null;
@@ -223,7 +226,7 @@ export function FilterBar({
       {/* Without JavaScript both values submit, field first; the list parsers read the first value. */}
       {fallbacks.map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
       <div className="vf-l-filter-actions">
-        <button type="submit" className="vf-btn vf-btn-primary vf-btn-lg">{applyLabel ?? t('apply')}</button>
+        <CanvasButton type="submit">{applyLabel ?? t('apply')}</CanvasButton>
         <Link href={clearHref} className="vf-btn vf-btn-ghost vf-btn-lg" onClick={onClear}>{clearLabel ?? t('clear')}</Link>
       </div>
     </form>

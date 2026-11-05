@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -172,6 +172,8 @@ describe.each(Object.keys(layouts) as StaffWorkspace[])('%s layout gate', (works
     expect(mocks.readStaffChrome).toHaveBeenCalledTimes(1);
 
     // Real shell parts, wired together: navigation, main landmark, user menu identity, ⌘K trigger.
+    expect(root).toHaveAttribute('data-state', 'collapsed');
+    fireEvent.click(screen.getByRole('button', { name: (messages.staffUi.shell as {core:{toggleSidebar:string}}).core.toggleSidebar }));
     const nav = screen.getByRole('navigation', { name: navigation });
     expect(within(nav).getByRole('link', { name: link })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('main')).toHaveAttribute('id', `${workspace}-main`);
@@ -204,7 +206,7 @@ describe('StaffWorkspaceShell server render (no theme or rail flash)', () => {
       </Provider>,
     );
     const document = new DOMParser().parseFromString(html, 'text/html');
-    return { root: document.querySelector('.vf-staff'), sidebar: document.querySelector('[data-slot="sidebar"][data-state]') };
+    return { root: document.querySelector('.vf-staff') };
   }
 
   it.each([['dark', 'dark'], ['light', 'light'], ['system', null]] as const)('theme %s renders data-theme=%s', (theme, attribute) => {
@@ -214,8 +216,7 @@ describe('StaffWorkspaceShell server render (no theme or rail flash)', () => {
   });
 
   it.each([[true, 'expanded'], [false, 'collapsed']] as const)('sidebarOpen %s renders data-state=%s', (sidebarOpen, state) => {
-    const { root, sidebar } = ssr(chrome({ sidebarOpen }));
+    const { root } = ssr(chrome({ sidebarOpen }));
     expect(root?.getAttribute('data-state')).toBe(state);
-    expect(sidebar?.getAttribute('data-state')).toBe(state);
   });
 });

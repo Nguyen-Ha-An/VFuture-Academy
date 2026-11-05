@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import en from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
@@ -29,7 +29,7 @@ function renderView(props: Partial<Parameters<typeof CoursesView>[0]> = {}) {
 const titles = () => within(screen.getByRole('table')).getAllByRole('link').map((link) => link.textContent);
 
 describe('Studio courses view', () => {
-  afterEach(cleanup);
+  afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
   it('shows snapshot KPIs by stage, the honest total and lifecycle badges', () => {
     renderView();
@@ -49,6 +49,8 @@ describe('Studio courses view', () => {
   });
 
   it('filters by review-aware status, searches without diacritics and sorts by title', async () => {
+    // This case asserts desktop columnheader aria-sort; JSDOM otherwise measures width0 and correctly selects native stacked layout.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, 1024, 640));
     const user = userEvent.setup();
     renderView();
 
@@ -65,6 +67,26 @@ describe('Studio courses view', () => {
     expect(screen.getByRole('columnheader', { name: 'Title' })).toHaveAttribute('aria-sort', 'ascending');
     expect(titles()).toEqual(['Nền tảng trí tuệ nhân tạo', 'Python cơ bản', 'Untitled course']);
     expect(screen.getByRole('columnheader', { name: 'Updated' })).toHaveAttribute('aria-sort', 'none');
+  });
+
+  it('names the native stacked sort control and sorts with readable column options', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, 390, 844));
+    const user = userEvent.setup();
+    renderView();
+    const sort = screen.getByRole('combobox', { name: 'Sort by' });
+    expect(sort).toHaveValue('Updated');
+    await user.click(sort);
+    expect(screen.getByRole('option', { name: 'Title' })).toBeVisible();
+    expect(screen.getByRole('option', { name: 'Updated' })).toBeVisible();
+    expect(screen.queryByRole('option', { name: 'title' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'Title' }));
+    expect(sort).toHaveValue('Title');
+    expect(titles()).toEqual(['Nền tảng trí tuệ nhân tạo', 'Python cơ bản', 'Untitled course']);
+    expect(screen.getByText('Showing 1–3 of 3')).toBeInTheDocument();
+    await user.click(sort);
+    await user.click(screen.getByRole('option', { name: 'Updated' }));
+    expect(sort).toHaveValue('Updated');
+    expect(titles()).toEqual(['Untitled course', 'Python cơ bản', 'Nền tảng trí tuệ nhân tạo']);
   });
 
   it('says review states are unavailable instead of guessing stages', () => {

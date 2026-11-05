@@ -14,7 +14,7 @@ import { pad2 } from './status';
 export type FocusBarProps = {
   course: { title: string; href: string };
   position?: { current: number; total: number };
-  /** The course outline trigger and drawer: the only aria-haspopup="dialog" on focus routes. */
+  /** The activity bar's course outline trigger and drawer; global dialogs belong to the shell. */
   outline?: ReactNode;
   theme?: WorkspaceTheme;
 };
@@ -22,7 +22,7 @@ export type FocusBarProps = {
 /**
  * The 56px activity bar (DESIGN D4, D9): a <nav> with no brand link. It carries the way back to
  * the course, a mono position and progress readout from 760px, the outline and a More options
- * menu that holds theme only. There is no command menu on focus routes.
+ * menu that holds theme only. Canvas supplies global search and navigation in its separate header.
  */
 export function FocusBar({ course, position, outline, theme = 'system' }: FocusBarProps) {
   const t = useTranslations('bench.learner.activity');

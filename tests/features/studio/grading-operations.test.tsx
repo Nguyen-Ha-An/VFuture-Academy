@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import messages from '@/messages/vi.json';
@@ -22,7 +21,8 @@ describe('grading operations tabs', () => {
     expect(examTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('EXAM_QUEUE')).toBeInTheDocument();
     examTab.focus();
-    await userEvent.keyboard('{ArrowLeft}');
+    // InstUI currently reads native keyCode; jsdom userEvent does not populate it.
+    fireEvent.keyDown(examTab, { key: 'ArrowLeft', keyCode: 37, which: 37 });
     expect(assignmentTab).toHaveFocus();
     expect(assignmentTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('ASSIGNMENT_QUEUE')).toBeInTheDocument();

@@ -1,5 +1,5 @@
-import { StudioForbidden } from '@/features/studio/ui/StudioForbidden';
+import { TeachingForbidden } from '@/features/instructor-grading/TeachingForbidden';
 
 export default function GradingForbiddenPage() {
-  return <StudioForbidden />;
+  return <TeachingForbidden />;
 }

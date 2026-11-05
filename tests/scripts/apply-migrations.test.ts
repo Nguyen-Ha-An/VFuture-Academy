@@ -115,6 +115,8 @@ describe('applyMigrations', () => {
       '20261025135531_shared_public_and_exam_admission.sql',
       '20261025140618_academy_media_upload_reservations.sql',
       '20261026145220_restrict_internal_function_execution.sql',
+      '20261105000000_teaching_canvas.sql',
+      '20261105010000_teaching_announcement_revisions.sql',
     ];
     const files = migrationFiles(migrationsDir);
     const prefixes = files.map((filename) => filename.split('_')[0]);

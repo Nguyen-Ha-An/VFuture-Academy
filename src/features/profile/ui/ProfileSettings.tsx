@@ -4,7 +4,9 @@ import { FormEvent, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
 import type { ProfileSettings as ProfileSettingsValue } from '@/features/profile/service';
+import { useSupportUnsaved } from '@/features/workspace-ui/support/useSupportUnsaved';
 import { Card, Notice } from '@/features/workspace-ui/ui/primitives';
+import { CanvasButton, CanvasTextInput, CanvasCheckbox } from '@/features/canvas/ui';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -16,10 +18,13 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) {
   const t = useTranslations('profile.settings');
   const [handle, setHandle] = useState(initial.handle ?? '');
+  const [savedHandle, setSavedHandle] = useState(initial.handle ?? '');
+  const [savedPublic, setSavedPublic] = useState(initial.profilePublic);
   const [profilePublic, setProfilePublic] = useState(initial.profilePublic);
   const [handleState, setHandleState] = useState<SaveState>('idle');
   const [handleError, setHandleError] = useState<'taken' | 'rateLimited' | 'generic' | null>(null);
   const [visibilityState, setVisibilityState] = useState<SaveState>('idle');
+  useSupportUnsaved(handle !== savedHandle || profilePublic !== savedPublic, t('unsavedConfirm'));
 
   async function saveHandle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,6 +37,7 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
         body: JSON.stringify({ handle }),
       });
       if (response.ok) {
+        setSavedHandle(handle);
         setHandleState('saved');
         window.dispatchEvent(new CustomEvent('profile-handle-saved', { detail: { handle } }));
         return;
@@ -53,6 +59,7 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ profilePublic }),
       });
+      if (response.ok) setSavedPublic(profilePublic);
       setVisibilityState(response.ok ? 'saved' : 'error');
     } catch {
       setVisibilityState('error');
@@ -70,16 +77,17 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
     : state === 'error' ? <Notice tone="fault" label={t('errorLabel')}>{message}</Notice> : null;
 
   return (
-    <Card title={t('title')} titleId="profile-settings-heading" className="vf-l-settings">
+    <Card title={t('title')} titleId="profile-settings-heading" className="canvas-panel vf-l-settings">
       <p className="vf-l-prose vf-l-muted">{t('description')}</p>
       <div className="vf-l-settings-forms">
         <form onSubmit={saveHandle} className="vf-l-settings-form">
-          <label htmlFor="profile-handle" className="vf-label">{t('handleLabel')}</label>
-          <input
+          <CanvasTextInput
+            label={t('handleLabel')}
             id="profile-handle"
             value={handle}
-            onChange={(event) => {
-              setHandle(event.target.value);
+            disabled={handleState === 'saving'}
+            onChange={(value) => {
+              setHandle(value);
               setHandleState('idle');
               setHandleError(null);
             }}
@@ -88,31 +96,30 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
             pattern="[a-z0-9][a-z0-9_-]{2,31}"
             aria-describedby="profile-handle-hint profile-handle-status"
             aria-invalid={handleState === 'error'}
+            messages={handleState === 'error' ? [{ type: 'error', text: t('errorLabel') }] : []}
             required
             autoComplete="off"
-            className="vf-l-input"
           />
           <p id="profile-handle-hint" className="vf-meta">{t('handleHint')}</p>
           <div className="vf-l-settings-actions">
-            <button type="submit" className="vf-btn vf-btn-primary" disabled={handleState === 'saving'}>{handleState === 'saving' ? t('saving') : t('save')}</button>
+            <CanvasButton type="submit" disabled={handleState === 'saving' || handle === savedHandle}>{handleState === 'saving' ? t('saving') : t('save')}</CanvasButton>
           </div>
           <div id="profile-handle-status" aria-live="polite">{status(handleState, handleMessage())}</div>
         </form>
         <form onSubmit={saveVisibility} className="vf-l-settings-form">
           <span className="vf-label">{t('visibilityTitle')}</span>
-          <label htmlFor="profile-public" className="vf-l-check">
-            <input
+          <CanvasCheckbox
+              label={t('visibilityLabel')}
               id="profile-public"
               type="checkbox"
               checked={profilePublic}
-              onChange={(event) => setProfilePublic(event.target.checked)}
+              disabled={visibilityState === 'saving'}
+              onChange={(value) => { setProfilePublic(value); setVisibilityState('idle'); }}
               aria-describedby="profile-public-hint"
-            />
-            {t('visibilityLabel')}
-          </label>
+          />
           <p id="profile-public-hint" className="vf-meta">{t('visibilityHint')}</p>
           <div className="vf-l-settings-actions">
-            <button type="submit" className="vf-btn vf-btn-primary" disabled={visibilityState === 'saving'}>{visibilityState === 'saving' ? t('saving') : t('save')}</button>
+            <CanvasButton type="submit" disabled={visibilityState === 'saving' || profilePublic === savedPublic}>{visibilityState === 'saving' ? t('saving') : t('save')}</CanvasButton>
           </div>
           <div aria-live="polite">{status(visibilityState, visibilityState === 'error' ? t('error') : t('saved'))}</div>
         </form>

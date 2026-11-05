@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardCheck, Download, Ellipsis, FilePlus2, ListTree, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
+import { CanvasButton as Button, CanvasTabs } from '@/features/canvas/ui';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ContentWorkflowPanel, type BeforeSubmitResult, type ContentWorkflow } from '@/features/content-review/ContentWorkflowPanel';
 import { contentStage } from '@/features/content-review/lifecycle';
@@ -30,6 +30,8 @@ import { useLocalRecovery } from './useLocalRecovery';
 import { useUnsavedChanges } from './useUnsavedChanges';
 import { Outline } from './Outline';
 import { JsonEditor } from './JsonEditor';
+import { VisualEditor } from './VisualEditor';
+import { visualSourceChange } from '../visual-authoring';
 import { PreviewPane } from './PreviewPane';
 import { ImportDialog } from './ImportDialog';
 import { RecoveryBanner } from './RecoveryBanner';
@@ -86,7 +88,16 @@ export function Workspace({ initialDraft, initialReport, readOnly = false, canCr
     dirty: workspace.dirty, readOnly, storage: recoveryStorage, claim: recoveryClaim, debounceMs: recoveryDebounceMs,
   });
   const [selectedRef, setSelectedRef] = useState<DocumentRef>(COURSE_REF);
-  const [tab, setTab] = useState<'json' | 'preview'>('json');
+  const [tab, setTab] = useState<'editor' | 'preview'>('editor');
+  const [editorMode, setEditorMode] = useState<'visual' | 'json'>('visual');
+  const [previewOpen, setPreviewOpen] = useState(true);
+  useEffect(() => {
+    try { const saved = window.localStorage.getItem('academy.canvas.editor-mode'); if (saved === 'visual' || saved === 'json') setEditorMode(saved); } catch { /* Storage is optional; the editor remains usable. */ }
+  }, []);
+  const chooseEditorMode = (mode: 'visual' | 'json') => {
+    setEditorMode(mode);
+    try { window.localStorage.setItem('academy.canvas.editor-mode', mode); } catch { /* Private browsing may reject preferences. */ }
+  };
   const [treeOpen, setTreeOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [readinessOpen, setReadinessOpen] = useState(false);
@@ -176,12 +187,13 @@ export function Workspace({ initialDraft, initialReport, readOnly = false, canCr
   const openDiagnostic = (diagnostic: Diagnostic, range = diagnostic.range) => {
     const ref = refOf(diagnostic);
     select(ref, range ?? pointerToRange(parseJsonDocument(state.sources[refKey(ref)] ?? '', ref), diagnostic.path));
-    setTab('json');
+    setTab('editor'); chooseEditorMode('json');
   };
   const apply = (snapshot: WorkspaceSnapshot) => {
-    if (!workspace.replace(snapshot)) return;
+    if (!workspace.replace(snapshot)) return false;
     setSelectedRef(COURSE_REF); setMenuOpen(false);
     setReport({ value: { ok: true, errors: [], warnings: [], summary: emptySummary() }, revision: null });
+    return true;
   };
   const applyItem = (document: unknown, moduleId: string) => {
     if (!workspace.importItem(document, moduleId)) return;
@@ -257,7 +269,7 @@ export function Workspace({ initialDraft, initialReport, readOnly = false, canCr
     : workspace.dirty ? t('unsaved')
     : workspace.savedAt ? `${t('saved')} · ${savedTime(workspace.savedAt, locale)}` : t('saved');
 
-  return <div className="flex min-h-[calc(100dvh-8rem)] min-w-0 flex-col xl:h-[calc(100dvh-6rem)] xl:min-h-0">
+  return <div className="canvas-page flex min-h-[calc(100dvh-8rem)] min-w-0 flex-col xl:h-[calc(100dvh-6rem)] xl:min-h-0">
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
       <div className="flex min-w-0 items-center gap-3"><Link href={routes.studio.courses()} aria-label={t('back')} className="grid size-9 shrink-0 place-items-center rounded-md border border-border hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"><ArrowLeft className="size-4" /></Link><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h1 className="truncate text-lg font-semibold leading-snug tracking-tight sm:text-xl">{title}</h1>{stage ? <StatusBadge kind="content" value={stage} tone={STAGE_TONES[stage]} label={header(`stages.${stage}`)} className="shrink-0" /> : null}</div><p role="status" className="mt-1 text-xs leading-snug text-muted-foreground">{readOnly ? t('readOnly') : saveLabel}</p></div></div>
       <div className="flex flex-wrap items-center gap-2">
@@ -268,7 +280,7 @@ export function Workspace({ initialDraft, initialReport, readOnly = false, canCr
           {menuOpen ? <div id="workspace-more" className="absolute right-0 top-11 z-40 flex w-64 flex-col gap-2 rounded-lg border border-border bg-popover p-3 text-popover-foreground" onKeyDown={event => { if (event.key === 'Escape') setMenuOpen(false); }}>
             {!readOnly ? <ImportDialog courseId={state.courseId} manifest={state.manifest} items={state.items} canCreate={canCreate} disabled={savePending || reloading} beforeReplace={guard.requestLeave} onApply={apply} onApplyItem={applyItem} onApplySources={applySources} /> : null}
             <Button variant="secondary" onClick={exportCurrent} className="justify-start"><Download aria-hidden="true" />{t(workspace.payload ? 'export' : 'exportSources')}</Button>
-            <VersionsDrawer courseId={state.courseId} refreshKey={versionsRevision} readOnly={readOnly} disabled={savePending || reloading} beforeRestore={guard.requestLeave} onRestored={apply} />
+            <VersionsDrawer courseId={state.courseId} refreshKey={versionsRevision} readOnly={readOnly} disabled={savePending || reloading} restoreDisabled={editingBlocked} beforeRestore={guard.requestLeave} onRestored={apply} />
           </div> : null}
         </div>
       </div>
@@ -307,18 +319,32 @@ export function Workspace({ initialDraft, initialReport, readOnly = false, canCr
       {workspace.status === 'conflict' || workspace.status === 'uncertain' ? <div className="mt-2 flex gap-2"><Button variant="secondary" onClick={exportCurrent}>{t('exportSources')}</Button>{workspace.status === 'uncertain' ? <Button onClick={() => void workspace.reconcile()}>{localSaveText(locale, 'check')}</Button> : null}<Button onClick={() => { if (window.confirm(t('reloadConfirm'))) { setReloading(true); void workspace.reload().finally(() => setReloading(false)); } }}>{t('reload')}</Button></div> : null}
     </div> : null}
     {notice ? <p role="status" className="mt-2 text-sm text-success-foreground">{notice}</p> : null}
-    <div className="my-3 flex flex-wrap items-center justify-between gap-2 xl:hidden"><Button variant="secondary" onClick={() => setTreeOpen(true)}><ListTree aria-hidden="true" />{t('contents')}</Button><div role="tablist" aria-label={t('panes')} className="flex rounded-md bg-muted p-1">{(['json', 'preview'] as const).map(value => <button key={value} id={`studio-${value}-tab`} type="button" role="tab" aria-selected={tab === value} aria-controls={`studio-${value}`} tabIndex={tab === value ? 0 : -1} onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { const next = value === 'json' ? 'preview' : 'json'; setTab(next); document.getElementById(`studio-${next}-tab`)?.focus(); } }} onClick={() => setTab(value)} className="min-h-9 rounded px-4 text-sm aria-selected:bg-card focus-visible:outline-2 focus-visible:outline-ring">{t(value)}</button>)}</div></div>
-    <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border xl:mt-4 xl:grid xl:grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="canvas-toolbar my-3 flex flex-wrap items-center justify-between gap-2">
+      <span className="xl:hidden"><Button variant="secondary" onClick={() => setTreeOpen(true)}><ListTree aria-hidden="true" />{t('contents')}</Button></span>
+      <span className="xl:hidden"><Button variant={tab === 'preview' ? 'secondary' : 'ghost'} aria-pressed={tab === 'preview'} onClick={() => setTab(tab === 'preview' ? 'editor' : 'preview')}>{tab === 'preview' ? locale === 'vi' ? 'Soạn thảo' : 'Editor' : t('preview')}</Button></span>
+      <span className="hidden xl:block"><Button variant="outline" aria-expanded={previewOpen} aria-controls="studio-preview" onClick={() => setPreviewOpen(value => !value)}>{locale === 'vi' ? previewOpen ? 'Ẩn xem trước' : 'Hiện xem trước' : previewOpen ? 'Hide preview' : 'Show preview'}</Button></span>
+      <span className="hidden text-xs text-muted-foreground sm:block">{locale === 'vi' ? 'Bản nháp tự động lưu · Xem trước bằng trình hiển thị học viên' : 'Draft autosaves · Preview uses the learner renderer'}</span>
+    </div>
+    <div className={cn('min-h-0 flex-1 overflow-hidden rounded-lg border border-border xl:grid', previewOpen ? 'xl:grid-cols-[220px_minmax(0,1.15fr)_minmax(0,1fr)]' : 'xl:grid-cols-[220px_minmax(0,1fr)]')}>
       <aside className="hidden min-h-0 border-r border-border bg-card xl:block">{outline}</aside>
-      <section id="studio-json" role="tabpanel" aria-labelledby="studio-json-tab" aria-label={t('json')} className={cn('min-h-0 flex-col border-r border-border xl:flex', tab === 'json' ? 'flex' : 'hidden')}>
+      <section id="studio-editor" aria-label={editorMode === 'visual' ? locale === 'vi' ? 'Trực quan' : 'Visual' : t('json')} className={cn('min-h-0 min-w-0 flex-col border-r border-border xl:flex', tab === 'editor' ? 'flex' : 'hidden')}>
         {selectedIsMissing ? <div className="border-b border-border bg-muted px-4 py-3 text-sm">
           <p>{t('missingDocument', { id: selectedRef.kind === 'item' ? selectedRef.id : '' })}</p>
           {!editingBlocked ? <Button className="mt-2" onClick={() => { if (selectedRef.kind === 'item') workspace.materialize(selectedRef.id); }}><FilePlus2 aria-hidden="true" />{t('createStarter')}</Button> : null}
         </div> : null}
-        <div id="workspace-editor" className="h-[65dvh] min-h-0 flex-none overflow-hidden xl:h-auto xl:flex-1"><JsonEditor source={source} docRef={selectedRef} diagnostics={displayReport.errors.concat(displayReport.warnings)} locale={locale} saveState={workspace.status} focusRange={focusRange} readOnly={editingBlocked || selectedIsMissing} onChange={text => workspace.changeSource(selectedRef, text)} /></div>
+        <div id="workspace-editor" className="h-[65dvh] min-h-0 flex-none overflow-auto xl:h-auto xl:flex-1">
+          <CanvasTabs fixHeight="100%" minHeight="0" screenReaderLabel={locale === 'vi' ? 'Chế độ soạn thảo' : 'Editor mode'} onRequestTabChange={(_event, { index }) => chooseEditorMode(index === 0 ? 'visual' : 'json')}>
+            <CanvasTabs.Panel renderTitle={locale === 'vi' ? 'Trực quan' : 'Visual'} isSelected={editorMode === 'visual'} padding="0"><VisualEditor key={selectedKey} source={source} docRef={selectedRef} locale={locale} defaultLanguage={defaultLanguage} readOnly={editingBlocked || selectedIsMissing} onChange={(value, expectedSource) => {
+            const currentSource = workspace.current.current.sources[selectedKey] ?? '';
+            const next = visualSourceChange(currentSource, expectedSource, selectedRef, value);
+            if (next !== null) workspace.changeSource(selectedRef, next, true);
+          }} /></CanvasTabs.Panel>
+            <CanvasTabs.Panel renderTitle="JSON" isSelected={editorMode === 'json'} padding="0"><JsonEditor source={source} docRef={selectedRef} diagnostics={displayReport.errors.concat(displayReport.warnings)} locale={locale} saveState={workspace.status} focusRange={focusRange} readOnly={editingBlocked || selectedIsMissing} onChange={text => workspace.changeSource(selectedRef, text)} /></CanvasTabs.Panel>
+          </CanvasTabs>
+        </div>
         <details className="max-h-48 shrink-0 overflow-auto border-t border-border bg-card"><summary className="cursor-pointer px-4 py-3 text-xs font-medium">{t('diagnostics', { errors: displayReport.errors.length, warnings: displayReport.warnings.length })}</summary><ul className="space-y-1 px-3 pb-3">{[...displayReport.errors, ...displayReport.warnings].map((diagnostic, index) => <li key={`${refKey(refOf(diagnostic))}-${diagnostic.path}-${index}`}><button type="button" className="w-full rounded px-2 py-2 text-left text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring" onClick={() => openDiagnostic(diagnostic)}><span className="font-mono text-muted-foreground">{refLabel(refOf(diagnostic))}</span> · {diagnostic.message[locale]}</button></li>)}</ul></details>
       </section>
-      <div id="studio-preview" role="tabpanel" aria-labelledby="studio-preview-tab" className={cn('min-h-[30rem] min-w-0 xl:block xl:min-h-0', tab === 'preview' ? 'block' : 'hidden')}><PreviewPane courseId={state.courseId} selectedRef={selectedRef} payload={workspace.payload} sourceRevision={sourceRevision} validating={workspace.analysisPending} languages={languages} defaultLanguage={defaultLanguage} onReport={onReport} /></div>
+      <div id="studio-preview" aria-label={t('preview')} className={cn('min-h-[30rem] min-w-0 xl:min-h-0', previewOpen ? 'xl:block' : 'xl:hidden', tab === 'preview' ? 'block' : 'hidden')}><PreviewPane courseId={state.courseId} selectedRef={selectedRef} payload={workspace.payload} sourceRevision={sourceRevision} validating={workspace.analysisPending} languages={languages} defaultLanguage={defaultLanguage} onReport={onReport} /></div>
     </div>
     <Sheet open={treeOpen} onOpenChange={setTreeOpen}><SheetContent side="left" closeLabel={header('readiness.close')} className="w-[min(90vw,22rem)] gap-0 p-0"><SheetHeader className="border-b border-border p-4"><SheetTitle>{t('contents')}</SheetTitle><SheetDescription className="sr-only">{t('contentsDescription')}</SheetDescription></SheetHeader><div className="min-h-0 flex-1">{outline}</div></SheetContent></Sheet>
     <Sheet open={readinessOpen} onOpenChange={setReadinessOpen}>

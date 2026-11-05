@@ -3,8 +3,8 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { CanvasButton as Button, CanvasSelect } from "@/features/canvas/ui";
+import "@/features/admin/ui/admin.css";
 import { DataCard, EmptyState, SectionCard, StatCard, StatGrid } from "@/features/staff-ui/components";
 import { readApiData, workspaceErrorMessage } from "@/features/studio/ui/client";
 import { StaffPageHeader } from "@/features/workspace/ui/StaffPageHeader";
@@ -110,7 +110,7 @@ export function EnrollmentMigrationPanel({ courses }: { courses: MigrationCourse
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+    <section className="canvas-page canvas-admin mx-auto flex w-full max-w-5xl flex-col gap-6">
       <StaffPageHeader title={t("title")} description={t("description")} />
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(15rem,2fr)] lg:items-start">
         <form onSubmit={submit} className="min-w-0">
@@ -130,23 +130,9 @@ export function EnrollmentMigrationPanel({ courses }: { courses: MigrationCourse
             ) : undefined}
           >
             {courses.length > 0 ? (
-              <label className="grid min-w-0 gap-2 text-sm font-medium leading-normal">
-                {t("course")}
-                <NativeSelect
-                  value={courseId}
-                  onChange={(event) => selectCourse(event.target.value)}
-                  wrapperClassName="w-full"
-                  required
-                  disabled={running}
-                >
-                  <NativeSelectOption value="">{t("selectCourse")}</NativeSelectOption>
-                  {courses.map((course) => (
-                    <NativeSelectOption key={course.id} value={course.id}>
-                      {course.title}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              </label>
+              <CanvasSelect label={t("course")} value={courseId}
+                onChange={selectCourse} required disabled={running}
+                options={[{ value: "", label: t("selectCourse") }, ...courses.map((course) => ({ value: course.id, label: course.title }))]} />
             ) : <EmptyState title={t("empty")} />}
           </SectionCard>
         </form>

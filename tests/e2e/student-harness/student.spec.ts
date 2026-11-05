@@ -2,6 +2,8 @@ import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const name = 'A very long learner name used to verify account menu geometry and truncation behavior';
+const normalName = 'Avery Nguyen';
+const desktopNavigationWidth = 768;
 const locales = ['en', 'vi'] as const;
 const themes = ['light', 'dark'] as const;
 const widths = [390, 768, 1440];
@@ -35,18 +37,46 @@ async function screenshot(page: Page, info: TestInfo, label: string) {
   // available locally and through the manually dispatched cross-browser suite.
   if (process.env.CI && process.env.STUDENT_CAPTURE_EVIDENCE !== 'true') return;
   await page.evaluate(() => document.fonts.ready);
-  await info.attach(`${label}-fonts`, { body: JSON.stringify(await page.evaluate(() => ({ declaredFamily: getComputedStyle(document.body).fontFamily, loadedFaces: Array.from(document.fonts).map(font => ({ family: font.family, status: font.status })), limitation: 'Google Fonts are not fetched: screenshots use platform fallback fonts, not exact production typography.' }))), contentType: 'application/json' });
+  await info.attach(`${label}-fonts`, { body: JSON.stringify(await page.evaluate(() => ({ declaredFamily: getComputedStyle(document.body).fontFamily, loadedFaces: Array.from(document.fonts).map(font => ({ family: font.family, status: font.status })), limitation: 'Self-hosted production faces are imported; declared family alone is not proof. Inspect loadedFaces after document.fonts.ready.' }))), contentType: 'application/json' });
   const path = info.outputPath(`${label}.png`);
   await page.screenshot({ path, fullPage: true });
   await info.attach(label, { path, contentType: 'image/png' });
 }
 async function axe(page: Page, info: TestInfo, label: string) {
+  await page.evaluate(() => document.fonts.ready);
+  if (label.includes('lesson-blocks')) await expect(page.locator('[data-code-block] .shiki')).toBeVisible();
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
   await info.attach(`${label}-axe`, { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
   expect.soft(result.violations, `${label} axe violations`).toEqual([]);
 }
 async function viewport(page: Page) {
   expect.soft(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no horizontal document overflow').toBe(true);
+}
+
+async function selectedNavigationContrast(surface: ReturnType<Page['getByRole']>, locale: string, info: TestInfo) {
+  const selected = surface.getByRole('link', { name: locale === 'en' ? 'Dashboard' : 'Tổng quan', exact: true });
+  await expect(selected).toHaveAttribute('aria-current', 'page');
+  for (const state of ['default', 'hover', 'focus'] as const) {
+    if (state === 'hover') await selected.hover();
+    if (state === 'focus') await selected.focus();
+    const reading = await selected.evaluate(element => {
+      const canvas = document.createElement('canvas'); canvas.width = 1; canvas.height = 1;
+      const context = canvas.getContext('2d')!;
+      const rgba = (color: string) => { context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1); const value = context.getImageData(0, 0, 1, 1).data; return [value[0], value[1], value[2], value[3] / 255]; };
+      const blend = (front: number[], back: number[]) => [0, 1, 2].map(index => front[index] * front[3] + back[index] * (1 - front[3]));
+      const text = Array.from(element.querySelectorAll<HTMLElement>('*')).reverse().find(node => node.textContent?.trim() && !node.children.length && !node.closest('svg')) ?? element;
+      const layers: number[][] = []; let parent: Element | null = text;
+      while (parent) { layers.push(rgba(getComputedStyle(parent).backgroundColor)); parent = parent.parentElement; }
+      let background = [255, 255, 255];
+      for (const layer of layers.reverse()) background = blend(layer, background);
+      const foreground = blend(rgba(getComputedStyle(text).color), background);
+      const luminance = (color: number[]) => color.map(channel => channel / 255).map(channel => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+      const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+      return { foreground, background, ratio: (values[0] + 0.05) / (values[1] + 0.05), current: element.getAttribute('aria-current') };
+    });
+    await info.attach(`selected-navigation-${state}`, { body: JSON.stringify(reading), contentType: 'application/json' });
+    expect(reading.ratio, `selected navigation ${state} foreground/background`).toBeGreaterThanOrEqual(4.5);
+  }
 }
 
 test.beforeEach(async ({ page }) => {
@@ -96,7 +126,7 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
     // C14: the bench bar's search slot and the ⌘K palette (axe with the dialog open).
     test('command menu shortcut, geometry and axe', async ({ page }, info) => {
       await open(page, '/app', locale);
-      const trigger = page.locator('header .vf-bench-right > button[aria-keyshortcuts]');
+      const trigger = page.locator('.canvas-learner-header button[aria-keyshortcuts]');
       await expect(trigger).toBeVisible();
       await expect(trigger.locator('.vf-l-search-label')).toBeVisible({ visible: width >= 1100 });
       expect.soft((await trigger.boundingBox())!.height, 'trigger target (0.1px numeric epsilon)').toBeGreaterThanOrEqual(43.9);
@@ -120,21 +150,21 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
     });
 
     test('account menu or drawer geometry focus and native signout', async ({ page }, info) => {
-      await open(page, '/app', locale);
+      await open(page, '/app?longName=1', locale);
       await screenshot(page, info, 'before-navigation-open');
-      // The bench nav and account menu take over from the drawer at 760px (DESIGN D7).
+      // The Canvas rail/account controls take over from the mobile drawer at768px.
       const menuButton = page.locator('button[aria-controls="learner-mobile-navigation"]');
-      if (width >= 760) {
-        await expect(page.locator('header .vf-bench-nav')).toBeVisible();
+      if (width >= desktopNavigationWidth) {
+        await expect(page.getByRole('navigation', { name: locale === 'en' ? 'Global navigation' : 'Điều hướng toàn cục', exact: true })).toBeVisible();
         await expect(menuButton).toBeHidden();
         await expect(page.getByRole('button', { name }).locator('.vf-l-account-initials')).toHaveText('TB');
         await expect(page.getByRole('button', { name }).locator('.vf-l-account-name')).toBeVisible({ visible: width >= 1100 });
       } else {
-        await expect(page.locator('header .vf-bench-nav')).toBeHidden();
+        await expect(page.getByRole('navigation', { name: locale === 'en' ? 'Global navigation' : 'Điều hướng toàn cục', exact: true })).toBeHidden();
         await expect(menuButton).toBeVisible();
       }
       let surface;
-      if (width >= 760) {
+      if (width >= desktopNavigationWidth) {
         await page.getByRole('button', { name }).click();
         surface = page.getByRole('menu');
         await expect(surface).toBeVisible();
@@ -175,14 +205,15 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
       expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'browser received reduced-motion preference').toBe(true);
       expect.soft(await surface.evaluate(node => getComputedStyle(node).animationName)).toBe('none');
       await screenshot(page, info, 'after-navigation-open');
+      if (width < desktopNavigationWidth) await selectedNavigationContrast(surface, locale, info);
       await axe(page, info, 'navigation-open');
-      if (width < 760) {
-        await page.setViewportSize({ width: 760, height: 900 });
+      if (width < desktopNavigationWidth) {
+        await page.setViewportSize({ width: desktopNavigationWidth, height: 900 });
         await expect(surface).toBeHidden();
         // CSS hides the drawer before matchMedia and Radix finish restoring
         // focus. Wait for the actual desktop target instead of sampling once.
-        await expect(page.locator('header a[aria-current="page"]').first()).toBeFocused();
-        await screenshot(page, info, 'after-resize-760');
+        await expect(page.locator('main h1')).toBeFocused();
+        await screenshot(page, info, 'after-resize-768');
         await page.setViewportSize({ width, height: 900 });
         await page.locator('button[aria-controls="learner-mobile-navigation"]').click();
         surface = page.getByRole('dialog');
@@ -192,9 +223,9 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
       await expect(page.locator('#certificates-heading')).toBeFocused();
       await expect(surface).toBeHidden();
       const reopen = async () => {
-        if (width >= 760) await page.getByRole('button', { name }).click();
+        if (width >= desktopNavigationWidth) await page.getByRole('button', { name }).click();
         else await page.locator('button[aria-controls="learner-mobile-navigation"]').click();
-        return width >= 760 ? page.getByRole('menu') : page.getByRole('dialog');
+        return width >= desktopNavigationWidth ? page.getByRole('menu') : page.getByRole('dialog');
       };
       for (let i = 0; i < 2; i++) {
         surface = await reopen();
@@ -207,7 +238,7 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
       surface = await reopen();
       await page.keyboard.press('Escape');
       await expect(surface).toBeHidden();
-      await expect(width >= 760 ? page.getByRole('button', { name }) : page.locator('button[aria-controls="learner-mobile-navigation"]')).toBeFocused();
+      await expect(width >= desktopNavigationWidth ? page.getByRole('button', { name }) : page.locator('button[aria-controls="learner-mobile-navigation"]')).toBeFocused();
       surface = await reopen();
       const signout = surface.locator('button[type="submit"]');
       expect(await signout.evaluate((button: HTMLButtonElement) => ({ method: button.form?.method, action: new URL(button.form!.action).pathname }))).toEqual({ method: 'post', action: '/auth/signout' });
@@ -222,7 +253,8 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
     test('real outline and quiz preserves answer on check failure then retries', async ({ page }, info) => {
       await open(page, '/app/courses/ai-basics/items/lesson-1', locale);
       await expect(page.locator('header').filter({ has: page.locator('a[href="/app"]') })).toHaveCount(0);
-      // Focus routes draw the FocusBar: a nav (not a header) with no brand link and no command menu.
+      // This fixture mounts actual FocusBar/FocusOutline/QuizRenderer; it is not canonical ItemPlayer proof.
+      // Global search remains in the Canvas header while its palette starts closed.
       const bar = page.getByRole('navigation', { name: locale === 'en' ? 'Activity' : 'Hoạt động', exact: true });
       await expect(bar).toBeVisible();
       expect(await bar.evaluate(element => element.tagName)).toBe('NAV');
@@ -230,8 +262,8 @@ for (const locale of locales) for (const theme of themes) for (const width of wi
       await expect(bar.getByRole('link', { name: locale === 'en' ? 'Back to course: AI basics' : 'Quay lại khoá học: AI basics', exact: true })).toHaveAttribute('href', '/app/courses/ai-basics');
       expect(await bar.evaluate(element => Math.round(element.getBoundingClientRect().height))).toBe(56);
       await expect(page.locator('[cmdk-root], [data-command-menu]')).toHaveCount(0);
-      // The actual translated trigger is the sole dialog trigger on this fixture, and it lives in the bar.
-      await expect(page.locator('[aria-haspopup="dialog"]')).toHaveCount(1);
+      // The activity bar owns one outline trigger; the shell also owns global dialogs.
+      await expect(bar.locator('[aria-haspopup="dialog"]')).toHaveCount(1);
       const trigger = bar.locator('button[aria-haspopup="dialog"]');
       await trigger.click();
       const dialog = page.getByRole('dialog');
@@ -275,7 +307,7 @@ test.describe('refined learner theme state', () => {
   test('desktop account menu reflects the theme selected before reopening', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/app', 'en');
-    const trigger = page.getByRole('button', { name });
+    const trigger = page.getByRole('button', { name: normalName, exact: true });
     await trigger.click();
     await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
     await expect(page.locator('.vf-workspace')).toHaveAttribute('data-theme', 'dark');
@@ -288,17 +320,21 @@ test.describe('refined learner theme state', () => {
   test('account menu portal reads the learner tokens in both themes', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/app', 'en');
-    const trigger = page.getByRole('button', { name });
+    const trigger = page.getByRole('button', { name: normalName, exact: true });
     const menuStyle = () => page.getByRole('menu').evaluate(element => {
       const style = getComputedStyle(element);
-      return { radius: style.borderTopLeftRadius, background: style.backgroundColor, inClass: Boolean(element.closest('.vf-workspace')) };
+      const probe = document.createElement('span'); probe.style.backgroundColor = 'var(--popover)'; document.body.append(probe); const expectedBackground = getComputedStyle(probe).backgroundColor; probe.remove();
+      return { radius: style.borderTopLeftRadius, expectedRadius: getComputedStyle(document.documentElement).getPropertyValue('--radius-md').trim(), background: style.backgroundColor, expectedBackground, inClass: Boolean(element.closest('.vf-workspace')) };
     });
     await trigger.click();
-    expect(await menuStyle()).toEqual({ radius: '8px', background: 'rgb(255, 255, 255)', inClass: false });
+    const light = await menuStyle();
+    expect(light.inClass).toBe(false); expect(light.radius).toBe(light.expectedRadius); expect(light.background).toBe(light.expectedBackground);
     await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
     await page.keyboard.press('Escape');
     await trigger.click();
-    expect(await menuStyle()).toEqual({ radius: '8px', background: 'rgb(23, 33, 37)', inClass: false });
+    const dark = await menuStyle();
+    expect(dark.inClass).toBe(false); expect(dark.radius).toBe(dark.expectedRadius); expect(dark.background).toBe(dark.expectedBackground);
+    expect(dark.background).not.toBe(light.background);
   });
 });
 
@@ -310,53 +346,49 @@ const columnRoutes = [
 test.describe('shared left edge', () => {
   test.use({ colorScheme: 'light', contextOptions: { reducedMotion: 'reduce' } });
 
-  for (const width of [1440, 768]) test(`brand, crumbs and h1 align at ${width}`, async ({ page }, info) => {
+  for (const width of [1440, 768]) test(`content gutters and global rail stay coherent at ${width}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const rows: Array<Record<string, unknown>> = [];
     for (const path of columnRoutes) {
       await open(page, path, 'en');
-      const geometry = await page.evaluate(() => {
+      const brandLink = page.getByRole('navigation', { name: 'Global navigation', exact: true }).getByRole('link', { name: 'VFuture', exact: true });
+      await expect(brandLink).toBeVisible();
+      const geometry = await brandLink.evaluate(brand => {
         const main = document.querySelector<HTMLElement>('#learner-main')!;
-        const x = (element: Element | null | undefined) => element ? Math.round(element.getBoundingClientRect().x * 10) / 10 : null;
-        const h1 = main.querySelector('h1');
-        const width = (element: Element) => element.getBoundingClientRect().width;
-        // A split frame (DetailPage with an action or aside) spans column + gap + aside (D2); its
-        // column is the head and main areas, not the whole grid.
-        const columnOf = (child: Element) => child.matches('.vf-l-split[data-aside]')
-          ? Math.max(...Array.from(child.querySelectorAll(':scope > [data-area="head"], :scope > [data-area="main"]'), width))
-          : width(child);
+        const box = (element: Element) => element.getBoundingClientRect();
+        const x = (element: Element | null) => element ? box(element).left : null;
+        const bounds = box(main); const style = getComputedStyle(main);
+        // Profile identity is intentionally inside a padded surface. Its outer edge
+        // follows the page gutter; the heading follows that surface's content edge.
+        const identityPanel = main.querySelector('#profile-title')?.closest('section.canvas-panel');
+        const identityStyle = identityPanel ? getComputedStyle(identityPanel) : null;
+        const identityLeft = identityPanel ? box(identityPanel).left : null;
+        const headingLeft = identityPanel && identityStyle
+          ? box(identityPanel).left + parseFloat(identityStyle.borderLeftWidth) + parseFloat(identityStyle.paddingLeft)
+          : bounds.left + parseFloat(style.paddingLeft);
+        const rail = document.querySelector('.canvas-global-nav:not(.canvas-global-nav-mobile)')!;
+        const railBounds = box(rail);
         const aside = main.querySelector(':scope > .vf-l-split[data-aside] > [data-area="aside"], :scope > .vf-l-split[data-aside] > [data-area="action"]');
-        const split = aside?.parentElement?.querySelector(':scope > [data-area="main"]');
-        return {
-          h1: x(h1),
-          crumbs: x(main.querySelector('nav ol.vf-crumbs')),
-          brand: x(document.querySelector('.vf-bench .vf-brand')),
-          column: Math.max(...Array.from(main.children, columnOf)),
-          frame: Math.max(...Array.from(main.children, width)),
-          asideWidth: aside && innerWidth >= 1100 ? Math.round(width(aside)) : null,
-          asideGap: aside && split && innerWidth >= 1100 ? Math.round(aside.getBoundingClientRect().left - split.getBoundingClientRect().right) : null,
-          overflow: document.documentElement.scrollWidth > innerWidth + 1,
-        };
+        return { h1: x(main.querySelector('h1')), crumbs: x(main.querySelector('nav ol.vf-crumbs')),
+          expectedLeft: bounds.left + parseFloat(style.paddingLeft), expectedHeadingLeft: headingLeft, identityLeft, contentRight: bounds.right - parseFloat(style.paddingRight),
+          rail: { left: railBounds.left, right: railBounds.right, width: railBounds.width }, brand: { left: box(brand).left, right: box(brand).right },
+          mainLeft: bounds.left, frameRight: Math.max(...Array.from(main.children, child => box(child).right)),
+          aside: aside && innerWidth >= 1100 ? { left: box(aside).left, right: box(aside).right, width: box(aside).width } : null,
+          overflow: document.documentElement.scrollWidth > innerWidth + 1 };
       });
       rows.push({ path, ...geometry });
+      expect.soft(Math.abs(geometry.h1! - geometry.expectedHeadingLeft), `${path} heading content gutter`).toBeLessThanOrEqual(1);
+      if (geometry.identityLeft !== null) expect.soft(Math.abs(geometry.identityLeft - geometry.expectedLeft), `${path} identity surface page gutter`).toBeLessThanOrEqual(1);
+      if (geometry.crumbs !== null) expect.soft(Math.abs(geometry.crumbs - geometry.h1!), `${path} crumbs/title`).toBeLessThanOrEqual(1);
+      expect.soft(geometry.mainLeft, `${path} content does not overlap rail`).toBeGreaterThanOrEqual(geometry.rail.right - 1);
+      expect.soft(geometry.brand.left, `${path} brand inside rail`).toBeGreaterThanOrEqual(geometry.rail.left - 1);
+      expect.soft(geometry.brand.right, `${path} brand inside rail`).toBeLessThanOrEqual(geometry.rail.right + 1);
+      expect.soft(geometry.frameRight, `${path} frame fits available content`).toBeLessThanOrEqual(geometry.contentRight + 1);
+      if (geometry.aside) expect.soft(geometry.aside.right, `${path} aside inside frame`).toBeLessThanOrEqual(geometry.contentRight + 1);
+      expect.soft(geometry.overflow, `${path} overflow`).toBe(false);
     }
-    await info.attach(`left-edge-${width}`, { body: JSON.stringify(rows, null, 2), contentType: 'application/json' });
-    const edge = rows[0].h1 as number;
-    expect(edge).toBe(width >= 760 ? 40 : 16);
-    for (const row of rows) {
-      expect.soft(Math.abs((row.h1 as number) - edge), `${row.path} h1`).toBeLessThanOrEqual(1);
-      if (row.crumbs !== null) expect.soft(Math.abs((row.crumbs as number) - edge), `${row.path} crumbs`).toBeLessThanOrEqual(1);
-      expect.soft(Math.abs((row.brand as number) - edge), `${row.path} brand`).toBeLessThanOrEqual(1);
-      expect.soft(row.column as number, `${row.path} column`).toBeLessThanOrEqual(1080);
-      expect.soft(row.frame as number, `${row.path} frame`).toBeLessThanOrEqual(1080 + 24 + 280);
-      if (row.asideWidth !== null) {
-        expect.soft(row.asideWidth, `${row.path} aside width`).toBe(280);
-        expect.soft(row.asideGap, `${row.path} aside gap`).toBe(24);
-      }
-      expect.soft(row.overflow, `${row.path} overflow`).toBe(false);
-    }
-    expect(rows.filter(row => row.crumbs !== null).length).toBeGreaterThan(0);
-    if (width >= 1100) expect(rows.filter(row => row.asideWidth !== null).length).toBeGreaterThan(0);
+    await info.attach(`content-rail-geometry-${width}`, { body: JSON.stringify(rows, null, 2), contentType: 'application/json' });
+    expect(rows.some(row => row.crumbs !== null)).toBe(true);
   });
 
   // No hand-copied token mirror: the surface element and a portal-free control read the same values as :root.
@@ -381,47 +413,44 @@ test.describe('shared left edge', () => {
       };
     });
     expect(values.surfaceSignal).toBe(values.rootSignal);
-    expect(values.rootSignal).toBe(theme === 'light' ? '#08666a' : '#45c6ca');
-    expect(values.surfaceRadius).toBe('8px');
-    expect(values.rootRadius).toBe('8px');
-    expect(values.button).toBe('6px');
+    expect(values.rootSignal).toBe(theme === 'light' ? '#08666a' : '#72d5d7');
+    expect(values.surfaceRadius).toBe('4px');
+    expect(values.rootRadius).toBe(values.surfaceRadius);
+    expect(values.button).toBe(values.surfaceRadius);
     expect(values.selectColor).toBe(values.ink);
   });
 
-  // Home: full-width trace, the resume card on the shared edge, the readout beside the main column from 1100px and below it before.
-  for (const width of [1440, 1024]) test(`dashboard frame and readout at ${width}`, async ({ page }) => {
+  // Actual task-first composition: a bounded sidebar at wide widths, stacked below1200.
+  for (const width of [1440, 1024]) test(`task-first dashboard main and sidebar at ${width}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
-    await open(page, '/app', 'en');
-    const box = (selector: string) => page.locator(selector).first().evaluate(element => {
-      const rect = element.getBoundingClientRect();
-      return { x: Math.round(rect.x), right: Math.round(rect.right), top: Math.round(rect.top), bottom: Math.round(rect.bottom), width: Math.round(rect.width) };
+    await open(page, '/app?fixture=dense', 'en');
+    await expect(page.locator('.canvas-dashboard-main')).toBeVisible();
+    await expect(page.locator('.canvas-dashboard-side')).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const box = (selector: string) => { const r = document.querySelector(selector)!.getBoundingClientRect(); return { x: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width }; };
+      return { title: box('main h1'), dashboard: box('.canvas-dashboard-refined'), main: box('.canvas-dashboard-main'), mainDisplay: getComputedStyle(document.querySelector('.canvas-dashboard-main')!).display, aside: box('.canvas-dashboard-side'), resume: box('.canvas-dashboard-resume'), courses: box('.canvas-dashboard-course-section'), results: box('.canvas-dashboard-results'), work: box('.canvas-coursework'), rail: box('.canvas-global-nav:not(.canvas-global-nav-mobile)') };
     });
-    const [resume, trace, main, aside, brand] = await Promise.all([
-      box('#learner-main .vf-l-resume'), box('#learner-main .vf-l-trace-slot'), box('#learner-main [data-area="main"]'), box('#learner-main aside[data-area="aside"]'), box('.vf-bench .vf-brand'),
-    ]);
-    expect(trace.width).toBe(width);
-    expect(resume.x).toBe(40);
-    expect(brand.x).toBe(40);
-    expect(main.x).toBe(40);
-    // Route loading and the fault panel replace the dashboard inside the same home main: they keep the edge too.
-    expect(await page.evaluate(() => {
-      const stand = document.createElement('div');
-      stand.className = 'vf-l-fault';
-      document.getElementById('learner-main')!.append(stand);
-      const x = Math.round(stand.getBoundingClientRect().x);
-      stand.remove();
-      return x;
-    })).toBe(40);
-    if (width >= 1100) {
-      expect(aside.width).toBe(280);
-      expect(aside.x - main.right).toBe(24);
-      expect(aside.top).toBe(main.top);
-      expect(aside.right).toBe(width - 40);
+    await info.attach(`task-first-frame-${width}`, { body: JSON.stringify(geometry), contentType: 'application/json' });
+    expect(Math.abs(geometry.title.x - geometry.work.x)).toBeLessThanOrEqual(1);
+    expect(geometry.work.x).toBeGreaterThanOrEqual(geometry.rail.right);
+    expect(geometry.resume.x).toBeGreaterThanOrEqual(geometry.courses.x);
+    expect(geometry.resume.right).toBeLessThanOrEqual(geometry.courses.right + 1);
+    if (width >= 1200) {
+      expect(geometry.aside.width).toBeCloseTo(270, 0);
+      expect(geometry.aside.x - geometry.main.right).toBeCloseTo(30, 0);
+      expect(Math.abs(geometry.aside.top - geometry.main.top)).toBeLessThanOrEqual(1);
     } else {
-      expect(aside.x).toBe(40);
-      expect(aside.top).toBeGreaterThanOrEqual(main.bottom);
-      expect(aside.width).toBe(main.width);
+      // At this breakpoint the semantic main wrapper is display:contents, not a box.
+      expect(Math.abs(geometry.aside.x - geometry.work.x)).toBeLessThanOrEqual(1);
+      expect(geometry.aside.top).toBeGreaterThanOrEqual(geometry.work.bottom);
+      expect(geometry.courses.top).toBeGreaterThanOrEqual(geometry.aside.bottom);
+      expect(geometry.results.top).toBeGreaterThanOrEqual(geometry.courses.bottom);
+      expect(Math.abs(geometry.aside.width - geometry.work.width)).toBeLessThanOrEqual(1);
     }
+    await open(page, '/app?fixture=tasks-error', 'en');
+    await expect(page.getByRole('status').filter({ hasText: 'Coursework is temporarily unavailable' })).toBeVisible();
+    for (const label of ['To do', 'Overdue', 'Submitted']) await expect(page.getByRole('button', { name: new RegExp(`${label}.*—`) })).toBeVisible();
+    await viewport(page);
   });
 
   test('no horizontal overflow at 360', async ({ page }) => {
@@ -470,7 +499,7 @@ async function filterGeometry(page: Page) {
       const shown = select.selectedOptions[0]?.textContent ?? '';
       // The native arrow sits inside the padding box; leave it 24px.
       const room = select.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 24;
-      return { name: select.name, scrollWidth: select.scrollWidth, clientWidth: select.clientWidth, text: Math.ceil(canvas.measureText(shown).width), room: Math.floor(room) };
+      return { name: select.name, shown, scrollWidth: select.scrollWidth, clientWidth: select.clientWidth, boundingWidth: select.getBoundingClientRect().width, font: canvas.font, paddingLeft: style.paddingLeft, paddingRight: style.paddingRight, rawText: canvas.measureText(shown).width, rawRoom: room, text: Math.ceil(canvas.measureText(shown).width), room: Math.floor(room) };
     });
     return {
       fields: Array.from(form.querySelectorAll(':scope > .vf-l-filter-field, :scope > .vf-l-filter-checks'), box),
@@ -495,10 +524,11 @@ test.describe('directory filter geometry', () => {
       }
     });
 
-    test(`${locale} ${path.split('?')[0]} at 1280: fields and actions share one row`, async ({ page }) => {
+    test(`${locale} ${path.split('?')[0]} at 1280: fields and actions share one row`, async ({ page }, info) => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await open(page, path, locale);
       const { fields, actions, selects } = await filterGeometry(page);
+      await info.attach('filter-raw-box-text-metrics', { body: JSON.stringify({ fields, actions, selects }, null, 2), contentType: 'application/json' });
       const tops = fields.map(field => field.top);
       expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
       for (const field of fields) {
@@ -520,25 +550,41 @@ test.describe('directory filter geometry', () => {
     await page.setViewportSize({ width: 375, height: 800 });
     for (const path of ['/app/courses', '/app/courses?tab=discover', '/app/projects']) {
       await open(page, path, 'en');
-      const rows = await page.locator('main table.vf-l-dir-table[data-stack] tbody tr').evaluateAll(trs => trs
-        .filter(tr => tr.getBoundingClientRect().height > 0)
-        .map(tr => {
-          const lead = tr.querySelector('td[data-slot="lead"]')!.getBoundingClientRect();
-          const body = tr.querySelector('td[data-slot="body"]')!.getBoundingClientRect();
-          const beside = Array.from(tr.querySelectorAll('td'))
-            .filter(cell => cell.dataset.slot !== 'lead' && getComputedStyle(cell).display !== 'none')
-            .filter(cell => {
-              const rect = cell.getBoundingClientRect();
-              return rect.height > 0 && rect.top < lead.bottom - 1 && rect.bottom > lead.top + 1 && rect.left >= lead.right - 1;
-            })
-            .map(cell => cell.dataset.slot);
-          return { beside, bodyBelow: body.top >= lead.bottom - 1 };
-        }));
-      expect(rows.length, `${path} rows`).toBeGreaterThan(0);
-      for (const row of rows) {
-        expect.soft(row.beside.length, `${path} lead shares its line`).toBeGreaterThan(0);
-        expect.soft(row.bodyBelow, `${path} title below the lead line`).toBe(true);
+      if (path.startsWith('/app/courses')) {
+        const region = page.getByRole('region', { name: path.includes('discover') ? 'Available courses' : 'Your courses', exact: true });
+        const cards = region.getByRole('listitem');
+        expect(await cards.count(), `${path} course cards`).toBeGreaterThan(0);
+        for (const card of await cards.all()) {
+          const title = card.getByRole('heading', { level: 3 });
+          await expect(title).toBeVisible();
+          const links = card.getByRole('link');
+          await expect(links).toHaveCount(2);
+          expect(await links.nth(0).getAttribute('href')).toBe(await links.nth(1).getAttribute('href'));
+          await expect(links.nth(1)).toBeVisible();
+          const bounds = await card.boundingBox();
+          expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(376);
+        }
+        await viewport(page);
+        continue;
       }
+      const tables = page.getByRole('table');
+      expect(await tables.count(), `${path} native project tables`).toBeGreaterThan(0);
+      let rowCount = 0;
+      for (const table of await tables.all()) {
+        const rows = table.getByRole('row').filter({ has: page.getByRole('link', { name: /^Open / }) });
+        for (const row of await rows.all()) {
+          rowCount += 1;
+          const status = row.getByRole('cell', { name: /^Status:/ });
+          const project = row.getByRole('cell', { name: /^Project:/ });
+          await expect(status).toBeVisible(); await expect(status).toContainText('Active');
+          await expect(project.getByRole('heading', { level: 3 })).toBeVisible();
+          await expect(project.getByRole('link', { name: /^Open / })).toHaveAttribute('href', '/app/projects/fixture-project');
+          await expect(project).toContainText('Systems'); await expect(project).toContainText('Collaboration');
+          const bounds = await row.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(376);
+        }
+      }
+      expect(rowCount, `${path} rows with associated status/title/metadata`).toBeGreaterThan(0);
+      await viewport(page);
     }
   });
 

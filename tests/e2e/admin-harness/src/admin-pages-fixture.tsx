@@ -1,7 +1,9 @@
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { formatStaffAuditAction, formatStaffAuditTarget } from '@/features/admin/audit-format';
-import type { Branch } from '@/features/admin/branches';
+import { useRouter } from 'next/navigation';
 import { BranchesManager, type SchoolReportCells } from '@/features/admin/components/BranchesManager';
+import { FIXTURE_ACTOR_ID, FIXTURE_PEOPLE, FIXTURE_SCHOOLS } from './admin-transport';
+import type { AdminScope } from '@/lib/admin-scope';
 import type { AdminOverviewData } from '@/features/admin/dashboard';
 import type { AdminAuditEntry } from '@/features/admin/management-contracts';
 import { AdminOverviewView } from '@/features/admin/ui/AdminOverviewView';
@@ -23,22 +25,10 @@ const DAY = 86_400_000;
 const iso = (offset: number) => new Date(NOW - offset).toISOString();
 const utcDay = (daysAgo: number) => iso(daysAgo * DAY).slice(0, 10);
 
-const PEOPLE: Array<[string, string]> = [
-  ['00000000-0000-4000-8000-000000000101', 'Nguyễn Minh Anh'],
-  ['00000000-0000-4000-8000-000000000102', 'Trần Gia Bảo'],
-  ['00000000-0000-4000-8000-000000000103', 'Lê Thu Hà'],
-  ['00000000-0000-4000-8000-000000000106', 'Phạm Quốc Huy'],
-  ['00000000-0000-4000-8000-000000000107', 'Hoàng Ngọc Diệp'],
-];
+const PEOPLE: Array<[string, string]> = FIXTURE_PEOPLE.slice(0, 5).map(([id, name]) => [id, name]);
 
-export const SCHOOLS: Branch[] = [
-  { id: 'ans', name: 'ANS · Hà Nội', city: 'Hà Nội', createdAt: '2025-08-01T00:00:00Z' },
-  { id: 'dewey', name: 'Dewey · Cầu Giấy', city: 'Hà Nội', createdAt: '2025-09-12T00:00:00Z' },
-  { id: 'lqd', name: 'Lê Quý Đôn · Đà Nẵng', city: 'Đà Nẵng', createdAt: '2025-10-03T00:00:00Z' },
-  { id: 'ntmk', name: 'Nguyễn Thị Minh Khai · TP.HCM', city: 'TP. Hồ Chí Minh', createdAt: '2026-01-15T00:00:00Z' },
-  { id: 'hue', name: 'Quốc Học · Huế', city: 'Huế', createdAt: '2026-03-02T00:00:00Z' },
-  { id: 'can-tho', name: 'Châu Văn Liêm · Cần Thơ', city: null, createdAt: '2026-06-20T00:00:00Z' },
-];
+export const SCHOOLS = structuredClone(FIXTURE_SCHOOLS);
+const fixtureScenario = () => new URLSearchParams(location.search).get('scenario') ?? sessionStorage.getItem('admin-fixture-scenario') ?? 'dense';
 
 export const SCHOOL_REPORTS: Record<string, SchoolReportCells> = {
   ans: { activeLearners30d: 214, enrollments: 980, completedEnrollments: 612, completionPercent: 62.4, pendingGrading: 18, averagePercent: 78.2 },
@@ -93,38 +83,51 @@ export const OVERVIEW_DATA: AdminOverviewData = {
   actors: Object.fromEntries(PEOPLE.map(([id, name]) => [id, { name, avatarUrl: null }])),
 };
 
-export function AdminOverviewFixture({ permissions, entries, central }: { permissions: Permission[]; entries: WorkspaceEntries; central: boolean }) {
+export function AdminOverviewFixture({ permissions, entries, central, scope }: { permissions: Permission[]; entries: WorkspaceEntries; central: boolean; scope: AdminScope }) {
   const t = useTranslations('centralAdmin');
   const locale = useLocale();
+  const data = structuredClone(OVERVIEW_DATA);
+  const model = window.__adminFixture.readModel(scope);
+  data.members = model.members.length;
+  data.schools = model.schools.length;
+  if (fixtureScenario() === 'empty') Object.assign(data, { members: 0, enrollments: 0, pendingGrading: 0, pendingReview: 0, pendingInvitations: 0, recentActivity: [], activitySeries: [], schoolRanking: [], reviewPipeline: { pending: 0, changesRequested: 0, approved: 0 }, activeLearners: { ...data.activeLearners!, current: 0, previous: 0 } });
+  if (fixtureScenario() === 'sparse') Object.assign(data, { pendingGrading: 1, pendingReview: 1, recentActivity: data.recentActivity?.slice(0, 1), schoolRanking: data.schoolRanking?.slice(0, 1), reviewPipeline: { pending: 1, changesRequested: 0, approved: 0 } });
+  if (fixtureScenario() === 'error') Object.assign(data, { activeLearners: undefined, activitySeries: undefined, schoolRanking: undefined, recentActivity: undefined, unavailable: ['activeLearners', 'activitySeries', 'schoolRanking', 'recentActivity'] });
   return <AdminOverviewView {...buildAdminOverviewView({
-    data: central ? OVERVIEW_DATA : { ...OVERVIEW_DATA, schools: undefined, schoolRanking: undefined, reviewPipeline: undefined, pendingReview: undefined, publishedContent: undefined },
+    data: central ? data : { ...data, schools: undefined, schoolRanking: undefined, reviewPipeline: undefined, pendingReview: undefined, publishedContent: undefined },
     permissions,
     entries,
     locale,
-    eyebrow: central ? t('central') : SCHOOLS[0]!.name,
+    eyebrow: central ? t('central') : model.schools[0]?.name ?? t('central'),
     title: t('overview'),
     description: t('overviewDescription'),
   })} />;
 }
 
-export function BranchesFixture({ canManage }: { canManage: boolean }) {
-  return <BranchesManager initialBranches={SCHOOLS} reports={SCHOOL_REPORTS} canManage={canManage} />;
+export function BranchesFixture({ canManage, scope, permissions }: { canManage: boolean; scope: AdminScope; permissions: Permission[] }) {
+  const schools = window.__adminFixture.readModel(scope).schools;
+  const rows = fixtureScenario() === 'empty' ? [] : fixtureScenario() === 'sparse' ? schools.slice(0, 1) : schools;
+  return <BranchesManager initialBranches={rows} reports={fixtureScenario() === 'error' ? 'unavailable' : permissions.includes('report.branch.read') ? SCHOOL_REPORTS : undefined} canManage={canManage} />;
 }
-
-const MEMBER_NAMES = ['Nguyễn Minh Anh', 'Trần Gia Bảo', 'Lê Thu Hà', 'Phạm Quốc Huy', 'Hoàng Ngọc Diệp', 'Vũ Đức Thắng', 'Đặng Thảo Vy', 'Bùi Khánh Linh', 'Đỗ Hải Nam', 'Ngô Phương Thảo'];
-
-export function SchoolDetailFixture({ branchId }: { branchId: string }) {
+export function SchoolDetailFixture({ branchId, permissions }: { branchId: string; permissions: Permission[] }) {
   const t = useTranslations('centralAdmin');
   const to = useTranslations('staffUi.admin.org.schoolDetail');
   const format = useFormatter();
-  const school = SCHOOLS.find((entry) => entry.id === branchId) ?? SCHOOLS[0]!;
+  const router = useRouter();
+  const locale = useLocale();
+  const school = window.__adminFixture.readModel().schools.find((entry) => entry.id === branchId);
+  if (!school) throw new Error('This local school fixture does not exist.');
+  const model = window.__adminFixture.readModel({ kind: 'branch', branchId });
   const params = new URLSearchParams(location.search);
-  const tab = ['members', 'staff', 'cms'].includes(params.get('tab') ?? '') ? params.get('tab')! : 'overview';
+  const canReadMembers = permissions.includes('member.read');
+  const canReadReports = permissions.includes('report.branch.read');
+  const availableTabs = ['overview', ...(canReadMembers ? ['members', 'staff'] : []), ...(permissions.includes('content.read') ? ['cms'] : [])];
+  const tab = availableTabs.includes(params.get('tab') ?? '') ? params.get('tab')! : 'overview';
   const page = Math.max(1, Number(params.get('page')) || 1);
-  const cells = SCHOOL_REPORTS[school.id]!;
+  const cells = SCHOOL_REPORTS[school.id] ?? { activeLearners30d: 0, enrollments: 0, completedEnrollments: 0, completionPercent: null, pendingGrading: 0, averagePercent: null };
   const percent = (value: number | null) => (value === null ? '—' : format.number(value / 100, { style: 'percent', maximumFractionDigits: 1 }));
   const stats: SchoolDetailStat[] = [
-    { key: 'members', label: to('stats.members'), value: 312 },
+    { key: 'members', label: to('stats.members'), value: model.members.length },
     { key: 'enrollments', label: to('stats.enrollments'), value: cells.enrollments },
     { key: 'pendingGrading', label: to('stats.pendingGrading'), value: cells.pendingGrading },
     { key: 'activeLearners', label: to('stats.activeLearners'), value: cells.activeLearners30d },
@@ -132,33 +135,37 @@ export function SchoolDetailFixture({ branchId }: { branchId: string }) {
     { key: 'averageScore', label: to('stats.averageScore'), value: percent(cells.averagePercent) },
   ];
   const tabHref = (key: string, query: Record<string, string> = {}) => routes.admin.branch(school.id, { tab: key === 'overview' ? undefined : key, ...query });
-  const hasMore = page < 3;
-  const rows = MEMBER_NAMES.map((name, index) => ({
-    id: `member-${page}-${index}`,
-    name: page > 1 ? `${name} ${page}` : name,
-    email: `hoc.vien${(page - 1) * 10 + index + 1}@example.test`,
-    href: routes.admin.user(`member-${page}-${index}`),
-    roles: tab === 'staff' ? (index % 2 ? 'Giáo viên' : 'Quản trị trường') : 'Học viên',
-    status: index === 6 ? ('suspended' as const) : ('active' as const),
+  const people = tab === 'staff' ? model.members.filter((member) => member.assignments.some((assignment) => assignment.roleId !== 'member')) : model.members;
+  const hasMore = people.length > page * 10;
+  const rows = people.slice((page - 1) * 10, page * 10).map((member) => ({
+    id: member.id, name: member.displayName, email: member.email, href: routes.admin.user(member.id),
+    roles: member.assignments.map((assignment) => assignment.roleName).join(', ') || to('noRole'),
+    status: member.accountStatus === 'suspended' ? 'suspended' as const : member.memberships.find((membership) => membership.branchId === school.id)?.status ?? 'active',
   }));
   return <SchoolDetailView
     school={{ id: school.id, name: school.name, description: school.city ? `${t('schools')} · ${school.city}` : t('schools') }}
     tabs={[
-      ...['overview', 'members', 'staff', 'cms'].map((key) => ({ key, label: t(key), href: tabHref(key), current: key === tab })),
-      { key: 'reports', label: t('reports'), href: routes.grading.reports({ branchId: school.id }), current: false, external: true },
+      ...availableTabs.map((key) => ({ key, label: t(key), href: tabHref(key), current: key === tab })),
+      ...(canReadReports ? [{ key: 'reports', label: t('reports'), href: routes.grading.reports({ branchId: school.id }), current: false, external: true }] : []),
     ]}
     tabsLabel={to('sections')}
-    enter={{ action: () => {}, scope: `branch:${school.id}`, destination: '/admin', label: t('enterSchool') }}
+    enter={{ action: async (form) => {
+      const response = await fetch('/api/v1/admin/scope', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: form.get('scope'), destination: form.get('destination'), actorId: FIXTURE_ACTOR_ID }) });
+      if (!response.ok) throw new Error('The fixture scope change failed.');
+      router.push(String(form.get('destination')));
+    }, scope: `branch:${school.id}`, destination: tab === 'cms' ? '/studio/library' : tab === 'members' || tab === 'staff' ? '/admin/users' : '/admin', label: t('enterSchool') }}
     stats={tab === 'overview' ? stats : undefined}
     unavailableLabel={to('unavailable')}
-    members={tab === 'members' || tab === 'staff' ? {
-      title: tab === 'staff' ? to('staffTitle') : to('membersTitle'),
-      rows,
+    activity={tab === 'overview' && permissions.includes('audit.read') ? { title: to('activityTitle'), emptyLabel: to('activityEmpty'), items: (fixtureScenario() === 'empty' ? [] : auditEntries(4)).map((entry) => ({ id: entry.id, actor: { name: PEOPLE.find(([id]) => id === entry.actorId)?.[1] ?? (locale === 'vi' ? 'Hệ thống' : 'System') }, action: formatStaffAuditAction(entry.action, locale).label, target: formatStaffAuditTarget(entry.targetType, locale), at: entry.at })) } : undefined}
+    members={canReadMembers && (tab === 'members' || tab === 'staff' || tab === 'overview') ? {
+      title: tab === 'staff' ? to('staffTitle') : tab === 'overview' ? to('previewTitle') : to('membersTitle'),
+      rows: fixtureScenario() === 'error' ? null : tab === 'overview' ? rows.slice(0, 5) : rows,
       page,
       hasMore,
       previousHref: page > 1 ? tabHref(tab, page - 1 > 1 ? { page: String(page - 1) } : {}) : null,
       nextHref: hasMore ? tabHref(tab, { page: String(page + 1) }) : null,
       labels: { member: to('columns.member'), roles: to('columns.roles'), status: to('columns.status'), empty: tab === 'staff' ? to('emptyStaff') : to('emptyMembers'), unavailable: to('membersUnavailable'), pagination: to('pagination') },
+      action: tab === 'overview' ? { label: to('viewAllMembers'), href: tabHref('members') } : undefined,
     } : undefined}
     note={tab === 'cms' ? to('cmsDescription') : undefined}
   />;

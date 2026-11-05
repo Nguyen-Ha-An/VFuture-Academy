@@ -66,9 +66,11 @@ export function useWorkspaceDraft(initialDraft: WorkspaceDraft, readOnly: boolea
   const payload = analysis.payload;
   const diagnostics = analysis.diagnostics;
 
-  const changeSource = useCallback((ref: DocumentRef, source: string) => {
+  const changeSource = useCallback((ref: DocumentRef, source: string, synchronous = false) => {
     if (readOnly) return;
-    update(value => changeWorkspaceSource(value, ref, source, sourceIdentityCache), true, true);
+    // Forms commit synchronously so a second keystroke is based on the source
+    // already displayed; the JSON editor retains its deferred input path.
+    update(value => changeWorkspaceSource(value, ref, source, sourceIdentityCache), true, !synchronous);
     if (!['error', 'conflict', 'uncertain'].includes(statusRef.current)) {
       setError(null); setIssues(value => value.length === 0 ? value : []);
     }

@@ -1,6 +1,9 @@
-import Link from "next/link";
+import { useId } from "react";
+import { useFormatter } from "next-intl";
+import "./admin.css";
 import { useTranslations } from "next-intl";
 import {
+  ArrowRight,
   BookOpenCheck,
   ClipboardCheck,
   FileCheck2,
@@ -11,15 +14,13 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CanvasButton as Button, CanvasLink } from "@/features/canvas/ui";
 import {
   ActivityFeed,
   ChartCard,
-  PipelineStrip,
   StatCard,
   StatGrid,
   type ActivityItem,
-  type PipelineStage,
 } from "@/features/staff-ui/components/insights";
 import { StaffPageHeader } from "@/features/workspace/ui/StaffPageHeader";
 import { SchoolActivityCard } from "./overview/SchoolActivityCard";
@@ -42,8 +43,8 @@ const KPI_ICONS: Record<OverviewKpiKey, LucideIcon> = {
   publishedContent: BookOpenCheck,
 };
 
-// The admin overview (Catmin dashboard anatomy): H1 + one primary action, KPI row,
-// insight row (activity chart, school distribution, work pipeline), recent activity.
+// Keep waiting work directly below the summary so administrators can act before
+// reading historical activity. Every destination remains permission-filtered by the model.
 // Props are plain data from buildAdminOverviewView(), so a harness can render fixtures.
 export function AdminOverviewView({
   eyebrow,
@@ -59,6 +60,8 @@ export function AdminOverviewView({
 }: AdminOverviewViewProps) {
   const t = useTranslations("staffUi.admin.overview");
   const insights = useTranslations("staffUi.insights");
+  const format = useFormatter();
+  const workTitleId = useId();
 
   const kpiHint = (kpi: OverviewKpi) => {
     if (kpi.key === "activeLearners") return t("kpi.activeLearnersHint");
@@ -70,13 +73,11 @@ export function AdminOverviewView({
       : t("kpi.pendingInvitations", { count: kpi.pendingInvitations });
   };
 
-  const stages: PipelineStage[] | undefined = pipeline?.map((stage) => ({
-    key: stage.key,
-    label: t(`pipeline.${stage.key}`),
-    count: stage.count,
-    tone: stage.tone,
-    href: stage.href,
-  }));
+  // Counts that already appear in the waiting-work queue need no second KPI.
+  const summaryKpis = kpis.filter((kpi) =>
+    !(kpi.key === "pendingReview" && pipeline?.some((stage) => stage.key === "pending")) &&
+    !(kpi.key === "pendingGrading" && pipeline?.some((stage) => stage.key === "pendingGrading")),
+  );
 
   const feedItems: ActivityItem[] =
     recent?.state === "ready" ? recent.items.map((item) => feedItem(item)) : [];
@@ -97,20 +98,18 @@ export function AdminOverviewView({
 
   const hasInsightRow = Boolean(activity || schools);
 
-  return <div className="flex flex-col gap-6">
+  return <div className="canvas-page canvas-admin canvas-admin-overview flex flex-col gap-6">
     <StaffPageHeader
       eyebrow={eyebrow}
       title={title}
       description={description}
       actions={inviteHref
-        ? <Button asChild>
-          <Link href={inviteHref}><UserPlus aria-hidden="true" />{t("inviteMember")}</Link>
-        </Button>
+        ? <Button href={inviteHref} renderIcon={<UserPlus aria-hidden="true" />}>{t("inviteMember")}</Button>
         : undefined}
     />
 
-    {kpis.length ? <StatGrid>
-      {kpis.map((kpi) => <StatCard
+    {summaryKpis.length ? <StatGrid className="admin-metrics">
+      {summaryKpis.map((kpi) => <StatCard
         key={kpi.key}
         label={t(`kpi.${kpi.key}`)}
         value={kpi.value}
@@ -123,6 +122,21 @@ export function AdminOverviewView({
       />)}
     </StatGrid> : null}
 
+    {pipeline?.length ? <section className="admin-work" aria-labelledby={workTitleId}>
+      <div className="admin-section-heading">
+        <h2 id={workTitleId}>{t("pipeline.title")}</h2>
+        <p>{t("pipeline.description")}</p>
+      </div>
+      <ol className="admin-work-list">
+        {pipeline.map((stage) => <li key={stage.key} data-stage={stage.key} data-tone={stage.tone}>
+          <span className="admin-work-count">{stage.count === null ? insights("unavailable") : format.number(stage.count)}</span>
+          {stage.href ? <CanvasLink href={stage.href}>
+            <span className="admin-work-link">{t(`pipeline.${stage.key}`)}<ArrowRight aria-hidden="true" size={16} /></span>
+          </CanvasLink> : <span className="admin-work-status">{t(`pipeline.${stage.key}`)}</span>}
+        </li>)}
+      </ol>
+    </section> : null}
+
     {hasInsightRow ? <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
       {activity ? <ChartCard
         className={schools ? "lg:col-span-2" : "lg:col-span-3"}
@@ -134,8 +148,8 @@ export function AdminOverviewView({
         categoryFormat="day"
         categoryLabel={t("activity.day")}
         series={[
-          { key: "lessonCompletions", label: t("activity.lessons") },
-          { key: "attempts", label: t("activity.attempts") },
+          { key: "lessonCompletions", label: t("activity.lessons"), color: "var(--primary)" },
+          { key: "attempts", label: t("activity.attempts"), color: "var(--muted-foreground)", fill: false },
         ]}
         state={activity.state}
         footer={totals ? t("activity.summary", totals) : undefined}
@@ -146,12 +160,6 @@ export function AdminOverviewView({
         rows={schools.state === "ready" ? schools.rows : undefined}
       /> : null}
     </div> : null}
-
-    {stages ? <PipelineStrip
-      title={t("pipeline.title")}
-      description={t("pipeline.description")}
-      stages={stages}
-    /> : null}
 
     {recent ? <ActivityFeed
       title={t("recent.title")}

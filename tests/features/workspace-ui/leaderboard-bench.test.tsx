@@ -40,7 +40,7 @@ describe('bench leaderboard', () => {
     const table = screen.getByRole('table', { name: 'Weekly XP leaderboard' });
     expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Rank', 'Learner', 'XP']);
     expect(container.querySelectorAll('tbody tr')).toHaveLength(18);
-    expect(container.querySelectorAll('tr[data-gap]')).toHaveLength(1);
+    expect(screen.getByLabelText('Rows between the top 10 and your position are hidden')).toBeInTheDocument();
     const current = container.querySelector('tr[aria-current="true"]');
     expect(current).toHaveTextContent('#23');
     expect(within(current as HTMLElement).getByText('You')).toBeVisible();

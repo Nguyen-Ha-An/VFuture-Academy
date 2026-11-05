@@ -1,5 +1,6 @@
 "use client";
 
+import "@/features/admin/ui/admin.css";
 import Link from "next/link";
 import { AccountControls } from "./AccountControls";
 import {
@@ -16,8 +17,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { GraduationCap, Mail, SearchIcon, UserPlus, Users, UserX } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CanvasButton as Button, CanvasTextInput, CanvasSelect, CanvasTable, CanvasResponsive } from "@/features/canvas/ui";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   Sheet,
@@ -28,14 +28,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import type {
   ManagementOptions,
   ManagedInvitation,
@@ -252,7 +245,7 @@ export function MembersDirectory({
         setPage(result);
         setCommittedFilters(nextFilters);
         writeCommittedFilters(nextFilters, nextPage);
-        setStatus(result.items.length ? "" : t("empty"));
+        setStatus("");
       } catch (caught) {
         if (
           (caught as Error).name === "AbortError" ||
@@ -265,7 +258,7 @@ export function MembersDirectory({
         if (generation === generationRef.current) setLoading(false);
       }
     },
-    [actorId, scope, t, urlFor],
+    [actorId, scope, urlFor],
   );
 
   const loadSupportingData = useCallback(async () => {
@@ -477,67 +470,51 @@ export function MembersDirectory({
     <form
       onSubmit={submitSearch}
       role="search"
-      className="flex flex-col gap-3 lg:flex-row lg:items-center"
+      className="canvas-toolbar flex flex-col gap-3"
     >
-      <label className="relative min-w-0 flex-1">
-        <span className="sr-only">{t("search")}</span>
-        <SearchIcon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      <div className="w-full min-w-0 flex-1">
+        <CanvasTextInput
+          label={<span className="sr-only">{t("search")}</span>}
+          renderBeforeInput={<SearchIcon aria-hidden="true" className="size-4 text-muted-foreground" />}
           type="search"
-          className="pl-9"
           placeholder={tm("searchPlaceholder")}
           value={filters.query}
-          onChange={(event) =>
-            setFilters((current) => ({ ...current, query: event.target.value }))
+          onChange={(query) =>
+            setFilters((current) => ({ ...current, query }))
           }
         />
-      </label>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:items-center">
-        <label className="min-w-0">
-          <span className="sr-only">{t("status")}</span>
-          <NativeSelect
-            wrapperClassName="w-full lg:w-40"
+      </div>
+      <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
+        <div className="min-w-0">
+          <CanvasSelect
+            label={<span className="sr-only">{t("status")}</span>}
             value={filters.status}
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, status: event.target.value }))
+            onChange={(status) =>
+              setFilters((current) => ({ ...current, status }))
             }
-          >
-            <NativeSelectOption value="">{t("allStatuses")}</NativeSelectOption>
-            <NativeSelectOption value="active">{t("active")}</NativeSelectOption>
-            <NativeSelectOption value="suspended">{t("suspended")}</NativeSelectOption>
-          </NativeSelect>
-        </label>
-        <label className="min-w-0">
-          <span className="sr-only">{t("roles")}</span>
-          <NativeSelect
-            wrapperClassName="w-full lg:w-44"
+            options={[{ value: "", label: t("allStatuses") }, { value: "active", label: t("active") }, { value: "suspended", label: t("suspended") }]}
+          />
+        </div>
+        <div className="min-w-0">
+          <CanvasSelect
+            label={<span className="sr-only">{t("roles")}</span>}
             value={filters.roleId}
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, roleId: event.target.value }))
+            onChange={(roleId) =>
+              setFilters((current) => ({ ...current, roleId }))
             }
-          >
-            <NativeSelectOption value="">{t("allRoles")}</NativeSelectOption>
-            {options?.roles.map((role) => (
-              <NativeSelectOption key={role.id} value={role.id}>
-                {role.builtIn ? roleName(role.id, role.name) : role.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </label>
-        <label className="min-w-0">
-          <span className="sr-only">{t("kind")}</span>
-          <NativeSelect
-            wrapperClassName="w-full lg:w-40"
+            options={[{ value: "", label: t("allRoles") }, ...(options?.roles ?? []).map((role) => ({ value: role.id, label: role.builtIn ? roleName(role.id, role.name) : role.name }))]}
+          />
+        </div>
+        <div className="min-w-0">
+          <CanvasSelect
+            label={<span className="sr-only">{t("kind")}</span>}
             value={filters.kind}
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, kind: event.target.value }))
+            onChange={(kind) =>
+              setFilters((current) => ({ ...current, kind }))
             }
-          >
-            <NativeSelectOption value="">{t("allKinds")}</NativeSelectOption>
-            <NativeSelectOption value="learner">{t("learner")}</NativeSelectOption>
-            <NativeSelectOption value="staff">{t("staff")}</NativeSelectOption>
-          </NativeSelect>
-        </label>
+            options={[{ value: "", label: t("allKinds") }, { value: "learner", label: t("learner") }, { value: "staff", label: t("staff") }]}
+          />
+        </div>
         <Button type="submit" variant="outline">
           {t("search")}
         </Button>
@@ -546,7 +523,7 @@ export function MembersDirectory({
   );
 
   return (
-    <section className="space-y-6" aria-label={t("title")}>
+    <section className="canvas-page canvas-admin space-y-6" aria-label={t("title")}>
       <StaffPageHeader
         title={t("title")}
         eyebrow={t("administration")}
@@ -571,7 +548,9 @@ export function MembersDirectory({
           onRetry={() => void loadMembers(currentPage, committedFilters)}
         />
       ) : null}
+      {error && page?.items.length ? <p className="text-sm text-muted-foreground">{tm("previousResults")}</p> : null}
       <DataCard
+        className="canvas-panel"
         toolbar={filterForm}
         footer={
           currentPage > 1 || page?.hasMore ? (
@@ -589,27 +568,37 @@ export function MembersDirectory({
           ) : null
         }
       >
-        <Table aria-label={t("title")}>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{tm("member")}</TableHead>
-              <TableHead className="hidden md:table-cell">{t("school")}</TableHead>
-              <TableHead className="hidden lg:table-cell">{t("roles")}</TableHead>
-              <TableHead>{t("status")}</TableHead>
-              <TableHead className="w-12">
+        <CanvasResponsive query={{ phone: { maxWidth: "47.99rem" }, tablet: { minWidth: "48rem", maxWidth: "63.99rem" }, desktop: { minWidth: "64rem" } }}
+          props={{ phone: { showSchool: false, showRole: false }, tablet: { showSchool: true, showRole: false }, desktop: { showSchool: true, showRole: true } }}>
+          {(responsive) => (
+        <CanvasTable layout="fixed" caption={() => t("title")} hover>
+          <CanvasTable.Head>
+            <CanvasTable.Row className="hover:bg-transparent">
+              <CanvasTable.ColHeader id="admin-members-col-0">{tm("member")}</CanvasTable.ColHeader>
+              {responsive?.showSchool ? <CanvasTable.ColHeader id="admin-members-col-1" className="hidden md:table-cell">{t("school")}</CanvasTable.ColHeader> : null}
+              {responsive?.showRole ? <CanvasTable.ColHeader id="admin-members-col-2" className="hidden lg:table-cell">{t("roles")}</CanvasTable.ColHeader> : null}
+              <CanvasTable.ColHeader width="7rem" id="admin-members-col-3" className="w-28 md:w-auto">{t("status")}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader width="3rem" id="admin-members-col-4" className="w-12">
                 <span className="sr-only">{tm("actions")}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </CanvasTable.ColHeader>
+            </CanvasTable.Row>
+          </CanvasTable.Head>
+          <CanvasTable.Body>
             {page?.items.map((member) => {
               const href = memberDetailsUrl(member.id, searchKey, committedFilters, currentPage);
               const effectiveStatus = memberStatus(member, scope);
+              const schools = member.memberships
+                .filter((membership) => membership.status === "active")
+                .map((membership) => membership.branchName)
+                .join(", ");
+              const roles = member.assignments
+                .map((assignment) => roleName(assignment.roleId, assignment.roleName))
+                .join(", ");
               return (
-                <TableRow key={member.id}>
-                  <TableCell className="py-2.5">
+                <CanvasTable.Row key={member.id}>
+                  <CanvasTable.Cell className="py-2.5">
                     <div className="flex min-w-0 items-center gap-3">
-                      <Avatar className="size-9" aria-hidden="true">
+                      <Avatar className="hidden size-9 sm:flex" aria-hidden="true">
                         <AvatarFallback>{memberInitials(member.displayName)}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
@@ -622,28 +611,25 @@ export function MembersDirectory({
                         <p className="truncate text-xs leading-normal text-muted-foreground">
                           {member.email}
                         </p>
+                        {schools && !responsive?.showSchool ? <p className="mt-1 whitespace-normal text-xs leading-normal text-muted-foreground">{schools}</p> : null}
+                        {roles && !responsive?.showRole ? <p className="whitespace-normal text-xs leading-normal text-muted-foreground">{roles}</p> : null}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {member.memberships
-                      .filter((membership) => membership.status === "active")
-                      .map((membership) => membership.branchName)
-                      .join(", ") || "—"}
-                  </TableCell>
-                  <TableCell className="hidden whitespace-normal lg:table-cell">
-                    {member.assignments
-                      .map((assignment) => roleName(assignment.roleId, assignment.roleName))
-                      .join(", ") || "—"}
-                  </TableCell>
-                  <TableCell>
+                  </CanvasTable.Cell>
+                  {responsive?.showSchool ? <CanvasTable.Cell className="hidden md:table-cell">
+                    {schools || "—"}
+                  </CanvasTable.Cell> : null}
+                  {responsive?.showRole ? <CanvasTable.Cell className="hidden whitespace-normal lg:table-cell">
+                    {roles || "—"}
+                  </CanvasTable.Cell> : null}
+                  <CanvasTable.Cell>
                     <StatusBadge
                       kind="member"
                       value={effectiveStatus}
                       label={effectiveStatus === "active" ? t("active") : t("suspended")}
                     />
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell className="text-right">
                     <RowActions
                       label={tm("actionsFor", { name: member.displayName })}
                       items={[
@@ -651,15 +637,24 @@ export function MembersDirectory({
                         { label: tm("copyEmail"), onSelect: () => copyEmail(member.email) },
                       ]}
                     />
-                  </TableCell>
-                </TableRow>
+                  </CanvasTable.Cell>
+                </CanvasTable.Row>
               );
             })}
-          </TableBody>
-        </Table>
+          </CanvasTable.Body>
+        </CanvasTable>
+          )}
+        </CanvasResponsive>
         {!loading && page?.items.length === 0 ? (
           <div className="p-6">
             <EmptyState title={t("empty")} />
+            {Object.values(committedFilters).some(Boolean) ? <div className="mt-4 flex justify-center">
+              <Button variant="outline" onClick={() => {
+                const cleared = { query: "", status: "", roleId: "", kind: "" };
+                setFilters(cleared);
+                void loadMembers(1, cleared);
+              }}>{tm("clearFilters")}</Button>
+            </div> : null}
           </div>
         ) : null}
       </DataCard>
@@ -672,35 +667,47 @@ export function MembersDirectory({
       {canInvite ? (
         <DataCard
           id="invitations"
+          className="canvas-panel"
           title={t("invitations")}
           description={`${scopeLabel(scope, options?.branches ?? [])} · ${tm("invitationsDescription")}`}
         >
           {invitations.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>{t("email")}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t("school")}</TableHead>
-                  <TableHead>{t("status")}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{tm("expiresColumn")}</TableHead>
-                  <TableHead className="text-right">
+            <CanvasResponsive query={{ phone: { maxWidth: "39.99rem" }, tablet: { minWidth: "40rem", maxWidth: "47.99rem" }, desktop: { minWidth: "48rem" } }}
+              props={{ phone: { showSchool: false, showStatus: false }, tablet: { showSchool: false, showStatus: true }, desktop: { showSchool: true, showStatus: true } }}>
+              {(responsive) => (
+            <CanvasTable layout="fixed" caption={() => t("invitations")} hover>
+              <CanvasTable.Head>
+                <CanvasTable.Row className="hover:bg-transparent">
+                  <CanvasTable.ColHeader id="admin-members-col-5">{t("email")}</CanvasTable.ColHeader>
+                  {responsive?.showSchool ? <CanvasTable.ColHeader id="admin-members-col-6" className="hidden md:table-cell">{t("school")}</CanvasTable.ColHeader> : null}
+                  {responsive?.showStatus ? <CanvasTable.ColHeader id="admin-members-col-7" className="hidden sm:table-cell">{t("status")}</CanvasTable.ColHeader> : null}
+                  {responsive?.showStatus ? <CanvasTable.ColHeader id="admin-members-col-8" className="hidden sm:table-cell">{tm("expiresColumn")}</CanvasTable.ColHeader> : null}
+                  <CanvasTable.ColHeader width={responsive?.showStatus ? "14rem" : "3rem"} id="admin-members-col-9" className="w-12 text-right sm:w-auto">
                     <span className="sr-only">{tm("invitationActions")}</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  </CanvasTable.ColHeader>
+                </CanvasTable.Row>
+              </CanvasTable.Head>
+              <CanvasTable.Body>
                 {invitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell className="max-w-64 truncate font-medium">{invitation.email}</TableCell>
-                    <TableCell className="hidden md:table-cell">{branchName(invitation.branchId)}</TableCell>
-                    <TableCell>
+                  <CanvasTable.Row key={invitation.id}>
+                    <CanvasTable.Cell className="min-w-0 max-w-64 font-medium">
+                      <span className="block truncate" title={invitation.email}>{invitation.email}</span>
+                      {!responsive?.showStatus ? <span className="mt-2 block"><StatusBadge kind="invitation" value={invitation.status} /></span> : null}
+                    </CanvasTable.Cell>
+                    {responsive?.showSchool ? <CanvasTable.Cell className="hidden md:table-cell">{branchName(invitation.branchId)}</CanvasTable.Cell> : null}
+                    {responsive?.showStatus ? <CanvasTable.Cell className="hidden sm:table-cell">
                       <StatusBadge kind="invitation" value={invitation.status} />
-                    </TableCell>
-                    <TableCell className="hidden tabular-nums text-muted-foreground sm:table-cell">
+                    </CanvasTable.Cell> : null}
+                    {responsive?.showStatus ? <CanvasTable.Cell className="hidden tabular-nums text-muted-foreground sm:table-cell">
                       {format.dateTime(new Date(invitation.expiresAt), { dateStyle: "medium" })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="inline-flex flex-wrap justify-end gap-2">
+                    </CanvasTable.Cell> : null}
+                    <CanvasTable.Cell className="text-right">
+                      {!responsive?.showStatus ? <span>
+                        <RowActions label={`${tm("invitationActions")}: ${invitation.email}`} items={[
+                          ...(invitation.status === "pending" ? [{ label: t("revoke"), disabled: invitationAction !== null, onSelect: () => revokeInvitation(invitation.id) }] : []),
+                          { label: t("reissue"), disabled: invitationAction !== null, onSelect: () => reissueInvitation(invitation) },
+                        ]} />
+                      </span> : <span className="inline-flex flex-wrap justify-end gap-2">
                         {invitation.status === "pending" ? (
                           <Button
                             variant="outline"
@@ -719,12 +726,14 @@ export function MembersDirectory({
                         >
                           {t("reissue")}
                         </Button>
-                      </span>
-                    </TableCell>
-                  </TableRow>
+                      </span>}
+                    </CanvasTable.Cell>
+                  </CanvasTable.Row>
                 ))}
-              </TableBody>
-            </Table>
+              </CanvasTable.Body>
+            </CanvasTable>
+              )}
+            </CanvasResponsive>
           ) : (
             <div className="p-6">
               <EmptyState title={tm("invitationsEmpty")} />
@@ -741,10 +750,7 @@ export function MembersDirectory({
             </SheetHeader>
             <form onSubmit={createInvitation} className="flex min-h-0 flex-1 flex-col gap-4">
               <div className="grid gap-4 overflow-y-auto px-6">
-                <label className="grid gap-1.5 text-sm font-medium leading-normal">
-                  {t("inviteEmail")}
-                  <Input name="email" type="email" required autoComplete="off" />
-                </label>
+                <CanvasTextInput label={t("inviteEmail")} name="email" type="email" required autoComplete="off" />
                 <label className="grid gap-1.5 text-sm font-medium leading-normal">
                   {t("inviteSchool")}
                   <NativeSelect

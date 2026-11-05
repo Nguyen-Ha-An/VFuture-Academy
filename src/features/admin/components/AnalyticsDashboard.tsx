@@ -3,9 +3,11 @@
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Button, Table } from '@/components/ui/classic';
+import { Table } from '@/components/ui/classic';
+import { CanvasButton as Button, CanvasSelect } from '@/features/canvas/ui';
 import type { Branch } from '@/features/admin/branches';
 import type { BranchAnalytics } from '@/features/admin/analytics';
+import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 
 type Envelope<T> = { data?: T; error?: { message?: string } };
 
@@ -16,7 +18,7 @@ async function responseData<T>(response: Response): Promise<T> {
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
-  return <div className="rounded-lg border border-border bg-card p-5"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-2 text-3xl font-semibold tracking-tight">{value}</dd></div>;
+  return <div className="canvas-panel min-w-0 p-4"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{value}</dd></div>;
 }
 
 export function AnalyticsDashboard({
@@ -57,20 +59,13 @@ export function AnalyticsDashboard({
 
   const completion = data?.lessonCompletionRate ?? 0;
   return (
-    <section className="space-y-8" aria-labelledby="analytics-title">
-      <div>
-        <p className="font-mono text-xs font-medium tracking-[0.16em] text-primary uppercase">{t('eyebrow')}</p>
-        <h1 id="analytics-title" className="mt-3 text-3xl font-semibold tracking-tight">{t('title')}</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">{t('description')}</p>
-      </div>
+    <section className="canvas-page space-y-6" aria-label={t('title')}>
+      <StaffPageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('description')} />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-5">
-        <label className="grid min-w-56 gap-2 text-sm font-medium" htmlFor="analytics-branch">
-          {t('branch')}
-          <select id="analytics-branch" value={branchId} disabled={fixedBranchId !== null} onChange={(event) => setBranchId(event.target.value)} className="min-h-10 rounded-md border border-input bg-background px-3">
-            {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-          </select>
-        </label>
+      <div className="canvas-toolbar flex flex-wrap items-end gap-3 p-4">
+        <div className="w-full min-w-0 sm:w-auto sm:min-w-56">
+          <CanvasSelect label={t('branch')} id="analytics-branch" value={branchId} disabled={fixedBranchId !== null} onChange={setBranchId} options={branches.map((branch) => ({ value: branch.id, label: branch.name }))} />
+        </div>
         {fixedBranchId === null && <Button onClick={load} disabled={!branchId}>{t('load')}</Button>}
         {data && <p className="pb-2 text-sm text-muted-foreground">{t('period', data.period)}</p>}
       </div>
@@ -83,30 +78,33 @@ export function AnalyticsDashboard({
           <Metric label={t('pendingGrading')} value={data.pendingGradingCount} />
           <Metric label={t('quizAttempts')} value={data.attempts.quiz} />
           <Metric label={t('examAttempts')} value={data.attempts.exam} />
-          <div className="rounded-lg border border-border bg-card p-5 sm:col-span-2">
-            <div className="flex items-center justify-between gap-4"><span className="text-sm text-muted-foreground">{t('completionRate')}</span><strong>{completion}%</strong></div>
-            <div role="img" aria-label={t('completionBar', { value: completion })} className="mt-3 h-3 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, completion))}%` }} />
-            </div>
+          <div className="canvas-panel p-4 sm:col-span-2">
+            <dt className="text-sm text-muted-foreground">{t('completionRate')}</dt>
+            <dd className="mt-2">
+              <strong className="tabular-nums">{completion}%</strong>
+              <div role="img" aria-label={t('completionBar', { value: completion })} className="mt-3 h-3 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, completion))}%` }} />
+              </div>
+            </dd>
           </div>
         </dl>
 
-        <section className="space-y-3" aria-labelledby="course-performance-title">
-          <h2 id="course-performance-title" className="text-xl font-semibold">{t('coursePerformance')}</h2>
-          <Table aria-label={t('coursePerformance')}>
+        <section className="canvas-panel min-w-0 space-y-3 overflow-hidden" aria-labelledby="course-performance-title">
+          <h2 id="course-performance-title" className="px-4 pt-4 text-base font-semibold">{t('coursePerformance')}</h2>
+          <Table className="canvas-table" tabIndex={0} aria-label={t('coursePerformance')}>
             <thead><tr className="border-b border-border text-left"><th scope="col" className="p-3">{t('course')}</th><th scope="col" className="p-3">{t('quizAttempts')}</th><th scope="col" className="p-3">{t('examAttempts')}</th><th scope="col" className="p-3">{t('averagePercent')}</th></tr></thead>
             <tbody>{data.courses.length ? data.courses.map((course) => <tr key={course.courseId} className="border-b border-border/70"><th scope="row" className="p-3 font-mono text-left">{course.courseId}</th><td className="p-3">{course.quizAttempts}</td><td className="p-3">{course.examAttempts}</td><td className="p-3">{course.averagePercent === null ? '—' : `${course.averagePercent}%`}</td></tr>) : <tr><td colSpan={4} className="p-4 text-muted-foreground">{t('noData')}</td></tr>}</tbody>
           </Table>
         </section>
 
-        <section className="space-y-3" aria-labelledby="failed-questions-title">
-          <h2 id="failed-questions-title" className="text-xl font-semibold">{t('topFailed')}</h2>
-          <Table aria-label={t('topFailed')}>
+        <section className="canvas-panel min-w-0 space-y-3 overflow-hidden" aria-labelledby="failed-questions-title">
+          <h2 id="failed-questions-title" className="px-4 pt-4 text-base font-semibold">{t('topFailed')}</h2>
+          <Table className="canvas-table" tabIndex={0} aria-label={t('topFailed')}>
             <thead><tr className="border-b border-border text-left"><th scope="col" className="p-3">{t('course')}</th><th scope="col" className="p-3">{t('question')}</th><th scope="col" className="p-3">{t('failures')}</th><th scope="col" className="p-3">{t('attempts')}</th><th scope="col" className="p-3">{t('failureRate')}</th></tr></thead>
             <tbody>{data.topFailedQuestions.length ? data.topFailedQuestions.map((question) => <tr key={`${question.courseId}:${question.questionId}`} className="border-b border-border/70"><td className="p-3 font-mono">{question.courseId}</td><th scope="row" className="p-3 font-mono text-left">{question.questionId}</th><td className="p-3">{question.failures}</td><td className="p-3">{question.attempts}</td><td className="p-3">{question.failureRate}%</td></tr>) : <tr><td colSpan={5} className="p-4 text-muted-foreground">{t('noData')}</td></tr>}</tbody>
           </Table>
         </section>
-      </> : <p className="text-muted-foreground">{t('noData')}</p>}
+      </> : <p className="canvas-empty text-muted-foreground">{t('noData')}</p>}
       <p role="status" aria-live="polite" className="min-h-6 text-sm text-muted-foreground">{status}</p>
     </section>
   );

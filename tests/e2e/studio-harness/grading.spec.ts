@@ -83,12 +83,13 @@ test('refuses to lock when the completion response is incomplete and keeps the s
 test('saves an assignment draft, then completes it and shows the score and feedback', async ({page}, info) => {
   await page.setViewportSize({width: 1440, height: 900});
   await page.goto('/grading/assignments/fixture-submission');
+  await page.locator('summary').filter({hasText: /^Pinned instructions$/}).click();
   await expect(page.getByText('Pinned assignment instructions')).toBeVisible();
   await expect(page.getByText('A grading draft stays private: the learner sees no score or feedback until you complete grading.')).toBeVisible();
 
   // Completion is refused until the rubric is fully scored; a draft is not.
   await expect(page.getByRole('button', {name: 'Complete grading'})).toBeDisabled();
-  await page.getByRole('spinbutton', {name: 'Quality'}).fill('3');
+  await page.getByRole('spinbutton', {name: 'Quality (0 to 4 points)', exact: true}).fill('3');
   await page.getByRole('textbox', {name: 'Feedback'}).fill('Solid attempt');
   await page.getByRole('button', {name: 'Save grading draft'}).click();
   await expect(page.getByRole('status')).toContainText('Grading draft saved.');
@@ -99,20 +100,24 @@ test('saves an assignment draft, then completes it and shows the score and feedb
   await expect(page.getByRole('heading', {name: 'Completed result'})).toBeVisible();
   await expect(page.getByLabel('Completed result').getByText('Solid attempt')).toBeVisible();
   await expect(page.getByText('This completed grade is immutable.')).toBeVisible();
-  await expect(page.getByRole('textbox', {name: 'Feedback'})).toBeDisabled();
+  await expect(page.getByRole('textbox', {name: 'Feedback'})).toHaveCount(0);
+  await expect(page.getByRole('spinbutton', {name: 'Quality (0 to 4 points)', exact: true})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: 'Save grading draft'})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: 'Complete grading'})).toHaveCount(0);
   await page.screenshot({path: info.outputPath('grading-assignment-completed.png')});
 });
 
 test('mobile grading separates prompt from scoring and completes without page overflow', async ({page}, info) => {
   await page.setViewportSize({width: 390, height: 844});
   await page.goto('/grading/assignments/fixture-submission');
+  await page.locator('summary').filter({hasText: /^Pinned instructions$/}).click();
   await expect(page.getByText('Pinned assignment instructions')).toBeVisible();
   await expect(page.getByRole('button', {name: 'Submit assignment'})).toHaveCount(0);
 
   await page.getByRole('tab', {name: 'Rubric and points'}).click();
-  await expect(page.getByRole('spinbutton', {name: 'Quality'})).toBeVisible();
+  await expect(page.getByRole('spinbutton', {name: 'Quality (0 to 4 points)', exact: true})).toBeVisible();
   await expect(page.getByText('Pinned assignment instructions')).toBeHidden();
-  await page.getByRole('spinbutton', {name: 'Quality'}).fill('4');
+  await page.getByRole('spinbutton', {name: 'Quality (0 to 4 points)', exact: true}).fill('4');
   await page.getByRole('button', {name: 'Complete grading'}).click();
   await expect(page.getByRole('heading', {name: 'Completed result'})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();

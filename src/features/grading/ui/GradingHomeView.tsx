@@ -117,7 +117,7 @@ export function GradingHomeView({ destinations, overview }: GradingHomeViewProps
     at: grade.gradedAt,
   }));
 
-  return <section className="mx-auto max-w-7xl space-y-6">
+  return <section className="canvas-page mx-auto max-w-7xl space-y-6">
     {/* No eyebrow: it would repeat the H1 (the workspace and its overview share a name). */}
     <StaffPageHeader title={nav('overview')} description={nav('overviewDescription')} actions={gradeNext} />
 
@@ -152,27 +152,6 @@ export function GradingHomeView({ destinations, overview }: GradingHomeViewProps
       </StatGrid>
 
       <PipelineStrip title={t('pipeline.title')} description={t('pipeline.description')} stages={stages} />
-
-      <div className="grid gap-6 xl:grid-cols-3 xl:items-start">
-        <ChartCard
-          className="xl:col-span-2"
-          title={t('chart.title')}
-          description={t('chart.description')}
-          kind="area"
-          data={overview.throughput ?? []}
-          categoryKey="day"
-          categoryFormat="day"
-          categoryLabel={t('chart.day')}
-          series={[{ key: 'received', label: t('chart.received') }, { key: 'released', label: t('chart.released'), color: 'var(--chart-3)', fill: false }]}
-          state={overview.throughput ? 'ready' : 'unavailable'}
-        />
-        {overview.recent
-          ? <ActivityFeed title={t('recent.title')} items={activity} emptyLabel={t('recent.empty')} now={new Date(overview.generatedAt)} />
-          : <section aria-labelledby="recent-grades-title" className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 text-card-foreground">
-            <h2 id="recent-grades-title" className="text-sm font-medium leading-snug">{t('recent.title')}</h2>
-            <p className="text-sm leading-normal text-muted-foreground">{insights('unavailable')}</p>
-          </section>}
-      </div>
 
       <DataCard
         title={t('oldest.title')}
@@ -221,6 +200,27 @@ export function GradingHomeView({ destinations, overview }: GradingHomeViewProps
             </Table>
             : <div className="p-6"><EmptyState icon={<FileClock />} title={t('oldest.empty')} description={t('oldest.emptyDescription')} /></div>}
       </DataCard>
+      <div className="grid gap-6 xl:grid-cols-3 xl:items-start">
+        <ChartCard
+          className="xl:col-span-2"
+          title={t('chart.title')}
+          description={t('chart.description')}
+          kind="area"
+          data={overview.throughput ?? []}
+          categoryKey="day"
+          categoryFormat="day"
+          categoryLabel={t('chart.day')}
+          series={[{ key: 'received', label: t('chart.received') }, { key: 'released', label: t('chart.released'), color: 'var(--chart-3)', fill: false }]}
+          state={overview.throughput ? 'ready' : 'unavailable'}
+        />
+        {overview.recent
+          ? <ActivityFeed title={t('recent.title')} items={activity} emptyLabel={t('recent.empty')} now={new Date(overview.generatedAt)} />
+          : <section aria-labelledby="recent-grades-title" className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 text-card-foreground">
+            <h2 id="recent-grades-title" className="text-sm font-medium leading-snug">{t('recent.title')}</h2>
+            <p className="text-sm leading-normal text-muted-foreground">{insights('unavailable')}</p>
+          </section>}
+      </div>
+
     </> : null}
 
     <nav aria-label={t('shortcuts.title')}>

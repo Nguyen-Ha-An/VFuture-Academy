@@ -32,11 +32,14 @@ describe('central administration entry point', () => {
 
   it('lands a grader on the queue and a report-only operator on reports without admin.access', () => {
     expect(gradingNavigation.map(item => item.href))
-      .toEqual(['/grading', '/grading/assessments', '/grading/queue', '/grading/reports']);
+      .toEqual(['/grading', '/grading/assessments', '/grading/queue', '/grading/announcements', '/grading/schedule', '/grading/reports']);
     expect(firstGradingDestination(['submission.grade'])).toBe('/grading/queue');
     expect(firstGradingDestination(['exam.release'])).toBe('/grading/assessments');
     expect(firstGradingDestination(['report.branch.read'])).toBe('/grading/reports');
     expect(firstGradingDestination(['analytics.global.read'])).toBe('/grading/reports');
+    expect(firstGradingDestination(['teaching.announcement.manage'])).toBe('/grading/announcements');
+    expect(firstGradingDestination(['teaching.schedule.manage'])).toBe('/grading/schedule');
+    expect(workspaceNavigationFor('grading', ['teaching.schedule.manage']).map(item => item.href)).toEqual(['/grading', '/grading/schedule']);
     expect(firstGradingDestination(['admin.access'])).toBeNull();
     expect(firstGradingDestination(['learning.read'])).toBeNull();
     expect(firstGradingDestination([])).toBeNull();

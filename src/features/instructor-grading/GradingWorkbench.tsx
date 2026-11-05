@@ -11,8 +11,7 @@ import type { LearnerQuestion } from "@/content-engine/render/registry";
 import { registerContentBlocks } from "@/content-engine/render/blocks";
 import type { LessonRuntime } from "@/content-engine/render/runtime";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { CanvasButton, CanvasTextArea, CanvasNumberInput, CanvasRadioInput, CanvasRadioInputGroup, CanvasSelect } from "@/features/canvas/ui";
 import { SectionCard } from "@/features/staff-ui/components";
 import { WorkspaceApiError, readApiData, workspaceErrorMessage } from "@/features/studio/ui/client";
 import { useUnsavedChanges } from "@/features/studio/ui/useUnsavedChanges";
@@ -143,7 +142,7 @@ function MobilePanelTabs({ id, locale, active, onSelect, gradingLabel }: { id: s
     onSelect(tab.value);
     document.getElementById(`${id}-${tab.value}-tab`)?.focus();
   };
-  return <div role="tablist" aria-label={locale === "vi" ? "Bảng chấm bài" : "Grading panels"} className="flex gap-1 border-b border-border xl:hidden">{tabs.map((tab, index) => <button key={tab.value} id={`${id}-${tab.value}-tab`} role="tab" aria-selected={active === tab.value} aria-controls={`${id}-${tab.value}-panel`} tabIndex={active === tab.value ? 0 : -1} onClick={() => onSelect(tab.value)} onKeyDown={(event) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); move(index, event.key); } }} className={`-mb-px min-h-11 border-b-2 px-4 text-sm font-medium leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${active === tab.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{tab.label}</button>)}</div>;
+  return <div role="tablist" aria-label={locale === "vi" ? "Bảng chấm bài" : "Grading panels"} className="flex gap-1 border-b border-border lg:hidden">{tabs.map((tab, index) => <button key={tab.value} id={`${id}-${tab.value}-tab`} role="tab" aria-selected={active === tab.value} aria-controls={`${id}-${tab.value}-panel`} tabIndex={active === tab.value ? 0 : -1} onClick={() => onSelect(tab.value)} onKeyDown={(event) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); move(index, event.key); } }} className={`-mb-px min-h-11 border-b-2 px-4 text-sm font-medium leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${active === tab.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{tab.label}</button>)}</div>;
 }
 
 /**
@@ -193,7 +192,7 @@ function CompletedResult({ locale, score, max, percent, feedback, availableAt }:
 /** The pinned source: prefer the resolved title, then the title stored in the pinned prompt. */
 function SourceDetails({ titles, itemFallback, version }: { titles?: WorkbenchTitles | null; itemFallback: string | null; version: unknown }) {
   const t = useTranslations("staffUi.grading.workbench.source");
-  return <div className="grid gap-3 text-sm leading-normal"><dl className="grid gap-3">
+  return <div className="flex flex-wrap items-end gap-x-8 gap-y-3 text-sm leading-normal"><dl className="flex flex-wrap gap-x-8 gap-y-3">
     {titles?.course ? <div className="grid gap-0.5"><dt className="text-xs text-muted-foreground">{t("course")}</dt><dd className="break-words font-medium">{titles.course}</dd></div> : null}
     <div className="grid gap-0.5"><dt className="text-xs text-muted-foreground">{t("item")}</dt><dd className="break-words font-medium">{titles?.item ?? itemFallback ?? t("unavailable")}</dd></div>
   </dl>
@@ -256,40 +255,50 @@ function AssignmentWorkbench({ detail, props }: { detail: RecordValue; props: Pr
     }
     finally { setBusy(null); }
   }
-  const guard = useUnsavedChanges(!completed && saved !== JSON.stringify({ scores, feedback, decision }), () => submit(false));
+  const dirty = !completed && saved !== JSON.stringify({ scores, feedback, decision });
+  const guard = useUnsavedChanges(dirty, () => submit(false));
   const serverFeedback = typeof submission?.grade?.feedback === "string" ? submission.grade.feedback : submission?.grade?.feedback?.[props.locale];
   const panelId = useId();
   // Never a raw item id in the header: only the server-resolved title (the pinned prompt shows its own).
   const itemTitle = props.titles?.item ?? null;
   const sourceDetails = <SourceDetails titles={props.titles} itemFallback={localizedTitle(object(source.prompt)?.title, props.locale)} version={source.courseVersion} />;
-  return <><WorkbenchIdentity locale={props.locale} learner={submission?.learnerName} course={props.titles?.course} assessment={itemTitle} attempt={submission?.attemptNo ?? null} nextHref={props.nextHref}/><MobilePanelTabs id={panelId} locale={props.locale} active={mobileTab} onSelect={setMobileTab} gradingLabel={labels.rubric}/><div className="grid gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:items-start">
-    <details className={`${mobileTab === "prompt" ? "" : "hidden"} rounded-lg border border-border bg-card p-4 xl:hidden`}><summary className="cursor-pointer text-sm font-medium leading-normal">{labels.source}</summary><div className="mt-3">{sourceDetails}</div></details>
-    <SectionCard title={labels.source} columns={1} className="hidden xl:flex" contentClassName="gap-4">{sourceDetails}</SectionCard>
-    <div id={`${panelId}-prompt-panel`} role="tabpanel" aria-labelledby={`${panelId}-prompt-tab`} className={`${mobileTab === "prompt" ? "" : "hidden"} min-w-0 xl:block`}>
-      <SectionCard title={labels.prompt} columns={1}>
-        <div className="min-w-0"><Preview value={source.prompt} runtime={previewRuntime(props.locale)} path="/grading/prompt" /></div>
-        <div className="min-w-0 border-t border-border pt-6">{submission ? <SubmissionResponse item={submission} /> : <><h3 className="text-base font-semibold leading-normal">{labels.response}</h3><p className="mt-3 text-sm leading-normal text-destructive">{props.locale === "vi" ? "Bài nộp không hợp lệ." : "The submission data is invalid."}</p></>}</div>
+  return <><WorkbenchIdentity locale={props.locale} learner={submission?.learnerName} course={props.titles?.course} assessment={itemTitle} attempt={submission?.attemptNo ?? null} nextHref={props.nextHref}/><MobilePanelTabs id={panelId} locale={props.locale} active={mobileTab} onSelect={setMobileTab} gradingLabel={labels.rubric}/><div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:items-start">
+    <div className="col-span-full flex flex-wrap items-center justify-between gap-3 border-y border-border py-3" aria-label={labels.source}>{sourceDetails}        {typeof submission?.late === "boolean" || submission?.dueAtSnapshot ? <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label={vi ? 'Thông tin hạn nộp tại thời điểm nộp bài' : 'Deadline recorded at submission'}>
+          {typeof submission.late === 'boolean' ? <p className="border-l-2 border-warning-border pl-2 font-medium text-foreground">{submission.late ? (vi ? 'Nộp muộn' : 'Submitted late') : (vi ? 'Nộp đúng hạn' : 'Submitted on time')}</p> : null}
+          {submission.dueAtSnapshot && Number.isFinite(Date.parse(submission.dueAtSnapshot)) ? <p>{vi ? 'Hạn nộp khi nộp bài' : 'Deadline at submission'}: <time dateTime={submission.dueAtSnapshot}>{new Intl.DateTimeFormat(vi ? 'vi-VN' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(submission.dueAtSnapshot))} (UTC+07:00)</time></p> : null}
+        </div> : null}
+</div>
+    <div id={`${panelId}-prompt-panel`} role="tabpanel" aria-labelledby={`${panelId}-prompt-tab`} className={`${mobileTab === "prompt" ? "" : "hidden"} min-w-0 lg:block`}>
+      <SectionCard title={labels.response} columns={1}>
+        <details className="min-w-0 border-y border-border py-3"><summary className="cursor-pointer text-sm font-medium">{labels.prompt}</summary><div className="mt-4"><Preview value={source.prompt} runtime={previewRuntime(props.locale)} path="/grading/prompt" /></div></details>
+        <div className="min-w-0">{submission ? <SubmissionResponse item={submission} hideHeading /> : <><h3 className="text-base font-semibold leading-normal">{labels.response}</h3><p className="mt-3 text-sm leading-normal text-destructive">{props.locale === "vi" ? "Bài nộp không hợp lệ." : "The submission data is invalid."}</p></>}</div>
       </SectionCard>
     </div>
-    <div id={`${panelId}-grading-panel`} role="tabpanel" aria-labelledby={`${panelId}-grading-tab`} className={`${mobileTab === "grading" ? "" : "hidden"} min-w-0 xl:sticky xl:top-20 xl:block`}>
+    <div id={`${panelId}-grading-panel`} role="tabpanel" aria-labelledby={`${panelId}-grading-tab`} className={`${mobileTab === "grading" ? "" : "hidden"} min-w-0 lg:block`}>
       <SectionCard
         title={labels.rubric}
         description={completed ? (vi ? "Điểm đã hoàn tất và không thể sửa." : "This completed grade is immutable.") : (vi ? "Bản chấm là bản nháp riêng tư: học viên không thấy điểm hoặc phản hồi cho đến khi bạn hoàn tất chấm." : "A grading draft stays private: the learner sees no score or feedback until you complete grading.")}
         columns={1}
         contentClassName="gap-4"
-        footer={<><Button className="w-full" variant="outline" disabled={busy !== null || completed || !inBounds} onClick={() => void submit(false)}>{busy === "save" ? "…" : labels.save}</Button><Button className="w-full" disabled={busy !== null || completed || !fullyScored} onClick={() => void submit(true)}>{busy === "complete" ? "…" : labels.complete}</Button></>}
+
       >
         {completed ? <CompletedResult locale={props.locale} score={submission?.grade?.totalPoints ?? total.total} max={submission?.grade?.maxPoints ?? total.max} percent={null} feedback={serverFeedback} availableAt={submission?.grade?.gradedAt ?? null} /> : null}
-        <RubricScoreEditor rubric={rubric} scores={scores} onChange={setScores} disabled={completed} />
-        <label className="grid gap-2 text-sm font-medium leading-normal">{labels.feedback}<Textarea value={feedback} disabled={completed} onChange={(event) => setFeedback(event.target.value)} /></label>
-        <fieldset disabled={completed} className="grid gap-2"><legend className="mb-2 text-sm font-medium leading-normal">{vi?'Quyết định':'Decision'}</legend><div className="flex flex-wrap gap-x-4 gap-y-2"><label className="inline-flex min-h-9 items-center gap-2 text-sm leading-normal"><input type="radio" className="size-4 accent-primary" checked={decision === "approved"} onChange={() => setDecision("approved")} /> {vi?'Đạt':'Approved'}</label><label className="inline-flex min-h-9 items-center gap-2 text-sm leading-normal"><input type="radio" className="size-4 accent-primary" checked={decision === "changes_requested"} onChange={() => setDecision("changes_requested")} /> {vi?'Yêu cầu sửa':'Changes requested'}</label></div></fieldset>
-        <p className="text-sm leading-normal text-muted-foreground tabular-nums">{total.total} / {total.max}</p>
+        {!completed ? <><RubricScoreEditor rubric={rubric} scores={scores} onChange={setScores} disabled={busy !== null} />
+        <CanvasTextArea label={labels.feedback} value={feedback} disabled={busy !== null} onChange={setFeedback} />
+        <CanvasRadioInputGroup name={`${panelId}-decision`} description={vi ? 'Quyết định' : 'Decision'} value={decision} disabled={busy !== null} onChange={(_event, value) => setDecision(value as 'approved' | 'changes_requested')}>
+          <CanvasRadioInput value="approved" label={vi ? 'Đạt' : 'Approved'} />
+          <CanvasRadioInput value="changes_requested" label={vi ? 'Yêu cầu sửa' : 'Changes requested'} />
+        </CanvasRadioInputGroup>
+        </> : null}
         {success?<p role="status" className="text-sm leading-normal text-foreground">{success}</p>:null}
         {error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}
-        {!completed && !fullyScored ? <p className="text-xs leading-normal text-muted-foreground">{vi ? "Cần điểm hợp lệ cho mọi tiêu chí trước khi hoàn tất chấm." : "Every criterion needs a valid score before grading can be completed."}</p> : null}
+        {!completed && !fullyScored ? <p id={`${panelId}-completion-reason`} className="text-xs leading-normal text-muted-foreground">{vi ? "Cần điểm hợp lệ cho mọi tiêu chí trước khi hoàn tất chấm." : "Every criterion needs a valid score before grading can be completed."}</p> : null}
       </SectionCard>
     </div>
-  </div>{guard.dialog}</>;
+  </div>{!completed ? <div className="sticky bottom-0 z-10 -mx-1 grid gap-2 border-t border-border bg-background px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex sm:items-center sm:justify-between sm:gap-3">
+    <p className="text-sm font-medium">{busy ? (vi ? "Đang lưu…" : "Saving…") : dirty ? (vi ? "Có thay đổi chưa lưu" : "Unsaved changes") : (vi ? "Không có thay đổi chưa lưu" : "All changes saved")}</p>
+    <div className="grid grid-cols-2 gap-2 sm:flex"><CanvasButton variant="outline" disabled={busy !== null || !inBounds} onClick={() => void submit(false)}>{busy === "save" ? "…" : labels.save}</CanvasButton><CanvasButton aria-describedby={!fullyScored ? `${panelId}-completion-reason` : undefined} disabled={busy !== null || !fullyScored} onClick={() => void submit(true)}>{busy === "complete" ? "…" : labels.complete}</CanvasButton></div>
+  </div> : null}{guard.dialog}</>;
 }
 
 function ExamWorkbench({ detail, props }: { detail: RecordValue; props: Props }) {
@@ -393,39 +402,45 @@ function ExamWorkbench({ detail, props }: { detail: RecordValue; props: Props })
   const remainingManual = progress ? Math.max(0, progress.total - progress.scored) : outstanding.size;
   const panelId = useId();
   const examTitle = props.titles?.item ?? text(rawAttempt.itemTitle) ?? text(currentDetail.itemTitle);
-  return <><WorkbenchIdentity locale={props.locale} learner={text(currentDetail.learnerName) ?? text(rawAttempt.learnerName)} course={props.titles?.course} assessment={examTitle} attempt={numeric(rawAttempt.attemptNo)} nextHref={props.nextHref}/><MobilePanelTabs id={panelId} locale={props.locale} active={mobileTab} onSelect={setMobileTab} gradingLabel={vi ? "Chấm điểm" : "Grading"}/><div className="grid gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:items-start">
+  return <><WorkbenchIdentity locale={props.locale} learner={text(currentDetail.learnerName) ?? text(rawAttempt.learnerName)} course={props.titles?.course} assessment={examTitle} attempt={numeric(rawAttempt.attemptNo)} nextHref={props.nextHref}/><MobilePanelTabs id={panelId} locale={props.locale} active={mobileTab} onSelect={setMobileTab} gradingLabel={vi ? "Chấm điểm" : "Grading"}/><div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22.5rem] lg:items-start">
     <SectionCard
       title={labels.questions}
       description={gradingOpen && manualQuestions.length ? (vi ? `Còn ${remainingManual} câu chấm tay` : `${remainingManual} manual question${remainingManual === 1 ? "" : "s"} remaining`) : undefined}
       columns={1}
+      className="lg:col-span-2"
       contentClassName="p-3"
     >
-      <nav className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-1" aria-label={labels.questions}>{questions.map((item, index) => { const scored = numeric(item.manualPoints); const isManual = isManualQuestion(item); const unscored = isManual && outstanding.has(String(item.questionId)); return <button key={String(item.questionId)} type="button" disabled={busy !== null} aria-current={selected === index ? "true" : undefined} onClick={() => void selectQuestion(index)} className={`block min-h-11 w-full rounded-md border px-3 py-2 text-left text-sm leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${selected === index ? "border-primary bg-primary text-primary-foreground" : unscored ? "border-warning-border bg-warning text-warning-foreground hover:bg-accent" : "border-transparent hover:border-border hover:bg-accent"}`}>{index + 1}. {questionTypeLabel(item.type, props.locale)}{isManual ? <span className="text-xs tabular-nums">{unscored ? (vi ? " · chưa chấm" : " · unscored") : scored === null ? "" : ` · ${scored}`}</span> : null}</button>; })}</nav>
+      <div className="lg:hidden"><CanvasSelect label={labels.questions} value={String(selected)} disabled={busy !== null} onChange={value => void selectQuestion(Number(value))} options={questions.map((item, index) => ({ value: String(index), label: `${index + 1}. ${questionTypeLabel(item.type, props.locale)}${isManualQuestion(item) && outstanding.has(String(item.questionId)) ? (vi ? ' · chưa chấm' : ' · unscored') : ''}` }))} /></div>
+      <nav className="hidden grid-cols-4 gap-1 lg:grid xl:grid-cols-6" aria-label={labels.questions}>{questions.map((item, index) => { const scored = numeric(item.manualPoints); const isManual = isManualQuestion(item); const unscored = isManual && outstanding.has(String(item.questionId)); return <button key={String(item.questionId)} type="button" disabled={busy !== null} aria-current={selected === index ? "true" : undefined} onClick={() => void selectQuestion(index)} className={`block min-h-11 w-full rounded-md border px-3 py-2 text-left text-sm leading-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${selected === index ? "border-primary bg-primary text-primary-foreground" : unscored ? "border-warning-border bg-warning text-warning-foreground hover:bg-accent" : "border-transparent hover:border-border hover:bg-accent"}`}>{index + 1}. {questionTypeLabel(item.type, props.locale)}{isManual ? <span className="text-xs tabular-nums">{unscored ? (vi ? " · chưa chấm" : " · unscored") : scored === null ? "" : ` · ${scored}`}</span> : null}</button>; })}</nav>
     </SectionCard>
-    <div id={`${panelId}-prompt-panel`} role="tabpanel" aria-labelledby={`${panelId}-prompt-tab`} className={`${mobileTab === "prompt" ? "" : "hidden"} min-w-0 xl:block`}>
-      <SectionCard title={labels.prompt} columns={1}>
+    <div id={`${panelId}-prompt-panel`} role="tabpanel" aria-labelledby={`${panelId}-prompt-tab`} className={`${mobileTab === "prompt" ? "" : "hidden"} min-w-0 lg:block`}>
+      <SectionCard title={labels.answer} columns={1}>
         {question ? <>
-          <div className="min-w-0">{rich(question.context)?<RichContentView content={rich(question.context) as never} runtime={previewRuntime(props.locale)}/>:null}<Preview value={question.prompt} runtime={previewRuntime(props.locale)} path={`/grading/exam/${String(question.questionId)}`} answer={question.answer} result={question.result} /></div>
-          <section className="min-w-0 border-t border-border pt-6"><h3 className="text-base font-semibold leading-normal">{labels.answer}</h3><div className="mt-3"><ManualAnswer question={{ questionId: String(question.questionId), type: String(question.type), content: question.prompt, answer: question.answer, maxPoints, points: question.manualPoints as number | null, feedback: question.manualFeedback } as never} /></div></section>
+          <details className="min-w-0 border-y border-border py-3"><summary className="cursor-pointer text-sm font-medium">{labels.prompt}</summary><div className="mt-4">{rich(question.context)?<RichContentView content={rich(question.context) as never} runtime={previewRuntime(props.locale)}/>:null}<Preview value={question.prompt} runtime={previewRuntime(props.locale)} path={`/grading/exam/${String(question.questionId)}`} answer={question.answer} result={question.result} /></div></details>
+          <section aria-label={labels.answer} className="min-w-0"><div className="py-2"><ManualAnswer question={{ questionId: String(question.questionId), type: String(question.type), content: question.prompt, answer: question.answer, maxPoints, points: question.manualPoints as number | null, feedback: question.manualFeedback } as never} /></div></section>
         </> : <p className="text-sm leading-normal text-muted-foreground">{vi ? "Không có câu hỏi trong bản chụp đã ghim." : "No questions were found in the pinned snapshot."}</p>}
       </SectionCard>
     </div>
-    <div id={`${panelId}-grading-panel`} role="tabpanel" aria-labelledby={`${panelId}-grading-tab`} className={`${mobileTab === "grading" ? "" : "hidden"} min-w-0 xl:sticky xl:top-20 xl:block`}>
+    <div id={`${panelId}-grading-panel`} role="tabpanel" aria-labelledby={`${panelId}-grading-tab`} className={`${mobileTab === "grading" ? "" : "hidden"} min-w-0 lg:block`}>
       <SectionCard
         title={vi ? "Chấm điểm" : "Scoring"}
         description={gradingOpen ? (vi ? "Điểm câu hỏi là bản nháp riêng tư và có thể sửa cho đến khi bạn hoàn tất chấm." : "Question scores stay a private draft and remain editable until you complete grading.") : (vi ? "Đã hoàn tất chấm; không thể sửa điểm." : "Grading is complete; scores can no longer be edited.")}
         columns={1}
         contentClassName="gap-4"
-        footer={gradingOpen ? <Button disabled={busy !== null || !everyManualScored || dirty} onClick={() => void complete()}>{busy === "complete" ? "…" : labels.complete}</Button> : undefined}
+
       >
         {saveMessage?<p role="status" className="text-sm leading-normal text-foreground">{saveMessage}</p>:null}
         {!gradingOpen ? <CompletedResult locale={props.locale} score={finalPoints} max={finalMax} percent={finalPercent} availableAt={resultAvailableAt} /> : null}
+        {!gradingOpen && manualType ? <p className="text-sm leading-normal text-muted-foreground">{vi ? "Câu hỏi này không còn chờ chấm tay." : "This question is no longer pending manual grading."}</p> : null}
         {legacyRelease && props.canRelease ? <div className="rounded-md border border-warning-border bg-warning p-3 text-sm leading-normal text-warning-foreground"><p className="font-medium">{vi ? "Kết quả cũ chưa công bố" : "Legacy unreleased result"}</p><p className="mt-1">{vi ? "Lượt thi này đã chấm xong trước khi có cơ chế hiển thị kết quả mới. Dùng công bố kết quả cũ để hiển thị cho học viên." : "This attempt finished grading before result availability existed. Use the legacy release operation to show it to the learner."}</p><Button asChild variant="outline" size="sm" className="mt-3"><Link href={releaseHref}>{vi ? "Mở công bố kết quả cũ" : "Open legacy result release"}</Link></Button></div> : null}
-        {question ? manualType ? <><label className="grid gap-2 text-sm font-medium leading-normal">{vi ? "Điểm" : "Points"}<Input type="number" min="0" max={String(maxPoints)} value={points} disabled={!editable} className="tabular-nums" onChange={(event) => setPoints(event.target.value)} /></label><label className="grid gap-2 text-sm font-medium leading-normal">{vi ? "Phản hồi" : "Feedback"}<Textarea value={feedback} disabled={!editable} onChange={(event) => setFeedback(event.target.value)} /></label>{error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}{editable?<div><Button variant="outline" disabled={busy !== null || !validPoints} onClick={() => void save()}>{busy === "question" ? "…" : labels.grade}</Button></div>:<p className="text-sm leading-normal text-muted-foreground">{vi?"Câu hỏi này không còn chờ chấm tay.":"This question is no longer pending manual grading."}</p>}</> : <p className="text-sm leading-normal text-muted-foreground">{vi ? "Câu hỏi này được chấm tự động và chỉ đọc." : "This question is automatically graded and read-only."}</p> : null}
-        {gradingOpen ? <div className="grid gap-2 border-t border-border pt-4">{!everyManualScored ? <p className="text-xs leading-normal text-muted-foreground">{vi ? `Mọi câu hỏi chấm tay cần điểm hợp lệ trước khi hoàn tất chấm.${progress ? ` Đã chấm ${progress.scored}/${progress.total}.` : ''}` : `Every manual question needs a valid score before grading can be completed.${progress ? ` Scored ${progress.scored} of ${progress.total}.` : ''}`}</p> : dirty ? <p className="text-xs leading-normal text-muted-foreground">{vi ? "Lưu điểm câu hỏi đang sửa trước khi hoàn tất chấm." : "Save the question grade you are editing before completing grading."}</p> : null}{!manualType && error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}</div> : null}
+        {question && gradingOpen ? manualType ? <><CanvasNumberInput renderLabel={vi ? `Điểm / ${maxPoints}` : `Points / ${maxPoints}`} min={0} max={maxPoints} showArrows={false} value={points} interaction={!editable || busy !== null ? "disabled" : "enabled"} onChange={(_event, value) => setPoints(value)} /><CanvasTextArea label={vi ? "Phản hồi" : "Feedback"} value={feedback} disabled={!editable || busy !== null} onChange={setFeedback} />{error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}{!editable ? <p className="text-sm leading-normal text-muted-foreground">{vi?"Câu hỏi này không còn chờ chấm tay.":"This question is no longer pending manual grading."}</p> : null}</> : <p className="text-sm leading-normal text-muted-foreground">{vi ? "Câu hỏi này được chấm tự động và chỉ đọc." : "This question is automatically graded and read-only."}</p> : null}
+        {gradingOpen ? <div id={`${panelId}-completion-reason`} className="grid gap-2 border-t border-border pt-4">{!everyManualScored ? <p className="text-xs leading-normal text-muted-foreground">{vi ? `Mọi câu hỏi chấm tay cần điểm hợp lệ trước khi hoàn tất chấm.${progress ? ` Đã chấm ${progress.scored}/${progress.total}.` : ''}` : `Every manual question needs a valid score before grading can be completed.${progress ? ` Scored ${progress.scored} of ${progress.total}.` : ''}`}</p> : dirty ? <p className="text-xs leading-normal text-muted-foreground">{vi ? "Lưu điểm câu hỏi đang sửa trước khi hoàn tất chấm." : "Save the question grade you are editing before completing grading."}</p> : null}{!manualType && error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-normal text-destructive-soft-foreground">{error}</p> : null}</div> : null}
       </SectionCard>
     </div>
-  </div>{guard.dialog}</>;
+  </div>{gradingOpen ? <div className="sticky bottom-0 z-10 grid gap-2 border-t border-border bg-background pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex sm:items-center sm:justify-between sm:gap-3">
+    <p className="text-sm font-medium">{busy ? (vi ? "Đang lưu…" : "Saving…") : dirty ? (vi ? "Có thay đổi chưa lưu" : "Unsaved changes") : (vi ? "Không có thay đổi chưa lưu" : "All changes saved")}</p>
+    <div className="grid grid-cols-2 gap-2 sm:flex">{editable ? <CanvasButton variant="outline" disabled={busy !== null || !validPoints} onClick={() => void save()}>{labels.grade}</CanvasButton> : null}<CanvasButton aria-describedby={!everyManualScored || dirty ? `${panelId}-completion-reason` : undefined} disabled={busy !== null || !everyManualScored || dirty} onClick={() => void complete()}>{labels.complete}</CanvasButton></div>
+  </div> : null}{guard.dialog}</>;
 }
 
 function LoadedGradingWorkbench(props: Props) {

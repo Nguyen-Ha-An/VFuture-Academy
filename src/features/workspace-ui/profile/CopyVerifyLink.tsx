@@ -1,5 +1,7 @@
 'use client';
 
+import { CanvasButton } from '@/features/canvas/ui';
+
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
@@ -25,7 +27,7 @@ export function CopyVerifyLink({ url }: { url: string }) {
   }
 
   return <>
-    <button type="button" className="vf-btn" onClick={() => void copy()}>{state === 'copied' ? t('copied') : t('copy')}</button>
+    <CanvasButton type="button" variant="secondary" onClick={() => void copy()}>{state === 'copied' ? t('copied') : t('copy')}</CanvasButton>
     <span className="sr-only" aria-live="polite">{state === 'copied' ? t('copiedAnnouncement') : ''}</span>
     {state === 'failed' ? <p className="vf-cert-hint" role="alert">{t('copyFailed')}</p> : null}
   </>;

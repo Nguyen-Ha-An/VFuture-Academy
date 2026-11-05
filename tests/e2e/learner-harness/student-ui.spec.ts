@@ -48,7 +48,7 @@ for (const locale of ['en', 'vi'] as const) {
 }
 
 test('mobile drawer keeps theme and closes at desktop breakpoint', async ({ page }) => {
-  await page.setViewportSize({ width: 759, height: 900 });
+  await page.setViewportSize({ width: 767, height: 900 });
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/app');
   await page.getByRole('button', { name: en.common.menu, exact: true }).click();
@@ -59,7 +59,7 @@ test('mobile drawer keeps theme and closes at desktop breakpoint', async ({ page
   const rootColor = await page.locator('#learner-main').evaluate((element) => getComputedStyle(element).color);
   await expect(dialog).toHaveCSS('color', rootColor);
   expect(await page.locator('[data-state="open"].fixed.inset-0').evaluate((element) => getComputedStyle(element).backgroundColor)).toMatch(/0\.3/);
-  await page.setViewportSize({ width: 760, height: 900 });
+  await page.setViewportSize({ width: 768, height: 900 });
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveAttribute('data-scroll-locked', /.+/);
   await page.getByRole('link', { name: en.learner.focus.courses, exact: true }).click();
@@ -114,7 +114,8 @@ test('activity frame: a long title keeps the full width on a 375px phone', async
   const bar = page.getByRole('navigation', { name: 'Activity', exact: true });
   await expect(bar).toBeVisible();
   await expect(bar.locator('a[href="/app"]')).toHaveCount(0);
-  await expect(page.locator('[aria-haspopup="dialog"]')).toHaveCount(1);
+  // Canvas keeps global search and navigation available; the activity bar owns one outline trigger.
+  await expect(bar.locator('[aria-haspopup="dialog"]')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
 });
 

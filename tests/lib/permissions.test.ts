@@ -49,7 +49,7 @@ describe('permission contract', () => {
       roles: ['role.definition.read', 'role.definition.manage', 'role.assignment.global', 'role.assignment.branch'],
       branches: ['branch.read', 'branch.manage'],
       content: ['content.read', 'content.create', 'content.edit', 'content.review.request', 'content.review', 'content.publish'],
-      grading: ['learning.read', 'grading.read', 'grading.manage', 'submission.grade', 'exam.release'],
+      grading: ['learning.read', 'grading.read', 'grading.manage', 'submission.grade', 'teaching.announcement.manage', 'teaching.schedule.manage', 'exam.release'],
       reporting: ['report.branch.read', 'report.global.read'],
       audit: ['audit.read'],
     });

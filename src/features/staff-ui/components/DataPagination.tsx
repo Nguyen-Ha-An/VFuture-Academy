@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button as LinkButton } from "@/components/ui/button";
+import { CanvasButton as Button } from "@/features/canvas/ui";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { cn } from "@/lib/ui-cn";
 import { useUrlParamUpdater } from "./DataToolbar";
@@ -224,11 +225,11 @@ function PageControl({
   if ("href" in to || target.kind === "href") {
     const href = "href" in to ? to.href : (target as Extract<Target, { kind: "href" }>).href(to.page);
     return (
-      <Button asChild variant={variant} size="sm" className={classes}>
+      <LinkButton asChild variant={variant} size="sm" className={classes}>
         <Link href={href} scroll={false} aria-label={ariaLabel}>
           {children}
         </Link>
-      </Button>
+      </LinkButton>
     );
   }
   const { go } = target;

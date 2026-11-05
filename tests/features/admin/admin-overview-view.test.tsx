@@ -8,6 +8,7 @@ import en from '@/messages/en.json';
 import vi_ from '@/messages/vi.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
 import { AdminOverviewView, type AdminOverviewViewProps } from '@/features/admin/ui/AdminOverviewView';
+import { CanvasProvider } from '@/features/canvas/ui';
 
 // The chart body loads after hydration; a first paint shows the skeleton.
 vi.mock('next/dynamic', () => ({
@@ -59,7 +60,7 @@ const FULL: AdminOverviewViewProps = {
 function renderView(props: AdminOverviewViewProps, locale: 'en' | 'vi' = 'en') {
   const messages = staffUiTestMessages(locale === 'vi' ? vi_ : en, locale);
   return render(<NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC" now={new Date('2026-09-25T00:00:00.000Z')}>
-    <AdminOverviewView {...props} />
+    <CanvasProvider theme="light"><AdminOverviewView {...props} /></CanvasProvider>
   </NextIntlClientProvider>);
 }
 
@@ -79,8 +80,8 @@ describe('AdminOverviewView', () => {
 
   it('renders KPIs as a description list with honest values', () => {
     const { container } = renderView(FULL);
-    const grid = container.querySelector('dl[data-slot="stat-grid"]')!;
-    expect(grid.querySelectorAll('dt')).toHaveLength(4);
+    const grid = container.querySelector<HTMLElement>('dl[data-slot="stat-grid"]')!;
+    expect(grid.querySelectorAll('dt')).toHaveLength(2);
     const cards = [...grid.querySelectorAll('[data-slot="stat-card"]')] as HTMLElement[];
     expect(within(cards[0]).getByRole('link', { name: 'Members' })).toHaveAttribute('href', '/admin/users');
     expect(cards[0].querySelector('dd')).toHaveTextContent('1,240');
@@ -90,12 +91,31 @@ describe('AdminOverviewView', () => {
     expect(cards[1]).toHaveTextContent('Last 30 days');
     expect(cards[1].querySelector('[data-slot="stat-delta"]')).toHaveAttribute('data-direction', 'up');
     expect(cards[1]).toHaveTextContent('vs previous 30 days');
-    expect(cards[2]).toHaveAttribute('data-state', 'unavailable');
-    expect(cards[2].querySelector('dd')).toHaveTextContent('Unavailable');
-    expect(cards[2].querySelector('dd')).not.toHaveTextContent('0');
-    expect(within(cards[3]).getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
+    expect(within(grid).queryByText('Waiting to grade')).not.toBeInTheDocument();
+    expect(within(grid).queryByText('Waiting for review')).not.toBeInTheDocument();
+    const waiting = screen.getByRole('region', { name: 'Work waiting' });
+    expect(within(waiting).getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
+    expect(within(waiting).getByText('Unavailable')).toBeInTheDocument();
     // Only the trend card carries a delta.
     expect(grid.querySelectorAll('[data-slot="stat-delta"]')).toHaveLength(1);
+  });
+
+  it('keeps waiting counts as honest KPIs when no waiting-work list is supplied', () => {
+    const { container } = renderView({ ...FULL, pipeline: undefined });
+    const grid = container.querySelector<HTMLElement>('dl[data-slot="stat-grid"]')!;
+    expect(grid.querySelectorAll('dt')).toHaveLength(4);
+    const unavailable = grid.querySelector('[data-state="unavailable"]')!;
+    expect(unavailable.querySelector('dd')).toHaveTextContent('Unavailable');
+    expect(unavailable.querySelector('dd')).not.toHaveTextContent('0');
+    expect(within(grid as HTMLElement).getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
+  });
+
+  it('keeps read-only waiting states as text and never invents a management destination', () => {
+    renderView({ ...FULL, pipeline: FULL.pipeline!.map((stage) => ({ ...stage, href: undefined })) });
+    const waiting = screen.getByRole('region', { name: 'Work waiting' });
+    expect(within(waiting).getAllByRole('listitem')).toHaveLength(4);
+    expect(within(waiting).queryByRole('link')).not.toBeInTheDocument();
+    expect(within(waiting).getByText('Unavailable')).toBeInTheDocument();
   });
 
   it('says when the pending-invitation count failed instead of showing 0', () => {
@@ -137,6 +157,8 @@ describe('AdminOverviewView', () => {
     expect(within(stages[0]).getByRole('link')).toHaveAttribute('href', '/studio/reviews');
     expect(stages[2]).toHaveTextContent('0Approved, not yet published');
     expect(stages[3]).toHaveTextContent('UnavailableWaiting to grade');
+    const activity = screen.getByRole('region', { name: 'Learning activity, 30 days' });
+    expect(strip.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('anchors on recent activity with actor names and a link to the audit log', () => {

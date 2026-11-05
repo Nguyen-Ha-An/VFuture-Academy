@@ -75,7 +75,11 @@ export function MobileNavigationDrawer({ children, open, onOpenChange, title, id
       event.preventDefault();
       if (closeReason.current === 'navigate') return;
       if (closeReason.current === 'breakpoint') {
-        const target = document.querySelector<HTMLElement>('header a[aria-current="page"], main h1, main');
+        // Selector lists use document order (main precedes its h1), not fallback priority.
+        const target = ['header a[aria-current="page"]', 'main h1', 'main']
+          .flatMap(selector => [...document.querySelectorAll<HTMLElement>(selector)])
+          .find(node => node.isConnected && !node.closest('[hidden], [inert], [aria-hidden="true"]')
+            && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden');
         if (target) { if (!target.matches('a, button, input, select, textarea')) target.tabIndex = -1; target.focus({ preventScroll: true }); }
         return;
       }

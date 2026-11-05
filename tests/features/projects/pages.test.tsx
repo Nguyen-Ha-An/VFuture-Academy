@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -163,6 +163,8 @@ function Provider({ children, locale = 'en' }: { children: React.ReactNode; loca
 }
 
 beforeEach(() => {
+  // cmdk scrolls the active picker option; jsdom does not implement this browser method.
+  Element.prototype.scrollIntoView ??= function scrollIntoView() {};
   mocks.getLocale.mockResolvedValue('en');
   mocks.requireUser.mockResolvedValue({ id: USER_ID });
   mocks.listProjects.mockResolvedValue([project]);
@@ -208,13 +210,14 @@ describe('project pages', () => {
     const chips = screen.getByRole('list', { name: 'Active filters' });
     expect(within(chips).getByRole('link', { name: 'Remove filter Skill: Data literacy' })).toHaveAttribute('href', '/app/projects?status=active&course=ai-foundations');
     expect(within(chips).getByRole('link', { name: 'Remove filter Course: AI Foundations' })).toHaveAttribute('href', '/app/projects?status=active&skill=data-literacy');
-    // One spec table per relationship group; one link per row and no phone-only labels.
+    // Native InstUI tables retain semantic columns and one meaningful link per row.
     const showcase = screen.getByRole('region', { name: 'Community showcases' });
     const table = within(showcase).getByRole('table', { name: 'Community showcases' });
-    expect(table).toHaveAttribute('data-stack');
+    expect(within(table).getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Project' })).toBeInTheDocument();
     const row = within(table).getByRole('row', { name: /Climate lab/ });
     expect(within(row).getAllByRole('link')).toHaveLength(1);
-    expect(within(row).getByText('Active').closest('td')).toHaveAttribute('data-slot', 'lead');
+    expect(within(row).getByRole('cell', { name: 'Active' })).toBeInTheDocument();
     expect(within(row).getByText('Climate project')).toHaveClass('vf-l-row-summary');
     expect(document.querySelector('.vf-project-mobile-label')).toBeNull();
   });
@@ -358,7 +361,7 @@ describe('project pages', () => {
     expect(mocks.listCatalog).toHaveBeenCalledWith({ userId: USER_ID, roles: [] }, 'en');
     expect(mocks.listProjects).not.toHaveBeenCalled();
     expect(screen.getByRole('heading', { level: 1, name: 'Propose a project' })).toBeDefined();
-    expect(screen.getByText('A3 / Projects · New')).toHaveClass('vf-kicker');
+    expect(screen.getByText('Projects · New')).toHaveClass('vf-kicker');
     const crumbs = within(screen.getByRole('navigation', { name: 'Breadcrumbs' }));
     expect(crumbs.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/app/explore');
     expect(crumbs.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/app/projects');
@@ -367,6 +370,12 @@ describe('project pages', () => {
     expect(form.parentElement).toHaveClass('vf-proposal-card');
     expect(within(form).getByRole('button', { name: 'Related courses' })).toBeDefined();
     expect(within(form).getByRole('button', { name: 'Skills' })).toBeDefined();
+    expect(within(form).getByRole('group', { name: 'Idea' })).toBeInTheDocument();
+    expect(within(form).getByRole('group', { name: 'Skills and courses' })).toBeInTheDocument();
+    fireEvent.click(within(form).getByRole('button', { name: 'Related courses' }));
+    const courseOptions = within(screen.getByRole('listbox', { name: 'Related courses' }));
+    expect(courseOptions.getByRole('option', { name: 'Product lab' })).toBeInTheDocument();
+    expect(courseOptions.getByRole('option', { name: 'AI Foundations' })).toBeInTheDocument();
   });
 
   it('confirms a submitted proposal on the detail and strips the query', async () => {

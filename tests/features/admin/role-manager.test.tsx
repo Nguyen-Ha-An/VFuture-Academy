@@ -6,12 +6,14 @@ import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { RoleManager, groupPermissions, permissionGroupMessageKey, permissionMessageKey } from '@/features/admin/components/RoleManager';
+import { CanvasProvider } from '@/features/canvas/ui';
 import { PERMISSIONS, PERMISSION_DEFINITIONS } from '@/lib/authorization';
 import en from '@/messages/en.json';
 import viMessages from '@/messages/vi.json';
 import { staffUiMessages, staffUiTestMessages } from '@/messages/staff-ui';
 
 const messages = staffUiTestMessages(en, 'en');
+const originalRootFontSize = document.documentElement.style.fontSize;
 const scope = { kind: 'branch' as const, branchId: 'ans' };
 const builtIn = { id: 'school-admin', name: 'School admin', description: 'Manage a school', scopeKind: 'branch' as const, permissions: ['member.read', 'role.definition.read'], builtIn: true, grantableBySchool: true, version: 1, assignmentCount: 2 };
 const custom = { id: 'mentor', name: 'Mentor', description: '', scopeKind: 'branch' as const, permissions: ['member.read'], builtIn: false, grantableBySchool: false, version: 3, assignmentCount: 4 };
@@ -23,7 +25,7 @@ const options = {
 };
 
 function Provider({ children }: { children: React.ReactNode }) {
-  return <NextIntlClientProvider locale="en" messages={messages}>{children}</NextIntlClientProvider>;
+  return <NextIntlClientProvider locale="en" messages={messages}><CanvasProvider theme="light">{children}</CanvasProvider></NextIntlClientProvider>;
 }
 
 function data(value: unknown, status = 200) {
@@ -45,7 +47,16 @@ function stubRoles(roles: unknown[], extra?: (input: string, init?: RequestInit)
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  document.documentElement.style.fontSize = originalRootFontSize;
 });
+
+// InstUI Responsive measures its containing element; JSDOM otherwise reports a 0px viewport.
+// Real phone/desktop geometry and clipping remain the Chromium harness's responsibility.
+function desktopGeometry() {
+  document.documentElement.style.fontSize = '16px';
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, 1280, 900));
+}
 
 describe('RoleManager', () => {
   it('opens "New role" in a sheet and posts a role only after the footer confirm step', async () => {
@@ -55,11 +66,11 @@ describe('RoleManager', () => {
     const user = userEvent.setup();
     render(<Provider><RoleManager scope={scope} /></Provider>);
     expect(await screen.findByRole('heading', { name: 'Roles & permissions' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Role name')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Role name' })).not.toBeInTheDocument();
 
     await user.click(await screen.findByRole('button', { name: 'New role' }));
     const sheet = screen.getByRole('dialog', { name: 'Create role' });
-    await user.type(within(sheet).getByLabelText('Role name'), 'Mentor');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Role name' }), 'Mentor');
     await user.click(within(sheet).getByRole('checkbox', { name: /View members/ }));
     await user.click(within(sheet).getByRole('button', { name: 'Create role' }));
 
@@ -81,8 +92,9 @@ describe('RoleManager', () => {
     render(<Provider><RoleManager scope={scope} /></Provider>);
     await user.click(await screen.findByRole('button', { name: 'New role' }));
     const sheet = screen.getByRole('dialog', { name: 'Create role' });
-    await user.type(within(sheet).getByLabelText('Role name'), 'Mentor');
-    await user.selectOptions(within(sheet).getByLabelText('Scope'), 'central');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Role name' }), 'Mentor');
+    await user.click(within(sheet).getByRole('combobox', { name: 'Scope' }));
+    await user.click(await screen.findByRole('option', { name: 'Central' }));
     await user.click(within(sheet).getByRole('button', { name: 'Create role' }));
 
     const confirm = within(sheet).getByRole('region', { name: 'Confirm change' });
@@ -90,27 +102,29 @@ describe('RoleManager', () => {
     expect(confirm).toHaveTextContent('0 assignments');
     await user.click(within(confirm).getByRole('button', { name: 'Back to editing' }));
     expect(within(sheet).queryByRole('region', { name: 'Confirm change' })).not.toBeInTheDocument();
-    expect(within(sheet).getByLabelText('Role name')).toHaveValue('Mentor');
+    expect(within(sheet).getByRole('textbox', { name: 'Role name' })).toHaveValue('Mentor');
   });
 
-  it('hides central-only permissions for school roles and shows grouped readable labels with raw codes', async () => {
+  it('hides central-only permissions for school roles and keeps readable permission groups', async () => {
     stubRoles([builtIn]);
     const user = userEvent.setup();
     render(<Provider><RoleManager scope={scope} /></Provider>);
     await user.click(await screen.findByRole('button', { name: 'New role' }));
     const sheet = screen.getByRole('dialog', { name: 'Create role' });
     expect(within(sheet).queryByRole('checkbox', { name: /Publish content/ })).not.toBeInTheDocument();
-    expect(within(sheet).getByRole('group', { name: 'Members' })).toHaveTextContent('member.manage');
-    await user.selectOptions(within(sheet).getByLabelText('Scope'), 'central');
+    expect(within(within(sheet).getByRole('group', { name: 'Members' })).getByRole('checkbox', { name: 'Manage member accounts' })).toBeInTheDocument();
+    await user.click(within(sheet).getByRole('combobox', { name: 'Scope' }));
+    await user.click(await screen.findByRole('option', { name: 'Central' }));
     expect(within(sheet).getByRole('checkbox', { name: /Publish content/ })).toBeInTheDocument();
   });
 
   it('lists roles in a table with type badge, grouped permissions and a filtered members link', async () => {
+    desktopGeometry();
     stubRoles([builtIn, custom]);
     const user = userEvent.setup();
     render(<Provider><RoleManager scope={scope} /></Provider>);
     const builtInRow = await screen.findByRole('row', { name: /School admin/ });
-    expect(within(builtInRow).getByText('Built-in')).toBeInTheDocument();
+    expect(await within(builtInRow).findByText('Built-in')).toBeInTheDocument();
     expect(within(builtInRow).getByRole('link', { name: /2 assignments/ })).toHaveAttribute('href', '/admin/users?memberRole=school-admin');
     // The row menu of a built-in role never offers Edit.
     await user.click(within(builtInRow).getByRole('button', { name: 'Actions for School admin' }));
@@ -138,10 +152,11 @@ describe('RoleManager', () => {
   });
 
   it('shows the assignment count as text without member.read, never a forbidden link', async () => {
+    desktopGeometry();
     stubRoles([builtIn], undefined, ['role.definition.read']);
     render(<Provider><RoleManager scope={scope} /></Provider>);
     const row = await screen.findByRole('row', { name: /School admin/ });
-    expect(within(row).getByText('2 assignments')).toBeInTheDocument();
+    expect(await within(row).findByText('2 assignments')).toBeInTheDocument();
     expect(within(row).queryByRole('link')).not.toBeInTheDocument();
   });
 
@@ -155,8 +170,8 @@ describe('RoleManager', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Edit' }));
     const sheet = screen.getByRole('dialog', { name: 'Update role' });
     expect(within(sheet).getByLabelText('Scope')).toBeDisabled();
-    await user.clear(within(sheet).getByLabelText('Role name'));
-    await user.type(within(sheet).getByLabelText('Role name'), 'Senior mentor');
+    await user.clear(within(sheet).getByRole('textbox', { name: 'Role name' }));
+    await user.type(within(sheet).getByRole('textbox', { name: 'Role name' }), 'Senior mentor');
     await user.click(within(sheet).getByRole('button', { name: 'Update role' }));
     expect(within(sheet).getByRole('region', { name: 'Confirm change' })).toHaveTextContent('4 assignments');
     await user.click(within(sheet).getByRole('button', { name: 'Confirm' }));
@@ -175,11 +190,73 @@ describe('RoleManager', () => {
     render(<Provider><RoleManager scope={scope} /></Provider>);
     await user.click(await screen.findByRole('button', { name: 'New role' }));
     const sheet = screen.getByRole('dialog', { name: 'Create role' });
-    await user.type(within(sheet).getByLabelText('Role name'), 'Mentor');
+    await user.type(within(sheet).getByRole('textbox', { name: 'Role name' }), 'Mentor');
     await user.click(within(sheet).getByRole('button', { name: 'Create role' }));
     await user.click(within(sheet).getByRole('button', { name: 'Confirm' }));
-    expect(await within(sheet).findByRole('alert')).toBeInTheDocument();
+    expect((await within(sheet).findByText(en.memberAdmin.error)).closest('[role="alert"]')).toBeInTheDocument();
     expect(within(sheet).getByRole('region', { name: 'Confirm change' })).toBeInTheDocument();
+  });
+
+  it('recovers a real revision conflict only after discarding, loading and explicitly reviewing the latest role', async () => {
+    const patches: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/options')) return data({ ...options, scope: { kind: 'central' } });
+      if (init?.method === 'PATCH') {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        patches.push(body);
+        return patches.length === 1
+          ? new Response(JSON.stringify({ error: { code: 'REVISION_CONFLICT' } }), { status: 409, headers: { 'Content-Type': 'application/json' } })
+          : data({ ...custom, ...body, version: 5 });
+      }
+      return data([builtIn, patches.length ? { ...custom, name: 'Colleague change', version: 4, permissions: [] } : custom]);
+    }));
+    const user = userEvent.setup();
+    render(<Provider><RoleManager scope={{ kind: 'central' }} /></Provider>);
+    await user.click(await screen.findByRole('button', { name: 'Actions for Mentor' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit' }));
+    const sheet = screen.getByRole('dialog', { name: 'Update role' });
+    const name = within(sheet).getByRole('textbox', { name: 'Role name' });
+    await user.clear(name); await user.type(name, 'My pending edit');
+    await user.click(within(sheet).getByRole('button', { name: 'Update role' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Confirm' }));
+    const reload = await within(sheet).findByRole('button', { name: 'Discard changes and load latest' });
+    expect(name).toHaveValue('My pending edit');
+    expect(within(sheet).queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(patches).toHaveLength(1); expect(patches[0]).toMatchObject({ version: 3, permissions: ['member.read'] });
+    await user.click(reload);
+    await waitFor(() => expect(name).toHaveValue('Colleague change'));
+    expect(within(sheet).getByRole('checkbox', { name: 'View members' })).not.toBeChecked();
+    expect(patches).toHaveLength(1);
+    await user.clear(name); await user.type(name, 'Reviewed final edit');
+    await user.click(within(sheet).getByRole('button', { name: 'Update role' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(patches).toHaveLength(2);
+    expect(patches[1]).toMatchObject({ version: 4, name: 'Reviewed final edit', scopeKind: 'branch', permissions: [] });
+  });
+
+  it('keeps the draft and conflict visible when loading the latest role fails', async () => {
+    let patchCount = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/options')) return data({ ...options, scope: { kind: 'central' } });
+      if (init?.method === 'PATCH') { patchCount += 1; return new Response(JSON.stringify({ error: { code: 'REVISION_CONFLICT' } }), { status: 409, headers: { 'Content-Type': 'application/json' } }); }
+      return patchCount ? new Response(JSON.stringify({ error: { message: 'Load failed' } }), { status: 503, headers: { 'Content-Type': 'application/json' } }) : data([builtIn, custom]);
+    }));
+    const user = userEvent.setup();
+    render(<Provider><RoleManager scope={{ kind: 'central' }} /></Provider>);
+    await user.click(await screen.findByRole('button', { name: 'Actions for Mentor' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit' }));
+    const sheet = screen.getByRole('dialog', { name: 'Update role' });
+    const name = within(sheet).getByRole('textbox', { name: 'Role name' });
+    await user.clear(name); await user.type(name, 'Keep this draft');
+    await user.click(within(sheet).getByRole('button', { name: 'Update role' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Confirm' }));
+    await user.click(await within(sheet).findByRole('button', { name: 'Discard changes and load latest' }));
+    expect((await within(sheet).findByText(en.memberAdmin.error)).closest('[role="alert"]')).toBeInTheDocument();
+    expect(name).toHaveValue('Keep this draft');
+    expect(within(sheet).getByRole('region', { name: 'Confirm change' })).toHaveTextContent('Keep this draft');
+    expect(within(sheet).queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(patchCount).toBe(1);
   });
 
   it('is read only without the definition-management permission', async () => {

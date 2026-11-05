@@ -16,8 +16,12 @@ import { isCourseEditorRoute, isCourseWorkspacePage, useStaffNavigation } from "
 import { sidebarStateCookie } from "../sidebar-state";
 import { StaffSidebar } from "./StaffSidebar";
 import { StaffTopBar } from "./StaffTopBar";
+import { CanvasProvider } from "@/features/canvas/ui/CanvasProvider";
+import { DrawerLayout } from "@instructure/ui-drawer-layout/v11_7";
+import { GlobalNavigation } from "@/features/canvas/ui/GlobalNavigation";
 import "../staff-tokens.css";
 import "../shell.css";
+import "@/features/canvas/canvas.css";
 
 export type StaffWorkspaceShellProps = {
   workspace: StaffWorkspace;
@@ -35,16 +39,16 @@ function persistSidebarState(open: boolean) {
 }
 
 /**
- * The Catmin staff shell (behind UI_V2_SURFACES). The SidebarProvider root carries `.vf-staff`
- * (which switches on the staff tokens) and the server-rendered `data-theme`, so the first paint
- * already has the right theme and rail state.
+ * Authenticated Canvas staff shell. The root carries the scoped workspace tokens and
+ * server-rendered theme; the global rail and collapsible contextual navigation preserve
+ * the existing permission-filtered destinations and navigation focus behavior.
  */
 export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptions, activeScope, entries, children }: StaffWorkspaceShellProps) {
   const pathname = usePathname() ?? "";
   const common = useTranslations("common");
   const navigation = useStaffNavigation(workspace, permissions);
   const mainId = `${workspace}-main`;
-  const editor = isCourseEditorRoute(workspace, pathname);
+  const editor = isCourseEditorRoute(workspace, pathname) || workspace === "grading" && /^\/grading\/(assignments|exams)\/[^/]+/.test(pathname);
   const courseWorkspace = isCourseWorkspacePage(workspace, pathname);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -59,6 +63,15 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
   // The editor forces the icon rail for as long as the author stays in it; toggling there
   // is temporary and never touches the saved preference (cookie).
   const [preferredOpen, setPreferredOpen] = useState(chrome.sidebarOpen);
+  const [compact, setCompact] = useState(false);
+  const [compactOpen, setCompactOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const media = window.matchMedia('(max-width: 1023px)');
+    const update = () => { setCompact(media.matches); setCompactOpen(false); };
+    update(); media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const [editorOpen, setEditorOpen] = useState(false);
   const [wasEditor, setWasEditor] = useState(editor);
   if (wasEditor !== editor) {
@@ -70,16 +83,17 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
       setEditorOpen(next);
       return;
     }
+    if (compact) { setCompactOpen(next); return; }
     setPreferredOpen(next);
     persistSidebarState(next);
-  }, [editor]);
+  }, [editor, compact]);
 
   return (
-    <StaffTitleContext.Provider value={registerTitle}>
+    <CanvasProvider theme={chrome.theme}><StaffTitleContext.Provider value={registerTitle}>
       <SidebarProvider
-        open={editor ? editorOpen : preferredOpen}
+        open={editor ? editorOpen : compact ? compactOpen : preferredOpen}
         onOpenChange={onOpenChange}
-        className="vf-staff bg-background text-foreground"
+        className="vf-staff vf-canvas bg-background text-foreground"
         data-theme={workspaceThemeAttribute(chrome.theme)}
         data-workspace={workspace}
       >
@@ -89,7 +103,8 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
         >
           {common("skipToContent")}
         </a>
-        <StaffSidebar
+        <GlobalNavigation studio={entries.studio} grading={entries.grading} admin={entries.admin} />
+        <StaffDrawer compact={compact} label={navigation.label} navigation={<StaffSidebar
           workspace={workspace}
           navigation={navigation}
           entries={entries}
@@ -97,7 +112,7 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
           activeScope={activeScope}
           identity={chrome.identity}
           theme={chrome.theme}
-        />
+        />}>
         <SidebarInset className={cn(courseWorkspace && "vf-staff-course-editor")} data-editor={editor ? "" : undefined}>
           <header className="sticky top-0 z-20 box-content flex h-14 shrink-0 items-center border-b border-border bg-background px-4 leading-[1.4]">
             <StaffTopBar
@@ -123,9 +138,10 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
             {children}
           </main>
         </SidebarInset>
+        </StaffDrawer>
         <ShellRouteEffects mainId={mainId} pathname={pathname} triggerRef={triggerRef} />
       </SidebarProvider>
-    </StaffTitleContext.Provider>
+    </StaffTitleContext.Provider></CanvasProvider>
   );
 }
 
@@ -182,4 +198,19 @@ function ShellRouteEffects({ mainId, pathname, triggerRef }: { mainId: string; p
   }, [openMobile, focusHeading, triggerRef]);
 
   return null;
+}
+
+/** Desktop navigation is static: native DrawerTray always autofocuses its Dialog.
+ * Keep that focus region for overlay navigation and retain the content subtree on resize. */
+function StaffDrawer({ label, navigation, children, compact }: { label: string; navigation: ReactNode; children: ReactNode; compact: boolean }) {
+  const { isMobile, open, openMobile, setOpen, setOpenMobile } = useSidebar();
+  const visible = isMobile ? openMobile : open;
+  const overlay = compact || isMobile;
+  return <div className="canvas-staff-drawer" style={{ display: 'grid', gridTemplateColumns: !overlay && visible ? '208px minmax(0, 1fr)' : 'minmax(0, 1fr)' }}>
+    {!overlay && visible && <div>{navigation}</div>}
+    <div style={{ minWidth: 0 }}><DrawerLayout minWidth="44rem">
+      <DrawerLayout.Tray label={label} open={overlay && visible} placement="start" onDismiss={() => isMobile ? setOpenMobile(false) : setOpen(false)} shouldContainFocus={overlay} shouldReturnFocus={overlay} shouldCloseOnEscape shouldCloseOnDocumentClick>{navigation}</DrawerLayout.Tray>
+      <DrawerLayout.Content themeOverride={{ overflowY: 'visible' }} label={label}>{children}</DrawerLayout.Content>
+    </DrawerLayout></div>
+  </div>;
 }

@@ -13,8 +13,8 @@ export function AdminForbidden() {
   const t = useTranslations("staffUi.admin.boundary.forbidden");
 
   return (
-    <div className="mx-auto grid min-h-[60vh] w-full max-w-2xl content-center py-8">
-      <Card>
+    <div className="canvas-page mx-auto grid min-h-[60vh] w-full max-w-2xl content-center py-8">
+      <Card className="canvas-panel">
         <CardContent>
           <StaffPageHeader eyebrow={t("code")} title={t("title")} description={t("description")} />
           <Button asChild className="min-h-11">

@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ValidationReport } from '@/content-engine/diagnostics';
 import { FIXTURES } from '@/content-engine/fixtures';
@@ -29,6 +29,8 @@ const report: ValidationReport = { ok: true, errors: [], warnings: [], summary: 
 const ok = (data: unknown) => new Response(JSON.stringify({ data }), { status: 200, headers: { 'content-type': 'application/json' } });
 const renderWorkspace = () => render(<NextIntlClientProvider locale="en" messages={messages}><Workspace initialDraft={draft} initialReport={report} workflowEnabled={false} /></NextIntlClientProvider>);
 
+// These contracts exercise manual JSON editing; the Canvas default is visual.
+beforeEach(() => { window.localStorage.setItem('academy.canvas.editor-mode', 'json'); });
 afterEach(() => { cleanup(); mocks.router.push.mockClear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Workspace manual save', () => {
@@ -41,7 +43,7 @@ describe('Workspace manual save', () => {
     renderWorkspace();
     const manifestEditor = screen.getByRole('textbox', { name: 'JSON editor for manifest' });
     fireEvent.change(manifestEditor, { target: { value: String((manifestEditor as HTMLTextAreaElement).value).replace('Minimal course', 'Edited course') } });
-    fireEvent.click(screen.getByText('Welcome').closest('button')!);
+    fireEvent.click(screen.getByRole('treeitem', { name: /Welcome/ }));
     const itemEditor = screen.getByRole('textbox', { name: 'JSON editor for intro' });
     fireEvent.change(itemEditor, { target: { value: String((itemEditor as HTMLTextAreaElement).value).replace('Welcome', 'Edited lesson') } });
 

@@ -6,7 +6,8 @@ import { FileTextIcon } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CanvasTable } from '@/features/canvas/ui';
+import { StudioResponsiveTable } from '../StudioResponsiveTable';
 import {
   CONTENT_STATUSES,
   DataCard,
@@ -161,24 +162,24 @@ export function ContentListTable({ kind, rows, page = 1, hasMore = false, emptyA
           <EmptyState title={t('noMatches')} />
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead scope="col">{t('columns.title')}</TableHead>
-              {kind !== 'project' ? <TableHead scope="col" className="hidden md:table-cell">{t('columns.type')}</TableHead> : null}
-              <TableHead scope="col">{t('columns.status')}</TableHead>
-              {kind === 'project' ? <TableHead scope="col" className="hidden sm:table-cell">{t('columns.approval')}</TableHead> : null}
-              <TableHead scope="col" className="hidden lg:table-cell">{t('columns.updated')}</TableHead>
-              <TableHead scope="col" className="w-12"><span className="sr-only">{t('columns.actions')}</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <StudioResponsiveTable caption={t('columns.title')}>
+          <CanvasTable.Head>
+            <CanvasTable.Row className="hover:bg-transparent">
+              <CanvasTable.ColHeader id="content-column-1" scope="col">{t('columns.title')}</CanvasTable.ColHeader>
+              {kind !== 'project' ? <CanvasTable.ColHeader id="content-column-2" scope="col" className="">{t('columns.type')}</CanvasTable.ColHeader> : null}
+              <CanvasTable.ColHeader id="content-column-3" scope="col">{t('columns.status')}</CanvasTable.ColHeader>
+              {kind === 'project' ? <CanvasTable.ColHeader id="content-column-4" scope="col" className="">{t('columns.approval')}</CanvasTable.ColHeader> : null}
+              <CanvasTable.ColHeader id="content-column-5" scope="col" className="">{t('columns.updated')}</CanvasTable.ColHeader>
+              <CanvasTable.ColHeader id="content-column-6" scope="col" className="w-12"><span className="sr-only">{t('columns.actions')}</span></CanvasTable.ColHeader>
+            </CanvasTable.Row>
+          </CanvasTable.Head>
+          <CanvasTable.Body>
             {visible.map((row) => {
               const title = titleOf(row);
               const href = `${ROUTE[kind]}/${encodeURIComponent(row.id)}`;
               return (
-                <TableRow key={row.id}>
-                  <TableCell className="max-w-0 min-w-48 py-2">
+                <CanvasTable.Row key={row.id}>
+                  <CanvasTable.Cell className="min-w-0 py-2">
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <Link
                         href={href}
@@ -189,27 +190,27 @@ export function ContentListTable({ kind, rows, page = 1, hasMore = false, emptyA
                       </Link>
                       <span className="truncate text-xs leading-normal text-muted-foreground">{row.secondary ?? row.id}</span>
                     </div>
-                  </TableCell>
+                  </CanvasTable.Cell>
                   {kind !== 'project' ? (
-                    <TableCell className="hidden text-muted-foreground md:table-cell">{row.type ? typeLabel(row.type) : '—'}</TableCell>
+                    <CanvasTable.Cell className="text-muted-foreground">{row.type ? typeLabel(row.type) : '—'}</CanvasTable.Cell>
                   ) : null}
-                  <TableCell>
+                  <CanvasTable.Cell>
                     <StatusBadge kind={statusKind} value={row.status} label={statusLabel(row.status)} />
-                  </TableCell>
+                  </CanvasTable.Cell>
                   {kind === 'project' ? (
-                    <TableCell className="hidden sm:table-cell">
+                    <CanvasTable.Cell className="">
                       <StatusBadge
                         kind="review"
                         value={row.approved ? 'approved' : 'pending'}
                         tone={row.approved ? 'success' : 'warning'}
                         label={area(row.approved ? 'approval.approved' : 'approval.pending')}
                       />
-                    </TableCell>
+                    </CanvasTable.Cell>
                   ) : null}
-                  <TableCell className="hidden whitespace-nowrap tabular-nums text-muted-foreground lg:table-cell">
+                  <CanvasTable.Cell className="whitespace-nowrap tabular-nums text-muted-foreground">
                     {row.updatedAt ? format.dateTime(new Date(row.updatedAt), { dateStyle: 'medium' }) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </CanvasTable.Cell>
+                  <CanvasTable.Cell textAlign="end" className="text-right">
                     <RowActions
                       label={t('actionsFor', { title })}
                       items={[
@@ -217,12 +218,12 @@ export function ContentListTable({ kind, rows, page = 1, hasMore = false, emptyA
                         { label: t('copyId'), onSelect: () => copyId(row.id) },
                       ]}
                     />
-                  </TableCell>
-                </TableRow>
+                  </CanvasTable.Cell>
+                </CanvasTable.Row>
               );
             })}
-          </TableBody>
-        </Table>
+          </CanvasTable.Body>
+        </StudioResponsiveTable>
       )}
     </DataCard>
   );

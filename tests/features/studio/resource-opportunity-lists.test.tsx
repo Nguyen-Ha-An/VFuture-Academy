@@ -34,7 +34,7 @@ describe('Studio content list table', () => {
     expect(screen.getByRole('link', { name: 'Untitled resource' })).toHaveAttribute('href', '/studio/resources/untitled-note');
     const table = within(screen.getByRole('table'));
     expect(table.getByText('Published')).toHaveAttribute('data-tone', 'success');
-    expect(table.getByText('Guide')).toBeInTheDocument();
+    expect(table.getByRole('cell', { name: /^Type: Guide$/ })).toBeInTheDocument();
 
     await user.type(screen.getByRole('searchbox', { name: 'Search by title or ID' }), 'tri tue{Enter}');
     expect(screen.getByRole('link', { name: 'Hướng dẫn trí tuệ nhân tạo' })).toHaveAttribute('href', '/studio/resources/ai-guide');
@@ -67,8 +67,10 @@ describe('Studio content list table', () => {
     expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Next' })).toHaveAttribute('href', '/studio/opportunities?page=3');
     expect(screen.getByRole('link', { name: 'Previous' })).toHaveAttribute('href', '/studio/opportunities');
-    expect(screen.getAllByRole('row')).toHaveLength(51);
-    expect(within(screen.getByRole('table')).getAllByText('Hackathon').length).toBe(25);
+    // Native nonsortable stacked tables have no separate header row; all50records must remain present.
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(50);
+    expect(within(screen.getByRole('table')).getAllByRole('link')).toHaveLength(50);
+    expect(within(screen.getByRole('table')).getAllByRole('cell', { name: /^Type: Hackathon$/ }).length).toBe(25);
     expect(screen.getAllByText('Future Lab').length).toBe(50);
   });
 

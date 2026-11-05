@@ -56,6 +56,9 @@ export type SubmissionQueueSubmission = {
   attemptNo: number;
   status: LearnerSubmissionStatus;
   submittedAt: string;
+  /** Captured at submission time; null for historical or unscheduled submissions. */
+  dueAtSnapshot?: string | null;
+  late?: boolean | null;
   payload: AssignmentPayload;
   files: LearnerSubmissionFile[];
   grade?: SubmissionQueueGrade;

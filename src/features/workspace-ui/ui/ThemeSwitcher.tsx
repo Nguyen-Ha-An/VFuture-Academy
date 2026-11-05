@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useId, useState } from 'react';
 import { useLocaleChange } from '@/components/LocaleSwitcher';
 import type { AppLocale } from '@/i18n/request';
-import { WORKSPACE_THEME_COOKIE, parseWorkspaceTheme, workspaceThemeAttribute, workspaceThemeCookie, workspaceThemes, type WorkspaceTheme } from '../theme';
+import { WORKSPACE_THEME_COOKIE, WORKSPACE_THEME_EVENT, parseWorkspaceTheme, workspaceThemeAttribute, workspaceThemeCookie, workspaceThemes, type WorkspaceTheme } from '../theme';
 
 let lastAppliedTheme: WorkspaceTheme | null = null;
 
@@ -24,9 +24,10 @@ export function applyWorkspaceTheme(next: WorkspaceTheme) {
   lastAppliedTheme = next;
   try { document.cookie = workspaceThemeCookie(next, window.location.protocol === 'https:'); } catch { /* Falls back to system on the next load. */ }
   const attribute = workspaceThemeAttribute(next);
-  document.querySelectorAll<HTMLElement>('.vf-workspace').forEach(surface => {
+  document.querySelectorAll<HTMLElement>('.vf-workspace, .vf-staff').forEach(surface => {
     if (attribute) surface.dataset.theme = attribute; else delete surface.dataset.theme;
   });
+  window.dispatchEvent(new CustomEvent(WORKSPACE_THEME_EVENT, { detail: next }));
 }
 
 /**

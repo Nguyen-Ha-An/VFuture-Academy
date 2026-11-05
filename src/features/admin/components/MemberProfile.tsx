@@ -1,5 +1,6 @@
 "use client";
 
+import "@/features/admin/ui/admin.css";
 import Link from "next/link";
 import { AccountControls } from "./AccountControls";
 import { azureBrowserIdentityEnabled } from "@/lib/identity/provider";
@@ -16,17 +17,9 @@ import { useSearchParams } from "next/navigation";
 import { BookOpen, ChevronLeft, FileCheck, School, ShieldCheck } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CanvasButton as Button, CanvasTextInput, CanvasSelect, CanvasTable, CanvasResponsive } from "@/features/canvas/ui";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatStaffAuditAction, formatStaffAuditTarget } from "@/features/admin/audit-format";
 import type {
@@ -80,6 +73,7 @@ export function MemberProfile({
 }) {
   const t = useTranslations("memberAdmin");
   const tp = useTranslations("staffUi.admin.members.profile");
+  const tm = useTranslations("staffUi.admin.members");
   const tmcp = useTranslations("staffUi.admin.mcp");
   const torg = useTranslations("staffUi.admin.org");
   const roleName = useRoleDisplayName();
@@ -202,14 +196,14 @@ export function MemberProfile({
     return (
       // Same header in the same place as the loaded page, so the h1 the shell focuses on
       // navigation survives the load and only its text changes.
-      <section className="space-y-6" aria-busy="true" aria-label={t("memberDetails")}>
+      <section className="canvas-page canvas-admin space-y-6" aria-busy="true" aria-label={t("memberDetails")}>
         <ProfileHeaderCard backHref={directoryHref} backLabel={t("title")} title={t("memberDetails")} initials="" />
         <RequestStatus>{t("loading")}</RequestStatus>
       </section>
     );
   if (error || !detail)
     return (
-      <section>
+      <section className="canvas-page canvas-admin">
         <ErrorState onRetry={() => void load()} />
       </section>
     );
@@ -246,6 +240,7 @@ export function MemberProfile({
         : { key: "submissions", label: tp("submissions"), value: submissions.length, icon: FileCheck },
     );
 
+  const examResults = detail.examResults;
   const accountAction = detail.actions.suspendAccount && !azureBrowserIdentityEnabled() ? (
     <Button
       variant="outline"
@@ -280,22 +275,13 @@ export function MemberProfile({
   ) : null;
 
   return (
-    <section className="space-y-6" aria-label={t("memberDetails")}>
+    <section className="canvas-page canvas-admin space-y-6" aria-label={t("memberDetails")}>
       <ProfileHeaderCard
         backHref={directoryHref}
         backLabel={t("title")}
         title={detail.displayName}
         initials={memberInitials(detail.displayName)}
-        actions={accountAction || canManageMcpAccess ? (
-          <>
-            {canManageMcpAccess ? (
-              <Button asChild variant="outline">
-                <Link href={routes.admin.mcp({ userId })}>{tmcp('memberAction')}</Link>
-              </Button>
-            ) : null}
-            {accountAction}
-          </>
-        ) : null}
+        actions={canManageMcpAccess ? <Button href={routes.admin.mcp({ userId })} variant="outline">{tmcp('memberAction')}</Button> : null}
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-normal text-muted-foreground">
           <StatusBadge
@@ -309,7 +295,6 @@ export function MemberProfile({
           </span>
         </div>
       </ProfileHeaderCard>
-      {options?.azureAccountAdmin ? <AccountControls scope={scope} actorId={actorId} userId={userId} onChanged={load} /> : null}
       <StatGrid aria-label={tp("statsLabel")}>
         {statCards.map(({ key, ...card }) => (
           <StatCard key={key} {...card} />
@@ -319,6 +304,10 @@ export function MemberProfile({
         <TabsList
           variant="line"
           aria-label={t("memberDetails")}
+          onFocusCapture={(event) => {
+            const tab = event.target as HTMLElement;
+            if (tab.getAttribute("role") === "tab") tab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+          }}
           className="w-full max-w-full justify-start overflow-x-auto"
         >
           <TabsTrigger value="information">{t("information")}</TabsTrigger>
@@ -361,13 +350,12 @@ export function MemberProfile({
                   </Button>
                 }
               >
-                <label className="grid max-w-md gap-1.5 text-sm font-medium leading-normal">
-                  {t("displayName")}
-                  <Input name="displayName" defaultValue={detail.displayName} required />
-                </label>
+                <div className="max-w-md"><CanvasTextInput label={t("displayName")} name="displayName" defaultValue={detail.displayName} required /></div>
               </SectionCard>
             </form>
           ) : null}
+          {options?.azureAccountAdmin ? <AccountControls scope={scope} actorId={actorId} userId={userId} onChanged={load} /> : null}
+          {accountAction ? <div className="border-t border-border pt-4">{accountAction}</div> : null}
         </TabsContent>
         <TabsContent value="memberships" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -388,6 +376,7 @@ export function MemberProfile({
               </ul>
             </SectionCard>
             <SectionCard title={t("roles")} columns={1}>
+              {!detail.assignments.length ? <p className="text-sm text-muted-foreground">{tm("noRoles")}</p> : null}
               <ul className="divide-y divide-border">
                 {detail.assignments.map((assignment) => (
                   <li key={assignment.id} className="py-3 first:pt-0 last:pb-0">
@@ -511,6 +500,7 @@ export function MemberProfile({
             />
           ) : null}
           <SectionCard title={t("effectivePermissions")} columns={1}>
+            {!detail.effectivePermissions.length ? <p className="text-sm text-muted-foreground">{tm("noPermissions")}</p> : null}
             <ul className="space-y-3">
               {detail.effectivePermissions.map((entry) => (
                 <li
@@ -535,38 +525,41 @@ export function MemberProfile({
         <TabsContent value="learning">
           <DataCard title={t("learning")}>
             {learning?.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>{tp("course")}</TableHead>
-                    <TableHead>{tp("progress")}</TableHead>
-                    <TableHead>{t("status")}</TableHead>
-                    <TableHead className="text-right">{t("examAverage")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <CanvasResponsive query={{ narrow: { maxWidth: "40rem" }, wide: { minWidth: "40.01rem" } }}
+                props={{ narrow: { layout: "stacked" }, wide: { layout: "fixed" } }}>
+                {(responsive) => (<CanvasTable caption={() => t("learning")} layout={(responsive?.layout ?? "fixed") as "stacked" | "fixed"}>
+                <CanvasTable.Head>
+                  <CanvasTable.Row className="hover:bg-transparent">
+                    <CanvasTable.ColHeader id="member-record-0-col-0">{tp("course")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-0-col-1">{tp("progress")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-0-col-2">{t("status")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-0-col-3" className="text-right">{t("examAverage")}</CanvasTable.ColHeader>
+                  </CanvasTable.Row>
+                </CanvasTable.Head>
+                <CanvasTable.Body>
                   {learning.map((course) => (
-                    <TableRow key={`${course.courseId}:${course.courseVersionId}`}>
-                      <TableCell className="font-medium">
+                    <CanvasTable.Row key={`${course.courseId}:${course.courseVersionId}`}>
+                      <CanvasTable.RowHeader className="font-medium">
                         {course.displayTitle ?? (course.title !== course.courseId ? course.title : tp("unavailableCourse"))}
                         {!course.displayTitle && course.title === course.courseId ? <span className="block font-mono text-xs font-normal text-muted-foreground">{course.courseId}</span> : null}
-                      </TableCell>
-                      <TableCell className="tabular-nums">
+                      </CanvasTable.RowHeader>
+                      <CanvasTable.Cell className="tabular-nums">
                         {course.completedLessons}/{course.totalLessons}
-                      </TableCell>
-                      <TableCell>
+                      </CanvasTable.Cell>
+                      <CanvasTable.Cell>
                         <StatusBadge kind="enrollment" value={course.status} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      </CanvasTable.Cell>
+                      <CanvasTable.Cell className="text-right tabular-nums">
                         {course.examAveragePercent != null ? `${course.examAveragePercent}%` : "—"}
-                      </TableCell>
-                    </TableRow>
+                      </CanvasTable.Cell>
+                    </CanvasTable.Row>
                   ))}
-                </TableBody>
-              </Table>
+                </CanvasTable.Body>
+              </CanvasTable>)}
+              </CanvasResponsive>
             ) : (
               <div className="p-6">
-                <EmptyState title={t("empty")} />
+                <EmptyState title={learning ? tp("noLearning") : tp("learningUnavailable")} />
               </div>
             )}
           </DataCard>
@@ -574,90 +567,96 @@ export function MemberProfile({
         <TabsContent value="submissions" className="space-y-6">
           <DataCard title={t("assignmentResults")}>
             {submissions?.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>{tp("item")}</TableHead>
-                    <TableHead>{t("status")}</TableHead>
-                    <TableHead className="text-right">{tp("score")}</TableHead>
-                    <TableHead>{tp("submitted")}</TableHead>
+              <CanvasResponsive query={{ narrow: { maxWidth: "40rem" }, wide: { minWidth: "40.01rem" } }}
+                props={{ narrow: { layout: "stacked" }, wide: { layout: "fixed" } }}>
+                {(responsive) => (<CanvasTable caption={() => t("assignmentResults")} layout={(responsive?.layout ?? "fixed") as "stacked" | "fixed"}>
+                <CanvasTable.Head>
+                  <CanvasTable.Row className="hover:bg-transparent">
+                    <CanvasTable.ColHeader id="member-record-1-col-0">{tp("item")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-1-col-1">{t("status")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-1-col-2" className="text-right">{tp("score")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-1-col-3">{tp("submitted")}</CanvasTable.ColHeader>
                     {canGrade ? (
-                      <TableHead>
-                        <span className="sr-only">{tp("openSubmission")}</span>
-                      </TableHead>
+                      <CanvasTable.ColHeader id="member-record-1-col-4">
+                        {tm("actions")}
+                      </CanvasTable.ColHeader>
                     ) : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                  </CanvasTable.Row>
+                </CanvasTable.Head>
+                <CanvasTable.Body>
                   {submissions.map((submission) => (
-                    <TableRow key={submission.id}>
-                      <TableCell className="max-w-64 font-medium">
-                        <span className="block truncate">{submission.displayTitle ?? tp("unavailableItem")}</span>
-                        {!submission.displayTitle ? <span className="block truncate font-mono text-xs font-normal text-muted-foreground">{submission.itemId}</span> : null}
-                      </TableCell>
-                      <TableCell>
+                    <CanvasTable.Row key={submission.id}>
+                      <CanvasTable.RowHeader className="max-w-64 font-medium">
+                        <span className="block break-words">{submission.displayTitle ?? tp("unavailableItem")}</span>
+                        {!submission.displayTitle ? <span className="block break-all font-mono text-xs font-normal text-muted-foreground">{submission.itemId}</span> : null}
+                      </CanvasTable.RowHeader>
+                      <CanvasTable.Cell>
                         <StatusBadge kind="submission" value={submission.status} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      </CanvasTable.Cell>
+                      <CanvasTable.Cell className="text-right tabular-nums">
                         {submission.percent == null ? "—" : `${submission.percent}%`}
-                      </TableCell>
-                      <TableCell className="tabular-nums text-muted-foreground">
+                      </CanvasTable.Cell>
+                      <CanvasTable.Cell className="tabular-nums text-muted-foreground">
                         {new Date(submission.submittedAt).toLocaleString(locale)}
-                      </TableCell>
+                      </CanvasTable.Cell>
                       {canGrade ? (
-                        <TableCell className="text-right">
+                        <CanvasTable.Cell className="text-right">
                           <Link
                             className="text-sm font-medium underline-offset-4 hover:underline"
                             href={routes.grading.assignment(submission.id)}
                           >
                             {tp("openSubmission")}
                           </Link>
-                        </TableCell>
+                        </CanvasTable.Cell>
                       ) : null}
-                    </TableRow>
+                    </CanvasTable.Row>
                   ))}
-                </TableBody>
-              </Table>
+                </CanvasTable.Body>
+              </CanvasTable>)}
+              </CanvasResponsive>
             ) : (
               <div className="p-6">
-                <EmptyState title={t("submissionsUnavailable")} />
+                <EmptyState title={submissions ? tp("noSubmissions") : t("submissionsUnavailable")} />
               </div>
             )}
           </DataCard>
           <DataCard title={t("examResults")}>
-            {detail.examResults?.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>{tp("item")}</TableHead>
-                    <TableHead>{t("status")}</TableHead>
-                    <TableHead className="text-right">{tp("score")}</TableHead>
-                    <TableHead>{tp("submitted")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {detail.examResults.map((exam) => (
-                    <TableRow key={exam.id}>
-                      <TableCell className="max-w-64 font-medium">
-                        <span className="block truncate">{exam.displayTitle ?? tp("unavailableItem")}</span>
-                        {!exam.displayTitle ? <span className="block truncate font-mono text-xs font-normal text-muted-foreground">{exam.itemId}</span> : null}
-                      </TableCell>
-                      <TableCell>
+            {examResults?.length ? (
+              <CanvasResponsive query={{ narrow: { maxWidth: "40rem" }, wide: { minWidth: "40.01rem" } }}
+                props={{ narrow: { layout: "stacked" }, wide: { layout: "fixed" } }}>
+                {(responsive) => (<CanvasTable caption={() => t("examResults")} layout={(responsive?.layout ?? "fixed") as "stacked" | "fixed"}>
+                <CanvasTable.Head>
+                  <CanvasTable.Row className="hover:bg-transparent">
+                    <CanvasTable.ColHeader id="member-record-2-col-0">{tp("item")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-2-col-1">{t("status")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-2-col-2" className="text-right">{tp("score")}</CanvasTable.ColHeader>
+                    <CanvasTable.ColHeader id="member-record-2-col-3">{tp("submitted")}</CanvasTable.ColHeader>
+                  </CanvasTable.Row>
+                </CanvasTable.Head>
+                <CanvasTable.Body>
+                  {examResults.map((exam) => (
+                    <CanvasTable.Row key={exam.id}>
+                      <CanvasTable.RowHeader className="max-w-64 font-medium">
+                        <span className="block break-words">{exam.displayTitle ?? tp("unavailableItem")}</span>
+                        {!exam.displayTitle ? <span className="block break-all font-mono text-xs font-normal text-muted-foreground">{exam.itemId}</span> : null}
+                      </CanvasTable.RowHeader>
+                      <CanvasTable.Cell>
                         <StatusBadge kind="examAttempt" value={exam.status} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      </CanvasTable.Cell>
+                      <CanvasTable.Cell className="text-right tabular-nums">
                         {exam.percent == null ? "—" : `${exam.percent}%`}
-                      </TableCell>
-                      <TableCell className="tabular-nums text-muted-foreground">
+                      </CanvasTable.Cell>
+                      <CanvasTable.Cell className="tabular-nums text-muted-foreground">
                         {exam.submittedAt ? new Date(exam.submittedAt).toLocaleString(locale) : "—"}
-                      </TableCell>
-                    </TableRow>
+                      </CanvasTable.Cell>
+                    </CanvasTable.Row>
                   ))}
-                </TableBody>
-              </Table>
+                </CanvasTable.Body>
+              </CanvasTable>)}
+              </CanvasResponsive>
             ) : (
               <div className="p-6">
-                <EmptyState title={t("empty")} />
+                <EmptyState title={examResults ? tp("noExamResults") : t("submissionsUnavailable")} />
               </div>
             )}
           </DataCard>
@@ -719,8 +718,8 @@ function ProfileHeaderCard({
         <ChevronLeft className="size-4" aria-hidden="true" />
         {backLabel}
       </Link>
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 text-card-foreground sm:flex-row sm:items-start [&_.staff-page-header]:!mb-0">
-        <Avatar className="size-14" aria-hidden="true">
+      <div className="admin-member-header flex items-start gap-4">
+        <Avatar className="hidden size-12 sm:flex" aria-hidden="true">
           <AvatarFallback className="text-base">{initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
@@ -743,7 +742,9 @@ function RoleAssignment({
   onQueue: (title: string, description: string, body: unknown) => void;
 }) {
   const t = useTranslations("memberAdmin");
-  const [roleId, setRoleId] = useState(options.roles[0]?.id ?? "");
+  const tm = useTranslations("staffUi.admin.members");
+  const roleName = useRoleDisplayName();
+  const [roleId, setRoleId] = useState("");
   const [branchId, setBranchId] = useState(
     options.scope.kind === "branch"
       ? options.scope.branchId
@@ -762,45 +763,20 @@ function RoleAssignment({
     : t("central");
   return (
     <section className="grid gap-3 rounded-lg border border-border bg-card p-6 md:grid-cols-[1fr_1fr_auto] md:items-end">
-      <label className="grid gap-1.5 text-sm font-medium leading-normal">
-        {t("role")}
-        <NativeSelect
-          value={roleId}
-          wrapperClassName="w-full"
-          onChange={(event) => {
-            const nextRoleId = event.target.value;
-            setRoleId(nextRoleId);
-            const nextRole = options.roles.find(
-              (candidate) => candidate.id === nextRoleId,
-            );
-            if (nextRole?.scopeKind === "central") setBranchId("");
-            else if (options.scope.kind === "branch")
-              setBranchId(options.scope.branchId);
-          }}
-        >
-          {options.roles.map((candidate) => (
-            <NativeSelectOption key={candidate.id} value={candidate.id}>
-              {candidate.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </label>
-      <label className="grid gap-1.5 text-sm font-medium leading-normal">
-        {t("school")}
-        <NativeSelect
-          value={assignmentBranchId ?? ""}
-          wrapperClassName="w-full"
-          onChange={(event) => setBranchId(event.target.value)}
-          disabled={isCentralRole || options.scope.kind === "branch"}
-        >
-          <NativeSelectOption value="">{t("central")}</NativeSelectOption>
-          {options.branches.map((branch) => (
-            <NativeSelectOption key={branch.id} value={branch.id}>
-              {branch.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </label>
+      <CanvasSelect label={t("role")} value={roleId}
+        options={[{ value: "", label: tm("chooseRole") }, ...options.roles.map((candidate) => ({
+          value: candidate.id,
+          label: candidate.builtIn ? roleName(candidate.id, candidate.name) : candidate.name,
+        }))]}
+        onChange={(nextRoleId) => {
+          setRoleId(nextRoleId);
+          const nextRole = options.roles.find((candidate) => candidate.id === nextRoleId);
+          if (nextRole?.scopeKind === "central") setBranchId("");
+          else if (options.scope.kind === "branch") setBranchId(options.scope.branchId);
+        }} />
+      <CanvasSelect label={t("school")} value={assignmentBranchId ?? ""}
+        options={[{ value: "", label: t("central") }, ...options.branches.map((branch) => ({ value: branch.id, label: branch.name }))]}
+        onChange={setBranchId} disabled={isCentralRole || options.scope.kind === "branch"} />
       <Button
         onClick={() =>
           role &&
@@ -815,7 +791,7 @@ function RoleAssignment({
             },
           )
         }
-        disabled={!isCentralRole && !assignmentBranchId}
+        disabled={!role || (!isCentralRole && !assignmentBranchId)}
       >
         {t("confirm")}
       </Button>

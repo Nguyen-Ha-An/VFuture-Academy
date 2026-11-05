@@ -278,7 +278,7 @@ export function ContentInventory({
   ) : null;
 
   return (
-    <div className="space-y-5">
+    <div className="canvas-page space-y-5">
       {title ? (
         <>
           <StaffPageHeader
@@ -308,6 +308,7 @@ export function ContentInventory({
         </p>
       ) : null}
       <DataCard
+        className="canvas-panel"
         title={library("listTitle")}
         toolbar={
           <div className="space-y-3">
@@ -633,7 +634,7 @@ export function ReviewQueue({
   );
   const tabs = ["preview", "changes", "dependencies", "history"] as const;
   return (
-    <div className="space-y-5">
+    <div className="canvas-page space-y-5">
       {error ? (
         <p role="alert" className={errorNotice}>
           {error}
@@ -641,6 +642,7 @@ export function ReviewQueue({
       ) : null}
       <div className={cn("grid items-start gap-6", canReview && "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]")}>
         <DataCard
+          className="canvas-panel"
           title={reviews("listTitle")}
           toolbar={
             <DataToolbar

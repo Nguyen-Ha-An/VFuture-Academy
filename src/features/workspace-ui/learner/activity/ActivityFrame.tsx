@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import '../learner-routes.css';
 
 import type { WorkspaceTheme } from '../../theme';
 import { ActivityProgressProvider, ActivityStatusTag, type ActivityProgressValue } from './ActivityProgress';

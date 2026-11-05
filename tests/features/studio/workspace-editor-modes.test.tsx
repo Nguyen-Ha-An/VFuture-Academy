@@ -28,6 +28,7 @@ vi.mock('@/features/content-review/ContentWorkflowPanel', async () => {
   } };
 });
 
+import { createWorkspaceState } from '@/features/studio/workspace-state';
 import { Workspace, type WorkspaceDraft } from '@/features/studio/ui/Workspace';
 
 const messages = staffUiTestMessages(enMessages, 'en');
@@ -48,32 +49,53 @@ function renderWorkspace() {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   mocks.router.push.mockClear();
   mocks.workflowLocked = false;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
-describe('manual JSON workspace', () => {
-  it('has one source editor and no forms or prompt mode', () => {
-    renderWorkspace();
-
+describe('Canvas workspace editor modes', () => {
+  it('defaults to visual and remembers an explicit JSON preference', () => {
+    const view = renderWorkspace();
+    expect(screen.getByRole('tab', { name: 'Visual' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('textbox', { name: 'JSON editor for manifest' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON' }));
     expect(screen.getByRole('textbox', { name: 'JSON editor for manifest' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Forms' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Advanced JSON' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/prompt/i)).not.toBeInTheDocument();
+    view.unmount();
+    renderWorkspace();
+    expect(screen.getByRole('textbox', { name: 'JSON editor for manifest' })).toBeInTheDocument();
+  });
+
+  it('uses one raw document for a visual title edit and the JSON editor', () => {
+    vi.stubGlobal('fetch', vi.fn());
+    renderWorkspace();
+    fireEvent.change(screen.getAllByRole('textbox', { name: 'Title (EN)' })[0]!, { target: { value: 'Canvas course' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON' }));
+    const source = (screen.getByRole('textbox', { name: 'JSON editor for manifest' }) as HTMLTextAreaElement).value;
+    const manifest = JSON.parse(source);
+    expect(manifest.title).toBe('Canvas course');
+    expect(manifest.id).toBe(draft.courseId);
+    expect(manifest.modules).toEqual((createWorkspaceState(draft).manifest as { modules: unknown }).modules);
+    fireEvent.click(screen.getByRole('tab', { name: 'Visual' }));
+    expect(screen.getAllByRole('textbox', { name: 'Title (EN)' })[0]!).toHaveValue('Canvas course');
   });
 
   it('retains malformed source verbatim while selecting other documents', () => {
     const fetcher = vi.fn();
     vi.stubGlobal('fetch', fetcher);
     renderWorkspace();
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON' }));
 
-    fireEvent.click(screen.getByText('Welcome').closest('button')!);
+    fireEvent.click(screen.getByRole('treeitem', { name: /Welcome/ }));
     fireEvent.change(screen.getByRole('textbox', { name: 'JSON editor for intro' }), { target: { value: '{' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Course manifest' }));
-    fireEvent.click(screen.getByText('Welcome').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Course settings' }));
+    fireEvent.click(screen.getByRole('treeitem', { name: /Welcome/ }));
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Visual' }));
+    expect(screen.getByText(/This document has invalid JSON/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON' }));
     expect(screen.getByRole('textbox', { name: 'JSON editor for intro' })).toHaveValue('{');
     expect(fetcher).not.toHaveBeenCalled();
   });
@@ -82,7 +104,8 @@ describe('manual JSON workspace', () => {
     const fetcher = vi.fn();
     vi.stubGlobal('fetch', fetcher);
     renderWorkspace();
-    fireEvent.click(screen.getByText('Welcome').closest('button')!);
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON' }));
+    fireEvent.click(screen.getByRole('treeitem', { name: /Welcome/ }));
     const editor = screen.getByRole('textbox', { name: 'JSON editor for intro' });
     fireEvent.change(editor, { target: { value: String((editor as HTMLTextAreaElement).value).replace('"id": "intro"', '"id": "renamed"') } });
     fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
@@ -101,6 +124,7 @@ describe('manual JSON workspace', () => {
   it('locks editing while the shared workflow reports a pending review', async () => {
     mocks.workflowLocked = true;
     renderWorkspace();
+    fireEvent.click(screen.getByRole('tab', { name: 'JSON' }));
 
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'JSON editor for manifest' })).toHaveAttribute('readonly'));
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();

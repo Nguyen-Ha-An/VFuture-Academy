@@ -8,14 +8,12 @@ export type ExploreDestination = { href: string; label: string; description: str
 export function ExploreBenchView({ destinations }: { destinations: ExploreDestination[] }) {
   const t = useTranslations('learner.focus');
   const bench = useTranslations('bench.learner.explore');
-  return <section aria-labelledby="explore-title" className="grid gap-8">
+  return <section aria-labelledby="explore-title" className="canvas-page canvas-learning canvas-explore">
     <PageHeader kicker={bench('kicker')} title={t('exploreTitle')} titleId="explore-title" lead={t('exploreDescription')} />
     <ul className="vf-l-explore">
-      {destinations.map((destination, index) => <li key={destination.href}>
+      {destinations.map((destination) => <li key={destination.href}>
         <Link href={destination.href}>
-          <span className="vf-code" aria-hidden="true">X{index + 1}</span>
           <h2>{destination.label}</h2>
-          <span className="vf-l-arrow" aria-hidden="true">→</span>
           <p>{destination.description}</p>
         </Link>
       </li>)}

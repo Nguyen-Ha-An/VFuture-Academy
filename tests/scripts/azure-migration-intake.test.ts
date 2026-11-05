@@ -7,12 +7,12 @@ it.each(['._0001_identity.sql','_0001_identity.sql','.0001_identity.sql','.hidde
 it('accepts only the current numeric owned migration names in deterministic order',()=>{
   const names=readdirSync(new URL('../../supabase/migrations/',import.meta.url));
   const eligible=ownedMigrationNames(names);
-  expect(eligible).toHaveLength(49);
+  expect(eligible).toHaveLength(51);
   expect(ownedMigrationNames([...eligible].reverse())).toEqual(eligible);
   const artifact=buildAzureSchema();
   expect(artifact.receipt.migrations.map(migration=>migration.file)).toEqual(eligible);
   expect(azureSchemaStepNames()).toEqual(artifact.steps.map(step=>step.id));
-  expect(artifact.steps).toHaveLength(55);
+  expect(artifact.steps).toHaveLength(eligible.length + 6);
 });
 it('never treats unrelated non-SQL documentation as executable',()=>{
   expect(ownedMigrationNames(['README.md','0001_identity.sql'])).toEqual(['0001_identity.sql']);

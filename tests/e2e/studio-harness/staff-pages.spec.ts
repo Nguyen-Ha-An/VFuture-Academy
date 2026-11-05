@@ -68,9 +68,12 @@ test.describe('studio page interactions', () => {
     await page.setViewportSize({ width: 320, height: 700 });
     await page.goto(withQuery('/grading/exams/fixture-attempt', { theme: 'light' }));
     await expect(page.getByRole('heading', { level: 1, name: /Fixture learner/ })).toBeVisible();
-    await page.getByRole('navigation', { name: 'Questions' }).getByRole('button', { name: /2\. Essay/ }).click();
+    await page.getByRole('combobox', { name: 'Questions', exact: true }).click();
+    await page.getByRole('option', { name: /^2\. Essay/ }).click();
+    await expect(page.getByRole('combobox', { name: 'Questions', exact: true })).toHaveValue(/2\. Essay/);
     await page.getByRole('tab', { name: 'Grading' }).click();
-    await expect(page.getByRole('spinbutton', { name: 'Points' })).toBeVisible();
+    await expect(page.getByRole('spinbutton', { name: 'Points / 4', exact: true })).toBeVisible();
+    await expect(page.getByRole('spinbutton', { name: 'Points / 4', exact: true })).toHaveValue('2');
     await expect(page.getByRole('button', { name: gradingWorkbench.en.workbench.panels.complete })).toBeVisible();
     await expectNoHorizontalScroll(page);
     await pageShot(page, info, 'studio-exam-workbench-320-light-grading');

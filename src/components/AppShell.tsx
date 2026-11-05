@@ -1,16 +1,20 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MenuButton, MobileNavigationDrawer, type ShellNavItem } from '@/components/ShellPrimitives';
 import { LearnerAccountActions } from '@/components/LearnerAccountActions';
 import { routes } from '@/lib/routes';
-import { BenchBar, BenchNavLinks, type BenchNavItem } from '@/features/workspace-ui/learner/BenchBar';
+import { useSectionShortcuts, type BenchNavItem } from '@/features/workspace-ui/learner/BenchBar';
+import { requestNavigation } from '@/lib/navigation-guard';
 import { LearnerCommandMenu } from '@/features/workspace-ui/learner/command/LearnerCommandMenu';
 import type { WorkspaceTheme } from '@/features/workspace-ui/theme';
 import { WorkspaceSurface } from '@/features/workspace-ui/ui/WorkspaceSurface';
+import { CanvasProvider } from '@/features/canvas/ui/CanvasProvider';
+import { GlobalNavigation } from '@/features/canvas/ui/GlobalNavigation';
 import '@/features/workspace-ui/learner/learner.css';
+import '@/features/canvas/canvas.css';
 
 const SECTION_CODES: Record<string, string> = { learning: 'A1', courses: 'A2', explore: 'A3' };
 
@@ -19,6 +23,7 @@ export function AppShell({ children, canAccessStudio = false, studioDestination,
   const t = useTranslations('learner.focus');
   const common = useTranslations('common');
   const pathname = usePathname();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const navigation = useMemo<ShellNavItem[]>(() => [
@@ -64,20 +69,24 @@ export function AppShell({ children, canAccessStudio = false, studioDestination,
   const navPath = exploreSection ? routes.learner.explore() : pathname;
 
   const benchItems = useMemo<BenchNavItem[]>(() => navigation.map(item => ({ ...item, code: SECTION_CODES[item.key] ?? '' })), [navigation]);
-  return <WorkspaceSurface theme={theme} density="comfortable" className="vf-learner-refined">
-    <div inert={drawerOpen || undefined} className="min-h-dvh">
+  const navigate = useCallback((href: string) => { void requestNavigation().then(allowed => { if (allowed) router.push(href); }); }, [router]);
+  useSectionShortcuts(benchItems, navigate);
+  return <CanvasProvider theme={theme}><WorkspaceSurface theme={theme} density="comfortable" className="vf-learner-refined vf-canvas">
+    <div inert={drawerOpen || undefined} className="min-h-dvh canvas-learner-body">
       <a href="#learner-main" className="vf-l-skip">{learner('skipToContent')}</a>
-      {!isFocusRoute && <BenchBar items={benchItems} pathname={navPath} navigationLabel={common('learnerNavigation')} brandHref={routes.learner.dashboard()} brandLabel={common('brand')}
-        search={<LearnerCommandMenu destinations={{ studio: accountProps.studioDestination, grading: gradingDestination, admin: adminDestination }} />}
-        account={<LearnerAccountActions {...accountProps} theme={theme} />}
-        menuButton={<MenuButton ref={menuButtonRef} className="min-[760px]:hidden" controls="learner-mobile-navigation" expanded={drawerOpen} onClick={() => setDrawerOpen(true)} />} />}
-      <MobileNavigationDrawer id="learner-mobile-navigation" open={drawerOpen} onOpenChange={setDrawerOpen} title={common('learnerNavigation')} returnFocusRef={menuButtonRef} themeClassName="vf-learner-refined" closeAt="(min-width: 47.5rem)">
-        <nav aria-label={common('learnerNavigation')} className="vf-l-drawer-nav"><BenchNavLinks items={benchItems} pathname={navPath} onNavigate={() => setDrawerOpen(false)} /></nav>
+      <GlobalNavigation studio={accountProps.studioDestination} grading={gradingDestination} admin={adminDestination} />
+      <CanvasLearnerHeader title={navigation.find(item => navPath === item.href || item.href !== '/app' && navPath.startsWith(`${item.href}/`))?.label ?? common('brand')} menuButton={<MenuButton ref={menuButtonRef} className="md:hidden" controls="learner-mobile-navigation" expanded={drawerOpen} onClick={() => setDrawerOpen(true)} />} search={<LearnerCommandMenu destinations={{ studio: accountProps.studioDestination, grading: gradingDestination, admin: adminDestination }} />} account={<LearnerAccountActions {...accountProps} theme={theme} />} />
+      <MobileNavigationDrawer id="learner-mobile-navigation" open={drawerOpen} onOpenChange={setDrawerOpen} title={common('learnerNavigation')} returnFocusRef={menuButtonRef} themeClassName="vf-learner-refined" closeAt="(min-width: 48rem)">
+        <GlobalNavigation studio={accountProps.studioDestination} grading={gradingDestination} admin={adminDestination} mobile onNavigate={() => setDrawerOpen(false)} />
         <LearnerAccountActions {...accountProps} stacked theme={theme} onNavigate={() => setDrawerOpen(false)} />
       </MobileNavigationDrawer>
       <main id="learner-main" tabIndex={-1} className="vf-l-main" data-layout={layout}>
         {children}
       </main>
     </div>
-  </WorkspaceSurface>;
+  </WorkspaceSurface></CanvasProvider>;
+}
+
+function CanvasLearnerHeader({ title, menuButton, search, account }: { title: string; menuButton: React.ReactNode; search: React.ReactNode; account: React.ReactNode }) {
+  return <header className="canvas-learner-header">{menuButton}<span className="canvas-learner-header-title">{title}</span><div className="canvas-learner-header-actions">{search}<div className="canvas-desktop-account">{account}</div></div></header>;
 }

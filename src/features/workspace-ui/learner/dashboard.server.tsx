@@ -3,20 +3,17 @@ import 'server-only';
 import { getTranslations } from 'next-intl/server';
 import { cache } from 'react';
 
-import { resolveL10nString, type Locale } from '@/content-engine';
+import { type Locale } from '@/content-engine';
 import { getCourse, type listCatalog } from '@/features/catalog/service';
 import type { LearnerHomeSummary, LearningTarget } from '@/features/learner/summary';
-import { branchIdForUser } from '@/features/me/service';
-import { passport, SKILL_LEVELS } from '@/features/skills/service';
-import { weeklyLeaderboard } from '@/features/xp/service';
 import type { Actor } from '@/lib/permissions';
 import { routes } from '@/lib/routes';
 import { coursePartLabel, paceBand, prerequisiteLabels } from '../format';
-import { TraceRail, type TraceEvent } from '../ui/TraceRail';
+import { TraceRail } from '../ui/TraceRail';
 import { learnerActivitySeries } from './activity.server';
 import { LearnerDashboardView } from './LearnerDashboardView';
-import { LearnerReadout, type Reading, type ReadoutRank, type ReadoutSkill } from './LearnerReadout';
-import { examDeadline, type BenchCourseRow, type BenchProgress, type DashboardResume, type LearnerDashboardData } from './model';
+import { dashboardTasks, dashboardResults, dashboardAnnouncements } from './canvas-read.server';
+import { type BenchCourseRow, type BenchProgress, type DashboardResume, type LearnerDashboardData } from './model';
 
 type CatalogCourse = Awaited<ReturnType<typeof listCatalog>>[number];
 type CourseDetail = Awaited<ReturnType<typeof getCourse>>;
@@ -32,12 +29,6 @@ const activityFor = cache(async (userId: string) => {
     kind: kind => (['exam_passed', 'assignment_approved', 'course_completed'].includes(kind) ? t(`kinds.${kind}` as 'kinds.exam_passed') : kind),
   });
 });
-
-function settle<T>(result: PromiseSettledResult<T>, label: string): Reading<T> {
-  if (result.status === 'fulfilled') return { ok: true, value: result.value };
-  console.error(`[learner bench] ${label} unavailable`, result.reason);
-  return { ok: false };
-}
 
 /**
  * Course outlines and progress for the resume strip and the active-courses sheet. This reuses
@@ -150,52 +141,11 @@ export async function LearnerActivityTrace({ userId }: { userId: string }) {
   return <TraceRail days={series.days} events={series.events} kind="learner" />;
 }
 
-async function LearnerTraceSlot({ userId, data }: { userId: string; data: LearnerDashboardData }) {
-  const [series, t] = await Promise.all([activityFor(userId), getTranslations('bench.learner.trace')]);
-  const deadline = examDeadline(data.exam, data.now);
-  const events: TraceEvent[] = [...series.events];
-  if (data.exam) events.push({ dayIndex: series.days.length - 1, tone: 'pending', label: [t('examMarker', { title: data.exam.title }), deadline?.countdown].filter(Boolean).join(' · ') });
-  return <TraceRail days={series.days} events={events} kind="learner" />;
-}
-
-async function viewerRank(userId: string, handle: string | null): Promise<ReadoutRank> {
-  const branchId = await branchIdForUser(userId);
-  if (!branchId) return { rank: null, reason: 'no-branch' };
-  const [entries, previous] = await Promise.all([weeklyLeaderboard('branch', branchId), weeklyLeaderboard('branch', branchId, { weeksAgo: 1 }).catch(() => null)]);
-  const viewer = handle ? entries.find(entry => entry.handle === handle) : undefined;
-  if (!viewer) return { rank: null, reason: 'no-xp' };
-  // A failed prior-week read omits the change rather than failing the rank cell.
-  const previousRank = previous === null ? undefined : previous.find(entry => entry.handle === handle)?.rank ?? null;
-  return { rank: viewer.rank, total: entries.length, previousRank };
-}
-
-async function topSkills(userId: string, locale: Locale): Promise<ReadoutSkill[]> {
-  const skills = await passport(userId);
-  return skills
-    .map(skill => ({ skill, rank: SKILL_LEVELS.indexOf(skill.level) }))
-    .sort((left, right) => right.rank - left.rank || right.skill.evidence.length - left.skill.evidence.length)
-    .slice(0, 3)
-    .map(({ skill, rank }) => ({ id: skill.id, name: resolveL10nString(skill.name, locale, 'vi'), level: (rank + 1) as 1 | 2 | 3, levelKey: skill.level }));
-}
-
-async function LearnerReadoutSlot({ userId, handle, locale, data }: { userId: string; handle: string | null; locale: Locale; data: LearnerDashboardData }) {
-  const [xp, rank, skills] = await Promise.allSettled([activityFor(userId), viewerRank(userId, handle), topSkills(userId, locale)]);
-  const deadline = examDeadline(data.exam, data.now);
-  const t = await getTranslations('bench.learner.readout');
-  const xpReading = settle(xp, 'xp');
-  return <LearnerReadout
-    locale={locale}
-    xp={xpReading.ok ? { ok: true, value: { week: xpReading.value.week.current, previous: xpReading.value.week.previous, values: xpReading.value.values } } : { ok: false }}
-    deadline={deadline}
-    deadlineLabel={data.exam ? t('deadlineExam', { part: data.exam.part }) : undefined}
-    rank={settle(rank, 'rank')}
-    skills={settle(skills, 'skills')} />;
-}
-
 /** Server entry for the bench /app view: primary data first, secondary blocks streamed into slots. */
 export async function LearnerDashboardBench({ actor, locale, summary, catalog, name }: { actor: Actor; locale: Locale; summary: LearnerHomeSummary; catalog: CatalogCourse[]; name: string }) {
-  const data = await buildDashboardData({ actor, locale, summary, catalog, name });
-  return <LearnerDashboardView data={data}
-    trace={<LearnerTraceSlot userId={actor.userId} data={data} />}
-    readout={<LearnerReadoutSlot userId={actor.userId} handle={summary.rewards.profile.handle} locale={locale} data={data} />} />;
+  const [data, tasks, results, announcements] = await Promise.all([
+    buildDashboardData({ actor, locale, summary, catalog, name }), dashboardTasks(actor, locale),
+    dashboardResults(actor, locale), dashboardAnnouncements(actor, locale),
+  ]);
+  return <LearnerDashboardView data={data} tasks={tasks} results={results} announcements={announcements} />;
 }
