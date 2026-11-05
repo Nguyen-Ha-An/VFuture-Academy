@@ -1,5 +1,7 @@
 # Academy deployment
 
+Current production uses Azure PostgreSQL/PostgREST and Entra, with retained private Supabase Storage. Follow [the current Azure status](deployment/azure-core-status.md) and [the Canvas release sequence](deployment/canvas-redesign-release.md) for this release; the initial Supabase provisioning notes below are historical and are not an incremental Azure migration procedure.
+
 The repository is self-contained source prepared for an independent deployment. New Supabase Database/Auth projects, user-data transfer and production cutover are deferred by the user. No Central deployment, project ID, token, Auth grant or historical green test is inherited evidence for this deployment.
 
 1. Run `npm ci`, configure a local nonproduction Academy environment, `npm run graphify:refresh`, and the complete `npm run verify:local` gate. Save the tested commit SHA and actual local results. Use `--webpack` only as the documented lower-cache build option; use `--full` for the full student browser/visual matrix.

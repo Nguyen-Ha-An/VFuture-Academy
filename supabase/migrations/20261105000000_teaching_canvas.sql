@@ -3,13 +3,8 @@ insert into public.permission_registry(permission, group_name, scope_kind) value
   ('teaching.announcement.manage', 'grading', 'any'),
   ('teaching.schedule.manage', 'grading', 'any');
 
--- Built-in definitions are normally immutable; this forward migration extends only
--- the teacher and central administrator capabilities, preserving existing grants.
-alter table public.role_definitions disable trigger role_definitions_protect_built_in;
-update public.role_definitions
-set permissions = permissions || array['teaching.announcement.manage','teaching.schedule.manage']
-where id in ('teacher', 'central_admin');
-alter table public.role_definitions enable trigger role_definitions_protect_built_in;
+-- Built-in grants are activated only by the separately gated post-deploy migration.
+-- Keeping them out of the schema expansion preserves old-version actor parsing.
 
 create table public.teaching_announcements (
   id uuid primary key default gen_random_uuid(),

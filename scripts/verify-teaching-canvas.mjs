@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { loadPGlite } from './lib/admin-db-harness.mjs';
 import { createFullAdminDatabase } from './verify-admin-migrations.mjs';
 
 const loaded = await loadPGlite(process.env.PGLITE_MODULE_PATH);
 let db;
 try {
-  db = await createFullAdminDatabase(loaded.PGlite);
+  db = await createFullAdminDatabase(loaded.PGlite, { until: '20261026145220_restrict_internal_function_execution.sql' });
+  const baselineRoles = await db.query('select id,permissions from public.role_definitions order by id');
+  for (const file of ['20261105000000_teaching_canvas.sql','20261105010000_teaching_announcement_revisions.sql']) {
+    await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
+  }
+  assert.deepEqual((await db.query('select id,permissions from public.role_definitions order by id')).rows, baselineRoles.rows,
+    'Schema expansion must preserve every persisted old-parser permission array exactly');
   const user='97000000-0000-4000-8000-000000000001';
   const version='97000000-0000-4000-8000-000000000002';
   await db.exec(`
@@ -22,7 +28,18 @@ try {
   const permission=await db.query("select id,permissions from public.role_definitions where id in ('teacher','school_admin','central_admin')");
   const role=Object.fromEntries(permission.rows.map(row=>[row.id,row.permissions]));
   for (const name of ['teaching.announcement.manage','teaching.schedule.manage']) {
-    assert.ok(role.teacher.includes(name)); assert.ok(role.central_admin.includes(name)); assert.ok(!role.school_admin.includes(name));
+    assert.ok(!role.teacher.includes(name), 'Pre-deploy expansion must not change old teacher permissions');
+    assert.ok(!role.central_admin.includes(name), 'Pre-deploy expansion must not change old central-admin permissions');
+    assert.ok(!role.school_admin.includes(name));
+  }
+  const activation=readFileSync(new URL('../supabase/migrations/20261105020000_teaching_permissions_activation.sql', import.meta.url), 'utf8');
+  await db.exec(activation);
+  await db.exec(activation); // Retry must not duplicate a grant.
+  const active=Object.fromEntries((await db.query("select id,permissions from public.role_definitions where id in ('teacher','school_admin','central_admin')")).rows.map(row=>[row.id,row.permissions]));
+  for (const name of ['teaching.announcement.manage','teaching.schedule.manage']) {
+    assert.equal(active.teacher.filter(value=>value===name).length,1);
+    assert.equal(active.central_admin.filter(value=>value===name).length,1);
+    assert.ok(!active.school_admin.includes(name));
   }
   const args=[user,'teaching-test',version,'task',null,null,'until_approved',{text:'first'},'2026-11-02T00:00:00Z',[]];
   const submit=()=>db.query('select public.submit_assignment_guarded($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) result',args).then(x=>x.rows[0].result);

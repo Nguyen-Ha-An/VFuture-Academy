@@ -14,7 +14,7 @@ test('wrong account/tenant and unsafe parameters fail before cloud mutation', ()
 test('gross usage adds Academy, outside RG identity and outside subscription cost exactly once', () => {
   const result = { properties: { columns: ['PreTaxCost','ResourceId','ResourceGroup','Currency'].map(name => ({name})), rows: [[10,'/academy',policy.resourceGroup,'USD'],[2,'/identity','other-rg','USD'],[90,'/central','rg-central','USD']] } };
   const report = aggregateCost(result, { externalIdentityResourceIds: ['/identity','/academy'], academyCostScopeReviewed: true, externalIdentityBillingReviewed: true, externalIdentityMonthToDateUsd: 8, outsideSubscriptionBillingEvidence: 'billing-review-2026-11-02' });
-  assert.equal(report.grossUsageUsd,20); assert.equal(report.complete,true); assert.deepEqual(report.alerts,[50]);
+  assert.equal(report.grossUsageUsd,20); assert.equal(report.complete,true); assert.deepEqual(report.alerts,[50,80]);
   assert.equal(aggregateCost(result, {}).complete,false);
   result.properties.rows[0][3] = 'VND'; assert.throws(() => aggregateCost(result, {}));
 });

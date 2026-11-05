@@ -51,7 +51,9 @@ export function readIdentityConfiguration(source: Readonly<Record<string, string
   const authority = microsoft ? issuer : secureUrl(required('ENTRA_AUTHORITY')).toString().replace(/\/$/, '');
   const session = readIdentitySessionConfiguration(source);
   return { provider, tenantId, clientId, clientSecret: required(microsoft ? 'MICROSOFT_ENTRA_CLIENT_SECRET' : 'ENTRA_CLIENT_SECRET'), issuer, authority, ...session,
-    googleDomainHint: microsoft ? undefined : source.ENTRA_GOOGLE_DOMAIN_HINT };
+    // This tenant's provider key is case-sensitive. The old google.com hint
+    // silently showed the Microsoft chooser instead of opening Google.
+    googleDomainHint: microsoft ? undefined : 'Google' };
 }
 export function randomToken() { return randomBytes(32).toString('base64url'); }
 export function hashToken(value: string) { return createHash('sha256').update(value).digest('hex'); }
@@ -161,8 +163,12 @@ export async function verifyIdToken(token: string, config: IdentityConfiguration
     || (nonce !== undefined && claims.nonce !== nonce)) throw new Error('Invalid identity claims');
   return claims as IdentityClaims;
 }
-export async function exchangeTokens(config: IdentityConfiguration, metadata: OidcMetadata, grant: { code: string; verifier: string } | { refreshToken: string }) {
-  const body = new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, scope: 'openid profile email offline_access' });
+export const NATIVE_REFRESH_PREFIX='native-v1:';
+export async function exchangeTokens(config: IdentityConfiguration, metadata: OidcMetadata, grant: { code: string; verifier: string } | { refreshToken: string; native?: boolean }) {
+  const native='native'in grant&&grant.native===true;
+  if(native&&config.provider!=='external-id')throw new Error('Invalid native identity provider');
+  const body = new URLSearchParams({ client_id: config.clientId, scope: 'openid profile email offline_access' });
+  if(!native)body.set('client_secret',config.clientSecret);
   if ('code' in grant) {
     body.set('grant_type', 'authorization_code'); body.set('code', grant.code); body.set('code_verifier', grant.verifier); body.set('redirect_uri', config.redirectUri);
   } else { body.set('grant_type', 'refresh_token'); body.set('refresh_token', grant.refreshToken); }

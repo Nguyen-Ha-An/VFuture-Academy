@@ -2,6 +2,14 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('teaching migration', () => {
+  it('defers built-in teaching grants to the separate post-deploy activation', () => {
+    const expansion = readFileSync('supabase/migrations/20261105000000_teaching_canvas.sql', 'utf8');
+    const activation = readFileSync('supabase/migrations/20261105020000_teaching_permissions_activation.sql', 'utf8');
+    expect(expansion).not.toMatch(/update\s+public\.role_definitions/i);
+    expect(activation).toContain("where id in ('teacher', 'central_admin')");
+    expect(activation).toContain('where not (permission = any(public.role_definitions.permissions))');
+    expect(activation).toContain('enable trigger role_definitions_protect_built_in');
+  });
   it('guards revisions and removes the unguarded delete function', () => {
     const sql = readFileSync('supabase/migrations/20261105010000_teaching_announcement_revisions.sql', 'utf8');
     expect(sql).toContain('new.revision := old.revision + 1');

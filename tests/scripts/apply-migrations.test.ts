@@ -117,6 +117,7 @@ describe('applyMigrations', () => {
       '20261026145220_restrict_internal_function_execution.sql',
       '20261105000000_teaching_canvas.sql',
       '20261105010000_teaching_announcement_revisions.sql',
+      '20261105020000_teaching_permissions_activation.sql',
     ];
     const files = migrationFiles(migrationsDir);
     const prefixes = files.map((filename) => filename.split('_')[0]);

@@ -1,7 +1,7 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
-import { authorizationRequest, readIdentityConfiguration, verifyIdToken, encryptRefreshToken, decryptRefreshToken } from '@/lib/identity/oidc';
+import { authorizationRequest, readIdentityConfiguration, verifyIdToken, encryptRefreshToken, decryptRefreshToken, exchangeTokens } from '@/lib/identity/oidc';
 import { academyBackend } from '@/lib/identity/provider';
 
 const env = {
@@ -36,6 +36,13 @@ describe('Azure identity protocol boundaries', () => {
     expect(auth.transaction.next).toBe('/app');
     expect(auth.transaction.verifier.length).toBeGreaterThanOrEqual(43);
   });
+  it('sends the exact case-sensitive Google federation hint for legacy and missing settings', () => {
+    for (const hint of [undefined, 'google.com', 'google', 'Google']) {
+      const cfg=readIdentityConfiguration({...env,ENTRA_GOOGLE_DOMAIN_HINT:hint});
+      const url=new URL(authorizationRequest(cfg,'https://example.ciamlogin.com/authorize',{provider:'google'}).url);
+      expect(url.searchParams.get('domain_hint')).toBe('Google');
+    }
+  });
   it('verifies signed claims with exact tenant, audience, issuer and nonce', async () => {
     const claims = await verifyIdToken(token(), config(), [jwk], 'nonce1');
     expect(claims.sub).toBe('external-sub');
@@ -50,6 +57,14 @@ describe('Azure identity protocol boundaries', () => {
     expect(encrypted).not.toContain('provider-refresh-secret');
     expect(decryptRefreshToken(encrypted, 'session-a', config())).toBe('provider-refresh-secret');
     expect(() => decryptRefreshToken(encrypted, 'session-b', config())).toThrow();
+  });
+  it('refreshes native public-client grants without sending the confidential client secret',async()=>{
+    const fetcher=vi.fn().mockResolvedValue(Response.json({id_token:'provider-id',refresh_token:'rotated'}));vi.stubGlobal('fetch',fetcher);
+    try {
+      await exchangeTokens(config(),{token_endpoint:'https://example.ciamlogin.com/token'} as Parameters<typeof exchangeTokens>[1],{refreshToken:'native-refresh',native:true});
+      const body=fetcher.mock.calls[0][1].body as URLSearchParams;
+      expect(body.get('refresh_token')).toBe('native-refresh');expect(body.has('client_secret')).toBe(false);
+    } finally {vi.unstubAllGlobals();}
   });
   it('rejects weak keys, insecure endpoints and tenant placeholders', () => {
     for (const change of [{ ENTRA_SESSION_ENCRYPTION_KEY: 'weak' }, { ENTRA_AUTHORITY: 'http://example.ciamlogin.com' }, { ENTRA_TENANT_ID: 'common' }, { ENTRA_ISSUER: '' }]) {

@@ -13,10 +13,16 @@ async function rpc<T>(name: string, args: Record<string, unknown>, signal?: Abor
   return data as T;
 }
 export async function storeLoginTransaction(stateHash: string, browserHash: string, transaction: LoginTransaction) {
-  await rpc('academy_identity_start_login', { p_state_hash: stateHash, p_browser_hash: browserHash, p_payload: transaction });
+  await storeIdentityTransaction(stateHash,browserHash,transaction);
 }
 export async function consumeLoginTransaction(stateHash: string, browserHash: string): Promise<LoginTransaction | null> {
-  return rpc('academy_identity_consume_login', { p_state_hash: stateHash, p_browser_hash: browserHash });
+  return await consumeIdentityTransaction(stateHash,browserHash) as LoginTransaction|null;
+}
+export async function storeIdentityTransaction(stateHash:string,browserHash:string,payload:Record<string,unknown>) {
+  await rpc('academy_identity_start_login',{p_state_hash:stateHash,p_browser_hash:browserHash,p_payload:payload});
+}
+export async function consumeIdentityTransaction(stateHash:string,browserHash:string):Promise<Record<string,unknown>|null> {
+  return rpc('academy_identity_consume_login',{p_state_hash:stateHash,p_browser_hash:browserHash});
 }
 /** Read-only mapping for API tokens; never provisions an identity or links by email. */
 export async function findIdentityUser(issuer: string, objectId: string): Promise<User | null> {

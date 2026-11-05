@@ -1,4 +1,4 @@
-/* global validateArchiveListing, tarListingArguments */
+/* global validateArchiveListing, tarListingArguments, FORWARD_ACTIONS, validateForwardReceipt */
 // Bicep prefixes archive-policy.mjs; executed inside a pinned Node container. No dependency download or public DB exception.
 import { createHash, createDecipheriv } from 'node:crypto';
 import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
@@ -18,7 +18,7 @@ function safeFailure(error) {
   const code=error?.code??error?.cause?.code;
   if(allowed.includes(code))result.runtimeCode=code;
   for(const line of String(error?.stderr??'').split('\n')) {
-    try {const parsed=JSON.parse(line);if(/^[0-9A-Z]{5}$/.test(parsed.sqlState??''))result.sqlState=parsed.sqlState;if(allowed.includes(parsed.runtimeCode))result.runtimeCode=parsed.runtimeCode;if(['MIGRATION_FAILED','PROBE_FAILED','AUTHENTICATOR_FAILED','CUTOVER_FAILED'].includes(parsed.errorCode))result.childErrorCode=parsed.errorCode;if(parsed.errorCode==='MIGRATION_FAILED'&&stage==='apply_schema'){if(allowedSchemaSteps.has(parsed.schemaStep))result.schemaStep=parsed.schemaStep;if(Number.isSafeInteger(parsed.position)&&parsed.position>0)result.position=parsed.position;}}catch{/* Raw stderr and SQL values are never forwarded. */}
+    try {const parsed=JSON.parse(line);if(/^[0-9A-Z]{5}$/.test(parsed.sqlState??''))result.sqlState=parsed.sqlState;if(allowed.includes(parsed.runtimeCode))result.runtimeCode=parsed.runtimeCode;if(['MIGRATION_FAILED','PROBE_FAILED','AUTHENTICATOR_FAILED','CUTOVER_FAILED','FORWARD_FAILED'].includes(parsed.errorCode))result.childErrorCode=parsed.errorCode;if(parsed.errorCode==='MIGRATION_FAILED'&&stage==='apply_schema'){if(allowedSchemaSteps.has(parsed.schemaStep))result.schemaStep=parsed.schemaStep;if(Number.isSafeInteger(parsed.position)&&parsed.position>0)result.position=parsed.position;}}catch{/* Raw stderr and SQL values are never forwarded. */}
     for(const known of allowed)if(line.includes(`code: '${known}'`))result.runtimeCode=known;
   }
   return result;
@@ -58,6 +58,7 @@ async function readSecret(url,token){
 (async () => {
   const env=process.env;
   mark('validate_config');
+  if(!['probe','configure-authenticator','map-identities','final-sync','schema-import',...Object.keys(FORWARD_ACTIONS)].includes(env.MIGRATION_ACTION))throw new Error('invalid_migration_action');
   const endpoint=new URL(env.MIGRATION_PACKAGE_URL);
   if(endpoint.protocol!=='https:' || !endpoint.hostname.endsWith('.blob.core.windows.net') || endpoint.search || endpoint.hash) throw new Error('invalid_blob_endpoint');
   const receiptUrl=new URL(env.MIGRATION_RECEIPT_URL);
@@ -127,6 +128,12 @@ async function readSecret(url,token){
     const result=JSON.parse(output.toString('utf8'));
     if(result.action!==env.MIGRATION_ACTION||!Number.isInteger(result.mappings)||!result.manifestSha256)throw new Error('invalid_cutover_receipt');
     receipt=Buffer.from(JSON.stringify(result));
+  } else if (Object.hasOwn(FORWARD_ACTIONS,env.MIGRATION_ACTION)) {
+    mark('forward_action');
+    const forwardEntrypoint=[work,'scripts','azure-core','forward-cli.mjs'].join('/');
+    const output=execFileSync(process.execPath,[forwardEntrypoint,FORWARD_ACTIONS[env.MIGRATION_ACTION].mode],{cwd:work,env:runtimeEnv,stdio:['ignore','pipe','pipe'],timeout:300000});
+    const observed=validateForwardReceipt(JSON.parse(output.toString('utf8')),env.MIGRATION_ACTION);
+    receipt=Buffer.from(JSON.stringify(observed));
   } else if (env.MIGRATION_ACTION === 'schema-import') {
     for(const action of ['schema','import']) { mark(action==='schema'?'apply_schema':'import_snapshot'); execFileSync(process.execPath,['scripts/azure-core/migrate.mjs',action,'--apply'],{cwd:work,env:runtimeEnv,stdio:['ignore','pipe','pipe'],timeout:900000}); }
     mark('read_reconciliation_receipt');
@@ -136,7 +143,7 @@ async function readSecret(url,token){
   mark('upload_receipt');
   const upload=await fetch(receiptUrl,{method:'PUT',headers:{Authorization:`Bearer ${access_token}`,'x-ms-version':'2023-11-03','x-ms-blob-type':'BlockBlob','If-None-Match':'*','Content-Type':'application/json'},body:receipt,redirect:'error',signal:AbortSignal.timeout(30000)});
   if(!upload.ok)throw httpError('receipt_upload_failed',upload.status);
-  console.log(JSON.stringify({status:env.MIGRATION_ACTION==='probe'?'target_probed':env.MIGRATION_ACTION==='schema-import'?'schema_and_import_reconciled':env.MIGRATION_ACTION==='configure-authenticator'?'authenticator_configured':'cutover_action_completed',packageSha256:env.MIGRATION_PACKAGE_SHA256,receiptSha256:createHash('sha256').update(receipt).digest('hex')}));
+  console.log(JSON.stringify({status:Object.hasOwn(FORWARD_ACTIONS,env.MIGRATION_ACTION)?'forward_action_completed':env.MIGRATION_ACTION==='probe'?'target_probed':env.MIGRATION_ACTION==='schema-import'?'schema_and_import_reconciled':env.MIGRATION_ACTION==='configure-authenticator'?'authenticator_configured':'cutover_action_completed',packageSha256:env.MIGRATION_PACKAGE_SHA256,receiptSha256:createHash('sha256').update(receipt).digest('hex')}));
   rmSync(work,{recursive:true,force:true});
 })().catch(async error=>{
   rmSync(work,{recursive:true,force:true});

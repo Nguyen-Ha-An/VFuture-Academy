@@ -18,7 +18,7 @@ export function aggregateCost(result, operator) {
   const external = operator.externalIdentityMonthToDateUsd;
   const complete = operator.academyCostScopeReviewed === true && operator.externalIdentityBillingReviewed === true && Number.isFinite(external) && external >= 0 && Boolean(operator.outsideSubscriptionBillingEvidence);
   const total = academy + infrastructure + identity + (complete ? external : 0);
-  return { academyResourceGroupUsd: academy, academyManagedInfrastructureUsd: infrastructure, outsideGroupIdentityUsd: identity, outsideSubscriptionIdentityUsd: complete ? external : null, grossUsageUsd: total, complete, percentOfSoftBudget: total / 35 * 100, alerts: [50,80,100].filter(t => total / 35 * 100 >= t), creditBalanceIsNotCostOffset: true };
+  return { academyResourceGroupUsd: academy, academyManagedInfrastructureUsd: infrastructure, outsideGroupIdentityUsd: identity, outsideSubscriptionIdentityUsd: complete ? external : null, grossUsageUsd: total, complete, percentOfSoftBudget: total / policy.monthlySoftBudgetUsd * 100, alerts: [50,80,100].filter(t => total / policy.monthlySoftBudgetUsd * 100 >= t), creditBalanceIsNotCostOffset: true };
 }
 export function makeQuery(operator = {}) {
   const filters = [{ dimensions: { name: 'ResourceGroup', operator: 'In', values: [policy.resourceGroup, ...(operator.academyInfrastructureResourceGroups ?? [])] } }, ...(operator.externalIdentityResourceIds ?? []).map(id => ({ dimensions: { name: 'ResourceId', operator: 'In', values: [id] } }))];
@@ -33,5 +33,5 @@ export function forecastReport(result, operator) {
   for (const row of result.properties.rows) { if (row[currency] !== 'USD' || !Number.isFinite(Number(row[cost])) || Number(row[cost]) < 0) throw new Error('Forecast must be finite nonnegative USD'); total += Number(row[cost]); }
   const external = operator.externalIdentityForecastUsd;
   const complete = operator.academyCostScopeReviewed === true && operator.externalIdentityBillingReviewed === true && Number.isFinite(external) && external >= 0;
-  return { forecastUsd: complete ? total + external : total, complete, alert100: complete ? total + external >= 35 : null };
+  return { forecastUsd: complete ? total + external : total, complete, alert100: complete ? total + external >= policy.monthlySoftBudgetUsd : null };
 }
