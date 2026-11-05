@@ -4,9 +4,9 @@ import { routes } from '@/lib/routes';
 export const adminGroups = ['overview', 'people', 'system'] as const;
 export const adminNavigation = [
   { group: 'overview', key: 'overview', href: routes.admin.dashboard(), permissions: ['admin.access'], available: true, landing: true },
-  { group: 'people', key: 'users', href: routes.admin.users(), permissions: ['member.read', 'user.manage.branch', 'user.manage.global'], available: true, landing: true },
-  { group: 'people', key: 'branches', href: routes.admin.branches(), permissions: ['branch.read', 'user.manage.branch', 'user.manage.global'], available: true, landing: true },
-  { group: 'system', key: 'roles', href: routes.admin.roles(), permissions: ['role.definition.read', 'role.definition.manage', 'role.assignment.branch', 'user.manage.global'], available: true, landing: true },
+  { group: 'people', key: 'users', href: routes.admin.users(), permissions: ['member.read'], available: true, landing: true },
+  { group: 'people', key: 'branches', href: routes.admin.branches(), permissions: ['branch.read'], available: true, landing: true },
+  { group: 'system', key: 'roles', href: routes.admin.roles(), permissions: ['role.definition.read', 'role.definition.manage', 'role.assignment.branch'], available: true, landing: true },
   { group: 'system', key: 'mcp', href: routes.admin.mcp(), permissions: ['user.manage.global'], available: true, landing: true },
   // Enrollment-version migration keeps its existing `course.publish` action permission.
   { group: 'system', key: 'enrollmentMigration', href: routes.admin.enrollmentMigration(), permissions: ['course.publish'], available: true, landing: true },
@@ -20,6 +20,13 @@ export const adminNavigation = [
  * without gaining any general administration authority.
  */
 export function firstAdminDestination(permissions: readonly Permission[]): string | null {
-  return adminNavigation.find(item =>
-    item.available && item.permissions.some(permission => permissions.includes(permission)))?.href ?? null;
+  return adminNavigationFor(permissions)[0]?.href ?? null;
+}
+
+/** Match strict management page admission without granting admin.access. */
+export function adminNavigationFor(permissions: readonly Permission[]) {
+  return adminNavigation.filter(item =>
+    item.available
+    && (item.key === 'enrollmentMigration' || permissions.includes('admin.access'))
+    && item.permissions.some(permission => permissions.includes(permission)));
 }

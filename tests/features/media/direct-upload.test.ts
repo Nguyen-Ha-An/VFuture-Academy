@@ -132,3 +132,28 @@ describe('direct upload admission and byte verification',()=>{
     expect(h.events.at(-1)).toBe('release');
   });
 });
+
+describe('exam attachment upload context', () => {
+  const exam = { ...input, examAttemptId: '33333333-3333-4333-8333-333333333333', questionId: 'upload-q', rootQuestionId: 'group-q' };
+  it('accepts and retains the exact pinned exam attempt, root and upload question binding', () => {
+    expect(parseDirectUploadInput(exam)).toMatchObject({ purpose: 'submission', examAttemptId: exam.examAttemptId, questionId: 'upload-q', rootQuestionId: 'group-q' });
+  });
+  it('accepts compiled section and nested group question identifiers', () => {
+    expect(parseDirectUploadInput({ ...exam, rootQuestionId: 'main/group-q', questionId: 'main/group-q/upload-q' })).toMatchObject({ rootQuestionId: 'main/group-q', questionId: 'main/group-q/upload-q' });
+  });
+  it('rejects partial exam contexts and image-purpose reuse', () => {
+    expect(() => parseDirectUploadInput({ ...input, examAttemptId: exam.examAttemptId })).toThrow();
+    expect(() => parseDirectUploadInput({ ...exam, purpose: 'avatar', mime: 'image/png', name: 'photo.png' })).toThrow();
+  });
+});
+
+describe('quiz self-assessment upload context', () => {
+  it('accepts the owning lesson quiz and root/leaf question without a fake exam attempt', () => {
+    expect(parseDirectUploadInput({ ...input, quizId: 'quiz-q', rootQuestionId: 'quiz-q/upload-q', questionId: 'quiz-q/upload-q' }))
+      .toMatchObject({ purpose: 'submission', courseId: 'course', itemId: 'item', quizId: 'quiz-q', rootQuestionId: 'quiz-q/upload-q', questionId: 'quiz-q/upload-q' });
+  });
+  it('rejects mixed exam and quiz contexts and partial quiz identity', () => {
+    expect(() => parseDirectUploadInput({ ...input, quizId: 'quiz-q', questionId: 'upload-q' })).toThrow();
+    expect(() => parseDirectUploadInput({ ...input, quizId: 'quiz-q', rootQuestionId: 'group-q', questionId: 'upload-q', examAttemptId: '33333333-3333-4333-8333-333333333333' })).toThrow();
+  });
+});

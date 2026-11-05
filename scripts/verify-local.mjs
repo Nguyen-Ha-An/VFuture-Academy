@@ -29,7 +29,7 @@ if (webpack) {
 const sqlRuntime = mkdtempSync(join(tmpdir(), 'vfuture-local-sql-'));
 try {
   run('npm', ['install', '--prefix', sqlRuntime, '--ignore-scripts', '--no-audit', '--no-fund', '@electric-sql/pglite@0.5.8']);
-  for (const script of ['verify-admin-migrations.mjs', 'verify-teaching-canvas.mjs', 'verify-admin-foundation.mjs', 'verify-admin-management.mjs', 'verify-admin-content-review.mjs', 'verify-admin-content-publication.mjs', 'verify-notebook-foundation.mjs', 'verify-studio-transactions.mjs', 'verify-studio-workflow-concurrency.mjs', 'verify-security-catalog-quiz.mjs', 'verify-resource-create-ownership.mjs', 'fixtures/studio-assets-sql.mjs', 'fixtures/studio-reports-sql.mjs', 'verify-exam-result-availability.mjs', 'fixtures/exam-sweep-scheduler-sql.mjs', 'verify-studio-mcp-access-blocks.mjs', 'verify-shared-admission.mjs', 'verify-shared-admission-concurrency.mjs', 'verify-media-upload-reservations.mjs']) {
+  for (const script of ['verify-admin-migrations.mjs', 'verify-teaching-canvas.mjs', 'verify-admin-foundation.mjs', 'verify-admin-management.mjs', 'verify-admin-content-review.mjs', 'verify-admin-content-publication.mjs', 'verify-notebook-foundation.mjs', 'verify-studio-transactions.mjs', 'verify-studio-workflow-concurrency.mjs', 'verify-security-catalog-quiz.mjs', 'verify-resource-create-ownership.mjs', 'fixtures/studio-assets-sql.mjs', 'fixtures/studio-reports-sql.mjs', 'verify-exam-result-availability.mjs', 'verify-exam-attachment-bindings.mjs', 'fixtures/exam-sweep-scheduler-sql.mjs', 'verify-studio-mcp-access-blocks.mjs', 'verify-shared-admission.mjs', 'verify-shared-admission-concurrency.mjs', 'verify-media-upload-reservations.mjs']) {
     run(process.execPath, [`scripts/${script}`], {
       PGLITE_RUNTIME: join(sqlRuntime, 'node_modules/@electric-sql/pglite'),
       PGLITE_MODULE_PATH: sqlRuntime,
@@ -37,12 +37,14 @@ try {
   }
   run(process.execPath, ['scripts/verify-function-execution-grants.mjs', sqlRuntime]);
   run(process.execPath, ['scripts/verify-media-upload-reservations.mjs', '--native']);
+  run(process.execPath, ['scripts/verify-exam-attachment-bindings.mjs', '--native']);
   run(process.execPath, ['scripts/verify-media-upload-reservations.mjs', '--full-chain', sqlRuntime]);
   const azureSqlEnvironment = {
     PGLITE_MODULE_PATH: join(sqlRuntime, 'node_modules/@electric-sql/pglite'),
   };
   run(process.execPath, ['scripts/azure-core/rehearse.mjs'], azureSqlEnvironment);
   run(process.execPath, ['scripts/azure-core/rehearse-forward.mjs']);
+  run(process.execPath, ['scripts/azure-core/rehearse-forward-53.mjs']);
   run('npx', ['vitest', 'run', 'tests/scripts/azure-identity-schema.test.ts', 'tests/scripts/azure-admin-schema.test.ts', 'tests/scripts/azure-media-delete-schema.test.ts', '--maxWorkers=1'], azureSqlEnvironment);
 } finally { rmSync(sqlRuntime, { recursive: true, force: true }); }
 

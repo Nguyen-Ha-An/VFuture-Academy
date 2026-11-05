@@ -430,6 +430,9 @@ function learnerSubmission(value: unknown): LearnerAssignmentSubmission | null {
   };
 }
 
+/** Reused by the record-bound read-only history reader; keeps draft grades private. */
+export const parseLearnerAssignmentSubmission = learnerSubmission;
+
 function queueSubmission(value: unknown): SubmissionQueueSubmission | null {
   const row = record(value);
   const parsed = parsedSubmissionRow(row);

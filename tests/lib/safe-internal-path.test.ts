@@ -3,6 +3,32 @@ import { describe, expect, it } from 'vitest';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 
 describe('safeInternalPath', () => {
+  const inviteToken = 'aB0_-'.repeat(8) + 'aB0';
+
+  it('retains the validated invitation route through authentication', () => {
+    const destination = `/invite/${inviteToken}?source=email&tag=school&tag=staff#accept`;
+    expect(inviteToken).toHaveLength(43);
+    expect(safeInternalPath(destination)).toBe(destination);
+  });
+
+  it.each([
+    '/invite',
+    '/invite/',
+    '/invited/',
+    '/invite-untrusted/',
+    `/invite/${'a'.repeat(42)}`,
+    `/invite/${'a'.repeat(44)}`,
+    `/invite/${'a'.repeat(42)}!`,
+    `/invite/${'a'.repeat(42)}%2F`,
+    `/invite/${'a'.repeat(42)}%5C`,
+    `/invite/${'a'.repeat(43)}/extra`,
+    `https://evil.example/invite/${'a'.repeat(43)}`,
+    `//evil.example/invite/${'a'.repeat(43)}`,
+    `/\\evil.example/invite/${'a'.repeat(43)}`,
+  ])('does not broaden invitation returns to malformed or unsafe route %s', (destination) => {
+    expect(safeInternalPath(destination)).toBe('/app');
+  });
+
   it.each([
     ['/app', '/app'],
     ['/app/courses/course-1?step=2#question', '/app/courses/course-1?step=2#question'],

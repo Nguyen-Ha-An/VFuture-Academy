@@ -39,6 +39,7 @@ import { VersionsDrawer } from './VersionsDrawer';
 import { readApiData, workspaceIssueReport } from './client';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { STAGE_TONES } from './home/stages';
+import { workspaceSavedTime } from '../saved-time';
 
 export type { WorkspaceDraft } from '../workspace-state';
 
@@ -52,13 +53,6 @@ function downloadJson(filename: string, value: unknown) {
 function localSaveText(locale: Locale, key: 'reconciling' | 'error' | 'check'): string {
   if (locale === 'vi') return key === 'reconciling' ? 'Đang kiểm tra bản lưu…' : key === 'check' ? 'Kiểm tra bản đã lưu' : 'Chưa lưu được. Thay đổi vẫn được giữ lại.';
   return key === 'reconciling' ? 'Checking saved version…' : key === 'check' ? 'Check saved version' : 'Not saved. Your changes are retained.';
-}
-
-function savedTime(value: number, locale: Locale): string {
-  if (!Number.isFinite(value)) return '';
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).format(value);
 }
 
 export function Workspace({ initialDraft, initialReport, readOnly = false, canCreate = false, accountId = 'unknown', scopeKey = 'central', recoveryStorage, recoveryClaim, recoveryDebounceMs, workflowEnabled = true }: {
@@ -267,11 +261,11 @@ export function Workspace({ initialDraft, initialReport, readOnly = false, canCr
     : workspace.status === 'reconciling' ? localSaveText(locale, 'reconciling')
     : workspace.status === 'conflict' ? t('conflict')
     : workspace.dirty ? t('unsaved')
-    : workspace.savedAt ? `${t('saved')} · ${savedTime(workspace.savedAt, locale)}` : t('saved');
+    : workspace.savedAt ? `${t('saved')} · ${workspaceSavedTime(workspace.savedAt, locale)}` : t('saved');
 
   return <div className="canvas-page flex min-h-[calc(100dvh-8rem)] min-w-0 flex-col xl:h-[calc(100dvh-6rem)] xl:min-h-0">
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-      <div className="flex min-w-0 items-center gap-3"><Link href={routes.studio.courses()} aria-label={t('back')} className="grid size-9 shrink-0 place-items-center rounded-md border border-border hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"><ArrowLeft className="size-4" /></Link><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h1 className="truncate text-lg font-semibold leading-snug tracking-tight sm:text-xl">{title}</h1>{stage ? <StatusBadge kind="content" value={stage} tone={STAGE_TONES[stage]} label={header(`stages.${stage}`)} className="shrink-0" /> : null}</div><p role="status" className="mt-1 text-xs leading-snug text-muted-foreground">{readOnly ? t('readOnly') : saveLabel}</p></div></div>
+      <div className="flex min-w-0 items-center gap-3"><Link href={routes.studio.courses()} aria-label={t('back')} className="grid size-9 shrink-0 place-items-center rounded-md border border-border hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"><ArrowLeft className="size-4" /></Link><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h1 tabIndex={-1} className="truncate text-lg font-semibold leading-snug tracking-tight sm:text-xl">{title}</h1>{stage ? <StatusBadge kind="content" value={stage} tone={STAGE_TONES[stage]} label={header(`stages.${stage}`)} className="shrink-0" /> : null}</div><p role="status" className="mt-1 text-xs leading-snug text-muted-foreground">{readOnly ? t('readOnly') : saveLabel}</p></div></div>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" onClick={() => setReadinessOpen(true)} aria-haspopup="dialog" className="tabular-nums"><ClipboardCheck aria-hidden="true" />{header('readiness.button', { done: readiness.passing, total: readiness.total })}</Button>
         {!readOnly && selectedRef.kind === 'item' ? <StudioNotebookEntry courseId={state.courseId} itemId={selectedRef.id} document={state.items[selectedRef.id]} disabled={workspace.dirty || savePending || reloading} /> : null}

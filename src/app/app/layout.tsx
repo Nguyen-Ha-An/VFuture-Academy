@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
 import { AppShell } from '@/components/AppShell';
 import { learnerIdentity } from '@/features/workspace-ui/identity.server';
@@ -14,6 +15,6 @@ export default async function LearnerLayout({ children }: { children: React.Reac
   // Every staff workspace is offered from the actor's full authorization, so a
   // grader-only or report-only operator still reaches their own workspace.
   const entries = workspaceEntries(actor);
-  const [theme, identity] = await Promise.all([readWorkspaceTheme(), learnerIdentity()]);
-  return <AppShell studioDestination={entries.studio} gradingDestination={entries.grading} adminDestination={entries.admin} userName={identity.name} initials={identity.initials} handle={identity.handle} theme={theme}>{children}</AppShell>;
+  const [theme, identity, requestHeaders] = await Promise.all([readWorkspaceTheme(), learnerIdentity(), headers()]);
+  return <AppShell nonce={requestHeaders.get('x-nonce') ?? undefined} studioDestination={entries.studio} gradingDestination={entries.grading} adminDestination={entries.admin} userName={identity.name} initials={identity.initials} handle={identity.handle} theme={theme}>{children}</AppShell>;
 }

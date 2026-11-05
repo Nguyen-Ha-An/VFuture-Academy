@@ -7,5 +7,13 @@ export function QuestionRenderer(props: QuestionRendererProps) {
   const r = resolvePlayer(question.type as QuestionType, question.display?.interactionType);
   const key = r.ok ? playerKey(r.player.type, r.player.interactionType) : `${question.type}:${question.display?.interactionType ?? 'default'}`;
   const C = r.ok ? questionRegistry[key] : undefined;
-  return C ? <C {...(props as QuestionRendererProps<never>)} /> : <UnavailableBlock type={key} locale={runtime.locale} />;
+  if (!C) return <UnavailableBlock type={key} locale={runtime.locale} />;
+  const controls = question.type === 'question_group' ? undefined : props.leafControls?.(question, props.value, props.onChange);
+  const controlledProps = {
+    ...props,
+    disabled: props.disabled || controls?.disabled,
+    result: controls?.result ?? props.result,
+    revealed: controls?.revealed ?? props.revealed,
+  };
+  return <><C {...(controlledProps as QuestionRendererProps<never>)} />{controls?.actions}</>;
 }

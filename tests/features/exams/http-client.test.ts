@@ -59,16 +59,7 @@ describe('HTTP exam client', () => {
         answers: {},
         learner: { sections: [] },
       }))
-      .mockResolvedValueOnce(jsonResponse([{
-        attemptId: 'attempt-1',
-        questionId: 'concepts/q1',
-        answer: 'a',
-        result: null,
-        manualPoints: null,
-        manualFeedback: null,
-        gradedBy: null,
-        updatedAt: '2026-09-03T05:01:00.000Z',
-      }]))
+      .mockResolvedValueOnce(jsonResponse({format:'compact-v1',answers:[{questionId:'concepts/q1',answer:'a'}]}))
       .mockResolvedValueOnce(jsonResponse({ attemptId: 'attempt-1', status: 'graded' }))
       .mockResolvedValueOnce(jsonResponse({
         attemptId: 'attempt-1', status: 'graded', late: false, released: true, answers: {}, revealed: {},
@@ -90,7 +81,7 @@ describe('HTTP exam client', () => {
     });
 
     const answers = await client.save({ 'concepts/q1': 'a' });
-    expect(answers[0]?.updatedAt).toEqual(new Date('2026-09-03T05:01:00.000Z'));
+    expect(answers).toEqual([{questionId:'concepts/q1',answer:'a'}]);
     await client.submit();
     await client.review();
     await client.events([{ type: 'focus_lost', at: new Date('2026-09-03T05:02:00.000Z') }]);

@@ -4,8 +4,9 @@ vi.mock('server-only',()=>({}));
 
 import { compileCourse, type CompiledItem } from '@/content-engine/compile';
 import { FIXTURES, fixtureResolver } from '@/content-engine/fixtures';
-import { createQuizService, type QuizDatabase } from '@/features/quizzes/service';
+import { createQuizService, type QuizActor, type QuizAttachmentContext, type QuizDatabase } from '@/features/quizzes/service';
 import type { GradingQuestion } from '@/content-engine/compile/project';
+import { ApiError } from '@/lib/api';
 
 type QueryError = { code?: string; message?: string };
 type QueryResult = { data: unknown; error: QueryError | null; count?: number | null };
@@ -84,6 +85,66 @@ function databaseFor(grading: CompiledItem['grading'], attempts: number, attempt
 }
 
 describe('quiz service', () => {
+  it('validates self-assessment upload ownership before recording an attempt', async () => {
+    const grading=structuredClone(lesson.grading);
+    const question:GradingQuestion={id:'check-1/upload',type:'upload_answer',points:0,settings:{},interactionType:'upload',selfAssessment:true};
+    grading.questions[question.id]=question;
+    grading.quizzes['check-1'].questionIds=[question.id];
+    const database=databaseFor(grading,0);
+    const validator=vi.fn(async (_actor:QuizActor, _context:QuizAttachmentContext, answers:Record<string,unknown>) => {
+      if(JSON.stringify(answers).includes('foreign-file')) throw new ApiError(403,'FORBIDDEN','Attachment not owned');
+    });
+    const service=createQuizService({database,validateQuizAnswerAttachments:validator});
+    const value={files:[{assetId:'foreign-file',name:'work.pdf',size:100,mime:'application/pdf'}]};
+    await expect(service.submit(actor,'ai-foundations','what-is-ai','check-1',{[question.id]:value})).rejects.toMatchObject({status:403});
+    expect(validator).toHaveBeenCalledWith(actor,expect.objectContaining({courseVersionId:'version-1',itemId:'what-is-ai',quizId:'check-1'}),{[question.id]:value});
+    expect(database.queries.flatMap(({query})=>query.calls).some(([operation])=>operation==='insert')).toBe(false);
+  });
+  it('fails closed for self-assessment files if no validator is installed', async () => {
+    const grading=structuredClone(lesson.grading);
+    const question:GradingQuestion={id:'check-1/upload',type:'upload_answer',points:0,settings:{},interactionType:'upload',selfAssessment:true};
+    grading.questions[question.id]=question;
+    grading.quizzes['check-1'].questionIds=[question.id];
+    const database=databaseFor(grading,0);
+    await expect(createQuizService({database}).submit(actor,'ai-foundations','what-is-ai','check-1',{
+      [question.id]:{files:[{assetId:'file-one',name:'work.pdf',size:100,mime:'application/pdf'}]},
+    })).rejects.toMatchObject({status:403});
+    expect(database.queries.flatMap(({query})=>query.calls).some(([operation])=>operation==='insert')).toBe(false);
+  });
+  it('keeps non-self-assessment uploads at 422 without consuming an attempt or granting XP', async () => {
+    const grading=structuredClone(lesson.grading);
+    const question:GradingQuestion={id:'check-1/upload',type:'upload_answer',points:1,settings:{},interactionType:'upload',selfAssessment:false};
+    grading.questions[question.id]=question;
+    grading.quizzes['check-1'].questionIds=[question.id];
+    const database=databaseFor(grading,0);
+    const hooks={recompute:vi.fn(),awardXp:vi.fn()};
+    const validator=vi.fn(async()=>undefined);
+    await expect(createQuizService({database,hooks,validateQuizAnswerAttachments:validator}).submit(actor,'ai-foundations','what-is-ai','check-1',{
+      [question.id]:{text:'My answer'},
+    })).rejects.toMatchObject({status:422,code:'QUIZ_REQUIRES_MANUAL_GRADING'});
+    expect(validator).not.toHaveBeenCalled();
+    expect(database.queries.flatMap(({query})=>query.calls).some(([operation])=>operation==='insert')).toBe(false);
+    expect(hooks.recompute).not.toHaveBeenCalled();expect(hooks.awardXp).not.toHaveBeenCalled();
+  });
+  it('does not consume an attempt when an unsupported manual question is left unanswered', async () => {
+    const grading=structuredClone(lesson.grading);
+    const question:GradingQuestion={id:'check-1/upload',type:'upload_answer',points:1,settings:{},interactionType:'upload',selfAssessment:false};
+    grading.questions[question.id]=question;
+    grading.quizzes['check-1'].questionIds=[question.id];
+    const database=databaseFor(grading,0);
+    const hooks={recompute:vi.fn(),awardXp:vi.fn()};
+    await expect(createQuizService({database,hooks}).submit(actor,'ai-foundations','what-is-ai','check-1',{}))
+      .rejects.toMatchObject({status:422,code:'QUIZ_REQUIRES_MANUAL_GRADING'});
+    expect(database.queries.flatMap(({query})=>query.calls).some(([operation])=>operation==='insert')).toBe(false);
+    expect(hooks.recompute).not.toHaveBeenCalled();expect(hooks.awardXp).not.toHaveBeenCalled();
+  });
+  it('rejects an answer whose shape belongs to another pinned question type', async () => {
+    const database=databaseFor(lesson.grading,0);
+    await expect(createQuizService({database}).submit(actor,'ai-foundations','what-is-ai','check-1',{
+      'check-1/q1':{files:[{assetId:'file-one',name:'work.pdf',size:100,mime:'application/pdf'}]},
+    })).rejects.toMatchObject({status:422,code:'INVALID_ANSWER'});
+    expect(database.queries.flatMap(({query})=>query.calls).some(([operation])=>operation==='insert')).toBe(false);
+  });
   it.each(['check','submit'] as const)('blocks live quiz %s at an explicitly suspended trusted enrollment branch',async(action)=>{
     const database=new DatabaseStub({
       enrollments:[{data:{course_version_id:'version-1',branch_id:'school-a',branch_scope_known:true},error:null}],
@@ -594,8 +655,9 @@ describe('quiz result availability', () => {
     const manual: GradingQuestion = kind === 'legacy_regex'
       ? { id: 'check-1/manual', type: 'short_answer', points: 3, settings: {}, interactionType: 'text', selfAssessment: false, matchMode: 'regex', correctAnswer: ['(?=answer)answer'] }
       : { id: 'check-1/manual', type: 'essay', points: 3, settings: {}, interactionType: 'textarea', selfAssessment: false };
+    const groupChild = { ...manual, id: 'check-1/group/manual', parentId: 'check-1/group' };
     const question: GradingQuestion = kind === 'group'
-      ? { id: 'check-1/group', type: 'question_group', points: 3, settings: {}, interactionType: 'group', selfAssessment: false, children: [manual] }
+      ? { id: 'check-1/group', type: 'question_group', points: 3, settings: {}, interactionType: 'group', selfAssessment: false, children: [groupChild] }
       : manual;
     grading.questions[question.id] = question;
     grading.quizzes['check-1'].questionIds.push(question.id);
@@ -603,7 +665,7 @@ describe('quiz result availability', () => {
     const hooks = { recompute: vi.fn(), awardXp: vi.fn() };
     const service = createQuizService({ database, hooks });
     await expect(service.submit(actor, 'ai-foundations', 'what-is-ai', 'check-1', {
-      'check-1/q1': 'a', [question.id]: kind === 'group' ? { [manual.id]: 'answer' } : 'answer',
+      'check-1/q1': 'a', [question.id]: kind === 'group' ? { [groupChild.id]: 'answer' } : 'answer',
     })).rejects.toMatchObject({ status: 422, code: 'QUIZ_REQUIRES_MANUAL_GRADING' });
     expect(database.queries.flatMap(({ query }) => query.calls).some(([operation]) => operation === 'insert')).toBe(false);
     expect(hooks.recompute).not.toHaveBeenCalled();

@@ -70,12 +70,12 @@ export function EmptyBench({ kicker, title, description, action, headingLevel = 
  * Hairline surface with an 8px radius (--vf-radius-card). Cards never nest: a card inside a card
  * renders flat (workspace.css). `flush` drops the padding for tables and hairline lists.
  */
-export function Card({ as: Tag = 'section', title, titleId, headingLevel = 2, actions, flush, children, className, 'aria-label': ariaLabel }: { as?: 'section' | 'div' | 'article'; title?: ReactNode; titleId?: string; headingLevel?: 2 | 3; actions?: ReactNode; flush?: boolean; children: ReactNode; className?: string; 'aria-label'?: string }) {
+export function Card({ as: Tag = 'section', title, titleId, focusableTitle = false, headingLevel = 2, actions, flush, children, className, 'aria-label': ariaLabel }: { as?: 'section' | 'div' | 'article'; title?: ReactNode; titleId?: string; focusableTitle?: boolean; headingLevel?: 2 | 3; actions?: ReactNode; flush?: boolean; children: ReactNode; className?: string; 'aria-label'?: string }) {
   const generatedId = useId();
   const headingId = title ? titleId ?? `${generatedId}-title` : undefined;
   const Heading = headingLevel === 3 ? 'h3' : 'h2';
   return <Tag className={cn('vf-card', className)} data-flush={flush || undefined} aria-label={ariaLabel} aria-labelledby={!ariaLabel && headingId ? headingId : undefined}>
-    {title || actions ? <div className="vf-card-head">{title ? <Heading id={headingId} className="vf-h2">{title}</Heading> : null}{actions}</div> : null}
+    {title || actions ? <div className="vf-card-head">{title ? <Heading id={headingId} tabIndex={focusableTitle ? -1 : undefined} className="vf-h2">{title}</Heading> : null}{actions}</div> : null}
     {children}
   </Tag>;
 }

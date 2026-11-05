@@ -89,7 +89,7 @@ export function ConsentPanel({ state }: { state: ConsentPanelState }) {
     <div className="mx-auto w-full max-w-2xl py-6 text-foreground md:py-10">
       <p className="mb-4 text-xs font-semibold leading-normal text-muted-foreground">{t('eyebrow')}</p>
       <section className="rounded-lg border border-border bg-card p-6 text-card-foreground md:p-8" aria-labelledby="studio-connect-title">
-        <h1 id="studio-connect-title" className="text-2xl font-bold leading-[1.4] tracking-tight">{title}</h1>
+        <h1 tabIndex={-1} id="studio-connect-title" className="text-2xl font-bold leading-[1.4] tracking-tight">{title}</h1>
         <p className="mt-2 text-sm leading-normal text-muted-foreground">{description}</p>
 
         {state.kind === 'ready' && !denied ? (

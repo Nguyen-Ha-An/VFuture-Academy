@@ -1,8 +1,9 @@
 'use client';
 
-import * as Dialog from '@radix-ui/react-dialog';
+import * as Dialog from '@/components/ui/workspace-dialog-primitive';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 import type { LearnerItem } from '@/content-engine/compile';
 import { AssignmentRenderer, LessonRenderer, registerAll } from '@/content-engine/render';
@@ -84,9 +85,14 @@ export type ItemPlayerProps = {
 };
 
 export function ItemPlayer(props: ItemPlayerProps) {
+  const router = useRouter();
+  const refreshConfirmedExam = useCallback(() => { router.refresh(); }, [router]);
   const t = useTranslations('learner.item');
   const activity = useTranslations('bench.learner.activity');
   const frame = useActivityProgress();
+  const currentFrame = useRef(frame);
+  currentFrame.current = frame;
+  const reportActiveExam = useCallback(() => { const activeFrame = currentFrame.current; if (activeFrame) activeFrame.report(activeFrame.value, 'in_progress'); }, []);
   const [completed, setCompleted] = useState(props.completed);
   const [marking, setMarking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +230,8 @@ export function ItemPlayer(props: ItemPlayerProps) {
         {props.item.kind === 'assignment' ? <AssignmentRenderer assignment={props.item} target={{ blockId: null }} runtime={runtime} hideTitle /> : null}
         {props.item.kind === 'exam' ? (
           <ExamFlow
+            onConfirmedActive={reportActiveExam}
+            onConfirmedTerminal={refreshConfirmedExam}
             exam={props.item as LearnerExam}
             attemptsUsed={props.attemptsUsed}
             client={examClient}

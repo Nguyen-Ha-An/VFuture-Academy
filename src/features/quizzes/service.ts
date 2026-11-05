@@ -1,14 +1,23 @@
 import { learnerQuestionResult } from '@/content-engine/grading/learner-result';
-import { gradeAll, gradeQuestion, type GradingItem, type Locale, type QuestionResult, type QuizGradingSettings } from '@/content-engine';
+import { gradeAll, gradeQuestion, type GradingItem, type GradingQuestion, type Locale, type QuestionResult, type QuizGradingSettings } from '@/content-engine';
 import { findOversizedRegexAnswers, type OversizedAnswer } from '@/content-engine/grading/answer-limits';
 import { buildRevealed } from '@/content-engine/render/preview-runtime';
 import type { QuizSubmitResult, RevealedInfo } from '@/content-engine/render/runtime';
 import { ApiError } from '@/lib/api';
 import { assertEnrollmentMembershipAccess,type MembershipAccessDatabase } from '@/features/learning/membership-access';
+import { containsAttachmentReferences, validQuestionAnswer } from '@/features/learning/question-answer';
 
 export interface QuizActor {
   id: string;
   locale: Locale;
+}
+
+export interface QuizAttachmentContext {
+  courseVersionId: string;
+  courseId: string;
+  itemId: string;
+  quizId: string;
+  grading: GradingItem;
 }
 
 export interface ProgressHooks {
@@ -116,6 +125,11 @@ function correctQuestionCount(results: readonly QuestionResult[]): number {
   ), 0);
 }
 
+function requiresManualGrading(question: GradingQuestion): boolean {
+  return (['essay', 'upload_answer', 'code_answer'].includes(question.type) && !question.selfAssessment)
+    || (question.children?.some(requiresManualGrading) ?? false);
+}
+
 async function runPostCommitEffects(
   effects: Array<{ name: string; run: () => Promise<void> }>,
   context: Record<string, string>,
@@ -141,9 +155,18 @@ export function createQuizService(_dependencies: {
   database: QuizDatabase;
   hooks?: ProgressHooks;
   defaultLocale?: Locale;
+  validateQuizAnswerAttachments?: (actor: QuizActor, context: QuizAttachmentContext, answers: Record<string, unknown>) => Promise<void>;
 }): QuizService {
   const { database, defaultLocale = 'vi' } = _dependencies;
   const hooks = _dependencies.hooks ?? { recompute: async () => undefined };
+
+  async function validateAttachments(actor: QuizActor, context: QuizContext, courseId: string, itemId: string, quizId: string, answers: Record<string, unknown>) {
+    if (_dependencies.validateQuizAnswerAttachments) {
+      await _dependencies.validateQuizAnswerAttachments(actor, { courseVersionId: context.courseVersionId, courseId, itemId, quizId, grading: context.grading }, answers);
+    } else if (containsAttachmentReferences(answers)) {
+      throw new ApiError(403, 'FORBIDDEN', 'Quiz attachments cannot be verified');
+    }
+  }
 
   async function loadQuiz(
     actor: QuizActor,
@@ -206,8 +229,13 @@ export function createQuizService(_dependencies: {
       if (question.type === 'question_group') {
         throw new ApiError(409, 'CHECK_NOT_ALLOWED', 'Question groups must be checked one question at a time');
       }
+      if (['essay', 'upload_answer', 'code_answer'].includes(question.type) && !question.selfAssessment) {
+        throw new ApiError(422, 'QUIZ_REQUIRES_MANUAL_GRADING', 'This quiz question requires manual grading');
+      }
+      if (!validQuestionAnswer(question, answer)) throw new ApiError(422, 'INVALID_ANSWER', 'An answer does not match the pinned question');
       const oversized = findOversizedRegexAnswers([question], { [questionId]: answer });
       if (oversized.length) throw answerTooLong(actor.locale, oversized);
+      await validateAttachments(actor, context, courseId, itemId, quizId, { [questionId]: answer });
       return {
         ...gradeQuestion(question, answer),
         revealed: buildRevealed(
@@ -239,6 +267,9 @@ export function createQuizService(_dependencies: {
         throw new ApiError(500, 'INVALID_GRADING_DATA', 'Quiz grading data is incomplete');
       }
       const filteredAnswers = answersForQuiz(context.quiz.questionIds, answers);
+      if (Object.entries(filteredAnswers).some(([questionId, value]) => !validQuestionAnswer(context.grading.questions[questionId], value))) {
+        throw new ApiError(422, 'INVALID_ANSWER', 'An answer does not match the pinned question');
+      }
       // Classified before grading: `gradeAll` would fold an over-long answer into the
       // same `pendingManual` signal as legacy content a human must judge.
       const oversized = findOversizedRegexAnswers(questions, filteredAnswers);
@@ -246,11 +277,12 @@ export function createQuizService(_dependencies: {
       const graded = gradeAll(questions, filteredAnswers);
       // Quizzes have no manual-completion workflow. Do not persist a partial
       // automatic total as a final grade or consume the learner's attempt.
-      if (graded.pendingManual) {
+      if (graded.pendingManual || questions.some(requiresManualGrading)) {
         throw new ApiError(422, 'QUIZ_REQUIRES_MANUAL_GRADING', actor.locale === 'vi'
           ? 'Bài này không thể chấm hoàn toàn tự động. Lượt làm chưa bị trừ. Hãy liên hệ giảng viên để dùng bài tập hoặc bài thi cho phần chấm tay.'
           : 'This quiz cannot be graded completely automatically. No attempt was consumed. Ask your instructor to use an assignment or exam for manual grading.');
       }
+      await validateAttachments(actor, context, courseId, itemId, quizId, filteredAnswers);
       const passed = context.quiz.passPercent === undefined
         ? undefined
         : graded.percent >= context.quiz.passPercent;

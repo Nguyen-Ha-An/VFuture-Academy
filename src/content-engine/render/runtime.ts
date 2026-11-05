@@ -18,7 +18,9 @@ export interface LessonRuntime {
   refreshAssignmentSession(target: AssignmentTarget): Promise<AssignmentSessionResult>;
   submitAssignment(target: AssignmentTarget, payload: AssignmentPayload, expectedLatestSubmissionId: string | null): Promise<AssignmentSubmitResult>;
   uploadAssignmentFile(target: AssignmentTarget, file: File, options?: { signal?: AbortSignal; onProgress?: (progress: UploadProgress) => void }): Promise<UploadedFile>;
-  uploadFile(file: File): Promise<UploadedFile>;
+  uploadFile(file: File, options?: { quizId?: string; rootQuestionId?: string; questionId?: string; signal?: AbortSignal; onProgress?: (progress: UploadProgress) => void }): Promise<UploadedFile>;
+  /** Counts renderer transactions through answer commit or failure, not just network completion. */
+  onAnswerUploadPending?(delta: 1 | -1): void;
   resolveMedia(ref: MediaRef): string;
   hrefFor(target: NextStepTarget | { kind: 'resource' | 'opportunity'; id: string }): string;
   notebookHref?(target: AssignmentTarget): string;

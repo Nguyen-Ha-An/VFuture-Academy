@@ -70,6 +70,16 @@ const attemptRow = (attemptNo: number) => ({
 describe('SupabaseExamRepo', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('reads compact acknowledgement ids in bounded PostgREST URL chunks',async()=>{
+    const database=new DatabaseStub({exam_answers:[{data:[],error:null},{data:[],error:null},{data:[],error:null}]});
+    const repo=new SupabaseExamRepo(database);
+    const ids=Array.from({length:21},(_,index)=>`section/question-${index}`);
+    expect(await repo.listAnswers('attempt-one',ids)).toEqual([]);
+    expect(database.queries).toHaveLength(3);
+    expect(database.queries.map(({query})=>query.calls.find(([method])=>method==='in')?.[2])).toEqual([ids.slice(0,10),ids.slice(10,20),ids.slice(20)]);
+    for(const {query} of database.queries) expect(query.calls).toContainEqual(['eq','attempt_id','attempt-one']);
+  });
+
   it('orders listAttempts by attempt_no ascending and preserves the ordering guarantee', async () => {
     const database = new DatabaseStub({ exam_attempts: [{ data: [attemptRow(1), attemptRow(2)], error: null }] });
     mocks.supabaseService.mockReturnValue(database);

@@ -1,5 +1,5 @@
 import type { Permission } from '@/lib/authorization';
-import { adminNavigation, firstAdminDestination } from '@/lib/admin-navigation';
+import { adminNavigation, adminNavigationFor, firstAdminDestination } from '@/lib/admin-navigation';
 import { firstGradingDestination, gradingNavigation } from '@/lib/grading-navigation';
 import { firstStudioDestination, studioNavigation } from '@/lib/studio-navigation';
 import { STAFF_WORKSPACES, workspaceHome, workspaceScopedPermissions, type StaffWorkspace } from '@/lib/workspaces';
@@ -36,6 +36,7 @@ export function workspaceNavigationFor(
   workspace: StaffWorkspace,
   permissions: readonly Permission[],
 ): WorkspaceNavItem[] {
+  if (workspace === 'admin') return adminNavigationFor(permissions);
   return WORKSPACE_NAVIGATION[workspace].filter((item) =>
     item.available && item.permissions.some((permission) => permissions.includes(permission)));
 }

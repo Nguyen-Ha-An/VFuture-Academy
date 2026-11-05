@@ -140,7 +140,7 @@ function LegacyGradingShell({
         {scopePicker ? (
           <div className="border-b border-border px-4 py-3 lg:hidden">{scopePicker}</div>
         ) : null}
-        <main id="grading-main" className="min-w-0 px-4 py-7 sm:px-6 lg:px-10 lg:py-10">
+        <main tabIndex={-1} id="grading-main" className="min-w-0 px-4 py-7 sm:px-6 lg:px-10 lg:py-10">
           <ShellBreadcrumbs pathname={pathname} items={navigation} />
           {children}
         </main>

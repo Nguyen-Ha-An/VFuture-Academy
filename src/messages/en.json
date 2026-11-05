@@ -195,6 +195,9 @@
       "previewLocked": "Available after enrollment",
       "outlineEmpty": "No lessons or activities are available in this course yet.",
       "duration": "Estimated time",
+      "durationHours": "{hours, number}h",
+      "durationHoursMinutes": "{hours, number}h {minutes, number} min",
+      "durationMinutes": "{minutes, number} min",
       "requirements": "Completion requirements",
       "enroll": "Enroll",
       "enrolling": "Enrolling…",
@@ -217,6 +220,12 @@
         "exam_passed": "Pass the required exam",
         "assignment_approved": "Receive approval for the assignment",
         "quiz_min_score": "Reach the required quiz score"
+      },
+      "requirementTargets": {
+        "lessonsAll": "Complete all lessons",
+        "lessonsSelected": "Complete these lessons",
+        "minimumScore": "at least {percent, number}%",
+        "unresolvedId": "ID: {id}"
       },
       "review": "Review course"
     },
@@ -1854,6 +1863,15 @@
       "first": "First attempt",
       "average": "Average of attempts"
     },
+    "recovery": {
+      "title": "Your local answer copies",
+      "description": "The server confirmed that this attempt has ended. These local answers differ from its saved answers and are not included in the result. Download your own copy; it will not be applied to another attempt.",
+      "unverified": "These are your local responses. Their acceptance has not yet been verified. You can download a copy while the result is checked; it will not be applied to another attempt.",
+      "download": "Download local answers — attempt {attempt}",
+      "storageUnavailable": "This browser could not store the latest recovery copy. Download it before leaving this page. Any earlier valid local copy remains unchanged.",
+      "leaveUnavailable": "Some local answers could not be stored in this browser. Download your copy before leaving, or leave anyway and lose the unstored copy.",
+      "downloadError": "The local copy could not be downloaded. Your answers remain on this page. Try the download again."
+    },
     "player": {
       "timerLabel": "Time remaining",
       "noDeadline": "No time limit",
@@ -1894,9 +1912,20 @@
       "confirm": "Submit now",
       "submitting": "Submitting…",
       "submitError": "The exam could not be submitted. Please try again.",
+      "submissionUnknown": "Your submission status has not been confirmed. Your answers are kept. Check the status before continuing.",
+      "checkSubmission": "Check submission status",
+      "checkingSubmission": "Checking submission status…",
+      "waitForUploads": "Wait for files to finish uploading, or cancel the uploads, before submitting.",
+      "terminalUnconfirmed": "The server has not confirmed that this attempt has ended. Your unsaved answers are kept. Check the status or retry when your uploads have finished.",
+      "checkAttemptStatus": "Check attempt status",
+      "checkingAttemptStatus": "Checking attempt status…",
+      "answerTooLarge": "Answer {number} exceeds the 64 KiB size limit. Shorten it before saving or submitting.",
+      "answerTooLargeGeneric": "An answer exceeds the 64 KiB size limit. Shorten it before saving or submitting.",
+      "groupAnswerSizeLimit": "Answers within this question group share the limit.",
       "retrySubmit": "Retry submission",
       "leaveTitle": "Leave the exam?",
       "leaveBody": "Your saved answers are kept, but the timer keeps running while you are away.",
+      "leaveRecoveryUnavailable": "Some unsaved answers could not be stored in this browser and may be lost if you leave or reload. Download a local copy first, or choose Leave exam to leave without it.",
       "stay": "Stay in the exam",
       "leave": "Leave exam"
     },

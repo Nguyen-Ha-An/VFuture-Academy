@@ -70,5 +70,5 @@ export type CanvasCheckboxProps = Omit<CheckboxProps, 'onChange'> & { onChange?:
 export function CanvasCheckbox({ onChange, ...props }: CanvasCheckboxProps) { return <Checkbox {...props} onChange={event => onChange?.(event.target.checked)} />; }
 export function CanvasAlert({ children, variant = 'info', ...props }: Omit<ComponentProps<typeof Alert>, 'hasShadow'> & { hasShadow?: boolean }) { return <Alert {...props} variant={variant} hasShadow={props.hasShadow ?? false} transition="none">{children}</Alert>; }
 export function CanvasSpinner(props: ComponentProps<typeof Spinner>) { return <Spinner {...props} />; }
-export type CanvasLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'color' | 'onClick'> & { onClick?: ComponentProps<typeof Link>['onClick']; renderIcon?: ComponentProps<typeof Link>['renderIcon']; variant?: 'inline' | 'standalone' };
-export function CanvasLink({ children, ...props }: CanvasLinkProps) { return <Link {...props as unknown as ComponentProps<typeof Link>}>{children}</Link>; }
+export type CanvasLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'color' | 'onClick'> & { onClick?: ComponentProps<typeof Link>['onClick']; renderIcon?: ComponentProps<typeof Link>['renderIcon']; variant?: 'inline' | 'standalone'; forceButtonRole?: boolean };
+export function CanvasLink({ children, forceButtonRole, ...props }: CanvasLinkProps) { return <Link {...props as unknown as ComponentProps<typeof Link>} forceButtonRole={forceButtonRole ?? !props.href}>{children}</Link>; }

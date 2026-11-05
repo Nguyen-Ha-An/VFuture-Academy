@@ -59,7 +59,7 @@ describe('course CTA after enrolling', () => {
   it('focuses the page h1 when the enrolled course has no items (no Continue link)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(201, { data: {} })));
     const user = userEvent.setup();
-    const page = (enrolled: boolean) => withIntl(<article><h1>Empty course</h1><CourseCta courseId="course-1" enrolled={enrolled} cta={null} /></article>);
+    const page = (enrolled: boolean) => withIntl(<article><h1 tabIndex={-1}>Empty course</h1><CourseCta courseId="course-1" enrolled={enrolled} cta={null} /></article>);
     const view = render(page(false));
 
     await user.click(screen.getByRole('button', { name: 'Enroll' }));

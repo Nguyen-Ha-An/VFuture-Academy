@@ -1,0 +1,24 @@
+/* One account surface for learner and staff chrome. Native Tray owns the focus region. */
+.canvas-account-mount { position: fixed; inset-block-start: 0; inset-inline-start: var(--canvas-rail, 84px); width: min(370px, calc(100vw - var(--canvas-rail, 84px))); height: 100dvh; contain: layout paint; z-index: 60; pointer-events: none; }
+.canvas-account-mount[data-open] { pointer-events: auto; }
+.canvas-account-panel { display: flex; flex-direction: column; height: 100dvh; min-height: 0; box-sizing: border-box; border-inline-end: 1px solid var(--vf-line); color: var(--vf-ink); background: var(--vf-surface); font-family: var(--app-font-sans, Inter, system-ui, sans-serif); }
+.canvas-account-heading { display: flex; align-items: center; flex: 0 0 auto; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--vf-line); }
+.canvas-account-heading h2 { margin: 0; font-size: 19px; line-height: 1.4; font-weight: 600; }
+.canvas-account-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 24px 24px calc(28px + env(safe-area-inset-bottom)); }
+.canvas-account-identity { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+.canvas-account-avatar { flex: 0 0 40px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--vf-signal-soft); color: var(--vf-signal); font-size: 14px; font-weight: 600; }
+.canvas-account-identity > div { min-width: 0; }
+.canvas-account-identity h3 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
+.canvas-account-identity p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--vf-muted); overflow-wrap: anywhere; }
+.canvas-account-links { margin: 22px 0; padding: 14px 0; border-block: 1px solid var(--vf-line); }
+.canvas-account-links ul { margin: 0; padding: 0; list-style: none; }
+.canvas-account-links li { margin: 0; padding: 0; }
+.canvas-account-links a { display: flex; align-items: center; min-height: 44px; padding: 8px 4px; font-size: 14px; color: var(--vf-signal); text-decoration: none; }
+.canvas-account-links a:hover { text-decoration: underline; }
+.canvas-account-preferences { display: grid; gap: 18px; }
+.canvas-account-preferences h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.canvas-account-status { margin: -8px 0 0; font-size: 12px; color: var(--vf-muted); }
+@media (max-width: 767px) {
+  .canvas-account-mount { inset-inline-start: 0; width: 100vw; }
+  .canvas-account-scroll { padding-inline: 20px; }
+}

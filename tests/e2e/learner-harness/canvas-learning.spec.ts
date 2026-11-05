@@ -126,15 +126,23 @@ for (const width of [390, 1440]) {
 }
 
 test('learner account theme updates real InstUI action colors without reloading', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/app');
   const action = page.locator('[data-canvas-action="continue"]');
   await expect(action).toBeVisible();
   const light = await action.evaluate(element => getComputedStyle(element).color);
-  await page.locator('.canvas-desktop-account .vf-l-account-trigger').click();
-  await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click();
+  await page.getByRole('button', { name: en.learner.focus.account, exact: true }).click();
+  const tray = page.getByRole('dialog', { name: en.learner.focus.account, exact: true });
+  await expect(tray).toBeVisible();
+  const theme = tray.getByRole('combobox', { name: 'Theme', exact: true });
+  await theme.click();
+  await tray.getByRole('option', { name: 'Dark', exact: true }).click();
+  await expect(theme).toHaveValue('Dark');
   await expect(page.locator('.vf-workspace')).toHaveAttribute('data-theme', 'dark');
   await expect.poll(() => action.evaluate(element => getComputedStyle(element).color)).not.toBe(light);
-  await page.getByRole('menuitemradio', { name: 'Light', exact: true }).click();
+  await theme.click();
+  await tray.getByRole('option', { name: 'Light', exact: true }).click();
+  await expect(theme).toHaveValue('Light');
   await expect.poll(() => action.evaluate(element => getComputedStyle(element).color)).toBe(light);
 });

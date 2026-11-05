@@ -55,7 +55,7 @@ export type PageHeaderProps = {
  */
 export function PageHeader({ kicker, title, titleId, titleSize = 'page', lead, meta, tags, actions, crumbs, as: Tag = 'header', children, className }: PageHeaderProps) {
   const metaItems = (meta ?? []).filter(item => item !== null && item !== undefined && item !== false && item !== '');
-  const heading = <h1 id={titleId} className={titleSize === 'anchor' ? 'vf-title-sm' : 'vf-title'}>{title}</h1>;
+  const heading = <h1 tabIndex={-1} id={titleId} className={titleSize === 'anchor' ? 'vf-title-sm' : 'vf-title'}>{title}</h1>;
   const leadNode = lead ? typeof lead === 'string' ? <p className="vf-l-lead">{lead}</p> : lead : null;
   return <Tag className={cn('vf-page-head', className)} aria-labelledby={Tag === 'section' && titleId ? titleId : undefined}>
     {crumbs?.length ? <Crumbs items={crumbs} /> : null}

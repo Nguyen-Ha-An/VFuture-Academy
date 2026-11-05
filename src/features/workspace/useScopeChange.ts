@@ -13,6 +13,8 @@ export type ScopeChangeOptions = {
   endpoint?: string;
   /** Where to land once the scope is stored; defaults to the workspace home. */
   destination?: string;
+  /** Optional shell lease; rechecked after the unsaved-work guard before any POST. */
+  isCurrent?: () => boolean;
 };
 
 export type ScopeChange = {
@@ -31,7 +33,7 @@ export type ScopeChange = {
  * unsaved-changes guard, then POST the scope, then replace + refresh so the
  * server-authorized layout remounts. A second choice while one is in flight is ignored.
  */
-export function useScopeChange(workspace: StaffWorkspace, { active, endpoint, destination }: ScopeChangeOptions): ScopeChange {
+export function useScopeChange(workspace: StaffWorkspace, { active, endpoint, destination, isCurrent }: ScopeChangeOptions): ScopeChange {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -43,14 +45,14 @@ export function useScopeChange(workspace: StaffWorkspace, { active, endpoint, de
 
   const changeScope = useCallback(async (next: string | AdminScope) => {
     const scope = typeof next === "string" ? next : scopeKey(next);
-    if (transitionRef.current || scope === activeKey) return;
+    if (transitionRef.current || scope === activeKey || isCurrent?.() === false) return;
     transitionRef.current = true;
     setPending(true);
     setError(false);
     try {
       // Resolve the editor's Save / Stay / Discard decision before changing
       // the server scope. Keep the editor and its dialog visible meanwhile.
-      if (!(await requestNavigation())) {
+      if (!(await requestNavigation()) || isCurrent?.() === false) {
         transitionRef.current = false;
         setPending(false);
         return;
@@ -72,7 +74,7 @@ export function useScopeChange(workspace: StaffWorkspace, { active, endpoint, de
       setSwitching(false);
       transitionRef.current = false;
     }
-  }, [activeKey, landing, router, url]);
+  }, [activeKey, isCurrent, landing, router, url]);
 
   return { changeScope, pending, error, switching };
 }

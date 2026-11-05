@@ -1,10 +1,10 @@
 import type { Tone } from '../../ui/primitives';
 
 /** Item statuses the outline, head and footer can show (progress and submission states). */
-export type ActivityStatus = 'not_started' | 'in_progress' | 'completed' | 'submitted' | 'in_review' | 'approved' | 'changes_requested';
+export type ActivityStatus = 'not_started' | 'in_progress' | 'completed' | 'submitted' | 'in_review' | 'approved' | 'changes_requested' | 'expired';
 
 /** Message keys under `bench.learner.activity.state`. */
-export type ActivityStateKey = 'notStarted' | 'inProgress' | 'completed' | 'submitted' | 'inReview' | 'approved' | 'changesRequested';
+export type ActivityStateKey = 'notStarted' | 'inProgress' | 'completed' | 'submitted' | 'inReview' | 'approved' | 'changesRequested' | 'expired';
 
 const STATUS: Record<ActivityStatus, { key: ActivityStateKey; tone: Tone }> = {
   not_started: { key: 'notStarted', tone: 'neutral' },
@@ -14,6 +14,7 @@ const STATUS: Record<ActivityStatus, { key: ActivityStateKey; tone: Tone }> = {
   in_review: { key: 'inReview', tone: 'pending' },
   approved: { key: 'approved', tone: 'signal' },
   changes_requested: { key: 'changesRequested', tone: 'fault' },
+  expired: { key: 'expired', tone: 'fault' },
 };
 
 export function activityStatus(value: unknown): ActivityStatus {

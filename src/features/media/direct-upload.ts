@@ -6,18 +6,22 @@ import JSZip from 'jszip';
 import { z } from 'zod';
 import { IdSchema } from '@/content-engine/schema/common';
 import { authorizeAssignmentUpload } from '@/features/submissions/service';
+import { authorizeExamUpload } from '@/features/exams/attachments';
+import { authorizeQuizUpload } from '@/features/quizzes/attachments';
 import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
 import { mediaAssetId, mediaUploadMetadata, MAX_MEDIA_BYTES } from '@/features/media/upload';
 import { mediaHref } from '@/features/media/urls';
 import { ApiError } from '@/lib/api';
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const QuestionIdSchema = z.string().min(1).max(194).regex(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*){0,2}$/);
 const RequestSchema = z.object({
   uploadId: z.string().uuid(), name: z.string().min(1).max(512),
   size: z.number().int().positive().max(MAX_MEDIA_BYTES), mime: z.string().min(1).max(150),
   checksum: z.string().regex(/^[a-f0-9]{64}$/),
   purpose: z.enum(['avatar', 'project_cover', 'submission']),
   courseId: IdSchema.optional(), itemId: IdSchema.optional(), blockId: IdSchema.nullable().optional(),
+  examAttemptId: z.string().uuid().optional(), quizId: IdSchema.optional(), courseVersionId: z.string().uuid().optional(), rootQuestionId: QuestionIdSchema.optional(), questionId: QuestionIdSchema.optional(),
 }).strict();
 export type DirectUploadInput = z.infer<typeof RequestSchema>;
 export type UploadReservation = {
@@ -41,19 +45,28 @@ export function parseDirectUploadInput(value: unknown): DirectUploadInput {
   const input = RequestSchema.parse(value);
   const { filename } = mediaUploadMetadata({ name: input.name, size: input.size, type: input.mime });
   if (input.purpose === 'submission') {
-    if (!input.courseId || !input.itemId) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Assignment context is required');
+    const questionContext = Boolean(input.examAttemptId || input.quizId || input.rootQuestionId || input.questionId || input.courseVersionId);
+    if (questionContext && (!input.rootQuestionId || !input.questionId || Boolean(input.examAttemptId) === Boolean(input.quizId) || input.blockId != null)) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Complete question context is required');
+    if (input.examAttemptId && input.courseVersionId) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Exam version is resolved by the attempt');
+    if (input.quizId && (!input.courseId || !input.itemId)) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Quiz course and lesson context are required');
+    if (!questionContext && (!input.courseId || !input.itemId)) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Assignment context is required');
   } else {
     if (!imageTypes.includes(input.mime)) throw new ApiError(415, input.purpose === 'avatar' ? 'UNSUPPORTED_AVATAR' : 'UNSUPPORTED_PROJECT_COVER', 'Choose a JPEG, PNG, or WebP image');
-    if (input.courseId || input.itemId || input.blockId) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Image context is invalid');
+    if (input.courseId || input.itemId || input.blockId || input.examAttemptId || input.quizId || input.courseVersionId || input.rootQuestionId || input.questionId) throw new ApiError(400, 'INVALID_UPLOAD_CONTEXT', 'Image context is invalid');
   }
   return { ...input, name: filename, ...(input.purpose === 'submission' ? { blockId: input.blockId ?? null } : {}) };
 }
 async function authorize(owner: string, input: Omit<DirectUploadInput, 'uploadId'>) {
-  if (input.purpose === 'submission') await authorizeAssignmentUpload(
+  if (input.purpose === 'submission' && input.examAttemptId && input.rootQuestionId && input.questionId) {
+    return authorizeExamUpload(owner, { courseId: input.courseId, itemId: input.itemId, examAttemptId: input.examAttemptId, rootQuestionId: input.rootQuestionId, questionId: input.questionId, size: input.size, mime: input.mime });
+  } else if (input.purpose === 'submission' && input.quizId && input.rootQuestionId && input.questionId) {
+    return authorizeQuizUpload(owner, { courseId: input.courseId!, itemId: input.itemId!, quizId: input.quizId, courseVersionId: input.courseVersionId, rootQuestionId: input.rootQuestionId, questionId: input.questionId, size: input.size, mime: input.mime });
+  } else if (input.purpose === 'submission') await authorizeAssignmentUpload(
     { userId: owner, roles: [] },
     { courseId: input.courseId!, itemId: input.itemId!, blockId: input.blockId ?? null },
     { size: input.size, mime: input.mime },
   );
+  return null;
 }
 function rpcError(error: DbError): never {
   const code = ['UPLOAD_NOT_FOUND', 'UPLOAD_CONFLICT', 'UPLOAD_ACTIVE', 'UPLOAD_CAPACITY', 'UPLOAD_BUSY', 'UPLOAD_EXPIRED', 'UPLOAD_FINALIZED', 'UPLOAD_BYTES_REMAIN'].find((key) => error?.message?.includes(key));
@@ -76,8 +89,18 @@ function response(r: UploadReservation) {
 
 /** A repeated uploadId refreshes a permit only for the same validated reservation. */
 export async function reserveDirectUpload(owner: string, value: unknown, database: DirectUploadDatabase) {
-  const { uploadId, ...input } = parseDirectUploadInput(value);
-  await authorize(owner, input);
+  const { uploadId, ...rawInput } = parseDirectUploadInput(value);
+  if (rawInput.examAttemptId || rawInput.quizId) {
+    const replay = await database.rpc(rawInput.examAttemptId ? 'exam_attachment_ready' : 'quiz_attachment_ready', { p_owner: owner, p_id: uploadId });
+    if (replay.error) throw new ApiError(503, 'UPLOAD_UNAVAILABLE', 'Exam upload could not be checked');
+    if (replay.data) {
+      const ready = replay.data as UploadReservation;
+      if (!Object.entries(rawInput).every(([key, expected]) => ready.request[key as keyof typeof ready.request] === expected)) throw new ApiError(409, 'UPLOAD_CONFLICT', 'Upload details changed');
+      return { uploadId, file: response(ready) };
+    }
+  }
+  const canonical = await authorize(owner, rawInput);
+  const input = canonical ? { ...rawInput, ...canonical } : rawInput;
   const { data, error } = await database.rpc('media_upload_reserve', { p_owner: owner, p_id: uploadId, p_asset: mediaAssetId(), p_request: input });
   if (error || !data) rpcError(error);
   const row = data as UploadReservation;
@@ -198,9 +221,19 @@ async function downloadedBytes(database: DirectUploadDatabase, r: UploadReservat
 export async function finalizeDirectUpload(owner: string, id: string, database: DirectUploadDatabase) {
   z.string().uuid().parse(id);
   const current = await transition(database, owner, id, 'get');
+  if (current.state === 'ready' && (current.request.examAttemptId || current.request.quizId)) {
+    const ready = await database.rpc(current.request.examAttemptId ? 'exam_attachment_ready' : 'quiz_attachment_ready', { p_owner: owner, p_id: id });
+    if (ready.error || !ready.data) throw new ApiError(409, 'UPLOAD_CONFLICT', 'Exam upload binding is unavailable');
+    return response(ready.data as UploadReservation);
+  }
   await authorize(owner, current.request);
   const row = await transition(database, owner, id, 'claim');
-  if (row.state === 'ready') return response(row);
+  if (row.state === 'ready') {
+    if (!row.request.examAttemptId && !row.request.quizId) return response(row);
+    const ready = await database.rpc(row.request.examAttemptId ? 'exam_attachment_ready' : 'quiz_attachment_ready', { p_owner: owner, p_id: id });
+    if (ready.error || !ready.data) throw new ApiError(409, 'UPLOAD_CONFLICT', 'Exam upload binding is unavailable');
+    return response(ready.data as UploadReservation);
+  }
   try {
     const bytes = await downloadedBytes(database, row, row.pending_path);
     const dimensions = await verifyUploadBytes(row, bytes);
@@ -212,7 +245,16 @@ export async function finalizeDirectUpload(owner: string, id: string, database: 
       // Recover only after independently checking the immutable ready object.
       await verifyUploadBytes(row, await downloadedBytes(database, row, row.ready_path));
     }
-    const ready = await transition(database, owner, id, 'complete', row.lease_token, dimensions);
+    let ready: UploadReservation;
+    if (row.request.examAttemptId) {
+      const completed = await database.rpc('exam_attachment_complete', { p_owner: owner, p_id: id, p_attempt: row.request.examAttemptId, p_lease: row.lease_token, p_extra: dimensions });
+      if (completed.error || !completed.data) rpcError(completed.error);
+      ready = completed.data as UploadReservation;
+    } else if (row.request.quizId) {
+      const completed = await database.rpc('quiz_attachment_complete', { p_owner: owner, p_id: id, p_lease: row.lease_token, p_extra: dimensions });
+      if (completed.error || !completed.data) rpcError(completed.error);
+      ready = completed.data as UploadReservation;
+    } else ready = await transition(database, owner, id, 'complete', row.lease_token, dimensions);
     return response(ready);
   } catch (error) {
     // An ambiguous completed transaction stays ready; this conditional RPC

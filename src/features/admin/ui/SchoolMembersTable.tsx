@@ -4,6 +4,7 @@ import { useId } from "react";
 import { CanvasLink, CanvasResponsive, CanvasTable } from "@/features/canvas/ui";
 import { StatusBadge } from "@/features/staff-ui/components";
 import type { SchoolMemberRow } from "@/app/admin/branches/SchoolDetailView";
+import { SchoolScopeLink } from "@/features/admin/components/SchoolScopeNavigation";
 
 /** Native InstUI stacked rows retain role and status information on narrow screens. */
 export function SchoolMembersTable({ title, rows, labels }: {
@@ -23,7 +24,7 @@ export function SchoolMembersTable({ title, rows, labels }: {
     </CanvasTable.Row></CanvasTable.Head>
     <CanvasTable.Body>{rows.map((member) => <CanvasTable.Row key={member.id}>
       <CanvasTable.RowHeader>
-        <CanvasLink href={member.href}>{member.name}</CanvasLink>
+        {member.navigation ? <SchoolScopeLink navigation={member.navigation}>{member.name}</SchoolScopeLink> : <CanvasLink href={member.href}>{member.name}</CanvasLink>}
         <span className="block break-all text-xs font-normal leading-normal text-muted-foreground">{member.email}</span>
       </CanvasTable.RowHeader>
       <CanvasTable.Cell>{member.roles}</CanvasTable.Cell>

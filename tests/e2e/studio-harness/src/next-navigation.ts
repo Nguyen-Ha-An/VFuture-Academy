@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 
 const listen = (notify: () => void) => {
   window.addEventListener('popstate', notify);
@@ -14,4 +14,6 @@ const router = {
   back() { history.back(); }, forward() { history.forward(); }, refresh() {}, prefetch: async () => {},
 };
 export function useRouter() { return router; }
+// Vite has no Next server-inserted-HTML context; the real Next harness uses the actual hook.
+export function useServerInsertedHTML(_callback: () => ReactNode) { return undefined; }
 export function useSelectedLayoutSegments() { return useSyncExternalStore(listen, () => snapshot().split('?')[0].split('/').filter(Boolean), () => []); }

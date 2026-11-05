@@ -1,4 +1,5 @@
-type NavigationGuard = () => Promise<boolean>;
+export type NavigationIntent = { kind: 'route' } | { kind: 'document'; signal: AbortSignal };
+type NavigationGuard = (intent?: NavigationIntent) => Promise<boolean>;
 
 const guards = new Set<NavigationGuard>();
 let inFlightRequest: Promise<boolean> | undefined;
@@ -11,13 +12,14 @@ export function registerNavigationGuard(guard: NavigationGuard): () => void {
   };
 }
 
-export function requestNavigation(): Promise<boolean> {
+export function requestNavigation(intent?: NavigationIntent): Promise<boolean> {
+  if (intent?.kind === 'document' && intent.signal.aborted) return Promise.resolve(false);
   if (inFlightRequest) {
     return inFlightRequest;
   }
 
   const snapshot = [...guards];
-  const request = evaluateGuards(snapshot);
+  const request = evaluateGuards(snapshot, intent);
   inFlightRequest = request;
 
   request.then(() => {
@@ -29,10 +31,10 @@ export function requestNavigation(): Promise<boolean> {
   return request;
 }
 
-async function evaluateGuards(snapshot: NavigationGuard[]): Promise<boolean> {
+async function evaluateGuards(snapshot: NavigationGuard[], intent?: NavigationIntent): Promise<boolean> {
   for (const guard of snapshot) {
     try {
-      if (!(await guard())) {
+      if (!(await guard(intent)) || (intent?.kind === 'document' && intent.signal.aborted)) {
         return false;
       }
     } catch {

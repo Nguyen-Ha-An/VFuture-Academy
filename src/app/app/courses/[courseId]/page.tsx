@@ -9,6 +9,7 @@ import { parseCatalogContext, type CatalogSearchParams } from '@/features/learne
 import { CourseCta } from '@/features/learner/ui/CourseCta';
 import type { PrerequisiteLink } from '@/features/learner/ui/EnrollButton';
 import { prerequisiteLabel } from '@/features/workspace-ui/format';
+import { courseDuration, requirementTargets } from '@/features/workspace-ui/learner/course-presentation';
 import { ActionPanel } from '@/features/workspace-ui/learner/DetailPage';
 import { CanvasAlert } from '@/features/canvas/ui';
 import { CanvasCourseWorkspace, courseTab } from '@/features/workspace-ui/learner/CanvasCourseWorkspace';
@@ -57,10 +58,15 @@ export default async function LearnerCoursePage({ params, searchParams }: { para
   const { completedItems, totalItems } = course.progress;
   const progressLabel = t('progress', { done: completedItems, total: totalItems });
   const cta = <CourseCta courseId={course.id} enrolled={Boolean(course.enrollment)} cta={itemCta ? { href: routes.learner.courseItem(course.id, itemCta.item.id), label: itemCta.label } : null} prerequisites={prerequisites} />;
+  const duration = courseDuration(course.meta.estimatedMinutes ?? 0);
+  const durationLabel = duration
+    ? duration.hours === 0 ? t('durationMinutes', duration)
+      : duration.minutes === 0 ? t('durationHours', duration) : t('durationHoursMinutes', duration)
+    : null;
   const info = [
     course.meta.level ? { label: catalog('level'), value: enums(`level.${course.meta.level}`) } : null,
     course.meta.difficulty ? { label: catalog('difficulty'), value: enums(`difficulty.${course.meta.difficulty}`) } : null,
-    course.meta.estimatedMinutes ? { label: t('duration'), value: catalog('minutes', { count: course.meta.estimatedMinutes }) } : null,
+    durationLabel ? { label: t('duration'), value: durationLabel } : null,
   ].filter((entry): entry is { label: string; value: string } => entry !== null);
   const outline = <section aria-labelledby="outline-heading" className="vf-l-outline"><div className="canvas-section-heading"><h3 id="outline-heading">{t('outline')}</h3></div>
     {!course.enrollment && <p className="vf-l-outline-note">{t('outlinePreview')}</p>}
@@ -72,7 +78,21 @@ export default async function LearnerCoursePage({ params, searchParams }: { para
       })}</ol>
     </details>) : <CanvasEmpty>{t('outlineEmpty')}</CanvasEmpty>}
   </section>;
-  const requirements = course.completion.requirements.length ? <Card title={t('requirements')} titleId="requirements-heading"><ul className="vf-l-rows">{course.completion.requirements.map((requirement, index) => <li key={index} className="vf-l-req"><p>{t(`requirementsMap.${requirement.rule.type}`)}</p>{course.enrollment && <span className="vf-l-req-state">{requirement.progress && <span className="vf-meta">{t('requirementProgress', requirement.progress)}</span>}<StateTag tone={requirement.satisfied ? 'signal' : 'neutral'}>{requirement.satisfied ? t('requirementMet') : t('requirementPending')}</StateTag></span>}</li>)}</ul></Card> : null;
+  const requirements = course.completion.requirements.length ? <Card title={t('requirements')} titleId="requirements-heading"><ul className="vf-l-rows">{course.completion.requirements.map((requirement, index) => {
+    const targets = requirementTargets(requirement.rule, items);
+    const label = requirement.rule.type === 'lessons_completed'
+      ? t(requirement.rule.lessonIds === 'all' ? 'requirementTargets.lessonsAll' : 'requirementTargets.lessonsSelected')
+      : t(`requirementsMap.${requirement.rule.type}`);
+    return <li key={index} className="vf-l-req"><p>{label}
+      {requirement.rule.type === 'quiz_min_score' && <> — {t('requirementTargets.minimumScore', { percent: requirement.rule.percent })}</>}
+      {targets.length > 0 && <>: {targets.map((target, targetIndex) => <span key={`${target.id}:${targetIndex}`}>
+        {targetIndex > 0 ? '; ' : ''}
+        {course.enrollment && target.itemId && target.title
+          ? <Link href={routes.learner.courseItem(course.id, target.itemId)}>{target.title}</Link>
+          : target.title ?? t('requirementTargets.unresolvedId', { id: target.id })}
+      </span>)}</>}
+    </p>{course.enrollment && <span className="vf-l-req-state">{requirement.progress && <span className="vf-meta">{t('requirementProgress', requirement.progress)}</span>}<StateTag tone={requirement.satisfied ? 'signal' : 'neutral'}>{requirement.satisfied ? t('requirementMet') : t('requirementPending')}</StateTag></span>}</li>;
+  })}</ul></Card> : null;
   const overview = <div className="canvas-course-overview"><div className="canvas-course-overview-main"><p className="canvas-course-description">{course.meta.summary}</p>
     {course.meta.learningOutcomes.length > 0 && <Card title={t('outcomes')} titleId="outcomes-heading"><ul className="vf-l-outcomes">{course.meta.learningOutcomes.map((outcome, index) => <li key={index}>{outcome}</li>)}</ul></Card>}
     {!course.enrollment && outline}{requirements}

@@ -1,0 +1,92 @@
+#!/usr/bin/env node
+// Disposable native PostgreSQL17 only. This is local SQL compatibility evidence,
+// not committed-source provenance, hosted readiness, or deployment authorization.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { discoverStudioPostgresBinaries, createStudioFixtureClient } from '../lib/studio-postgres-fixture.mjs';
+import { buildAzureSchema } from './schema.mjs';
+import { createForwardExecutor } from './forward.mjs';
+import { createForward53Executor } from './forward-53.mjs';
+
+const explicit=process.env.STUDIO_POSTGRES_BIN;
+if(!explicit || !['initdb','pg_ctl','postgres'].every(name=>existsSync(join(explicit,name))))throw new Error('An existing explicit local PostgreSQL binary directory is required');
+const found=discoverStudioPostgresBinaries();
+if(found.temporaryRuntime || realpathSync(found.bin)!==realpathSync(explicit))throw new Error('Automatic runtime installation is forbidden');
+const target={AZURE_TARGET_HOST:'fixture.postgres.database.azure.com',AZURE_DATABASE_URL:'postgres://academy_admin:fixture@fixture.postgres.database.azure.com/academy?sslmode=verify-full'};
+const imported='273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149';
+const sha='a'.repeat(40),source={sourceClean:false,sourceCommit:null,sourceTree:null};
+const v1=buildAzureSchema({through:'20261105020000_teaching_permissions_activation.sql'});
+const baseline=v1.steps.filter(step=>!/^supabase\/migrations\/20261105/.test(step.id));
+const root=mkdtempSync('/tmp/academy-forward53-pg.'),data=join(root,'data'),socket=join(root,'socket');
+mkdirSync(socket,{mode:0o700});
+const env={PATH:process.env.PATH,LC_ALL:'C',LANG:'C',DYLD_LIBRARY_PATH:resolve(explicit,'../lib')};
+const run=(name,args)=>execFileSync(join(found.bin,name),args,{env,stdio:'pipe'});
+let started=false;const clients=[];
+try{
+  run('initdb',['-D',data,'-A','trust','-U','postgres','--no-locale']);
+  run('pg_ctl',['-D',data,'-l',join(root,'postgres.log'),'-o',`-F -c listen_addresses='' -k ${socket}`,'-w','start']);started=true;
+  const control=createStudioFixtureClient({host:socket,user:'postgres',database:'postgres'});await control.connect();clients.push(control);
+  await control.query('create role academy_admin login superuser');await control.query('create database academy owner academy_admin');
+  const db=createStudioFixtureClient({host:socket,user:'academy_admin',database:'academy'});await db.connect();clients.push(db);
+  const environment=(await db.query("select current_database() as database,inet_server_addr() is null as socket_only,current_setting('listen_addresses') as listeners,current_setting('server_version_num') as version")).rows[0];
+  assert.equal(environment.database,'academy');assert.equal(environment.socket_only,true);assert.equal(environment.listeners,'');assert.match(environment.version,/^17\d{4}$/);
+  await db.query(baseline.map(step=>step.sql).join('\n\n'));
+  await db.query("update academy_private.migration_state set state='imported',schema_sha256=$1,imported_at=now() where singleton",[imported]);
+  const initial=createForwardExecutor({db,target});
+  await initial.apply('schema',await initial.plan('schema'));
+  await initial.apply('activate',await initial.plan('activate'),{verified:true,reviewedSha:sha,verifiedSha:sha});
+  const v1Receipts=(await db.query('select filename,source_sha256,azure_sha256,deployment_sha,applied_at from academy_private.canvas_forward_receipts order by filename')).rows;
+  const roleBytes=(await db.query('select id,encode(array_send(permissions),\'hex\') bytes from public.role_definitions order by id')).rows;
+  const user='98000000-0000-4000-8000-000000000011',version='98000000-0000-4000-8000-000000000012';
+  const auto='98000000-0000-4000-8000-000000000013',manual='98000000-0000-4000-8000-000000000014';
+  await db.query("insert into academy_identity.users(id,email) values($1,'forward53-fixture@example.test')",[user]);
+  await db.query("update public.profiles set branch_id='ans' where id=$1",[user]);
+  await db.query("insert into public.courses(id,owner_id,status) values('forward53-fixture',$1,'published')",[user]);
+  await db.query("insert into public.course_versions(id,course_id,version,manifest,checksum,summary,published_by) values($1,'forward53-fixture',1,'{}','fixture','{}',$2)",[version,user]);
+  for(const item of ['exam-auto','exam-manual','lesson-legacy']) await db.query('insert into public.course_version_items(version_id,item_id,kind,source,grading,checksum) values($1,$2,$3,$4,$5,$6)',[version,item,item==='lesson-legacy'?'lesson':'exam',{}, {},'fixture']);
+  await db.query("insert into public.enrollments(user_id,course_id,course_version_id) values($1,'forward53-fixture',$2)",[user,version]);
+  await db.query("insert into public.media_assets(id,owner_id,bucket,path,mime,size_bytes,purpose) values('asset_LEGACY',$1,'submissions','legacy/file.pdf','application/pdf',8,'submission')",[user]);
+  const snapshot=(item,question)=>({sections:[{id:'s',questionIds:[question],optionOrders:{},deadlineOffsetMs:null}],learner:{id:item,kind:'exam',title:'Fixture',sections:[{id:'s',questions:[{id:question,type:question==='s/upload'?'upload_answer':'single_choice',accepts:['file']}]}]},locale:'en',defaultLocale:'en'});
+  const grading={questions:{},quizzes:{},rubrics:{},activities:[],exam:{review:{showScore:'immediately',showCorrectAnswers:'never',showExplanations:'never'}}};
+  for(const [id,item,question] of [[auto,'exam-auto','s/q'],[manual,'exam-manual','s/upload']]) await db.query("insert into public.exam_attempts(id,user_id,course_version_id,item_id,attempt_no,status,question_set,grading_snapshot,started_at) values($1,$2,$3,$4,1,'in_progress',$5,$6,now())",[id,user,version,item,snapshot(item,question),grading]);
+  const legacy={files:[{assetId:'asset_LEGACY',name:'file.pdf',size:8,mime:'application/pdf'}]};
+  const row=(questionId,answer,manualPoints=null)=>({questionId,answer,result:null,manualPoints,manualFeedback:null,gradedBy:null,updatedAt:'2026-11-05T00:00:00.000Z'});
+  const save='select public.exam_save_active_answers($1,$2,$3::jsonb) value';
+  assert.equal((await db.query(save,[manual,user,JSON.stringify([row('s/upload',legacy)])])).rows[0].value,true);
+  await db.query("insert into public.quiz_attempts(user_id,course_version_id,item_id,quiz_id,attempt_no,answers,results,points,max_points,percent,passed) values($1,$2,'lesson-legacy','quiz',1,$3,'{}',0,0,0,false)",[user,version,{'quiz/upload':legacy}]);
+  const before=(await db.query('select answer from public.exam_answers where attempt_id=$1',[manual])).rows[0].answer;
+  const executor=createForward53Executor({db,target,expectedActivationSha:sha,source});
+  const plan=JSON.parse(JSON.stringify(await executor.plan()));assert.equal(plan.action,'apply');
+  const failing=createForward53Executor({target,expectedActivationSha:sha,source,db:{query:(sql,params)=>db.query(sql.includes('create table public.exam_attachment_bindings')?'select 1/0':sql,params)}});
+  await assert.rejects(failing.apply(plan),error=>error.message==='Azure forward 53 migration failed' && error.code==='22012');
+  assert.equal((await db.query("select to_regclass('public.exam_attachment_bindings') is null absent,to_regclass('academy_private.assessment_forward_receipt') is null no_receipt")).rows[0].absent,true);
+  assert.equal((await db.query("select to_regclass('academy_private.assessment_forward_receipt') is null absent")).rows[0].absent,true);
+  assert.equal((await executor.apply(plan)).action,'applied');
+  assert.deepEqual((await db.query('select filename,source_sha256,azure_sha256,deployment_sha,applied_at from academy_private.canvas_forward_receipts order by filename')).rows,v1Receipts);
+  assert.deepEqual((await db.query('select id,encode(array_send(permissions),\'hex\') bytes from public.role_definitions order by id')).rows,roleBytes);
+  assert.deepEqual((await db.query('select answer from public.exam_answers where attempt_id=$1',[manual])).rows[0].answer,before);
+  // A plain answer that merely resembles an asset ID is still ordinary legacy work.
+  assert.equal((await db.query(save,[auto,user,JSON.stringify([row('s/q','asset_example')])])).rows[0].value,true);
+  assert.equal((await db.query(save,[manual,user,JSON.stringify([row('s/upload',legacy)])])).rows[0].value,true);
+  const finalize='select public.exam_finalize_attempt($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb) value';
+  const finish=async(id,status,question,answer)=>db.query(finalize,[id,status,false,'2026-11-05T00:00:00.000Z',0,1,0,JSON.stringify({[question]:answer}),JSON.stringify([row(question,answer)])]);
+  assert.equal((await finish(auto,'graded','s/q','asset_example')).rows[0].value.transitioned,true);
+  assert.equal((await finish(manual,'pending_manual','s/upload',legacy)).rows[0].value.transitioned,true);
+  const draft={...row('s/upload',legacy,1),gradedBy:user};
+  assert.equal((await db.query('select public.exam_save_manual_draft($1,$2::jsonb) value',[manual,JSON.stringify(draft)])).rows[0].value,true);
+  const expected={'s/upload':{answer:legacy,manualPoints:1}};
+  const completed=await db.query('select public.exam_complete_manual_grading($1,1,1,100,now(),$2::jsonb,$3::jsonb) value',[manual,JSON.stringify(expected),JSON.stringify([draft])]);
+  assert.equal(completed.rows[0].value.transitioned,true);
+  assert.deepEqual((await db.query('select answer from public.exam_answers where attempt_id=$1',[manual])).rows[0].answer,legacy);
+  await db.query("update public.quiz_attempts set results='{}' where user_id=$1 and quiz_id='quiz'",[user]);
+  assert.deepEqual((await db.query("select answers from public.quiz_attempts where user_id=$1 and quiz_id='quiz'",[user])).rows[0].answers,{'quiz/upload':legacy});
+  assert.equal((await executor.apply(await executor.plan())).action,'noop');
+  assert.equal((await db.query('select schema_sha256 from academy_private.migration_state where singleton')).rows[0].schema_sha256,imported);
+  console.log('LOCAL ONLY: native 53 forward SQL, rollback, V1 receipts/roles, old non-file save/finalize, manual grade, and unchanged legacy file answers passed; source uncommitted, hosted state unverified.');
+}finally{
+  await Promise.all(clients.map(client=>client.end().catch(()=>undefined)));
+  if(started)run('pg_ctl',['-D',data,'-m','fast','-w','stop']);
+  rmSync(root,{recursive:true,force:true});
+}

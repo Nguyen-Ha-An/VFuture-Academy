@@ -469,12 +469,21 @@ export class SupabaseExamRepo implements ExamRepo {
     assertDatabase(result, 'save exam answers');
   }
 
-  async listAnswers(attemptId: string) {
-    const result = await this.database.from('exam_answers')
-      .select('attempt_id,question_id,answer,result,manual_points,manual_feedback,graded_by,updated_at')
-      .eq('attempt_id', attemptId)
-      .order('question_id', { ascending: true });
-    return rows(assertDatabase(result, 'list exam answers')).map(toAnswer);
+  async listAnswers(attemptId: string, questionIds?: readonly string[]) {
+    if (questionIds?.length === 0) return [];
+    // Keep PostgREST query URLs bounded even when question IDs are at their
+    // maximum length. This does not impose a limit on the answer collection.
+    const chunks=questionIds ? Array.from({length:Math.ceil(questionIds.length/10)},(_,index)=>questionIds.slice(index*10,index*10+10)) : [undefined];
+    const selected:ExamAnswerRecord[]=[];
+    for(const chunk of chunks) {
+      let query = this.database.from('exam_answers')
+        .select('attempt_id,question_id,answer,result,manual_points,manual_feedback,graded_by,updated_at')
+        .eq('attempt_id', attemptId);
+      if (chunk) query=query.in('question_id',[...chunk]);
+      const result = await query.order('question_id', { ascending: true });
+      selected.push(...rows(assertDatabase(result, 'list exam answers')).map(toAnswer));
+    }
+    return selected;
   }
 
   async upsertGrade(grade: ExamGradeRecord) {

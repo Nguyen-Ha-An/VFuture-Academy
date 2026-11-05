@@ -21,7 +21,9 @@ const cutover=process.argv.includes('--cutover');
 const forward=process.argv.includes('--forward');
 if([probe,cutover,forward].filter(Boolean).length>1)throw new Error('Choose one package action');
 const snapshot=probe||forward?null:JSON.parse(readFileSync(join(privateDir,'source-snapshot.json'),'utf8'));
-const currentSchema=probe?null:buildAzureSchema();
+// The released V1 forward job is fixed at52. New migrations use their separately
+// reviewed executor/package, never an implicit expansion of this archive.
+const currentSchema=probe?null:buildAzureSchema(forward?{through:'20261105020000_teaching_permissions_activation.sql'}:{});
 if(forward&&currentSchema.receipt.migrations.length!==52)throw new Error('Forward package requires the fixed reviewed 52 migrations');
 if(snapshot&&snapshot.schemaSha256!==currentSchema.receipt.schemaSha256)throw new Error('Snapshot schema digest differs from current reviewed code; rebuild/rehearse before upload.');
 const originalProvenance=forward?sourceProvenance():null;

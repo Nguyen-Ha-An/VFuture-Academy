@@ -3,6 +3,7 @@
 import type { ComponentProps } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "@/lib/ui-cn";
+import { useWorkspaceSurfaceTheme } from "./workspace-surface-context";
 
 export function Popover(props: ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
@@ -13,10 +14,12 @@ export function PopoverTrigger(props: ComponentProps<typeof PopoverPrimitive.Tri
 }
 
 export function PopoverContent({ className, align = "center", sideOffset = 4, collisionPadding = 8, ...props }: ComponentProps<typeof PopoverPrimitive.Content>) {
+  const surfaceTheme = useWorkspaceSurfaceTheme();
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         data-slot="popover-content"
+        data-canvas-surface={surfaceTheme ?? undefined}
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}

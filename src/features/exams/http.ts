@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { IdSchema } from '@/content-engine/schema/common';
 import { ApiError } from '@/lib/api';
+import { answerMapSchema } from '@/features/learning/answer-input';
 import { ExamError } from './types';
 
 export const AttemptIdSchema = z.uuid();
@@ -14,42 +15,34 @@ export const QuestionIdSchema = z.string()
   .max(194)
   .regex(/^[a-z0-9][a-z0-9-]{0,63}(\/[a-z0-9][a-z0-9-]{0,63}){0,2}$/);
 
-const answerPrimitiveSchema = z.union([
-  z.string().max(4000),
-  z.number().finite(),
-  z.boolean(),
-  z.null(),
-]);
-const answerArraySchema = z.array(answerPrimitiveSchema).max(200);
-const answerLeafRecordSchema = z.record(
-  z.string().min(1).max(194),
-  z.union([answerPrimitiveSchema, answerArraySchema]),
-).refine((answer) => Object.keys(answer).length <= 200, 'Too many answer fields');
-const answerRecordSchema = z.record(
-  z.string().min(1).max(194),
-  z.union([answerPrimitiveSchema, answerArraySchema, answerLeafRecordSchema]),
-).refine((answer) => Object.keys(answer).length <= 200, 'Too many answer fields');
+export const ExamAnswersSchema = answerMapSchema(QuestionIdSchema, 250);
 
 function serializedBytes(value: unknown): number {
   const serialized = JSON.stringify(value);
-  return serialized === undefined
-    ? Number.POSITIVE_INFINITY
-    : new TextEncoder().encode(serialized).byteLength;
+  return serialized === undefined ? Number.POSITIVE_INFINITY : new TextEncoder().encode(serialized).byteLength;
 }
-
-export const ExamAnswersSchema = z.record(
-  QuestionIdSchema,
-  z.union([answerPrimitiveSchema, answerArraySchema, answerRecordSchema]),
-).refine((answers) => Object.keys(answers).length <= 250, {
-  message: 'At most 250 answers may be saved at once',
-}).refine((answers) => serializedBytes(answers) <= 64 * 1024, {
-  message: 'Exam answers exceed 64 KiB',
-});
 
 export const ExamEventMetaSchema = z.record(z.string(), z.unknown())
   .refine((meta) => serializedBytes(meta) <= 2 * 1024, {
     message: 'Exam event metadata exceeds 2 KiB',
   });
+
+/** Finite response stream with the same JSON envelope as `ok`, serialized before headers. */
+export function streamExamJson(data:unknown):Response {
+  const json=JSON.stringify({data});
+  if(json===undefined) throw new TypeError('Exam response is not JSON serializable');
+  // Encode once, then split bytes: UTF-16 slicing can bisect an emoji pair.
+  const bytes=new TextEncoder().encode(json);let offset=0;
+  const stream=new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if(offset>=bytes.length){controller.close();return;}
+      const end=Math.min(offset+16*1024,bytes.length);
+      controller.enqueue(bytes.subarray(offset,end));
+      offset=end;
+    },
+  });
+  return new Response(stream,{headers:{'content-type':'application/json; charset=utf-8','cache-control':'private, no-store','vary':'Cookie'}});
+}
 
 export async function examOperation<T>(operation: () => Promise<T>): Promise<T> {
   try {

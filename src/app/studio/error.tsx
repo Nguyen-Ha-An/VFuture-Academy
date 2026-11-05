@@ -35,7 +35,7 @@ export default function StudioError({ error, reset }: { error: ErrorPayload; res
   return (
     <div className="grid min-h-[60vh] place-items-center px-4 py-12 text-foreground">
       <section className="w-full max-w-xl rounded-lg border border-border bg-card p-6 text-card-foreground sm:p-8" aria-labelledby="studio-error-title">
-        <h1 id="studio-error-title" className="text-2xl font-bold leading-[1.4] tracking-tight">{t('title')}</h1>
+        <h1 tabIndex={-1} id="studio-error-title" className="text-2xl font-bold leading-[1.4] tracking-tight">{t('title')}</h1>
         <p className="mt-3 text-sm leading-normal text-muted-foreground">{t('description')}</p>
         <Button className="mt-6" onClick={reset}>{t('retry')}</Button>
       </section>

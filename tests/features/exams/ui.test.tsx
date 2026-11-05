@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CompiledItem } from '@/content-engine/compile';
 import { createPreviewRuntime, registerAll } from '@/content-engine/render';
@@ -71,6 +71,7 @@ async function playerHarness(
   const service = createExamService({
     repo,
     clock,
+    track: async () => {},
     bank: bankSource,
     loadItem: async () => itemContext(item),
     isEnrolled: async () => true,
@@ -726,12 +727,13 @@ describe('ExamPlayer', () => {
     });
     const submit = vi.spyOn(h.client, 'submit');
     const onSubmitted = vi.fn();
+    const recovery = vi.fn();
     const client = { ...h.client, save, submit };
     const user = userEvent.setup();
 
     render(
       <Provider>
-        <ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} onSubmitted={onSubmitted} />
+        <ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} onSubmitted={onSubmitted} onRecoverySnapshot={recovery} />
       </Provider>,
     );
     await user.click(screen.getByRole('button', { name: 'Submit exam' }));
@@ -748,27 +750,53 @@ describe('ExamPlayer', () => {
     await user.click(finish);
     expect(submit).toHaveBeenCalledOnce();
     expect(onSubmitted).toHaveBeenCalledOnce();
-    expect(store.read()).toBeNull();
+    expect(store.read()).toEqual({ 's1/e1': 'a' });
+    expect(recovery).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, verified: false, answers: { 's1/e1': 'a', 's2/e2': 'Later section answer' } }));
   });
 
-  it('clears pending answers and restores server truth after a global deadline rejection', async () => {
+  it('preserves unaccepted answers and restores only confirmed server truth after a global deadline rejection', async () => {
     const h = await playerHarness();
     const onTerminal = vi.fn();
     const error = Object.assign(new Error('attempt expired'), { code: 'DEADLINE_PASSED' });
-    const client = { ...h.client, save: vi.fn().mockRejectedValue(error) };
+    const recovery = vi.fn();
+    const client = { ...h.client, save: vi.fn().mockRejectedValue(error), session: vi.fn().mockResolvedValue({ attemptsUsed: 1, attempt: { ...h.attempt, status: 'expired', answers: {} } }) };
     const store = createPendingExamDraftStore(h.attempt.attemptId);
     vi.useFakeTimers();
 
     render(
       <Provider>
-        <ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} />
+        <ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} onRecoverySnapshot={recovery} />
       </Provider>,
     );
     fireEvent.click(screen.getByRole('radio', { name: 'It creates new content instead of only classifying' }));
     await act(async () => vi.advanceTimersByTimeAsync(1_000));
 
-    expect(store.read()).toBeNull();
+    expect(store.read()).toEqual({ 's1/e1': 'a' });
+    expect(recovery).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, verified: true, answers: { 's1/e1': 'a' } }));
     expect(onTerminal).toHaveBeenCalledOnce();
+  });
+
+  it('retains an incomplete-flush recovery candidate across an unknown submission reconciliation', async () => {
+    const h = await playerHarness();
+    const store = createPendingExamDraftStore(h.attempt.attemptId);
+    store.write({ 's1/e1': 'a' });
+    const save = vi.fn().mockRejectedValue(Object.assign(new Error('Section closed'), { code: 'SECTION_DEADLINE_PASSED' }));
+    const submit = vi.fn().mockRejectedValueOnce(Object.assign(new Error('Outcome unknown'), { code: 'SUBMIT_OUTCOME_UNKNOWN', ambiguous: true })).mockImplementationOnce(() => h.client.submit());
+    const recovery = vi.fn();
+    const onSubmitted = vi.fn();
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={{ ...h.client, save, submit }} runtime={h.runtime} onSubmitted={onSubmitted} onRecoverySnapshot={recovery} /></Provider>);
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    await user.click(await screen.findByRole('button', { name: 'Submit saved answers' }));
+    const check = await screen.findByRole('button', { name: 'Check submission status' });
+    const savedCalls = save.mock.calls.length;
+    expect(recovery).not.toHaveBeenCalled();
+    await user.click(check);
+    await waitFor(() => expect(onSubmitted).toHaveBeenCalledOnce());
+    expect(save).toHaveBeenCalledTimes(savedCalls);
+    expect(recovery).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, verified: false, answers: { 's1/e1': 'a' } }));
+    expect(store.read()).toEqual({ 's1/e1': 'a' });
   });
 
   it('reports when session recovery storage cannot retain a pending answer', async () => {
@@ -788,6 +816,38 @@ describe('ExamPlayer', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'It creates new content instead of only classifying' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent('This browser cannot keep an offline recovery copy.');
+  });
+
+  it('offers an own-answer download and protects unavailable recovery without a second approved document prompt', async () => {
+    const h = await playerHarness();
+    const store = { key: 'unavailable-recovery', read: () => null, write: vi.fn(() => false), clear: vi.fn() };
+    const client = { ...h.client, save: vi.fn().mockRejectedValue(new Error('Offline')) };
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} draftStore={store} onSubmitted={vi.fn()} /></Provider>);
+    const cleanExit = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(cleanExit);
+    expect(cleanExit.defaultPrevented).toBe(false);
+    await user.click(screen.getByRole('radio', { name: 'It creates new content instead of only classifying' }));
+    expect(await screen.findByRole('button', { name: 'Download local answers — attempt 1' })).toBeInTheDocument();
+    const unsafeExit = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unsafeExit);
+    expect(unsafeExit.defaultPrevented).toBe(true);
+    const { requestNavigation } = await import('@/lib/navigation-guard');
+    const controller = new AbortController();
+    let decision!: Promise<boolean>;
+    act(() => { decision = requestNavigation({ kind: 'document', signal: controller.signal }); });
+    const dialog = await screen.findByRole('dialog', { name: en.exam.player.leaveTitle });
+    expect(within(dialog).getByText(en.exam.player.leaveRecoveryUnavailable)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Download local answers — attempt 1' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: en.exam.player.leave }));
+    await expect(decision).resolves.toBe(true);
+    const approvedExit = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(approvedExit);
+    expect(approvedExit.defaultPrevented).toBe(false);
+    controller.abort();
+    const laterExit = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(laterExit);
+    expect(laterExit.defaultPrevented).toBe(true);
   });
 
   it('does not grade stale answers when the final save fails', async () => {
@@ -828,6 +888,161 @@ describe('ExamPlayer', () => {
     expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toEqual({ 's1/e1': 'a' });
   });
 
+  it.each(['active', 'different-attempt', 'unavailable'])('retains local answers when a terminal rejection is not confirmed: %s', async (inspection) => {
+    const h = await playerHarness();
+    const session = inspection === 'unavailable'
+      ? vi.fn().mockRejectedValue(new Error('Session unavailable'))
+      : vi.fn().mockResolvedValue({ attemptsUsed: 1, attempt: inspection === 'different-attempt' ? { ...h.attempt, attemptId: 'new-attempt-B', status: 'graded' } : h.attempt });
+    const submit = vi.fn();
+    const client = { ...h.client, session, submit, save: vi.fn().mockRejectedValue(Object.assign(new Error('Terminal not confirmed'), { code: 'DEADLINE_PASSED' })) };
+    const onTerminal = vi.fn();
+    const recovery = vi.fn();
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} onRecoverySnapshot={recovery} /></Provider>);
+    const answer = screen.getByRole('radio', { name: 'It creates new content instead of only classifying' });
+    await user.click(answer);
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    expect(await screen.findByText(en.exam.player.terminalUnconfirmed)).toBeInTheDocument();
+    expect(answer).toBeChecked();
+    expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toEqual({ 's1/e1': 'a' });
+    expect(session).toHaveBeenCalledWith({ bind: false });
+    expect(onTerminal).not.toHaveBeenCalled();
+    expect(recovery).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('preserves the latest own answer on confirmed expiry when quota prevents updating an older journal', async () => {
+    const h = await playerHarness();
+    const draftStore = { key: 'own-old-journal', read: () => ({ 's1/e1': 'b' }), write: vi.fn(() => false), clear: vi.fn() };
+    const client = { ...h.client, session: vi.fn().mockResolvedValue({ attemptsUsed: 1, attempt: { ...h.attempt, status: 'expired', answers: {} } }), save: vi.fn().mockRejectedValue(Object.assign(new Error('Expired'), { code: 'DEADLINE_PASSED' })) };
+    const recovery = vi.fn();
+    const onTerminal = vi.fn();
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} draftStore={draftStore} onSubmitted={vi.fn()} onTerminal={onTerminal} onRecoverySnapshot={recovery} /></Provider>);
+    await user.click(screen.getByRole('radio', { name: 'It creates new content instead of only classifying' }));
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    await waitFor(() => expect(onTerminal).toHaveBeenCalledOnce());
+    expect(recovery).toHaveBeenCalledWith({ attemptId: h.attempt.attemptId, attemptNo: h.attempt.attemptNo, answers: { 's1/e1': 'a' }, verified: true, storageUnavailable: true });
+    expect(draftStore.clear).not.toHaveBeenCalled();
+    expect(draftStore.read()).toEqual({ 's1/e1': 'b' });
+  });
+
+  it('does not report exclusion when terminal server answers already contain a lost-acknowledgement response', async () => {
+    const h = await playerHarness();
+    const client = { ...h.client, session: vi.fn().mockResolvedValue({ attemptsUsed: 1, attempt: { ...h.attempt, status: 'graded', answers: { 's1/e1': 'a' } } }), save: vi.fn().mockRejectedValue(Object.assign(new Error('Already terminal'), { code: 'ATTEMPT_NOT_ACTIVE' })) };
+    const recovery = vi.fn();
+    const onTerminal = vi.fn();
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} onRecoverySnapshot={recovery} /></Provider>);
+    await user.click(screen.getByRole('radio', { name: 'It creates new content instead of only classifying' }));
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    await waitFor(() => expect(onTerminal).toHaveBeenCalledOnce());
+    expect(recovery).not.toHaveBeenCalled();
+    expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toBeNull();
+  });
+
+  it('keeps an oversized answer intact and requires an edit before saving or submitting again', async () => {
+    const h = await playerHarness();
+    const questionId = h.exam.sections[0].questions[0].id;
+    h.exam.sections[0].questions = [{ id: questionId, type: 'essay', points: 1, content: { blocks: [{ type: 'paragraph', content: [{ text: 'Explain your reasoning' }] }] } }];
+    const save = vi.spyOn(h.client, 'save');
+    const submit = vi.spyOn(h.client, 'submit');
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client} runtime={h.runtime} onSubmitted={vi.fn()} /></Provider>);
+    const answer = screen.getByRole('textbox', { name: 'Explain your reasoning' });
+    const oversized = '界'.repeat(23_000);
+    fireEvent.change(answer, { target: { value: oversized } });
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    const dialog = screen.getByRole('dialog', { name: 'Submit exam?' });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('64 KiB');
+    expect(within(dialog).getByRole('button', { name: 'Retry submission' })).toBeDisabled();
+    expect(save).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Keep working' }));
+    expect(answer).toHaveValue(oversized);
+    expect(screen.getByRole('button', { name: 'Submit exam' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Retry save' })).toBeDisabled();
+    fireEvent.change(answer, { target: { value: 'Shortened answer' } });
+    expect(screen.getByRole('button', { name: 'Submit exam' })).toBeEnabled();
+    expect(answer).toHaveValue('Shortened answer');
+  });
+
+  it('does not discard or submit an oversized response from the client countdown when the server still reports an active attempt', async () => {
+    const h = await playerHarness({ timeLimitMinutes: 1 / 60, lateSubmission: 'accept_flagged' });
+    const questionId = h.exam.sections[0].questions[0].id;
+    h.exam.sections[0].questions = [{ id: questionId, type: 'essay', points: 1, content: { blocks: [{ type: 'paragraph', content: [{ text: 'Keep this response' }] }] } }];
+    const session = vi.spyOn(h.client, 'session');
+    const submit = vi.spyOn(h.client, 'submit');
+    const recovery = vi.fn();
+    const onTerminal = vi.fn();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-02T00:00:00.000Z'));
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} onRecoverySnapshot={recovery} /></Provider>);
+    const answer = screen.getByRole('textbox', { name: 'Keep this response' });
+    const oversized = '界'.repeat(23_000);
+    fireEvent.change(answer, { target: { value: oversized } });
+    await act(async () => Promise.resolve());
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(session).toHaveBeenCalledWith({ bind: false });
+    expect(answer).toHaveValue(oversized);
+    expect(onTerminal).not.toHaveBeenCalled();
+    expect(recovery).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
+    expect(screen.getByText(en.exam.player.terminalUnconfirmed)).toBeInTheDocument();
+  });
+
+  it('keeps one pending confirmation and blocks dismissal and navigation until submission settles', async () => {
+    const h = await playerHarness();
+    let rejectSubmit!: (error: Error) => void;
+    const submit = vi.fn(() => new Promise<never>((_resolve, reject) => { rejectSubmit = reject; }));
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={{ ...h.client, submit }} runtime={h.runtime} onSubmitted={vi.fn()} /></Provider>);
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    await waitFor(() => expect(submit).toHaveBeenCalledOnce());
+    const dialog = screen.getByRole('dialog', { name: 'Submit exam?' });
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    expect(within(dialog).getByRole('button', { name: 'Keep working' })).toBeDisabled();
+    await user.keyboard('{Escape}');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    const { requestNavigation } = await import('@/lib/navigation-guard');
+    await expect(requestNavigation()).resolves.toBe(false);
+    await act(async () => { rejectSubmit(new Error('Definitive submission failure')); });
+    expect(await within(dialog).findByRole('button', { name: 'Retry submission' })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: 'Keep working' })).toBeEnabled();
+  });
+
+  it('checks an unknown submission without resaving answers and unlocks only after authoritative confirmation', async () => {
+    const h = await playerHarness();
+    const save = vi.spyOn(h.client, 'save');
+    const submit = vi.fn().mockRejectedValueOnce(Object.assign(new Error('Unconfirmed submission'), { code: 'SUBMIT_OUTCOME_UNKNOWN', ambiguous: true }))
+      .mockImplementationOnce(() => h.client.submit());
+    const onSubmitted = vi.fn();
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={{ ...h.client, submit }} runtime={h.runtime} onSubmitted={onSubmitted} /></Provider>);
+    const answer = screen.getByRole('radio', { name: 'It creates new content instead of only classifying' });
+    await user.click(answer);
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    const dialog = screen.getByRole('dialog', { name: 'Submit exam?' });
+    const check = await within(dialog).findByRole('button', { name: 'Check submission status' });
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('has not been confirmed');
+    expect(within(dialog).getByRole('button', { name: 'Keep working' })).toBeDisabled();
+    expect(answer).toBeChecked();
+    expect(answer).toBeDisabled();
+    const savedCalls = save.mock.calls.length;
+    await user.keyboard('{Escape}');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    await user.click(check);
+    await waitFor(() => expect(onSubmitted).toHaveBeenCalledOnce());
+    expect(save).toHaveBeenCalledTimes(savedCalls);
+    expect(submit).toHaveBeenCalledTimes(2);
+  });
+
   it('flushes a last-second pending answer during grace before automatic submission', async () => {
     const h = await playerHarness({ timeLimitMinutes: 1 / 60, lateSubmission: 'accept_flagged' });
     await h.client.save({ 's1/e1': 'a' });
@@ -863,12 +1078,13 @@ describe('ExamPlayer', () => {
     const save = vi.spyOn(h.client, 'save');
     const submit = vi.spyOn(h.client, 'submit');
     const onTerminal = vi.fn(async () => { await h.client.session(); });
+    const recovery = vi.fn();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-02T00:00:00.000Z'));
 
     render(
       <Provider>
-        <ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} />
+        <ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client} runtime={h.runtime} onSubmitted={vi.fn()} onTerminal={onTerminal} onRecoverySnapshot={recovery} />
       </Provider>,
     );
     await act(async () => Promise.resolve());
@@ -880,7 +1096,8 @@ describe('ExamPlayer', () => {
     expect(submit).not.toHaveBeenCalled();
     expect(screen.getByRole('radio', { name: 'It needs no data' })).toBeDisabled();
     expect((await h.repo.listAnswers(h.attempt.attemptId)).find(({ questionId }) => questionId === 's1/e1')?.answer).toBe('a');
-    expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toBeNull();
+    expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toEqual({ 's1/e1': 'b' });
+    expect(recovery).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, verified: true, answers: { 's1/e1': 'b' } }));
   });
 
   it('stops debounced and periodic saves once final submission begins', async () => {
@@ -951,6 +1168,25 @@ describe('ExamPlayer', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Saved');
     expect(screen.getByRole('status')).not.toHaveTextContent('Saving…');
+    expect(screen.queryByRole('dialog', { name: 'Submit exam?' })).not.toBeInTheDocument();
+    expect(screen.getByText(en.exam.flow.loadingReview)).toBeInTheDocument();
+  });
+
+  it('retries only review loading after an acknowledged submission callback fails', async () => {
+    const h = await playerHarness();
+    const submit = vi.spyOn(h.client, 'submit');
+    const onSubmitted = vi.fn().mockRejectedValueOnce(new Error('Review unavailable')).mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client} runtime={h.runtime} onSubmitted={onSubmitted} /></Provider>);
+    await user.click(screen.getByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    const retry = await screen.findByRole('button', { name: en.exam.flow.retryReview });
+    expect(screen.getByRole('alert')).toHaveTextContent(en.exam.flow.reviewError);
+    expect(screen.queryByText(en.exam.player.submitError)).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Submit exam?' })).not.toBeInTheDocument();
+    await user.click(retry);
+    await waitFor(() => expect(onSubmitted).toHaveBeenCalledTimes(2));
+    expect(submit).toHaveBeenCalledOnce();
   });
 
   it('announces timer warnings and auto-submits exactly once at zero', async () => {
@@ -1779,12 +2015,12 @@ describe('ExamFlow', () => {
     expect(start).not.toHaveBeenCalled();
   });
 
-  it('restores the latest terminal attempt into review without creating another attempt', async () => {
+  it('restores the latest terminal attempt and clears an already accepted journal without creating another attempt', async () => {
     const h = await playerHarness();
-    const terminal = { ...h.attempt, status: 'pending_manual' as const };
+    const terminal = { ...h.attempt, status: 'pending_manual' as const, answers: { 's1/e1': 'a' } };
     const start = vi.fn();
     const draftStore = createPendingExamDraftStore(terminal.attemptId);
-    draftStore.write({ 's1/e1': 'pending' });
+    draftStore.write({ 's1/e1': 'a' });
     const client = {
       ...h.client,
       session: vi.fn().mockResolvedValue({ attemptsUsed: 1, attempt: terminal }),
@@ -1794,7 +2030,7 @@ describe('ExamFlow', () => {
         status: 'pending_manual' as const,
         late: false,
         released: false,
-        answers: {},
+        answers: terminal.answers,
         revealed: {},
       }),
     };
@@ -1808,6 +2044,7 @@ describe('ExamFlow', () => {
     expect(await screen.findByText('Awaiting grading')).toBeInTheDocument();
     expect(start).not.toHaveBeenCalled();
     expect(draftStore.read()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download local answers — attempt 1' })).not.toBeInTheDocument();
   });
 
   it('retries review loading for a restored submitted attempt', async () => {
@@ -1881,6 +2118,67 @@ describe('ExamFlow', () => {
 
     expect(start).toHaveBeenCalledOnce();
     expect(await screen.findByRole('navigation', { name: 'Question palette' })).toBeInTheDocument();
+  });
+
+  it('keeps terminal recovery alongside review and never applies it to a new attempt', async () => {
+    const h = await playerHarness({ attemptsAllowed: 2 });
+    createPendingExamDraftStore(h.attempt.attemptId).write({ 's1/e1': 'Unaccepted own response' });
+    const terminal = { ...h.attempt, status: 'graded', answers: {} };
+    const next = { ...h.attempt, attemptId: 'next-attempt', attemptNo: 2, answers: {} };
+    const client = { ...h.client, session: vi.fn().mockResolvedValue({ attemptsUsed: 1, attempt: terminal }), start: vi.fn().mockResolvedValue(next), review: vi.fn().mockResolvedValue({ attemptId: h.attempt.attemptId, status: 'graded', late: false, released: false, answers: {}, revealed: {} }) };
+    const user = userEvent.setup();
+    render(<Provider><ExamFlow exam={h.exam} attemptsUsed={1} client={client} runtime={h.runtime} /></Provider>);
+    expect(await screen.findByRole('button', { name: 'Download local answers — attempt 1' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Start next attempt' }));
+    await screen.findByRole('button', { name: 'Submit exam' });
+    for (const answer of screen.getAllByRole('radio')) expect(answer).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Download local answers — attempt 1' })).toBeInTheDocument();
+    expect(createPendingExamDraftStore('next-attempt').read()).toBeNull();
+    expect(createPendingExamDraftStore(h.attempt.attemptId).read()).toEqual({ 's1/e1': 'Unaccepted own response' });
+  });
+
+  it('reports an authoritative active restore once per attempt without starting another attempt', async () => {
+    const h = await playerHarness();
+    const confirmed = vi.fn();
+    const session = vi.spyOn(h.client, 'session');
+    const start = vi.spyOn(h.client, 'start');
+    const view = render(<Provider><ExamFlow exam={h.exam} attemptsUsed={0} client={h.client} runtime={h.runtime} onConfirmedActive={confirmed} /></Provider>);
+    await screen.findByRole('button', { name: 'Submit exam' });
+    await waitFor(() => expect(confirmed).toHaveBeenCalledOnce());
+    expect(confirmed).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, status: 'in_progress' }));
+    view.rerender(<Provider><ExamFlow exam={h.exam} attemptsUsed={0} client={{ ...h.client }} runtime={h.runtime} onConfirmedActive={confirmed} /></Provider>);
+    await waitFor(() => expect(session).toHaveBeenCalledTimes(2));
+    await screen.findByRole('button', { name: 'Submit exam' });
+    expect(confirmed).toHaveBeenCalledOnce();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('reports an active start only after the server confirms the attempt', async () => {
+    const h = await playerHarness();
+    const confirmed = vi.fn();
+    const client = { ...h.client, session: vi.fn().mockResolvedValue({ attemptsUsed: 0, attempt: null }), start: vi.fn().mockResolvedValue(h.attempt) };
+    const user = userEvent.setup();
+    render(<Provider><ExamFlow exam={h.exam} attemptsUsed={0} client={client} runtime={h.runtime} onConfirmedActive={confirmed} /></Provider>);
+    const start = await screen.findByRole('button', { name: 'Start exam' });
+    expect(confirmed).not.toHaveBeenCalled();
+    await user.click(start);
+    await screen.findByRole('button', { name: 'Submit exam' });
+    await waitFor(() => expect(confirmed).toHaveBeenCalledOnce());
+    expect(confirmed).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, status: 'in_progress' }));
+  });
+
+  it('refreshes availability after a resumed attempt is submitted and reports its confirmed review once', async () => {
+    const h = await playerHarness({ attemptsAllowed: 2, openAt: '2026-09-01T00:00:00.000Z', closeAt: '2026-09-03T00:00:00.000Z' });
+    const confirmed = vi.fn();
+    const serverNow = vi.spyOn(h.client, 'serverNow');
+    const user = userEvent.setup();
+    render(<Provider><ExamFlow exam={h.exam} attemptsUsed={1} client={h.client} runtime={h.runtime} onConfirmedTerminal={confirmed} /></Provider>);
+    await user.click(await screen.findByRole('button', { name: 'Submit exam' }));
+    await user.click(screen.getByRole('button', { name: 'Submit now' }));
+    expect(await screen.findByRole('button', { name: 'Start next attempt' })).toBeEnabled();
+    expect(serverNow).toHaveBeenCalled();
+    await waitFor(() => expect(confirmed).toHaveBeenCalledOnce());
+    expect(confirmed).toHaveBeenCalledWith(expect.objectContaining({ attemptId: h.attempt.attemptId, status: 'graded' }));
   });
 
   it('does not offer another attempt after terminal review at the attempt limit', async () => {
@@ -1961,6 +2259,7 @@ describe('ExamFlow', () => {
     const service = createExamService({
       repo,
       clock,
+      track: async () => {},
       bank: bankSource,
       loadItem: async () => itemContext(item),
       isEnrolled: async () => true,

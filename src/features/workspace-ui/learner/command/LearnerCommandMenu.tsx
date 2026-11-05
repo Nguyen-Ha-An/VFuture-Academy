@@ -20,7 +20,7 @@ function SearchGlyph() {
  * (learner.css). The palette (LearnerCommandDialog, cmdk) is lazy so it stays out of the shell chunk.
  * ⌘K never opens over a modal or while the learner types in a field or editor.
  */
-export function LearnerCommandMenu({ destinations }: { destinations?: LearnerCommandDestinations }) {
+export function LearnerCommandMenu({ destinations, onOpenAccount }: { destinations?: LearnerCommandDestinations; onOpenAccount?: (returnFocusElement: HTMLElement | null) => void }) {
   const t = useTranslations('bench.learner.shell');
   const [open, setOpen] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -54,7 +54,7 @@ export function LearnerCommandMenu({ destinations }: { destinations?: LearnerCom
     {requested ? <Suspense fallback={null}>
       {/* Without a Radix DialogTrigger the dialog cannot find its opener, so closing hands focus back
        * here explicitly (also after ⌘K from the page body); a route change then moves it to the h1. */}
-      <LearnerCommandDialog open={open} onOpenChange={setMenuOpen} destinations={destinations} returnFocus={() => triggerRef.current?.focus()} />
+      <LearnerCommandDialog open={open} onOpenChange={setMenuOpen} destinations={destinations} returnFocus={() => triggerRef.current?.focus()} onOpenAccount={onOpenAccount ? () => onOpenAccount(triggerRef.current) : undefined} />
     </Suspense> : null}
   </>;
 }

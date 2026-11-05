@@ -32,7 +32,7 @@ export function EditorPageHeader({ backHref, backLabel, title, eyebrow, status, 
         <div className="flex min-w-0 flex-col gap-1">
           {eyebrow ? <p className="text-sm font-medium leading-normal text-muted-foreground">{eyebrow}</p> : null}
           <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <h1 className="break-words text-2xl font-bold leading-[1.4] tracking-tight">{title}</h1>
+            <h1 tabIndex={-1} className="break-words text-2xl font-bold leading-[1.4] tracking-tight">{title}</h1>
             {status ? <StatusBadge kind={status.kind} value={status.value} label={status.label} /> : null}
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { AssignmentTarget } from '../assignment-contracts';
 import { allowedSubmissionUrl } from '../assignment-contracts';
 import type { QuestionRendererProps } from '../registry';
@@ -28,6 +28,7 @@ export interface SubmissionFieldsProps {
   disabled?: boolean;
   runtime: QuestionRendererProps['runtime'];
   assignmentTarget?: AssignmentTarget;
+  uploadQuestionId?: string;
   maxFiles?: number;
   maxFileSizeMB?: number;
   allowedMimeTypes?: string[];
@@ -43,6 +44,7 @@ export function SubmissionFields({
   disabled,
   runtime,
   assignmentTarget,
+  uploadQuestionId,
   maxFiles = 3,
   maxFileSizeMB = 20,
   allowedMimeTypes,
@@ -66,10 +68,6 @@ export function SubmissionFields({
     onChange(next);
   };
 
-  useEffect(() => {
-    onUploadBusyChange?.(uploads.some(({ status }) => status === 'uploading'));
-  }, [onUploadBusyChange, uploads]);
-
   const updateUpload = (id: string, update: Partial<UploadState>) => {
     setUploads((current) => current.map((entry) => entry.id === id ? { ...entry, ...update } : entry));
   };
@@ -77,31 +75,40 @@ export function SubmissionFields({
   const beginUpload = (file: File, existingId?: string) => {
     const id = existingId ?? `${file.name}:${file.size}:${file.lastModified}:${sequenceRef.current++}`;
     if (activeUploadIdsRef.current.has(id)) return;
+    const firstActive = activeUploadIdsRef.current.size === 0;
     activeUploadIdsRef.current.add(id);
+    if (firstActive) onUploadBusyChange?.(true);
+    const notifyPending = runtime.onAnswerUploadPending;
+    notifyPending?.(1);
     const controller = new AbortController();
     const entry: UploadState = { id, file, status: 'uploading', percent: 0, controller };
     setUploads((current) => existingId
       ? current.map((candidate) => candidate.id === id ? entry : candidate)
       : [...current, entry]);
-    const upload = assignmentTarget
-      ? runtime.uploadAssignmentFile(assignmentTarget, file, {
-        signal: controller.signal,
-        onProgress: ({ percent }) => updateUpload(id, { percent }),
-      })
-      : runtime.uploadFile(file);
+    let upload: ReturnType<typeof runtime.uploadFile>;
+    try {
+      upload = assignmentTarget
+        ? runtime.uploadAssignmentFile(assignmentTarget, file, {
+          signal: controller.signal,
+          onProgress: ({ percent }) => updateUpload(id, { percent }),
+        })
+        : runtime.uploadFile(file, { questionId: uploadQuestionId, signal: controller.signal, onProgress: ({ percent }) => updateUpload(id, { percent }) });
+    } catch (cause) { upload = Promise.reject(cause); }
     void upload.then((uploaded) => {
       const current = valueRef.current;
       const next = { ...current, files: [...(current.files ?? []), uploaded] };
       emit(next);
-      activeUploadIdsRef.current.delete(id);
       setUploads((pending) => pending.filter((candidate) => candidate.id !== id));
     }).catch((uploadError: unknown) => {
       const cancelled = typeof uploadError === 'object'
         && uploadError !== null
         && 'code' in uploadError
         && uploadError.code === 'UPLOAD_CANCELLED';
-      activeUploadIdsRef.current.delete(id);
       updateUpload(id, { status: cancelled ? 'cancelled' : 'failed' });
+    }).finally(() => {
+      activeUploadIdsRef.current.delete(id);
+      notifyPending?.(-1);
+      if (activeUploadIdsRef.current.size === 0) onUploadBusyChange?.(false);
     });
   };
 
@@ -163,7 +170,7 @@ export function SubmissionFields({
           <ul className="mt-2 space-y-2 text-sm">
             {files.map((file) => (
               <li key={file.assetId} className="flex items-center gap-2">
-                <span>{file.name}</span>
+                <a href={runtime.resolveMedia({ assetId: file.assetId })} target="_blank" rel="noopener noreferrer" className="break-words text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{file.name}</a>
                 <span className="text-muted-foreground">({Math.ceil(file.size / 1024)} KB)</span>
                 {!disabled ? <button type="button" onClick={() => emit({ ...valueRef.current, files: (valueRef.current.files ?? []).filter((candidate) => candidate.assetId !== file.assetId) })} className="text-destructive underline">{t(L, 'xoá', 'remove')}</button> : null}
               </li>
@@ -207,5 +214,5 @@ export function SubmissionFields({
 export function UploadAnswer(props: QuestionRendererProps<UploadAnswerQuestion>) {
   const { question: q, value, onChange, disabled, runtime } = props;
   const assignmentPayload = (value && typeof value === 'object' ? value : {}) as AssignmentPayload;
-  return <QuestionFrame {...props}><SubmissionFields accepts={q.accepts} value={assignmentPayload} onChange={onChange} disabled={disabled} runtime={runtime} maxFiles={q.maxFiles} maxFileSizeMB={q.maxFileSizeMB} allowedMimeTypes={q.allowedMimeTypes} linkHosts={q.linkHosts} />{q.rubric ? <RubricTable rubric={q.rubric} locale={runtime.locale} /> : null}</QuestionFrame>;
+  return <QuestionFrame {...props}><SubmissionFields accepts={q.accepts} value={assignmentPayload} onChange={onChange} disabled={disabled} runtime={runtime} uploadQuestionId={q.id} maxFiles={q.maxFiles} maxFileSizeMB={q.maxFileSizeMB} allowedMimeTypes={q.allowedMimeTypes} linkHosts={q.linkHosts} />{q.rubric ? <RubricTable rubric={q.rubric} locale={runtime.locale} /> : null}</QuestionFrame>;
 }

@@ -4,6 +4,10 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import "@testing-library/jest-dom/vitest";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { CanvasProvider } from "@/features/canvas/ui/CanvasProvider";
+import { registerNavigationGuard } from "@/lib/navigation-guard";
+import { applyStaffTheme } from "@/features/staff-ui/theme-client";
+import { applyWorkspaceTheme } from "@/features/workspace-ui/ui/ThemeSwitcher";
 import { StaffCommandMenu } from "@/features/staff-ui/ui/StaffCommandMenu";
 import type { Permission } from "@/lib/permissions";
 import type { WorkspaceEntries } from "@/lib/workspace-navigation";
@@ -16,24 +20,13 @@ const mocks = vi.hoisted(() => ({
   pathname: "/studio",
   push: vi.fn(),
   requestNavigation: vi.fn<() => Promise<boolean>>(),
-  applyStaffTheme: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
+  useServerInsertedHTML: () => undefined,
   usePathname: () => mocks.pathname,
   useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: mocks.push, replace: vi.fn(), refresh: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }),
-}));
-
-vi.mock("@/lib/navigation-guard", () => ({
-  requestNavigation: mocks.requestNavigation,
-  registerNavigationGuard: () => () => {},
-}));
-
-vi.mock("@/features/staff-ui/theme-client", () => ({
-  applyStaffTheme: mocks.applyStaffTheme,
-  // The real hook's setter is applyStaffTheme plus local state.
-  useStaffTheme: (initial: string) => [initial, (next: string) => mocks.applyStaffTheme(next)],
 }));
 
 beforeAll(() => {
@@ -44,16 +37,22 @@ beforeAll(() => {
   Element.prototype.releasePointerCapture ??= () => {};
 });
 
+let unregisterGuard: () => void = () => {};
+
 beforeEach(() => {
   mocks.pathname = "/studio";
   mocks.push.mockReset();
   mocks.requestNavigation.mockReset().mockResolvedValue(true);
-  mocks.applyStaffTheme.mockReset();
+  // Keep the production dispatcher real; this registered consumer controls Stay/Leave.
+  unregisterGuard = registerNavigationGuard(mocks.requestNavigation);
+  window.history.replaceState({}, "", "/studio");
 });
 
 afterEach(() => {
   cleanup();
+  unregisterGuard();
   vi.restoreAllMocks();
+  document.cookie = "vf-theme=; max-age=0; path=/";
 });
 
 const ALL_ENTRIES: WorkspaceEntries = { studio: "/studio", grading: "/grading", admin: "/admin" };
@@ -67,8 +66,10 @@ function renderMenu({
 }: { workspace?: StaffWorkspace; permissions?: Permission[]; entries?: WorkspaceEntries; locale?: "en" | "vi"; extra?: ReactNode } = {}) {
   return render(
     <NextIntlClientProvider locale={locale} messages={staffUiTestMessages(locale === "en" ? en : viMessages, locale)}>
-      <StaffCommandMenu workspace={workspace} permissions={permissions} entries={entries} />
-      {extra}
+      <CanvasProvider theme="system"><div className="vf-staff">
+        <StaffCommandMenu workspace={workspace} permissions={permissions} entries={entries} />
+        {extra}
+      </div></CanvasProvider>
     </NextIntlClientProvider>,
   );
 }
@@ -232,24 +233,37 @@ describe("StaffCommandDialog content", () => {
 });
 
 describe("StaffCommandDialog actions", () => {
-  it("asks the unsaved-changes guard before router.push and closes", async () => {
+  it("exits the actual dialog before asking the unsaved-changes guard and pushes once", async () => {
+    const dialogsAtGuard: Array<HTMLElement | null> = [];
+    mocks.requestNavigation.mockImplementation(async () => {
+      dialogsAtGuard.push(screen.queryByRole("dialog", { name: "Command menu" }));
+      return true;
+    });
     renderMenu();
     await openPalette();
     fireEvent.click(option("Courses")!);
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/studio/courses"));
     expect(mocks.requestNavigation).toHaveBeenCalledTimes(1);
+    expect(dialogsAtGuard).toEqual([null]);
+    expect(mocks.push).toHaveBeenCalledOnce();
     expect(mocks.requestNavigation.mock.invocationCallOrder[0]).toBeLessThan(mocks.push.mock.invocationCallOrder[0]);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("stays put when the guard refuses", async () => {
-    mocks.requestNavigation.mockResolvedValue(false);
+    const dialogsAtGuard: Array<HTMLElement | null> = [];
+    mocks.requestNavigation.mockImplementation(async () => {
+      dialogsAtGuard.push(screen.queryByRole("dialog", { name: "Command menu" }));
+      return false;
+    });
     renderMenu();
     await openPalette();
     fireEvent.click(option("Assessment & grading")!);
     await waitFor(() => expect(mocks.requestNavigation).toHaveBeenCalled());
     await act(async () => {});
+    expect(dialogsAtGuard).toEqual([null]);
     expect(mocks.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Search" })).toHaveFocus());
   });
 
   it("links quick actions to their existing routes", async () => {
@@ -269,14 +283,54 @@ describe("StaffCommandDialog actions", () => {
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
-  it("applies theme preferences through applyStaffTheme without navigating", async () => {
-    renderMenu();
+  it("applies the actual theme helper without navigation and marks the choice on reopen", async () => {
+    const { container } = renderMenu();
     await openPalette();
     fireEvent.click(option("Dark theme")!);
-    expect(mocks.applyStaffTheme).toHaveBeenCalledWith("dark");
+    expect(container.querySelector('.vf-staff')).toHaveAttribute('data-theme', 'dark');
+    expect(document.cookie).toContain('vf-theme=dark');
     expect(mocks.requestNavigation).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await openPalette();
+    expect(option(/^Dark theme\s*Current$/)).toBeInTheDocument();
   });
+
+  it("keeps Current markers synchronized with both actual theme event sources", async () => {
+    const { container } = renderMenu();
+    await openPalette();
+    act(() => applyWorkspaceTheme('dark'));
+    expect(option(/^Dark theme\s*Current$/)).toBeInTheDocument();
+    expect(option(/^Use system theme\s*Current$/)).not.toBeInTheDocument();
+    expect(container.querySelector('.vf-staff')).toHaveAttribute('data-theme', 'dark');
+    act(() => applyStaffTheme('light'));
+    expect(option(/^Light theme\s*Current$/)).toBeInTheDocument();
+    expect(option(/^Dark theme\s*Current$/)).not.toBeInTheDocument();
+    expect(document.cookie).toContain('vf-theme=light');
+  });
+
+  it("restores focus to the real trigger after a keyboard-opened dialog exits", async () => {
+    renderMenu();
+    const dialog = await openPalette();
+    fireEvent.keyDown(within(dialog).getByRole('combobox'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Search' })).toHaveFocus());
+  });
+
+  it("ignores an old route approval after a new palette session opens", async () => {
+    let finish: ((allowed: boolean) => void) | undefined;
+    mocks.requestNavigation.mockImplementation(() => new Promise<boolean>(resolve => { finish = resolve; }));
+    renderMenu();
+    try {
+      await openPalette();
+      fireEvent.click(option('Courses')!);
+      await waitFor(() => expect(mocks.requestNavigation).toHaveBeenCalledOnce());
+      await openPalette();
+      await act(async () => { finish?.(true); });
+      expect(screen.getByRole('dialog', { name: 'Command menu' })).toBeInTheDocument();
+      expect(mocks.push).not.toHaveBeenCalled();
+    } finally { await act(async () => { finish?.(false); }); }
+  });
+
 });
 
 describe("StaffCommandMenu bundle boundary", () => {

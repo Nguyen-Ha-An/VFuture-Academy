@@ -1,0 +1,756 @@
+{
+  "schemaVersion": 1,
+  "kind": "source-only-non-api-backend-route-audit",
+  "sourceHead": "bc61984 plus current working tree",
+  "scope": "Every explicit method in src/app/**/route.ts outside src/app/api, including hidden .well-known directories. Complements the195-API-method inventory.",
+  "counts": {
+    "routeFiles": 7,
+    "methodPathPairs": 7,
+    "byMethod": {
+      "GET": 6,
+      "POST": 1
+    },
+    "byDisposition": {
+      "source-only": 5,
+      "external-blocked": 2
+    },
+    "combinedExplicitBackendMethodPairs": 202,
+    "combinedRouteFiles": 170
+  },
+  "boundaries": [
+    "Source-only reads/static enumeration; no auth/product/runtime/production actions performed.",
+    "Implicit framework-generated HEAD/OPTIONS, image conventions and non-route.ts platform functions are not added to this explicit route-export count.",
+    "Provider callbacks/recovery and SDK-mocked tests are not proof of external sign-in, provisioning, inbox or recovery behavior.",
+    "No secrets, session values, user IDs, provider codes, OTPs or answer content are copied.",
+    "API195 does not mean total backend195; this separate7-method audit makes total explicit app route exports202.",
+    "UI Stay0requests does not prove successful signout HTTP."
+  ],
+  "sourceEnumeration": {
+    "expectedMethodPairs": 7,
+    "omitted": [
+      [
+        "GET",
+        "/.well-known/oauth-protected-resource"
+      ],
+      [
+        "GET",
+        "/.well-known/oauth-protected-resource/api/mcp"
+      ]
+    ],
+    "extra": [],
+    "includesHiddenDirectories": true
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/.well-known/oauth-protected-resource",
+      "routeSource": {
+        "file": "src/app/.well-known/oauth-protected-resource/route.ts",
+        "line": 6
+      },
+      "sourceSha256": "b16432611f1d6280ea88acfad0749a46b4b8bb6e5d754b1ab85b56ba2bc4fd36",
+      "productionConsumers": [
+        {
+          "file": "src/features/studio-mcp/http/challenge.ts",
+          "line": 21,
+          "kind": "OAuth protected-resource discovery/WWW-Authenticate protocol",
+          "method": "GET",
+          "boundary": "MCP-specific metadata path is advertised by the bearer challenge; root path is the equivalent discovery alias. External protocol clients, not an owned account mutation UI."
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/features/studio-mcp/config.ts",
+            "line": 12
+          },
+          {
+            "file": "src/features/studio-mcp/config.ts",
+            "line": 16
+          },
+          {
+            "file": "src/features/studio-mcp/http/challenge.ts",
+            "line": 9
+          }
+        ],
+        "rules": [
+          "No request body or identity input. Feature flag must be enabled, else404/no-store.",
+          "Resource URL must be configured/canonical HTTPS or approved loopback HTTP and exact /api/mcp path without query/hash/userinfo.",
+          "Configured Azure issuer/scope or legacy Auth issuer constructs fixed metadata; configuration error returns503 generic JSON."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/features/studio-mcp/http/challenge.ts",
+            "line": 9
+          }
+        ],
+        "sqlOperations": [],
+        "boundary": "Config-derived public resource/authorization_servers/scopes_supported/bearer_methods_supported only; no provider token exchange, active-user admission or business data read occurs."
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/app/.well-known/oauth-protected-resource/route.ts",
+            "line": 8
+          },
+          {
+            "file": "src/features/studio-mcp/http/challenge.ts",
+            "line": 20
+          }
+        ],
+        "rules": [
+          "Discovery document does not authenticate or authorize a caller. Actual MCP POST bearer validation is a separate API route.",
+          "Both aliases emit the same no-store metadata; this is not external SSO/provider acceptance."
+        ]
+      },
+      "responseContract": "Response.json(config-derived metadata),404 when disabled or503 generic unavailable; Cache-Control:no-store.",
+      "existingTests": [
+        {
+          "file": "tests/features/studio-mcp/metadata.test.ts",
+          "line": 58,
+          "evidence": "Direct unit invocation of both GET exports under fixture configuration, including200/404. Not current deployed protocol proof."
+        },
+        {
+          "file": "tests/features/studio-mcp/http-route.test.ts",
+          "line": 42,
+          "evidence": "Bearer challenge source/unit expectation; no live authorization flow inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "source-only",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "No fresh actual-Next discovery HTTP receipt supplied; unit/mock environment and API rejection census do not cover these non-API routes.",
+        "pending": "Separate source-consistent non-API HTTP/protocol checks if authorized."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/.well-known/oauth-protected-resource/api/mcp",
+      "routeSource": {
+        "file": "src/app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+        "line": 6
+      },
+      "sourceSha256": "b16432611f1d6280ea88acfad0749a46b4b8bb6e5d754b1ab85b56ba2bc4fd36",
+      "productionConsumers": [
+        {
+          "file": "src/features/studio-mcp/http/challenge.ts",
+          "line": 21,
+          "kind": "OAuth protected-resource discovery/WWW-Authenticate protocol",
+          "method": "GET",
+          "boundary": "MCP-specific metadata path is advertised by the bearer challenge; root path is the equivalent discovery alias. External protocol clients, not an owned account mutation UI."
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/features/studio-mcp/config.ts",
+            "line": 12
+          },
+          {
+            "file": "src/features/studio-mcp/config.ts",
+            "line": 16
+          },
+          {
+            "file": "src/features/studio-mcp/http/challenge.ts",
+            "line": 9
+          }
+        ],
+        "rules": [
+          "No request body or identity input. Feature flag must be enabled, else404/no-store.",
+          "Resource URL must be configured/canonical HTTPS or approved loopback HTTP and exact /api/mcp path without query/hash/userinfo.",
+          "Configured Azure issuer/scope or legacy Auth issuer constructs fixed metadata; configuration error returns503 generic JSON."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/features/studio-mcp/http/challenge.ts",
+            "line": 9
+          }
+        ],
+        "sqlOperations": [],
+        "boundary": "Config-derived public resource/authorization_servers/scopes_supported/bearer_methods_supported only; no provider token exchange, active-user admission or business data read occurs."
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+            "line": 8
+          },
+          {
+            "file": "src/features/studio-mcp/http/challenge.ts",
+            "line": 20
+          }
+        ],
+        "rules": [
+          "Discovery document does not authenticate or authorize a caller. Actual MCP POST bearer validation is a separate API route.",
+          "Both aliases emit the same no-store metadata; this is not external SSO/provider acceptance."
+        ]
+      },
+      "responseContract": "Response.json(config-derived metadata),404 when disabled or503 generic unavailable; Cache-Control:no-store.",
+      "existingTests": [
+        {
+          "file": "tests/features/studio-mcp/metadata.test.ts",
+          "line": 58,
+          "evidence": "Direct unit invocation of both GET exports under fixture configuration, including200/404. Not current deployed protocol proof."
+        },
+        {
+          "file": "tests/features/studio-mcp/http-route.test.ts",
+          "line": 42,
+          "evidence": "Bearer challenge source/unit expectation; no live authorization flow inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "source-only",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "No fresh actual-Next discovery HTTP receipt supplied; unit/mock environment and API rejection census do not cover these non-API routes.",
+        "pending": "Separate source-consistent non-API HTTP/protocol checks if authorized."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/auth/callback",
+      "routeSource": {
+        "file": "src/app/auth/callback/route.ts",
+        "line": 29
+      },
+      "sourceSha256": "7ee225b75e6c40782655808c539ecaa797e96e89e558d17f6d374cf5f7cb9450",
+      "productionConsumers": [
+        {
+          "file": "src/lib/identity/oidc.ts",
+          "line": 39,
+          "kind": "external OIDC authorization redirect URI",
+          "method": "GET"
+        },
+        {
+          "file": "src/lib/identity/legacy-popup.ts",
+          "line": 42,
+          "kind": "Supabase OAuth callback URL",
+          "method": "GET"
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 40
+          },
+          {
+            "file": "src/lib/identity/oidc.ts",
+            "line": 155
+          },
+          {
+            "file": "src/app/auth/callback/route.ts",
+            "line": 10
+          }
+        ],
+        "rules": [
+          "Azure validates canonical origin, bounded state/browser cookie, consumes one-use transaction before exchange, checks provider/code bounds, PKCE verifier and nonce.",
+          "verifyIdToken checks signature/algorithm/key plus issuer/tenant/audience/lifetime/nonce; identity resolution is service-owned.",
+          "Legacy branch permits only explicit OTP types, consumes popup context when present, exchanges code or verifies OTP, verifies user and reads profile state before redirect.",
+          "next uses safeInternalPath and canonical auth redirect origin; callback failures return protocol-safe generic errors."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/lib/identity/store.ts",
+            "line": 18
+          },
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 65
+          },
+          {
+            "file": "src/lib/identity/store.ts",
+            "line": 43
+          }
+        ],
+        "sqlOperations": [
+          "academy_identity_consume_login atomically consumes hashed transaction.",
+          "academy_identity_create_session stores hashed session handle and server-side encrypted refresh state; no session value is copied to this audit."
+        ],
+        "sqlDefinitionRefs": [
+          {
+            "file": "src/lib/identity/schema.sql",
+            "line": 49
+          },
+          {
+            "file": "src/lib/identity/schema.sql",
+            "line": 92
+          },
+          {
+            "file": "src/lib/identity/schema.sql",
+            "line": 71
+          },
+          {
+            "file": "src/lib/identity/schema.sql",
+            "line": 60
+          }
+        ]
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 53
+          },
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 60
+          },
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 67
+          }
+        ],
+        "rules": [
+          "New cookie is issued only after verified identity resolution; previous local session revoked.",
+          "No callback/browser state is accepted as proof of the account owner without provider verification."
+        ],
+        "identitySqlRoleBoundary": {
+          "refs": [
+            {
+              "file": "src/lib/identity/schema.sql",
+              "line": 148
+            },
+            {
+              "file": "src/lib/identity/schema.sql",
+              "line": 151
+            }
+          ],
+          "sourceRule": "Private identity tables/functions are not granted to anon/authenticated; explicit function signatures grant only service_role. Applied database grants remain a separate live-state check."
+        }
+      },
+      "responseContract": "Protocol redirect, popup completion, JSON error or generated binary image as cited; not the /api/v1 ok(data) contract.",
+      "existingTests": [
+        {
+          "file": "tests/features/auth.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        },
+        {
+          "file": "tests/features/auth-server.test.ts",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "external-blocked",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "Provider code/OTP redemption, identity provisioning and inbox/recovery acceptance remain external and unproven by this local audit.",
+        "pending": "No fresh non-API HTTP census/positive-local receipt supplied. Authenticated UI Stay/zero-request observations do not prove this endpoint executed."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/auth/login",
+      "routeSource": {
+        "file": "src/app/auth/login/route.ts",
+        "line": 3
+      },
+      "sourceSha256": "754cfe42142327d8acac6919045e9a35cd6528debf44332a791980907f8f2656",
+      "productionConsumers": [
+        {
+          "file": "src/components/AzureAuthPanel.tsx",
+          "line": 107,
+          "kind": "popup UI navigation",
+          "method": "GET"
+        },
+        {
+          "file": "src/components/AuthForm.tsx",
+          "line": 168,
+          "kind": "legacy/common auth popup navigation",
+          "method": "GET"
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 14
+          },
+          {
+            "file": "src/lib/identity/legacy-popup.ts",
+            "line": 30
+          },
+          {
+            "file": "src/lib/identity/popup-contract.ts",
+            "line": 2
+          }
+        ],
+        "rules": [
+          "Backend provider switch: current Azure or legacy Supabase popup path.",
+          "Azure requires canonical app origin, provider google/microsoft, valid optional popup attempt; request rate limit before provider metadata/auth redirect.",
+          "authorizationRequest creates random state/nonce/PKCE verifier and sanitizes next destination. Legacy popup requires signed expiring display context and trusted Supabase OAuth destination."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 29
+          },
+          {
+            "file": "src/lib/identity/oidc.ts",
+            "line": 61
+          },
+          {
+            "file": "src/lib/identity/store.ts",
+            "line": 15
+          }
+        ],
+        "sqlOperations": [
+          "academy_identity_start_login stores hashed state/browser transaction; external provider metadata/auth endpoint remains separate."
+        ],
+        "sqlDefinitionRefs": [
+          {
+            "file": "src/lib/identity/schema.sql",
+            "line": 42
+          }
+        ]
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 18
+          },
+          {
+            "file": "src/lib/identity/legacy-popup.ts",
+            "line": 16
+          }
+        ],
+        "rules": [
+          "No user session is proven by requesting the login redirect.",
+          "Popup display correlation is distinct from authentication. Canonical-origin HttpOnly cookie and state transaction precede external exchange."
+        ],
+        "identitySqlRoleBoundary": {
+          "refs": [
+            {
+              "file": "src/lib/identity/schema.sql",
+              "line": 148
+            },
+            {
+              "file": "src/lib/identity/schema.sql",
+              "line": 151
+            }
+          ],
+          "sourceRule": "Private identity tables/functions are not granted to anon/authenticated; explicit function signatures grant only service_role. Applied database grants remain a separate live-state check."
+        }
+      },
+      "responseContract": "Protocol redirect, popup completion, JSON error or generated binary image as cited; not the /api/v1 ok(data) contract.",
+      "existingTests": [
+        {
+          "file": "tests/features/auth-popup.test.ts",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        },
+        {
+          "file": "tests/features/auth.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "external-blocked",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "External Microsoft/Google/Entra/Supabase identity flow not established by disposable preseeded sessions. No new sign-in request was attempted.",
+        "pending": "No fresh non-API HTTP census/positive-local receipt supplied. Authenticated UI Stay/zero-request observations do not prove this endpoint executed."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/auth/recovery",
+      "routeSource": {
+        "file": "src/app/auth/recovery/route.ts",
+        "line": 11
+      },
+      "sourceSha256": "52e79361d172f01ea7a029d758abb66073b51e527b9d6da660fa81adc1e6660c",
+      "productionConsumers": [
+        {
+          "file": "src/components/ForgotPasswordForm.tsx",
+          "line": 22,
+          "kind": "legacy password-reset email redirect target",
+          "method": "GET"
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/app/auth/recovery/route.ts",
+            "line": 11
+          },
+          {
+            "file": "src/lib/auth-redirect-origin.ts",
+            "line": 22
+          }
+        ],
+        "rules": [
+          "Current Azure branch redirects303 to /forgot-password without redeeming a legacy recovery grant.",
+          "Legacy branch requires code or token_hash with exact recovery type; provider error/missing/expired/reused grant returns the same expired form destination.",
+          "Canonical auth origin is used; successful legacy redemption redirects to the existing reset-password page."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/app/auth/recovery/route.ts",
+            "line": 30
+          },
+          {
+            "file": "src/app/auth/recovery/route.ts",
+            "line": 31
+          }
+        ],
+        "sqlOperations": [
+          "Legacy Auth SDK owns recovery-session exchange; no application SQL write is inferred from this route."
+        ]
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/app/auth/recovery/route.ts",
+            "line": 12
+          },
+          {
+            "file": "src/app/auth/recovery/route.ts",
+            "line": 25
+          }
+        ],
+        "rules": [
+          "Current Azure redirect is not proof of completed recovery. Legacy recovery grant is single-use and failures are uniform."
+        ]
+      },
+      "responseContract": "Protocol redirect, popup completion, JSON error or generated binary image as cited; not the /api/v1 ok(data) contract.",
+      "existingTests": [
+        {
+          "file": "tests/features/password-reset.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "source-only",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "Current Azure redirect has no fresh HTTP receipt here; legacy OTP/email recovery and external provider outcomes remain blocked/unproven.",
+        "pending": "No fresh non-API HTTP census/positive-local receipt supplied. Authenticated UI Stay/zero-request observations do not prove this endpoint executed."
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/auth/signout",
+      "routeSource": {
+        "file": "src/app/auth/signout/route.ts",
+        "line": 6
+      },
+      "sourceSha256": "e3d94e1e46c83bd2cdf6034c777d66aa5484042610245d539d688964d9120afb",
+      "productionConsumers": [
+        {
+          "file": "src/features/canvas/ui/AccountTray.tsx",
+          "line": 185,
+          "kind": "native form POST from learner account tray",
+          "method": "POST"
+        },
+        {
+          "file": "src/features/workspace/ui/StaffShell.tsx",
+          "line": 58,
+          "kind": "native staff account form POST",
+          "method": "POST"
+        },
+        {
+          "file": "src/features/account/connected-apps/ConnectedAppsPanel.tsx",
+          "line": 72,
+          "kind": "connected-apps native signout form",
+          "method": "POST"
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 75
+          },
+          {
+            "file": "src/app/auth/signout/route.ts",
+            "line": 6
+          }
+        ],
+        "rules": [
+          "Azure logout rejects cross-site/mismatched supplied Origin before local revocation. It accepts no user-selected target/account body.",
+          "Legacy branch calls authenticated SDK signOut; do not infer the Azure origin guard is implemented in that separate branch."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 80
+          },
+          {
+            "file": "src/lib/identity/server.ts",
+            "line": 28
+          },
+          {
+            "file": "src/lib/identity/store.ts",
+            "line": 55
+          }
+        ],
+        "sqlOperations": [
+          "academy_identity_delete_session removes the current local hashed session; provider end-session metadata/redirect is a separate best-effort step."
+        ],
+        "sqlDefinitionRefs": [
+          {
+            "file": "src/lib/identity/schema.sql",
+            "line": 143
+          }
+        ]
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 75
+          },
+          {
+            "file": "src/lib/identity/routes.ts",
+            "line": 90
+          }
+        ],
+        "rules": [
+          "Current session/login cookies are cleared; local revocation can complete if provider logout metadata is unavailable.",
+          "No UI confirmation/Stay/zero-request observation is promoted to a positive signout HTTP result."
+        ],
+        "identitySqlRoleBoundary": {
+          "refs": [
+            {
+              "file": "src/lib/identity/schema.sql",
+              "line": 148
+            },
+            {
+              "file": "src/lib/identity/schema.sql",
+              "line": 151
+            }
+          ],
+          "sourceRule": "Private identity tables/functions are not granted to anon/authenticated; explicit function signatures grant only service_role. Applied database grants remain a separate live-state check."
+        }
+      },
+      "responseContract": "Protocol redirect, popup completion, JSON error or generated binary image as cited; not the /api/v1 ok(data) contract.",
+      "existingTests": [
+        {
+          "file": "tests/features/auth.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        },
+        {
+          "file": "tests/features/student-shell-regressions.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        },
+        {
+          "file": "tests/features/canvas/account-tray-navigation.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        },
+        {
+          "file": "tests/features/staff-ui/account-menu.test.tsx",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "source-only",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "Actual local revocation, post-logout cookie behavior and external IdP logout require their own scoped receipt. This audit makes no logout request.",
+        "pending": "No fresh non-API HTTP census/positive-local receipt supplied. Authenticated UI Stay/zero-request observations do not prove this endpoint executed."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/social/[section]",
+      "routeSource": {
+        "file": "src/app/social/[section]/route.ts",
+        "line": 3
+      },
+      "sourceSha256": "b944d2160e1dbd6b24c9fc3471f12044f96696748cfc0a1dd722aba683a5bc17",
+      "productionConsumers": [
+        {
+          "file": "src/features/public-site/metadata.ts",
+          "line": 33,
+          "kind": "public OpenGraph/social metadata URL consumed by crawlers/previews",
+          "method": "GET"
+        }
+      ],
+      "requestValidation": {
+        "refs": [
+          {
+            "file": "src/features/public-site/social-image.tsx",
+            "line": 15
+          },
+          {
+            "file": "src/app/social/[section]/route.ts",
+            "line": 6
+          }
+        ],
+        "rules": [
+          "section must be a key of fixed PUBLIC_SOCIAL_COPY; otherwise404.",
+          "lang=en selects English, otherwise Vietnamese. Arbitrary URL title/account/database content is not rendered."
+        ]
+      },
+      "serviceAndPersistence": {
+        "refs": [
+          {
+            "file": "src/features/public-site/social-image.tsx",
+            "line": 20
+          }
+        ],
+        "sqlOperations": [],
+        "storage": "No application database or protected Storage dependency in this fixed-label source path."
+      },
+      "authorizationAndRedirectBoundaries": {
+        "refs": [
+          {
+            "file": "src/app/social/[section]/route.ts",
+            "line": 5
+          },
+          {
+            "file": "src/features/public-site/social-image.tsx",
+            "line": 19
+          }
+        ],
+        "rules": [
+          "Public fixed-copy image; no authenticated account is assumed.",
+          "Response is ImageResponse1200x630 with public cache policy and noindex; no runtime image byte claim inferred from source."
+        ]
+      },
+      "responseContract": "Protocol redirect, popup completion, JSON error or generated binary image as cited; not the /api/v1 ok(data) contract.",
+      "existingTests": [
+        {
+          "file": "tests/features/public-social-image.test.ts",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        },
+        {
+          "file": "tests/features/public-metadata.test.ts",
+          "line": 1,
+          "evidence": "Existing unit/UI/mock test source; no execution or hosted provider success inferred."
+        }
+      ],
+      "evidence": {
+        "disposition": "source-only",
+        "positiveLocal": [],
+        "negativeLocal": [],
+        "boundary": "Unit/source references exist, but no fresh actual-Next HTTP image byte/dimension/locale receipt is attached.",
+        "pending": "No fresh non-API HTTP census/positive-local receipt supplied. Authenticated UI Stay/zero-request observations do not prove this endpoint executed."
+      }
+    }
+  ]
+}

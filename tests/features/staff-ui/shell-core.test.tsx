@@ -21,11 +21,16 @@ import en from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
 
 const nav = vi.hoisted(() => ({ pathname: '/studio', push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
-vi.mock('next/navigation', () => ({ usePathname: () => nav.pathname, useRouter: () => nav, useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({ useServerInsertedHTML: () => undefined, usePathname: () => nav.pathname, useRouter: () => nav, useSearchParams: () => new URLSearchParams() }));
 
 // Sibling shell parts belong to other files; stand-ins keep these tests about the core shell.
 vi.mock('@/features/staff-ui/ui/WorkspaceScopeSwitcher', () => ({ WorkspaceScopeSwitcher: ({ workspace }: { workspace: string }) => <div data-testid="switcher">{workspace}</div> }));
-vi.mock('@/features/staff-ui/ui/StaffUserMenu', () => ({ StaffUserMenu: ({ identity }: { identity: { name: string } }) => <div data-testid="user-menu">{identity.name}</div> }));
+// This file checks the core shell's identity/theme wiring. Account Tray exit,
+// focus and interaction contracts have their own unit and browser coverage.
+vi.mock('@/features/canvas/ui/AccountTray', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/canvas/ui/AccountTray')>()),
+  AccountTray: ({ identity, theme }: { identity: { name: string }; theme: string }) => <div data-testid="account-tray" data-theme={theme}>{identity.name}</div>,
+}));
 vi.mock('@/features/staff-ui/ui/StaffCommandMenu', () => ({ StaffCommandMenu: () => <button type="button">Search</button> }));
 vi.mock('@/features/staff-ui/ui/AttentionPopover', () => ({ AttentionPopover: () => null }));
 vi.mock('@/features/staff-ui/ui/StaffThemeMenu', () => ({ StaffThemeMenu: ({ theme }: { theme: string }) => <span data-testid="theme-menu">{theme}</span> }));
@@ -167,7 +172,10 @@ describe('StaffWorkspaceShell', () => {
     expect(screen.getByRole('link', { name: en.common.skipToContent })).toHaveAttribute('href', '#studio-main');
     expect(screen.getByRole('navigation', { name: en.common.studioNavigation })).toBeInTheDocument();
     expect(screen.getByTestId('switcher')).toHaveTextContent('studio');
-    expect(screen.getByTestId('user-menu')).toHaveTextContent('Nguyễn Thị Minh Khai');
+    expect(screen.getByTestId('account-tray')).toHaveTextContent('Nguyễn Thị Minh Khai');
+    expect(screen.getByTestId('account-tray')).toHaveAttribute('data-theme', 'dark');
+    expect(within(screen.getByRole('navigation', { name: 'Global navigation' })).getByRole('button', { name: 'Account' }))
+      .toHaveAttribute('aria-controls', 'academy-account-tray');
   });
 
   it('server-renders the saved rail state and theme so the first paint matches', () => {
@@ -211,6 +219,20 @@ describe('StaffWorkspaceShell', () => {
     const heading = screen.getByRole('heading', { level: 1, name: 'Queue' });
     expect(heading).toHaveFocus();
     expect(heading).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('waits for a streamed destination heading and stops observing after focus is handed over', async () => {
+    const { rerender } = view('studio', { pathname: '/studio' });
+    nav.pathname = '/studio/library';
+    const shell = (children: React.ReactNode) => <NextIntlClientProvider locale="en" messages={messages}><StaffWorkspaceShell workspace="studio" chrome={chrome()} permissions={[...ALL]} entries={entries}>{children}</StaffWorkspaceShell></NextIntlClientProvider>;
+    rerender(shell(<p role="status">Loading content</p>));
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    rerender(shell(<><StaffPageHeader title="Streamed library" /><input aria-label="Library search" /></>));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Streamed library' })).toHaveFocus());
+    const search = screen.getByRole('textbox', { name: 'Library search' });
+    search.focus();
+    rerender(shell(<><StaffPageHeader title="Streamed library" /><input aria-label="Library search" /><p>New result</p></>));
+    expect(search).toHaveFocus();
   });
 
   it('ends the breadcrumbs with the registered record title, never the raw ID', () => {

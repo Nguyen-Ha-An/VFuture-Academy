@@ -1,4 +1,5 @@
 import { staffShellVariant } from "@/features/workspace/presentation";
+import { headers } from "next/headers";
 import { AdminSessionGuard } from "@/features/admin/components/AdminSessionGuard";
 import { GradingShell } from "@/components/GradingShell";
 import { readStaffChrome } from "@/features/staff-ui/chrome.server";
@@ -13,9 +14,10 @@ export const dynamic = "force-dynamic";
 export default async function GradingLayout({ children }: { children: React.ReactNode }) {
   const variant = staffShellVariant("grading");
   // Chrome (theme, rail, identity) is read only for the Catmin shell, alongside the context.
-  const [context, chrome] = await Promise.all([
+  const [context, chrome, requestHeaders] = await Promise.all([
     gradingPageContext(),
     variant === "catmin" ? readStaffChrome() : null,
+    headers(),
   ]);
   if (chrome) {
     preloadStaffFonts();
@@ -26,6 +28,7 @@ export default async function GradingLayout({ children }: { children: React.Reac
         destination={routes.grading.dashboard()}
       >
         <StaffWorkspaceShell
+          nonce={requestHeaders.get('x-nonce') ?? undefined}
           key={`${context.actor.userId}:${scopeKey(context.scope)}`}
           workspace="grading"
           chrome={chrome}

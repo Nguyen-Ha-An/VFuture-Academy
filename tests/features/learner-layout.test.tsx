@@ -20,6 +20,7 @@ vi.mock('@/lib/permissions', async (importOriginal) => ({
   getActor: mocks.getActor,
 }));
 vi.mock('server-only', () => ({}));
+vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-nonce': 'layout-request-nonce' }) }));
 vi.mock('@/lib/auth', () => ({ loginDestination: mocks.loginDestination }));
 vi.mock('@/features/workspace-ui/theme.server', () => ({ readWorkspaceTheme: mocks.readWorkspaceTheme }));
 vi.mock('@/features/workspace-ui/identity.server', () => ({ learnerIdentity: mocks.learnerIdentity }));

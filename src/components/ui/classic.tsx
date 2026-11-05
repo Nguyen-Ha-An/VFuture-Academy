@@ -10,6 +10,8 @@ import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { type ButtonHTMLAttributes, type ComponentPropsWithoutRef, type ComponentRef, type HTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes, forwardRef } from "react";
 import { twMerge } from "tailwind-merge";
 import { cn } from "@/lib/utils";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useWorkspaceSurfaceTheme } from "./workspace-surface-context";
 
 export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ className, type = "button", ...props }, ref) => (
@@ -28,10 +30,13 @@ export const DropdownMenuTrigger = Dropdown.Trigger;
 export const DropdownMenuPortal = Dropdown.Portal;
 
 export const DropdownMenuContent = forwardRef<ComponentRef<typeof Dropdown.Content>, ComponentPropsWithoutRef<typeof Dropdown.Content>>(
-  ({ className, sideOffset = 8, collisionPadding = 8, ...props }, ref) => (
-    <Dropdown.Content ref={ref} sideOffset={sideOffset} collisionPadding={collisionPadding}
+  ({ className, sideOffset = 8, collisionPadding = 8, ...props }, ref) => {
+    const surfaceTheme = useWorkspaceSurfaceTheme();
+    return (
+    <Dropdown.Content ref={ref} data-canvas-surface={surfaceTheme ?? undefined} sideOffset={sideOffset} collisionPadding={collisionPadding}
       className={cn('z-50 w-80 max-w-[calc(100vw-1rem)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg', className)} {...props} />
-  ),
+    );
+  },
 );
 DropdownMenuContent.displayName = 'DropdownMenuContent';
 
@@ -47,8 +52,16 @@ export const DropdownMenuSeparator = forwardRef<ComponentRef<typeof Dropdown.Sep
 );
 DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
 
-export { Root as Dialog, Trigger as DialogTrigger, Portal as DialogPortal, Overlay as DialogOverlay, Content as DialogContent, Title as DialogTitle, Description as DialogDescription, Close as DialogClose } from "@radix-ui/react-dialog";
-export { Root as Sheet, Trigger as SheetTrigger, Portal as SheetPortal, Overlay as SheetOverlay, Content as SheetContent, Title as SheetTitle, Description as SheetDescription, Close as SheetClose } from "@radix-ui/react-dialog";
+export { Root as Dialog, Trigger as DialogTrigger, Portal as DialogPortal, Overlay as DialogOverlay, Title as DialogTitle, Description as DialogDescription, Close as DialogClose } from "@radix-ui/react-dialog";
+export { Root as Sheet, Trigger as SheetTrigger, Portal as SheetPortal, Overlay as SheetOverlay, Title as SheetTitle, Description as SheetDescription, Close as SheetClose } from "@radix-ui/react-dialog";
+
+/** Preserve the raw Radix content contract while carrying the owning Canvas palette through portals. */
+export const DialogContent = forwardRef<ComponentRef<typeof DialogPrimitive.Content>, ComponentPropsWithoutRef<typeof DialogPrimitive.Content>>((props, ref) => {
+  const surfaceTheme = useWorkspaceSurfaceTheme();
+  return <DialogPrimitive.Content {...props} ref={ref} data-canvas-surface={surfaceTheme ?? undefined} />;
+});
+DialogContent.displayName = 'DialogContent';
+export const SheetContent = DialogContent;
 
 export { Root as Tabs, List as TabsList, Trigger as TabsTrigger, Content as TabsContent } from "@radix-ui/react-tabs";
 export { Root as RadioGroup, Item as RadioGroupItem } from "@radix-ui/react-radio-group";

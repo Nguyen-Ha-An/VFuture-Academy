@@ -1,11 +1,13 @@
 import { notFound, forbidden } from "next/navigation";
+import { cookies } from "next/headers";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { formatStaffAuditAction, formatStaffAuditTarget } from "@/features/admin/audit-format";
 import { adminPageContext } from "@/features/admin/context";
-import { enterSchoolWorkspace } from "@/features/admin/actions";
+import { buildSchoolNavigation, SchoolNavigationRequestSchema, type SchoolNavigationRequest } from "@/features/admin/school-navigation";
+import { schoolNavigationFor } from "@/features/admin/school-navigation.server";
 import { BranchIdSchema } from "@/features/admin/branches";
 import { can, effectivePermissions } from "@/lib/permissions";
-import { scopeKey } from "@/lib/admin-scope";
+import { ADMIN_SCOPE_COOKIE } from "@/lib/admin-scope";
 import { routes } from "@/lib/routes";
 import { SchoolDetailView, type SchoolDetailStat } from "../SchoolDetailView";
 import { schoolMembers, schoolOverview } from "../data";
@@ -41,6 +43,11 @@ export default async function BranchPage({
   if (!branch) notFound();
   const scope = { kind: "branch" as const, branchId: branch.id };
   if (!can(context.actor, "branch.read", scope)) forbidden();
+  const savedScopeKey = (await cookies()).get(ADMIN_SCOPE_COOKIE)?.value ?? null;
+  const memberNavigation = (userId: string) => {
+    const target = SchoolNavigationRequestSchema.safeParse({ branchId: branch.id, target: 'member', userId });
+    return target.success ? buildSchoolNavigation(context, target.data, savedScopeKey) : null;
+  };
   const selected = {
     ...context,
     scope,
@@ -69,7 +76,8 @@ export default async function BranchPage({
     id: member.id,
     name: member.displayName,
     email: member.email,
-    href: routes.admin.user(member.id),
+    href: memberNavigation(member.id)?.href ?? routes.admin.branch(branch.id, { tab: 'members' }),
+    navigation: memberNavigation(member.id) ?? undefined,
     roles: member.assignments.map((assignment) => assignment.roleName).join(", ") || to("noRole"),
     // Same rule as memberStatus() in member-admin-ui: a suspended account wins,
     // otherwise the membership in this school decides.
@@ -99,7 +107,7 @@ export default async function BranchPage({
             // The verb follows the name: lower-case in Vietnamese ("Lan đã cấp vai trò").
             action: locale === "vi" && label ? label.charAt(0).toLocaleLowerCase("vi") + label.slice(1) : label,
             target: target ?? formatStaffAuditTarget(entry.targetType, locale),
-            href: entry.targetType === "user" && canReadMembers ? routes.admin.user(entry.targetId) : undefined,
+            href: entry.targetType === "user" && canReadMembers ? memberNavigation(entry.targetId)?.href : undefined,
             at: entry.at,
           };
         }),
@@ -132,17 +140,15 @@ export default async function BranchPage({
     }
   }
 
-  const destination =
-    tab === "cms"
-      ? "/studio/library"
-      : tab === "members" || tab === "staff"
-        ? "/admin/users"
-        : "/admin";
+  const enterTarget: SchoolNavigationRequest = { branchId: branch.id,
+    target: tab === 'cms' ? 'library' : tab === 'members' || tab === 'staff' ? 'members' : 'overview' };
+  const enterNavigation = await schoolNavigationFor(enterTarget);
+  const reportNavigation = canReadReports ? await schoolNavigationFor({ branchId: branch.id, target: 'reports' }) : null;
 
   const viewTabs = [
     ...tabs.map((key) => ({ key, label: t(key), href: tabHref(key), current: key === tab })),
-    ...(canReadReports
-      ? [{ key: "reports", label: t("reports"), href: routes.grading.reports({ branchId: branch.id }), current: false, external: true }]
+    ...(reportNavigation
+      ? [{ key: "reports", label: t("reports"), href: reportNavigation.href, navigation: reportNavigation, current: false, external: true }]
       : []),
   ];
 
@@ -151,7 +157,7 @@ export default async function BranchPage({
       school={{ id: branch.id, name: branch.name, description: branch.city ? `${t("schools")} · ${branch.city}` : t("schools") }}
       tabs={viewTabs}
       tabsLabel={to("sections")}
-      enter={{ action: enterSchoolWorkspace, scope: scopeKey(scope), destination, label: t("enterSchool") }}
+      enter={enterNavigation ? { navigation: enterNavigation, label: t("enterSchool") } : undefined}
       stats={overview ? stats : undefined}
       unavailableLabel={to("unavailable")}
       activity={activity}

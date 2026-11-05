@@ -6,6 +6,7 @@ import en from '../../../src/messages/en.json';
 import vi from '../../../src/messages/vi.json';
 import shellCommand from '../../../src/messages/staff-ui/shell-command.json';
 import shellCore from '../../../src/messages/staff-ui/shell-core.json';
+import benchShared from '../../../src/messages/bench/shared.json';
 
 /**
  * Shared checks for the Catmin staff shell (StaffWorkspaceShell) in the Vite harnesses, which
@@ -59,7 +60,9 @@ export async function shot(page: Page, info: TestInfo, name: string) {
 
 export const shell = (page: Page) => page.locator('.vf-staff');
 export const trigger = (page: Page) => page.locator('[data-sidebar="trigger"]');
-export const userMenuButton = (page: Page) => page.locator('[data-slot="sidebar-footer"] [data-sidebar="menu-button"]');
+export const accountButton = (page: Page) => page.locator('.canvas-global-nav:not(.canvas-global-nav-mobile) button[aria-controls="academy-account-tray"]');
+/** Existing importing tests now target the single actual Account control, not a removed footer. */
+export const userMenuButton = accountButton;
 const contextPanel = (page: Page) => page.locator('.canvas-context-navigation');
 
 async function openContext(page: Page) {
@@ -83,7 +86,11 @@ export async function luminance(target: Locator, property: 'backgroundColor' | '
   const [r, g, b] = await target.evaluate((element, prop) => {
     const context = document.createElement('canvas').getContext('2d')!;
     context.fillStyle = '#808080';
-    context.fillStyle = getComputedStyle(element)[prop];
+    let painted = element;
+    if (prop === 'backgroundColor') {
+      while (painted.parentElement && getComputedStyle(painted).backgroundColor === 'rgba(0, 0, 0, 0)') painted = painted.parentElement;
+    }
+    context.fillStyle = getComputedStyle(painted)[prop];
     context.fillRect(0, 0, 1, 1);
     return Array.from(context.getImageData(0, 0, 1, 1).data);
   }, property);
@@ -125,13 +132,14 @@ async function openCommandPalette(page: Page, route: StaffRoute) {
   return palette;
 }
 
-async function openUserMenu(page: Page) {
-  await openContext(page);
-  await userMenuButton(page).click();
-  const menu = page.getByRole('menu');
-  await expect(menu).toBeVisible();
-  await settle(menu);
-  return menu;
+export async function openAccountTray(page: Page) {
+  await expect(accountButton(page)).toBeVisible();
+  await accountButton(page).click();
+  const tray = page.getByRole('dialog', { name: /^(Account|Tài khoản)$/ });
+  await expect(tray).toHaveCount(1);
+  await expect(tray).toBeVisible();
+  await settle(tray);
+  return tray;
 }
 
 /** Text elements must keep a line-height of at least 1.4 and show their full height (no clipped diacritics). */
@@ -231,11 +239,15 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
           const skip = page.getByRole('link', { name: messages[route.locale].common.skipToContent, exact: true });
           await expect(skip).toBeFocused();
           await expect(skip).toHaveAttribute('href', route.path.startsWith('/admin') ? '#admin-main' : route.path.startsWith('/grading') ? '#grading-main' : '#studio-main');
-          // 56px banner plus a 1px hairline, level with the sidebar header's.
+          // The banner stays56px plus its border. The school-only scope header
+          // grows to fit its two readable lines or native select without clipping.
           const banner = await page.locator('[data-slot="sidebar-inset"] > header').boundingBox();
           const sidebarHeader = await page.locator('[data-slot="sidebar-header"]').boundingBox();
           expect(banner?.height).toBe(57);
-          expect(sidebarHeader?.height).toBe(57);
+          expect(sidebarHeader).not.toBeNull();
+          expect(sidebarHeader!.height).toBeGreaterThanOrEqual(57);
+          expect(sidebarHeader!.width).toBeLessThanOrEqual(208);
+          expect(await page.locator('[data-slot="sidebar-header"]').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
           await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
           await expect(trigger(page)).toHaveAccessibleName(strings.toggle);
 
@@ -273,6 +285,18 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
         await expect(drawer).toBeHidden();
         await expect(menuButton).toBeFocused();
         await expectNoHorizontalScroll(page);
+        // Account is handed off only after contextual navigation has closed.
+        await menuButton.click();
+        await expect(drawer).toBeVisible();
+        await drawer.getByRole('button', { name: route.locale === 'vi' ? 'Tài khoản' : 'Account', exact: true }).click();
+        const account = page.getByRole('dialog', { name: route.locale === 'vi' ? 'Tài khoản' : 'Account', exact: true });
+        await expect(account).toBeVisible();
+        await expect(page.getByRole('dialog')).toHaveCount(1);
+        await expect(account.getByRole('combobox', { name: messages[route.locale].common.language, exact: true })).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(account).toBeHidden();
+        await expect(menuButton).toBeFocused();
+        await expectNoHorizontalScroll(page);
       });
 
       if (route.harness === 'admin') test('768: the actual contextual drawer resizes without browser runtime errors', async ({ page }) => {
@@ -296,24 +320,42 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
         await expectNoHorizontalScroll(page);
       });
 
-      test('dark: follows the OS with theme=system and pins with theme=dark, portalled menus included', async ({ page }) => {
+      test('dark: follows the OS with theme=system and pins with theme=dark, Account and select portals included', async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.emulateMedia({ colorScheme: 'dark' });
         await page.goto(withQuery(route.path));
         await expect(shell(page)).not.toHaveAttribute('data-theme', /.+/);
         expect(await luminance(page.locator('body'))).toBeLessThan(0.05);
         expect(await luminance(await openContext(page))).toBeLessThan(0.05);
-        expect(await luminance(await openUserMenu(page))).toBeLessThan(0.05);
+        const automaticAccount = await openAccountTray(page);
+        expect(await luminance(automaticAccount.locator('.canvas-account-panel'))).toBeLessThan(0.05);
         await page.keyboard.press('Escape');
+        await expect(automaticAccount).toBeHidden();
+        await expect(accountButton(page)).toBeFocused();
 
         await page.emulateMedia({ colorScheme: 'light' });
         await page.goto(withQuery(route.path, { theme: 'dark' }));
         await expect(shell(page)).toHaveAttribute('data-theme', 'dark');
         expect(await luminance(page.locator('body'))).toBeLessThan(0.05);
-        const menu = await openUserMenu(page);
-        expect(await luminance(menu)).toBeLessThan(0.05);
-        expect(await luminance(menu.getByRole('menuitem').first(), 'color')).toBeGreaterThan(0.7);
+        const account = await openAccountTray(page);
+        const background = await luminance(account.locator('.canvas-account-panel'));
+        expect(background).toBeLessThan(0.05);
+        expect(await luminance(account.locator('.canvas-account-identity h3'), 'color')).toBeGreaterThan(0.7);
+        const profileLink = account.getByRole('link', { name: route.locale === 'vi' ? 'Hồ sơ' : 'Profile', exact: true });
+        const link = await luminance(profileLink, 'color');
+        expect((Math.max(link, background) + 0.05) / (Math.min(link, background) + 0.05)).toBeGreaterThanOrEqual(4.5);
+        const theme = account.getByRole('combobox', { name: benchShared[route.locale].theme.label, exact: true });
+        await theme.click();
+        const option = page.getByRole('option', { name: benchShared[route.locale].theme.system, exact: true });
+        await expect(option).toBeVisible();
+        expect(await luminance(page.getByRole('listbox'))).toBeLessThan(0.05);
         await page.keyboard.press('Escape');
+        await expect(option).toBeHidden();
+        await expect(account).toBeVisible();
+        await expect(theme).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(account).toBeHidden();
+        await expect(accountButton(page)).toBeFocused();
 
         // An explicit light pin beats a dark OS.
         await page.emulateMedia({ colorScheme: 'dark' });
@@ -343,15 +385,16 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
       });
 
       for (const theme of ['light', 'dark'] as const) {
-        test(`axe (${theme}): no serious or critical findings with the user menu and ⌘K open`, async ({ page }) => {
+        test(`axe (${theme}): no serious or critical findings with Account and ⌘K open`, async ({ page }) => {
           await page.setViewportSize({ width: 1440, height: 900 });
           await page.goto(withQuery(route.path, { theme }));
           await expect(shell(page)).toBeVisible();
           expect(await seriousAxeFindings(page, route.knownFindings)).toEqual([]);
-          await openUserMenu(page);
+          const account = await openAccountTray(page);
           expect(await seriousAxeFindings(page, route.knownFindings)).toEqual([]);
           await page.keyboard.press('Escape');
-          await expect(page.getByRole('menu')).toBeHidden();
+          await expect(account).toBeHidden();
+          await expect(accountButton(page)).toBeFocused();
           await openCommandPalette(page, route);
           expect(await seriousAxeFindings(page, route.knownFindings)).toEqual([]);
         });
@@ -372,9 +415,11 @@ export function describeStaffShell(routes: StaffRoute[], prepare: (page: Page) =
         await openCommandPalette(page, route);
         await shot(page, info, name(1440, 'light', 'cmdk'));
         await page.keyboard.press('Escape');
-        await openUserMenu(page);
-        await shot(page, info, name(1440, 'light', 'user-menu'));
+        const account = await openAccountTray(page);
+        await shot(page, info, name(1440, 'light', 'account-tray'));
         await page.keyboard.press('Escape');
+        await expect(account).toBeHidden();
+        await expect(accountButton(page)).toBeFocused();
 
         // Attention popover open (Catmin's notifications).
         const attention = page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: new RegExp(`^${shellCommand[route.locale].command.attention.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) });

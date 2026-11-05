@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import messages from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useServerInsertedHTML: () => undefined, useRouter: () => ({ push: vi.fn() }) }));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnnouncementsWorkspace } from '@/features/instructor-grading/AnnouncementsWorkspace';
 import { CanvasProvider } from '@/features/canvas/ui';

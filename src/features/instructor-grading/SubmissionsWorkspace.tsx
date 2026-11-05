@@ -621,10 +621,10 @@ export function SubmissionsWorkspace({
       {/* Inside the queue page the page header and tab already name this list: one header only,
           the h2 stays for the document outline. */}
       {embedded
-        ? <Title className="sr-only">{t('title')}</Title>
+        ? <Title tabIndex={embedded ? undefined : -1} className="sr-only">{t('title')}</Title>
         : <header className="border-b border-border pb-6">
           <p className="text-xs font-medium leading-normal text-muted-foreground">{t('eyebrow')}</p>
-          <Title className="mt-1 text-2xl font-bold leading-[1.4] tracking-tight">{t('title')}</Title>
+          <Title tabIndex={embedded ? undefined : -1} className="mt-1 text-2xl font-bold leading-[1.4] tracking-tight">{t('title')}</Title>
           <p className="mt-1 max-w-2xl text-sm leading-normal text-muted-foreground">{t('description')}</p>
         </header>}
       <div className={preview ? 'grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start' : undefined}>

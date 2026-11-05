@@ -166,6 +166,7 @@ function LegacyStudioShell({
           {scopePicker}
         </div> : null}
         <main
+          tabIndex={-1}
           id="studio-main"
           className={
             isCourseWorkspace

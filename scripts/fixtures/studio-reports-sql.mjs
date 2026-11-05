@@ -12,7 +12,7 @@ await db.exec(`
   create function auth.uid() returns uuid language sql as $$select null::uuid$$;
   create schema storage;
   create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
-  create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid);
+  create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid,metadata jsonb);
 `);
 for (const name of (await fs.readdir('supabase/migrations')).filter((entry) => entry.endsWith('.sql')).sort()) {
   await db.exec(await fs.readFile(`supabase/migrations/${name}`, 'utf8'));
@@ -158,7 +158,7 @@ await historyDb.exec(`
   create function auth.uid() returns uuid language sql as $$select null::uuid$$;
   create schema storage;
   create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
-  create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid);
+  create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid,metadata jsonb);
 `);
 const migrationNames = (await fs.readdir('supabase/migrations')).filter((entry) => entry.endsWith('.sql')).sort();
 for (const name of migrationNames.filter((entry) => entry < '20260907091000')) {

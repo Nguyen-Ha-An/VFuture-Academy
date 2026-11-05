@@ -221,4 +221,195 @@ describe('learner catalog service', () => {
     });
     expect(client.queriesFor('lesson_progress')).toHaveLength(0);
   });
+
+  it('projects pinned exam lifecycle and assignment activity without awarding completion', async () => {
+    const activityItems = [
+      { id: 'lesson-1', type: 'lesson', title: 'Lesson', required: true },
+      { id: 'exam-active', type: 'exam', title: 'Active exam', required: true },
+      { id: 'exam-submitted', type: 'exam', title: 'Submitted exam', required: true },
+      { id: 'exam-failed', type: 'exam', title: 'Failed exam', required: true },
+      { id: 'exam-untouched', type: 'exam', title: 'Untouched exam', required: true },
+      { id: 'assignment-submitted', type: 'assignment', title: 'Submitted assignment', required: true },
+      { id: 'assignment-changes', type: 'assignment', title: 'Revision requested', required: true },
+      { id: 'assignment-approved', type: 'assignment', title: 'Approved assignment', required: true },
+    ];
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
+      enrollments: [successful({ id: 'enrollment-1', course_version_id: 'version-pinned', status: 'active' })],
+      course_version_outline: [successful(outlineRow({ version_id: 'version-pinned', outline: {
+        modules: [{ id: 'module-1', title: 'Module', items: activityItems }],
+      } }))],
+      lesson_progress: [successful([{ item_id: 'lesson-1', status: 'completed' }])],
+      exam_attempts: [successful([
+        { id: 'active-attempt', user_id: 'learner-1', course_version_id: 'version-pinned', item_id: 'exam-active', status: 'in_progress', attempt_no: 1, started_at: '2026-11-05T10:00:00Z' },
+        { id: 'submitted-attempt', user_id: 'learner-1', course_version_id: 'version-pinned', item_id: 'exam-submitted', status: 'submitted', attempt_no: 1, started_at: '2026-11-05T10:00:00Z' },
+        { id: 'graded-attempt', user_id: 'learner-1', course_version_id: 'version-pinned', item_id: 'exam-failed', status: 'graded', attempt_no: 1, started_at: '2026-11-05T10:00:00Z' },
+      ])],
+      exam_grades: [successful([{ item_id: 'exam-failed', percent: 30, passed: false }])],
+      assignment_submissions: [successful([
+        { item_id: 'assignment-submitted', block_id: null, status: 'submitted', grades: null },
+        { item_id: 'assignment-changes', block_id: null, status: 'changes_requested', grades: { released: true, decision: 'changes_requested' } },
+        { item_id: 'assignment-approved', block_id: null, status: 'approved', grades: { released: true, decision: 'approved' } },
+      ])],
+      quiz_attempts: [successful([])],
+      course_completions: [successful(null)],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+
+    const course = await getCourse(actor, 'ai-foundations', 'en');
+
+    expect(course.progress).toEqual({ completedItems: 2, totalItems: 8, items: {
+      'lesson-1': 'completed', 'exam-active': 'in_progress', 'exam-submitted': 'submitted',
+      'exam-failed': 'submitted', 'exam-untouched': 'not_started', 'assignment-submitted': 'in_progress',
+      'assignment-changes': 'in_progress', 'assignment-approved': 'completed',
+    } });
+    expect(course.completion).toMatchObject({ complete: false, requirements: [{ satisfied: false, progress: { done: 2, total: 8 } }] });
+    expect(course.outline.modules[0].items.map(({ id, status }) => [id, status])).toEqual(Object.entries(course.progress.items));
+    expect(client.queriesFor('exam_attempts')[0].operations).toEqual(expect.arrayContaining([
+      ['eq', 'user_id', 'learner-1'], ['eq', 'course_version_id', 'version-pinned'],
+    ]));
+    expect(client.queriesFor('profiles')).toHaveLength(0);
+  });
+
+  it('keeps a passing exam complete while another attempt is active and does not mutate recorded totals', async () => {
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
+      enrollments: [successful({ id: 'enrollment-1', course_version_id: 'version-pinned', status: 'active' })],
+      course_version_outline: [successful(outlineRow({ version_id: 'version-pinned', outline: {
+        modules: [{ id: 'module-1', title: 'Module', items: [{ id: 'exam-passed', type: 'exam', title: 'Exam', required: true }] }],
+      } }))],
+      lesson_progress: [successful([])], exam_attempts: [successful([{ id: 'passed-active', user_id: 'learner-1', course_version_id: 'version-pinned', item_id: 'exam-passed', status: 'in_progress', attempt_no: 2, started_at: '2026-11-05T10:00:00Z' }])],
+      exam_grades: [successful([{ item_id: 'exam-passed', percent: 80, passed: true }])],
+      assignment_submissions: [successful([])], quiz_attempts: [successful([])], course_completions: [successful(null)],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    const course = await getCourse(actor, 'ai-foundations', 'en');
+    expect(course.progress).toEqual({ completedItems: 1, totalItems: 1, items: { 'exam-passed': 'completed' } });
+    expect(course.completion.complete).toBe(true);
+    expect(client.queries.flatMap(({ query }) => query.operations).some(([operation]) => ['insert', 'update', 'upsert'].includes(operation))).toBe(false);
+  });
+
+
+  it.each(['active', 'completed'])('keeps an archived course readable through its %s enrollment pin without requiring a current public version', async (status) => {
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'archived', current_version_id: null })],
+      enrollments: [successful({ id: 'enrollment-1', course_version_id: 'version-pinned', status })],
+      course_version_outline: [successful(outlineRow({ version_id: 'version-pinned' }))],
+      lesson_progress: [successful([])], exam_attempts: [successful([])], exam_grades: [successful([])],
+      assignment_submissions: [successful([])], quiz_attempts: [successful([])], course_completions: [successful(null)],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    await expect(getCourse(actor, 'ai-foundations', 'en')).resolves.toMatchObject({
+      id: 'ai-foundations', versionId: 'version-pinned', enrollment: { status },
+    });
+    expect(client.queriesFor('course_version_outline')[0].operations).toEqual(expect.arrayContaining([
+      ['eq', 'version_id', 'version-pinned'], ['eq', 'course_id', 'ai-foundations'],
+    ]));
+    expect(client.queriesFor('profiles')).toHaveLength(0);
+    expect(client.queries.flatMap(({ query }) => query.operations).some(([operation]) => ['insert', 'update', 'upsert'].includes(operation))).toBe(false);
+  });
+
+  it.each([null, { course_version_id: 'version-pinned', status: 'dropped' }])('does not expose archived course content without an active or completed owned enrollment (%j)', async (enrollment) => {
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'archived', current_version_id: 'version-current' })],
+      enrollments: [successful(enrollment)],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    await expect(getCourse(actor, 'ai-foundations', 'en')).rejects.toMatchObject({ status: 404, code: 'COURSE_NOT_FOUND' });
+    expect(client.queriesFor('course_version_outline')).toHaveLength(0);
+    expect(client.queriesFor('lesson_progress')).toHaveLength(0);
+  });
+
+  it('does not expose draft course content through an enrollment pin', async () => {
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'draft', current_version_id: 'version-current' })],
+      enrollments: [successful({ course_version_id: 'version-pinned', status: 'active' })],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    await expect(getCourse(actor, 'ai-foundations', 'en')).rejects.toMatchObject({ status: 404, code: 'COURSE_NOT_FOUND' });
+    expect(client.queriesFor('course_version_outline')).toHaveLength(0);
+  });
+
+  it('still denies archived pinned history for an explicitly suspended enrollment school', async () => {
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'archived', current_version_id: null })],
+      enrollments: [successful({ course_version_id: 'version-pinned', status: 'active', branch_id: 'school-a', branch_scope_known: true })],
+    });
+    const suspended: Actor = { userId: 'learner-1', roles: [], authorization: { source: 'database', accountStatus: 'active',
+      memberships: [{ branchId: 'school-a', status: 'suspended' }], assignments: [] } };
+    mocks.supabaseService.mockReturnValue(client);
+    await expect(getCourse(suspended, 'ai-foundations', 'en')).rejects.toMatchObject({ status: 403, code: 'MEMBERSHIP_SUSPENDED' });
+    expect(client.queriesFor('course_version_outline')).toHaveLength(0);
+  });
+
+  describe('public exam lifecycle projection', () => {
+    const attempt = (status: string, overrides: Record<string, unknown> = {}) => ({ id: 'owned-attempt', user_id: 'learner-1',
+      course_version_id: 'version-pinned', item_id: 'exam-lifecycle', status, attempt_no: 1, started_at: '2026-11-05T10:00:00Z', ...overrides });
+    const databaseFor = (attempts: unknown[], grades: unknown[] = []) => new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
+      enrollments: [successful({ id: 'enrollment-1', course_version_id: 'version-pinned', status: 'active' })],
+      course_version_outline: [successful(outlineRow({ version_id: 'version-pinned', outline: {
+        modules: [{ id: 'module-1', title: 'Module', items: [{ id: 'exam-lifecycle', type: 'exam', title: 'Exam', required: true }] }],
+      } }))],
+      lesson_progress: [successful([])], exam_attempts: [successful(attempts)], exam_grades: [successful(grades)],
+      assignment_submissions: [successful([])], quiz_attempts: [successful([])], course_completions: [successful(null)],
+    });
+
+    it.each([
+      ['in_progress', 'in_progress'], ['pending_manual', 'in_review'], ['submitted', 'submitted'],
+      ['submitted_late', 'submitted'], ['graded', 'submitted'], ['expired', 'expired'],
+    ])('shows %s as %s without granting completion or exposing private score fields', async (storedStatus, publicStatus) => {
+      const db = databaseFor([attempt(storedStatus, { points: 99, max_points: 100, percent: 99 })]);
+      mocks.supabaseService.mockReturnValue(db);
+      const course = await getCourse(actor, 'ai-foundations', 'en');
+      expect(course.progress).toEqual({ completedItems: 0, totalItems: 1, items: { 'exam-lifecycle': publicStatus } });
+      expect(course.outline.modules[0].items[0].status).toBe(publicStatus);
+      expect(course.completion.complete).toBe(false);
+      const selected = String(db.queriesFor('exam_attempts')[0].operations.find(([operation]) => operation === 'select')?.[1]);
+      expect(selected).not.toMatch(/points|percent|grading|released/);
+      expect(JSON.stringify(course)).not.toContain('max_points');
+    });
+
+    it('uses the latest numbered attempt rather than an older active attempt, regardless of input row order', async () => {
+      const db = databaseFor([
+        attempt('in_progress', { id: 'older', attempt_no: 1, started_at: '2026-11-05T11:00:00Z' }),
+        attempt('pending_manual', { id: 'latest', attempt_no: 2, started_at: '2026-11-05T10:00:00Z' }),
+      ]);
+      mocks.supabaseService.mockReturnValue(db);
+      const course = await getCourse(actor, 'ai-foundations', 'en');
+      expect(course.progress.items['exam-lifecycle']).toBe('in_review');
+      expect(course.progress.completedItems).toBe(0);
+      expect(db.queriesFor('exam_attempts')[0].operations).toEqual(expect.arrayContaining([
+        ['eq', 'user_id', 'learner-1'], ['eq', 'course_version_id', 'version-pinned'],
+        ['order', 'attempt_no', { ascending: false }], ['order', 'started_at', { ascending: false }],
+      ]));
+    });
+
+    it('rejects mismatched owner and version rows before selecting the latest public lifecycle', async () => {
+      const db = databaseFor([
+        attempt('in_progress', { id: 'other-owner', user_id: 'another-user', attempt_no: 20 }),
+        attempt('in_progress', { id: 'other-pin', course_version_id: 'version-other', attempt_no: 19 }),
+        attempt('submitted_late'),
+      ]);
+      mocks.supabaseService.mockReturnValue(db);
+      expect((await getCourse(actor, 'ai-foundations', 'en')).progress.items['exam-lifecycle']).toBe('submitted');
+    });
+
+    it('keeps recorded completion authoritative even when the latest attempt expired', async () => {
+      const db = databaseFor([attempt('expired')], [{ item_id: 'exam-lifecycle', percent: 70, passed: true }]);
+      mocks.supabaseService.mockReturnValue(db);
+      const course = await getCourse(actor, 'ai-foundations', 'en');
+      expect(course.progress).toEqual({ completedItems: 1, totalItems: 1, items: { 'exam-lifecycle': 'completed' } });
+      expect(course.completion.complete).toBe(true);
+    });
+
+    it('uses legacy recorded grade evidence as submitted when no attempt lifecycle exists, without inventing completion', async () => {
+      const db = databaseFor([], [{ item_id: 'exam-lifecycle', percent: 20, passed: false }]);
+      mocks.supabaseService.mockReturnValue(db);
+      const course = await getCourse(actor, 'ai-foundations', 'en');
+      expect(course.progress).toEqual({ completedItems: 0, totalItems: 1, items: { 'exam-lifecycle': 'submitted' } });
+      expect(course.completion.complete).toBe(false);
+    });
+  });
+
 });

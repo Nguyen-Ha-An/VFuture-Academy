@@ -3,16 +3,20 @@ import { z } from 'zod';
 
 import {
   assertWorkspaceSameOrigin,
+  assertWorkspaceRequestScope,
   getGradingContext,
 } from '@/features/workspace/context';
 import { ADMIN_SCOPE_COOKIE, scopeKey } from '@/lib/admin-scope';
 import { ApiError, ok, parseBody, withHandler } from '@/lib/api';
+import { assertSavedScopePrecondition } from '@/features/workspace/scope-preconditions';
 
 /** Switches the active scope of the Assessment & grading workspace. */
 export const POST = withHandler(async (request) => {
   assertWorkspaceSameOrigin(request);
   const input = await parseBody(z.object({ scope: z.string().max(80) }).strict(), request);
   const context = await getGradingContext();
+  assertWorkspaceRequestScope(context, request);
+  await assertSavedScopePrecondition(request);
   if (!context.options.some((option) => scopeKey(option.scope) === input.scope)) {
     throw new ApiError(403, 'FORBIDDEN', 'Scope not available');
   }

@@ -19,6 +19,8 @@ export function canonicalAdminDestination(pathname: string): string | null {
 }
 /** Review-only routing to real target fixtures; preserve the production path and query. */
 export function canonicalPreviewUrl(pathname: string, search: string): string | null {
-  const target = canonicalAdminDestination(pathname);
+  // Option B's exact report target is rendered by the real Teaching fixture,
+  // never by a synthetic Admin fallback. This remains a separate local origin.
+  const target = pathname === '/grading/reports' ? pathname : canonicalAdminDestination(pathname);
   return target ? `${target.startsWith('/grading/') ? 'http://127.0.0.1:4285' : 'http://127.0.0.1:4284'}${target}${search}` : null;
 }

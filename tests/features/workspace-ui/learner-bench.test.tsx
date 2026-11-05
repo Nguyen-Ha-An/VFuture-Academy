@@ -5,7 +5,8 @@ import { createTranslator, NextIntlClientProvider } from 'next-intl';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '@/messages/en.json';
-import { withBenchMessages } from '@/messages/bench';
+import { staffUiTestMessages } from '@/messages/staff-ui';
+import { CanvasProvider } from '@/features/canvas/ui/CanvasProvider';
 
 const mocks = vi.hoisted(() => ({
   pathname: '/app',
@@ -17,10 +18,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 // The dashboard contract strings the page tests assert on ("Resume lesson", "Open exam").
-const messages = withBenchMessages({ ...en, learner: { ...en.learner, home: { ...en.learner.home, resume: 'Resume lesson', openExam: 'Open exam' } } }, 'en');
+const messages = staffUiTestMessages({ ...en, learner: { ...en.learner, home: { ...en.learner.home, resume: 'Resume lesson', openExam: 'Open exam' } } }, 'en');
 
 vi.mock('server-only', () => ({}));
-vi.mock('next/navigation', () => ({ usePathname: () => mocks.pathname, useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push: mocks.push, refresh: vi.fn() }), redirect: vi.fn() }));
+vi.mock('next/navigation', () => ({ useServerInsertedHTML: () => undefined, usePathname: () => mocks.pathname, useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push: mocks.push, refresh: vi.fn() }), redirect: vi.fn() }));
 vi.mock('next-intl/server', () => ({
   getLocale: vi.fn(async () => 'en'),
   getTranslations: vi.fn(async (namespace?: string) => createTranslator({ locale: 'en', messages, namespace: namespace as never })),
@@ -58,7 +59,7 @@ import { LearnerDashboardView } from '@/features/workspace-ui/learner/LearnerDas
 import type { LearnerDashboardData } from '@/features/workspace-ui/learner/model';
 import type { CanvasTask } from '@/features/workspace-ui/learner/canvas-model';
 
-const wrap = (children: React.ReactNode) => <NextIntlClientProvider locale="en" messages={messages} timeZone="Asia/Ho_Chi_Minh">{children}</NextIntlClientProvider>;
+const wrap = (children: React.ReactNode) => <NextIntlClientProvider locale="en" messages={messages} timeZone="Asia/Ho_Chi_Minh"><CanvasProvider theme="light">{children}</CanvasProvider></NextIntlClientProvider>;
 const NOW = new Date('2026-09-24T14:14:00Z'); // Thursday, 21:14 ICT, ISO week 39
 
 beforeEach(() => { mocks.requireUser.mockResolvedValue({ id: 'learner-1', email: 'avery@example.com' }); });
@@ -81,7 +82,7 @@ const dashboard = (overrides: Partial<LearnerDashboardData> = {}): LearnerDashbo
 
 describe('bench learner shell', () => {
   it('renders the Canvas global navigation while keeping landmarks and accessible names', () => {
-    const { container } = render(wrap(<AppShell theme="dark"><h1>Home</h1></AppShell>));
+    const { container } = render(wrap(<AppShell theme="dark"><h1 tabIndex={-1}>Home</h1></AppShell>));
     expect(container.querySelector('.vf-workspace')).toHaveAttribute('data-density', 'comfortable');
     expect(container.querySelector('.vf-workspace')).toHaveAttribute('data-theme', 'dark');
     const nav = screen.getByRole('navigation', { name: 'Global navigation' });
@@ -96,92 +97,95 @@ describe('bench learner shell', () => {
     expect(screen.queryByRole('group', { name: 'Theme' })).toBeNull();
   });
 
-  it('offers the theme as radio items inside the account menu', () => {
+  it('offers the theme through a native combobox inside the account tray', async () => {
     render(wrap(<AppShell theme="dark"><h1>Home</h1></AppShell>));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Account' }), { button: 0, ctrlKey: false });
-    expect(screen.getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Light' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    const tray = await screen.findByRole('dialog', { name: 'Account' });
+    const theme = within(tray).getByRole('combobox', { name: 'Theme' });
+    expect(theme).toHaveValue('Dark');
+    const user = userEvent.setup();
+    await user.click(theme);
+    await user.click(await screen.findByRole('option', { name: 'Light' }));
     expect(document.querySelector('.vf-workspace')).toHaveAttribute('data-theme', 'light');
-    expect(screen.getByRole('menuitemradio', { name: 'Light' })).toHaveAttribute('aria-checked', 'true');
+    expect(theme).toHaveValue('Light');
   });
 
-  it('keeps the account menu items and the mobile drawer contract', () => {
+  it('keeps one account tray and hands off from the mobile navigation drawer', async () => {
     render(wrap(<AppShell><h1>Home</h1></AppShell>));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Account' }), { button: 0, ctrlKey: false });
-    expect(screen.getByRole('menuitem', { name: 'XP' })).toHaveAttribute('href', '/app/profile#xp-heading');
-    const signOut = screen.getByRole('menuitem', { name: 'Sign out' }) as HTMLButtonElement;
-    expect(signOut.form).toHaveAttribute('action', '/auth/signout');
-    expect(signOut).toHaveAttribute('type', 'submit');
-    // globals.css makes controls inherit their font, so the menu itself carries the item size.
-    expect(screen.getByRole('menu')).toHaveClass('text-sm');
-    fireEvent.keyDown(signOut, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    const account = await screen.findByRole('dialog', { name: 'Account' });
+    expect(within(account).queryByRole('link', { name: 'XP' })).not.toBeInTheDocument();
+    expect(within(account).getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/app/profile');
+    expect(within(account).getByRole('link', { name: en.common.accountSettings })).toHaveAttribute('href', '/app/profile#profile-settings-heading');
+    expect(within(account).getByRole('link', { name: 'Certificates' })).toHaveAttribute('href', '/app/profile#certificates-heading');
+    expect(within(account).getAllByRole('combobox')).toHaveLength(2);
+    const form = document.querySelector('form[action="/auth/signout"]');
+    expect(form).toHaveAttribute('method', 'post');
+    expect(within(account).getByRole('button', { name: 'Sign out' })).toHaveAttribute('type', 'button');
+    fireEvent.click(within(account).getByRole('button', { name: en.common.close }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Account' })).not.toBeInTheDocument());
     const trigger = screen.getByRole('button', { name: en.common.menu });
     expect(trigger).toHaveAttribute('aria-controls', 'learner-mobile-navigation');
     fireEvent.click(trigger);
-    const drawer = screen.getByRole('dialog', { name: en.common.learnerNavigation });
+    const drawer = await screen.findByRole('dialog', { name: en.common.learnerNavigation });
     expect(drawer).toHaveAttribute('id', 'learner-mobile-navigation');
     expect(within(drawer).getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
-    expect(within(drawer).getByRole('group', { name: 'Theme' })).toBeInTheDocument();
-    const language = within(drawer).getByRole('group', { name: en.common.language });
-    expect(within(language).getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(language).getByRole('button', { name: 'Tiếng Việt' })).toHaveAttribute('lang', 'vi');
-    expect(language.compareDocumentPosition(within(drawer).getByRole('group', { name: 'Theme' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Each segmented group has a visible mono label above it that names it, and the 6px drawer segment.
-    for (const group of [language, within(drawer).getByRole('group', { name: 'Theme' })]) {
-      const label = document.getElementById(group.getAttribute('aria-labelledby')!);
-      expect(label).toHaveClass('vf-label');
-      expect(label).toBeVisible();
-      expect(label!.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(group).not.toHaveAttribute('aria-label');
-      expect(group).toHaveClass('vf-l-drawer-seg');
-    }
-    expect(within(drawer).getByRole('button', { name: 'Sign out' }).closest('.text-sm')).not.toBeNull();
+    expect(within(drawer).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(drawer).queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Account' }));
+    const handedOff = await screen.findByRole('dialog', { name: 'Account' });
+    expect(screen.queryByRole('dialog', { name: en.common.learnerNavigation })).not.toBeInTheDocument();
+    expect(within(handedOff).getAllByRole('combobox')).toHaveLength(2);
+    expect(within(handedOff).getByRole('combobox', { name: en.common.language })).toHaveValue(en.locale.en);
+    expect(within(handedOff).getByRole('combobox', { name: 'Theme' })).toHaveValue('Auto');
   });
 
-  it('shows the learner identity in the account trigger and menu label', () => {
+  it('keeps the Account trigger stable and shows the full learner identity inside the tray', async () => {
     mocks.pathname = '/app/profile';
     render(wrap(<AppShell userName="Nguyễn An" initials="NA" handle="an-nguyen"><h1>Profile</h1></AppShell>));
-    const trigger = screen.getByRole('button', { name: 'Nguyễn An' });
-    expect(trigger).toHaveAttribute('data-active', 'true');
-    expect(trigger.querySelector('.vf-l-account-initials')).toHaveAttribute('aria-hidden', 'true');
-    expect(trigger.querySelector('.vf-l-account-initials')).toHaveTextContent('NA');
-    expect(trigger.querySelector('.vf-l-account-name')).toHaveTextContent('Nguyễn An');
+    const trigger = screen.getByRole('button', { name: 'Account' });
+    expect(trigger).toHaveAttribute('aria-current', 'page');
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(trigger).not.toHaveTextContent('Nguyễn An');
     expect(screen.getByRole('button', { name: en.common.menu })).toHaveClass('md:hidden');
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-    const menu = screen.getByRole('menu');
-    expect(within(menu).getByText('@an-nguyen')).toBeInTheDocument();
-    const order = [
-      within(menu).getByText('@an-nguyen'),
-      within(menu).getByRole('menuitem', { name: 'Leaderboard' }),
-      within(menu).getByRole('menuitemradio', { name: 'English' }),
-      within(menu).getByRole('menuitemradio', { name: 'Dark' }),
-      within(menu).getByRole('menuitem', { name: 'Sign out' }),
-    ];
+    fireEvent.click(trigger);
+    const tray = await screen.findByRole('dialog', { name: 'Account' });
+    expect(within(tray).getByRole('heading', { name: 'Nguyễn An' })).toBeInTheDocument();
+    expect(within(tray).getByText('@an-nguyen')).toBeInTheDocument();
+    expect(tray.querySelector('.canvas-account-avatar')).toHaveAttribute('aria-hidden', 'true');
+    expect(tray.querySelector('.canvas-account-avatar')).toHaveTextContent('NA');
+    const order = [within(tray).getByText('@an-nguyen'), within(tray).getByRole('button', { name: 'Sign out' }), within(tray).getByRole('link', { name: 'Leaderboard' }), within(tray).getByRole('combobox', { name: en.common.language }), within(tray).getByRole('combobox', { name: 'Theme' })];
     order.slice(1).forEach((node, index) => expect(order[index].compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
-    expect(screen.queryByRole('combobox', { name: en.common.language })).toBeNull();
+    expect(within(tray).getAllByRole('combobox')).toHaveLength(2);
   });
 
   it('leaves the account trigger unmarked outside profile and leaderboard', () => {
     mocks.pathname = '/app/courses';
     render(wrap(<AppShell userName="Avery" initials="A"><h1>Courses</h1></AppShell>));
-    expect(screen.getByRole('button', { name: 'Avery' })).not.toHaveAttribute('data-active');
+    expect(screen.getByRole('button', { name: 'Account' })).not.toHaveAttribute('aria-current');
   });
 
-  it('saves the language from the account menu and keeps a failure visible', async () => {
+  it('saves the language from the account tray and keeps a native accessible failure visible', async () => {
     const fetchMock = vi.fn(async () => ({ ok: false }) as Response);
     vi.stubGlobal('fetch', fetchMock);
     try {
       render(wrap(<AppShell><h1>Home</h1></AppShell>));
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Account' }), { button: 0, ctrlKey: false });
-      expect(screen.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute('aria-checked', 'true');
-      expect(screen.getByRole('menuitemradio', { name: 'Tiếng Việt' })).toHaveAttribute('lang', 'vi');
-      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Tiếng Việt' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+      const tray = await screen.findByRole('dialog', { name: 'Account' });
+      const language = within(tray).getByRole('combobox', { name: en.common.language });
+      expect(language).toHaveValue(en.locale.en);
+      const user = userEvent.setup();
+      await user.click(language);
+      await user.click(await screen.findByRole('option', { name: en.locale.vi }));
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/profile/locale', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ locale: 'vi' }) })));
-      expect(await screen.findByRole('alert')).toHaveTextContent(en.locale.updateError);
-      expect(screen.getByRole('menu')).toBeInTheDocument();
-    } finally {
-      vi.unstubAllGlobals();
-    }
+      const reopened = await screen.findByRole('dialog', { name: 'Account' });
+      expect(await within(reopened).findByText(en.locale.updateError)).toBeVisible();
+      const languageAfterFailure = within(reopened).getByRole('combobox', { name: en.common.language });
+      expect(languageAfterFailure).toHaveAttribute('aria-invalid', 'true');
+      expect(languageAfterFailure).toHaveAccessibleDescription(new RegExp("^\\s*" + en.locale.updateError.replace(/[.*+?^\x24{}()|[\]\\]/g, "\\$&") + "\\s*$"));
+      expect(languageAfterFailure).toHaveValue(en.locale.en);
+      expect(screen.getByRole('dialog', { name: 'Account' })).toBeInTheDocument();
+    } finally { vi.unstubAllGlobals(); }
   });
 
   it('jumps between sections with g then 1/2/3, but never while typing', async () => {
@@ -274,6 +278,16 @@ describe('bench learner shell', () => {
 });
 
 describe('bench learner dashboard', () => {
+  it('labels only a verified active exam as Resume exam and preserves ordinary continuation', () => {
+    const base = dashboard();
+    const resume = { ...base.resume!, kind: 'exam' as const, itemId: 'exam', attemptId: 'owned-active-attempt' };
+    const view = render(wrap(<LearnerDashboardView data={{ ...base, resume }} tasks={[]} results={[]} announcements={[]} />));
+    expect(screen.getByRole('link', { name: `Resume exam: ${resume.title}` })).toHaveAttribute('href', resume.href);
+    view.rerender(wrap(<LearnerDashboardView data={{ ...base, resume: { ...resume, attemptId: undefined } }} tasks={[]} results={[]} announcements={[]} />));
+    expect(screen.queryByRole('link', { name: `Resume exam: ${resume.title}` })).not.toBeInTheDocument();
+    expect(document.querySelector('[data-canvas-action="continue"]')).toHaveTextContent('Continue learning');
+  });
+
   it('shows factual task counts and working course/status filters while retaining resume, scores and feedback', async () => {
     const user = userEvent.setup();
     const tasks: CanvasTask[] = [

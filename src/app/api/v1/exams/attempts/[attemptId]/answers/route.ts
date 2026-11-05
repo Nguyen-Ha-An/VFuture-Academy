@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AttemptIdSchema, ExamAnswersSchema, examOperation } from '@/features/exams/http';
+import { AttemptIdSchema, ExamAnswersSchema, examOperation, streamExamJson } from '@/features/exams/http';
 import { createServerExamService, learnerExamActor } from '@/features/exams/server';
 import { parseBody, withHandler } from '@/lib/api';
 import { requireApiUser } from '@/lib/auth';
@@ -23,5 +23,7 @@ export const PUT = withHandler(async (request, context) => {
   );
   const attemptId = AttemptIdSchema.parse((await (context as RouteContext).params).attemptId);
   const actor = await learnerExamActor(user.id);
-  return examOperation(() => createServerExamService().save(actor, attemptId, answers));
+  const compact=request.headers.get('x-academy-exam-ack')==='compact-v1';
+  const saved=await examOperation(() => createServerExamService().save(actor, attemptId, answers, {compact}));
+  return streamExamJson(compact ? {format:'compact-v1',answers:saved.map(({questionId,answer})=>({questionId,answer}))} : saved);
 });

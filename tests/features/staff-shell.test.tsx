@@ -32,10 +32,16 @@ describe('shared staff presentation', () => {
   });
   it('registers a record title for readable detail breadcrumbs', () => {
     nav.pathname = '/admin/users/00000000-0000-4000-8000-000000000001';
-    view('admin', ['member.read']);
+    view('admin', ['admin.access', 'member.read']);
     const crumbs = screen.getByRole('navigation', { name: en.common.breadcrumbs });
     expect(within(crumbs).getByText('A readable record name')).toBeInTheDocument();
     expect(crumbs.textContent).not.toContain('00000000');
+  });
+  it('does not advertise strict management routes from member.read without admin.access', () => {
+    nav.pathname = '/admin/users/00000000-0000-4000-8000-000000000001';
+    view('admin', ['member.read']);
+    expect(screen.queryByRole('link', { name: en.adminNav.users })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: en.common.breadcrumbs })).not.toBeInTheDocument();
   });
   it('opens the mobile navigation without losing authorized workspaces', () => {
     nav.pathname = '/grading/queue';

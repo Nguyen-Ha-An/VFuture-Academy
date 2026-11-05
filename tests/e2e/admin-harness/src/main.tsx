@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { AdminShell } from '@/components/AdminShell';
 import { AppShell } from '@/components/AppShell';
+import { CanvasProvider } from '@/features/canvas/ui';
 import { StudioShell } from '@/components/StudioShell';
 import { MembersDirectory } from '@/features/admin/components/MembersDirectory';
 import { MemberProfile } from '@/features/admin/components/MemberProfile';
@@ -47,6 +48,7 @@ const pagesFixture=()=>import('./admin-pages-fixture');
 const AdminOverviewFixture=lazy(()=>pagesFixture().then(module=>({default:module.AdminOverviewFixture})));
 const BranchesFixture=lazy(()=>pagesFixture().then(module=>({default:module.BranchesFixture})));
 const SchoolDetailFixture=lazy(()=>pagesFixture().then(module=>({default:module.SchoolDetailFixture})));
+const SchoolEntryFixture=lazy(()=>pagesFixture().then(module=>({default:module.SchoolEntryFixture})));
 const AuditFixture=lazy(()=>pagesFixture().then(module=>({default:module.AuditFixture})));
 const SupportProfileFixture=lazy(()=>import('./support-profile-fixture').then(module=>({default:module.SupportProfileFixture})));
 const TIME_ZONE='Asia/Ho_Chi_Minh';
@@ -87,9 +89,20 @@ window.fetch=async(input,init)=>{
  const response=await adminTransport(input,init);if(response)return response;
  const url=new URL(String(input),location.origin);const body=init?.body?JSON.parse(String(init.body)):{};
  let data:unknown;
- // `?holdScope=1` leaves the scope POST in flight, so specs can inspect the switching overlay.
- if(url.pathname.endsWith('/scope')&&holdScope)return new Promise<Response>(()=>{});
- if(url.pathname.endsWith('/scope')){const option=fixtureScopes().find(option=>scopeKey(option.scope)===body.scope);if(!option)return new Response(JSON.stringify({error:{message:'Scope not available to this fixture operator'}}),{status:403,headers:{'Content-Type':'application/json'}});active=option.scope;sessionStorage.setItem('admin-fixture-scope',body.scope);window.__adminFixture.requests.push({path:url.pathname,method:init?.method??'GET',scope:body.scope,body});window.dispatchEvent(new Event('admin-demo-scope'));data={scope:active};}
+ if(/^\/api\/v1\/(admin|studio|grading)\/scope$/.test(url.pathname)){
+   const failure=(status:number,code:string,message:string)=>new Response(JSON.stringify({error:{code,message}}),{status,headers:{'Content-Type':'application/json'}});
+   if(init?.method!=='POST'||Object.keys(body).some(key=>key!=='scope'))return failure(400,'INVALID_OPERATION','Scope changes require the exact production POST body.');
+   if(url.searchParams.has('actorId')&&url.searchParams.get('actorId')!==FIXTURE_ACTOR_ID)return failure(409,'ACTOR_CHANGED','The fixture operator changed.');
+   if(url.searchParams.has('scope')&&url.searchParams.get('scope')!==scopeKey(active))return failure(409,'SCOPE_CHANGED','The fixture scope changed.');
+   const expected=new Headers(init?.headers).get('x-vfuture-expected-saved-scope');
+   if(expected!==null&&expected!==(sessionStorage.getItem('admin-fixture-scope')??''))return failure(409,'SCOPE_CHANGED','The saved fixture scope changed.');
+   const option=fixtureScopes().find(option=>scopeKey(option.scope)===body.scope);
+   if(!option)return failure(403,'FORBIDDEN','Scope not available to this fixture operator');
+   // Hold only an otherwise authorized POST, preserving the rejection contracts.
+   if(holdScope)return new Promise<Response>(()=>{});
+   window.__adminFixture.requests.push({path:url.pathname,method:'POST',scope:scopeKey(active),body});
+   active=option.scope;sessionStorage.setItem('admin-fixture-scope',body.scope);window.dispatchEvent(new Event('admin-demo-scope'));data={scope:body.scope};
+ }
  else if(url.pathname.endsWith('/mcp/blocks')){if(active.kind!=='central'||!fixturePermissions().includes('user.manage.global'))return new Response(JSON.stringify({error:{code:'FORBIDDEN',message:'Central user management permission required'}}),{status:403,headers:{'Content-Type':'application/json'}});const userId=(init?.method==='POST'||init?.method==='DELETE'?body.userId:url.searchParams.get('userId')) as string;if(init?.method==='POST')mcpBlocks.set(userId,{reason:body.reason??null,blockedAt:new Date().toISOString()});if(init?.method==='DELETE')mcpBlocks.delete(userId);const block=mcpBlocks.get(userId);data={userId,blocked:Boolean(block),reason:block?.reason??null,blockedAt:block?.blockedAt??null,blockedBy:block?FIXTURE_ACTOR_ID:null,scope:'all-mcp-clients',oauthGrantRevoked:false};}
  else if(url.pathname.endsWith('/workflow')){const [,contentType,contentId]=/\/content\/([^/]+)\/([^/]+)\/workflow$/.exec(url.pathname)??[];const row=libraryRows.find(entry=>entry.content_type===contentType&&entry.content_id===contentId);data={content:{contentType,contentId,revisionKey:row?.revision_key??'v1',status:row?.status??'draft',publishedRevisionKey:row?.status==='published'?row.revision_key:null},activeReview:row?.review_status==='pending'?{id:review.id,status:'pending',revisionKey:row.revision_key}:null,publication:null,actions:{requestReview:row?.review_status!=='pending',withdrawReview:false,approveAndPublish:false,mutate:true}};}
  else if(url.pathname.includes('/reviews/')){
@@ -106,6 +119,7 @@ function App(){
  const pathname=usePathname();const [scope,setScope]=useState(active);const [,setRevision]=useState(0);
  useEffect(()=>{const update=()=>setRevision(value=>value+1);window.addEventListener('admin-demo-update',update);return()=>window.removeEventListener('admin-demo-update',update);},[]);
  useEffect(()=>{const update=()=>setScope(active);window.addEventListener('admin-demo-scope',update);return()=>window.removeEventListener('admin-demo-scope',update);},[]);
+ useEffect(()=>{const target=canonicalPreviewUrl(pathname,location.search);if(target)location.replace(target);},[pathname]);
  const permissions=fixturePermissions();
  const scopes=fixtureScopes();
  const shared={scope,actorId:FIXTURE_ACTOR_ID,branches:window.__adminFixture.readModel(scope).schools};
@@ -113,6 +127,8 @@ function App(){
  const boundary=params.get('boundary');
  const content=boundary==='loading'?<AdminLoading/>:boundary==='forbidden'?<AdminForbidden/>:boundary==='error'?<AdminError error={new Error('Local fixture read failed')} reset={()=>{const next=new URL(location.href);next.searchParams.delete('boundary');location.assign(next.href);}}/>
   :pathname==='/app/profile'?<Suspense fallback={null}><SupportProfileFixture/></Suspense>
+  :pathname==='/account/school-context'?<Suspense fallback={null}><SchoolEntryFixture scope={scope} scopeOptions={scopes}/></Suspense>
+  :pathname==='/grading/reports'?null
   :pathname==='/admin/enrollment-migration'?permissions.includes('course.publish')?<EnrollmentMigrationPanel courses={scenario==='empty'?[]:[{id:'python-foundations',title:locale==='vi'?'Python cơ bản':'Python foundations'},{id:'ai-foundations',title:locale==='vi'?'Nền tảng trí tuệ nhân tạo':'AI foundations'}]}/>:<AdminForbidden/>
   :pathname==='/studio/reviews'?<section className="space-y-6"><StaffPageHeader title="Duyệt nội dung"/><ReviewQueue {...shared} rows={[review,...extraReviews]} canReview={central} canPublish={central} titles={manyReviews?Object.fromEntries([review,...extraReviews].map(entry=>[`${entry.content_type}:${entry.content_id}`,reviewTitles[entry.content_id]])):undefined} submitters={manyReviews?{}:undefined}/></section>
   :pathname==='/studio/library'?<section className="space-y-6"><ContentInventory {...shared} title="Thư viện nội dung" creatableTypes={['resource']} requestableKeys={libraryRows.map(row=>`${row.content_type}:${row.content_id}`)} rows={libraryRows}/></section>
@@ -120,12 +136,13 @@ function App(){
   :pathname==='/admin/mcp'?central&&permissions.includes('user.manage.global')?<McpBlockView initialUserId={new URLSearchParams(location.search).get('userId')??''} actorId={FIXTURE_ACTOR_ID}/>:<AdminForbidden/>
   :pathname==='/admin'?<Suspense fallback={null}><AdminOverviewFixture permissions={permissions} entries={entries} central={central} scope={scope}/></Suspense>
   :pathname==='/admin/branches'?<Suspense fallback={null}><BranchesFixture canManage={permissions.includes('branch.manage')} scope={scope} permissions={permissions}/></Suspense>
-  :pathname.startsWith('/admin/branches/')?scope.kind==='branch'&&scope.branchId!==pathname.split('/').at(-1)?<AdminForbidden/>:<Suspense fallback={null}><SchoolDetailFixture branchId={pathname.split('/').at(-1)!} permissions={permissions}/></Suspense>
+  :pathname.startsWith('/admin/branches/')?scopes.some(option=>option.scope.kind==='branch'&&option.scope.branchId===pathname.split('/').at(-1))?<Suspense fallback={null}><SchoolDetailFixture branchId={pathname.split('/').at(-1)!} permissions={permissions} scope={scope} scopeOptions={scopes}/></Suspense>:<AdminForbidden/>
   :pathname==='/admin/audit'?<Suspense fallback={null}><AuditFixture/></Suspense>
   :pathname.startsWith('/admin/users/')?<MemberProfile userId={pathname.split('/').at(-1)!} scope={scope} actorId={FIXTURE_ACTOR_ID} canManageMcpAccess={central&&permissions.includes('user.manage.global')}/>
   :pathname==='/admin/users'?<MembersDirectory scope={scope} actorId={FIXTURE_ACTOR_ID} stats={memberStats(scope)}/>
   :<section><h1>Fixture route unavailable</h1><p>{pathname} is not a rendered Admin screen.</p></section>;
  if(pathname==='/app/profile')return <NextIntlClientProvider locale={locale} messages={messages} timeZone={TIME_ZONE}><AppShell userName="Nguyễn Minh Anh" initials="MA" theme={new URLSearchParams(location.search).get('theme')==='dark'?'dark':'light'}>{content}</AppShell></NextIntlClientProvider>;
+ if(pathname==='/account/school-context')return <NextIntlClientProvider locale={locale} messages={messages} timeZone={TIME_ZONE}><CanvasProvider>{content}</CanvasProvider></NextIntlClientProvider>;
  if(staffUi)return <NextIntlClientProvider locale={locale} messages={messages} timeZone={TIME_ZONE}><Suspense fallback={null}><StaffHarnessShell workspace={pathname.startsWith('/studio/')?'studio':'admin'} entries={entries} key={scopeKey(scope)} permissions={permissions} activeScope={scope} scopeOptions={scopes}>{content}</StaffHarnessShell></Suspense></NextIntlClientProvider>;
  const Shell=pathname.startsWith('/studio/')?StudioShell:AdminShell;
  return <NextIntlClientProvider locale={locale} messages={messages} timeZone={TIME_ZONE}><Shell redesigned={new URLSearchParams(location.search).has('redesigned')} entries={entries} key={scopeKey(scope)} permissions={permissions} activeScope={scope} scopeOptions={scopes} userName="Người quản trị thử nghiệm">{content}</Shell></NextIntlClientProvider>;

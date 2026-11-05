@@ -13,7 +13,7 @@ export default async function LearnerTasksPage() {
     console.error('[learner tasks] unavailable', error);
     return null;
   });
-  return <div className="canvas-page canvas-learning"><header className="canvas-page-heading"><div><h1>{copy.tasksTitle}</h1><p className="canvas-muted">{copy.tasksDescription}</p></div></header>
+  return <div className="canvas-page canvas-learning"><header className="canvas-page-heading"><div><h1 tabIndex={-1}>{copy.tasksTitle}</h1><p className="canvas-muted">{copy.tasksDescription}</p></div></header>
     <section className="canvas-panel canvas-assignment-group" aria-label={copy.tasksTitle}><CanvasTasks tasks={tasks} locale={locale} allTasks /></section>
   </div>;
 }

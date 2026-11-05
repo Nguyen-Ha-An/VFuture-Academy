@@ -3,15 +3,19 @@ import { z } from 'zod';
 
 import {
   assertWorkspaceSameOrigin,
+  assertWorkspaceRequestScope,
   getStudioContext,
 } from '@/features/workspace/context';
 import { ADMIN_SCOPE_COOKIE, scopeKey } from '@/lib/admin-scope';
 import { ApiError, ok, parseBody, withHandler } from '@/lib/api';
+import { assertSavedScopePrecondition } from '@/features/workspace/scope-preconditions';
 
 export const POST = withHandler(async (request) => {
   assertWorkspaceSameOrigin(request);
   const input = await parseBody(z.object({ scope: z.string().max(80) }).strict(), request);
   const context = await getStudioContext();
+  assertWorkspaceRequestScope(context, request);
+  await assertSavedScopePrecondition(request);
   if (!context.options.some((option) => scopeKey(option.scope) === input.scope)) {
     throw new ApiError(403, 'FORBIDDEN', 'Scope not available');
   }

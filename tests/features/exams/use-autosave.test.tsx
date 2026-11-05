@@ -3,7 +3,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExamAnswerRecord } from '@/features/exams/types';
-import { ExamRequestError } from '@/features/exams/ui/client';
+import { createHttpExamClient, ExamRequestError, type ExamAnswerAck } from '@/features/exams/ui/client';
 import { createPendingExamDraftStore } from '@/features/exams/ui/pending-draft';
 import {
   AUTOSAVE_MAX_BACKOFF_MS,
@@ -11,6 +11,7 @@ import {
   autosaveBackoffMs,
   useAutosave,
   type SaveStatus,
+  type TerminalResolution,
 } from '@/features/exams/ui/useAutosave';
 
 const ANSWER_GROUPS = {};
@@ -49,9 +50,9 @@ function fakeServer() {
 const timeout = () => new ExamRequestError(0, 'REQUEST_TIMEOUT', 'Exam request timed out', { ambiguous: true });
 const rateLimited = (retryAfterMs: number) => new ExamRequestError(429, 'RATE_LIMITED', 'Too many requests', { retryAfterMs });
 
-type SaveFn = (answers: Record<string, unknown>) => Promise<ExamAnswerRecord[]>;
+type SaveFn = (answers: Record<string, unknown>) => Promise<ExamAnswerAck[]>;
 
-function setup(save: SaveFn, options: { random?: () => number; onTerminal?: () => void } = {}) {
+function setup(save: SaveFn, options: { random?: () => number; onTerminal?: () => void | TerminalResolution | Promise<void | TerminalResolution>; groups?: Record<string,string> } = {}) {
   const storage = memoryStorage();
   const draftStore = createPendingExamDraftStore('attempt-1', storage);
   const answersRef = { current: {} as Record<string, unknown> };
@@ -60,7 +61,7 @@ function setup(save: SaveFn, options: { random?: () => number; onTerminal?: () =
   const statuses: SaveStatus[] = [];
   const hook = renderHook(({ revision }: { revision: number }) => {
     const value = useAutosave({
-      answerGroups: ANSWER_GROUPS,
+      answerGroups: options.groups ?? ANSWER_GROUPS,
       answersRef,
       client,
       draftStore,
@@ -133,6 +134,59 @@ describe('autosave backoff formula', () => {
 });
 
 describe('autosave acknowledgement', () => {
+  it('does not merge a partial acknowledgement into the accepted map',async()=>{
+    const h=setup(async()=>[{questionId:'q1',answer:'one'}],{groups:{q1:'section',q2:'section'}});
+    h.edit({q1:'one',q2:'two'});
+    let saved=true;await act(async()=>{saved=await h.hook.result.current.persistAnswers();});
+    expect(saved).toBe(false);expect(h.status()).toBe('failed');
+    expect(h.draftStore.read()).toEqual({q1:'one',q2:'two'});
+  });
+  it('retains only unsaved entries after a later byte-bounded batch fails',async()=>{
+    const server=fakeServer();let calls=0;
+    const groups=Object.fromEntries(Array.from({length:15},(_,i)=>[`q-${i}`,'section']));
+    const h=setup(async answers=>{calls++;if(calls===2)throw new Error('network');return server.save(answers);},{groups});
+    h.edit(Object.fromEntries(Array.from({length:15},(_,i)=>[`q-${i}`,'a'.repeat(5000)])));
+    let saved=true;await act(async()=>{saved=await h.hook.result.current.persistAnswers();});
+    expect(saved).toBe(false);expect(h.status()).toBe('failed');
+    const pending=h.draftStore.read();expect(pending).not.toBeNull();
+    expect(Object.keys(pending!).length).toBeGreaterThan(0);
+    expect(Object.keys(pending!).length).toBeLessThan(15);
+  });
+  it('reports a single oversized keyed answer without retrying until an edit',async()=>{
+    const server=fakeServer();const h=setup(server.save);
+    h.edit({'q1':'x'.repeat(65534)});
+    let saved=true;await act(async()=>{saved=await h.hook.result.current.persistAnswers();});
+    expect(saved).toBe(false);expect(h.hook.result.current.lastSaveErrorCode()).toBe('ANSWER_TOO_LARGE');
+    expect(h.hook.result.current.oversizedQuestionId).toBe('q1');expect(server.save).not.toHaveBeenCalled();
+    await h.at(31_000);expect(server.save).not.toHaveBeenCalled();
+    h.edit({'q1':'shortened'});
+    expect(h.hook.result.current.oversizedQuestionId).toBeNull();
+    await act(async()=>{saved=await h.hook.result.current.persistAnswers();});
+    expect(saved).toBe(true);expect(server.stored.get('q1')).toBe('shortened');
+  });
+  it('round-trips a cleared dropdown through the real HTTP client before allowing final save', async () => {
+    const stored = new Map<string, unknown>();
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetcher: typeof fetch = async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as {answers:Record<string,unknown>};
+      bodies.push(body.answers);
+      for (const [questionId, answer] of Object.entries(body.answers)) stored.set(questionId, answer);
+      const data = {format:'compact-v1',answers:Object.keys(body.answers).map(questionId => ({questionId,answer:stored.get(questionId)}))};
+      return new Response(JSON.stringify({data}),{status:200,headers:{'content-type':'application/json'}});
+    };
+    const client = createHttpExamClient({courseId:'course-one',itemId:'exam-one',attemptId:'00000000-0000-4000-8000-000000000003',fetcher});
+    const h=setup(client.save);
+    h.edit({'section/question':'choice-one'});
+    let saved=false;
+    await act(async()=>{saved=await h.hook.result.current.persistAnswers();});
+    expect(saved).toBe(true);
+    h.edit({'section/question':undefined});
+    await act(async()=>{saved=await h.hook.result.current.persistAnswers();});
+    expect(saved).toBe(true);
+    expect(bodies.at(-1)).toHaveProperty('section/question',null);
+    expect(stored.get('section/question')).toBeNull();
+    expect(h.status()).toBe('saved');
+  });
   it('refuses the final save when the server omits acknowledgement of a pending answer', async () => {
     const h = setup(async () => []);
     h.edit({ q1: 'final answer' });
@@ -366,6 +420,35 @@ describe('autosave backoff scheduling', () => {
     expect(onTerminal).toHaveBeenCalledOnce();
     expect(h.draftStore.read()).toBeNull();
     expect(h.status()).toBe('failed');
+  });
+
+  it('keeps the pending journal after unconfirmed terminal status and allows reconciliation retry',async()=>{
+    const terminal=Object.assign(new Error('not active'),{code:'ATTEMPT_NOT_ACTIVE'});
+    const onTerminal=vi.fn().mockResolvedValueOnce({confirmed:false}).mockResolvedValueOnce({confirmed:true});
+    const h=setup(vi.fn<SaveFn>().mockRejectedValue(terminal),{onTerminal});
+    h.edit({q1:'pending'});await h.at(1_000);
+    expect(h.draftStore.read()).toEqual({q1:'pending'});
+    await act(async()=>{await h.hook.result.current.retryNow();});
+    expect(onTerminal).toHaveBeenCalledTimes(2);expect(h.draftStore.read()).toBeNull();
+  });
+
+  it('retains the journal when terminal reconciliation identifies unsaved own answers',async()=>{
+    const terminal=Object.assign(new Error('not active'),{code:'ATTEMPT_NOT_ACTIVE'});
+    const h=setup(vi.fn<SaveFn>().mockRejectedValue(terminal),{onTerminal:async()=>({confirmed:true,preserveRecovery:true})});
+    h.edit({q1:'pending'});await h.at(1_000);
+    expect(h.draftStore.read()).toEqual({q1:'pending'});
+    act(()=>h.hook.result.current.markSubmitted({preserveRecovery:true}));
+    expect(h.draftStore.read()).toEqual({q1:'pending'});
+  });
+
+  it('retains the journal when terminal reconciliation itself fails',async()=>{
+    const terminal=Object.assign(new Error('not active'),{code:'ATTEMPT_NOT_ACTIVE'});
+    const onTerminal=vi.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({confirmed:true});
+    const h=setup(vi.fn<SaveFn>().mockRejectedValue(terminal),{onTerminal});
+    h.edit({q1:'pending'});await h.at(1_000);
+    expect(h.draftStore.read()).toEqual({q1:'pending'});
+    await act(async()=>{await h.hook.result.current.retryNow();});
+    expect(onTerminal).toHaveBeenCalledTimes(2);expect(h.draftStore.read()).toBeNull();
   });
 
   it('cancels a deferred attempt when the player unmounts', async () => {

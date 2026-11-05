@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { LessonBlock, RichContent } from '../schema/types';
 import type { QuestionResult } from '../grading/types';
 import type { LessonRuntime, RevealedInfo } from './runtime';
@@ -6,11 +6,19 @@ import { engineStrings, tr } from './strings';
 
 export interface BlockRendererProps<B extends LessonBlock = LessonBlock> { block: B; runtime: LessonRuntime; path: string; depth: number }
 export type LearnerQuestion = Record<string, unknown> & { id: string; type: string; content?: RichContent; display?: { interactionType?: string; layout?: string }; points?: number; hint?: RichContent };
+export type LeafQuestionControls = (question: LearnerQuestion, value: unknown, onChange: (value: unknown) => void) => {
+  disabled?: boolean;
+  result?: QuestionResult;
+  revealed?: RevealedInfo;
+  actions?: ReactNode;
+};
 export interface QuestionRendererProps<Q extends LearnerQuestion = LearnerQuestion> {
   question: Q; value: unknown; onChange: (value: unknown) => void; disabled?: boolean;
   result?: QuestionResult; revealed?: RevealedInfo; runtime: LessonRuntime; index?: number;
   /** Nesting depth for the question frame: 0 is a standalone card, ≥1 sits flat inside a quiz, group or section. */
   depth?: number;
+  /** Optional practice controls. Groups forward this to leaves without adding a group action. */
+  leafControls?: LeafQuestionControls;
 }
 
 export const blockRegistry: Record<string, ComponentType<BlockRendererProps<never>>> = {};

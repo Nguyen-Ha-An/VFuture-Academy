@@ -68,6 +68,42 @@ export function createCourseworkReadService(database: LearnerDatabase, now: () =
     return output;
   }
 
+  async function historicalContexts(actor: Actor, query: Query): Promise<Context[]> {
+    let enrollmentQuery = database.from('enrollments').select('course_id,course_version_id,status')
+      .eq('user_id', actor.userId).in('status', ['active', 'completed']);
+    if (query.courseId) enrollmentQuery = enrollmentQuery.eq('course_id', query.courseId);
+    const enrollmentResult = await enrollmentQuery;
+    databaseFailure(enrollmentResult.error, 'Course enrollments could not be loaded');
+    const enrollments = recordsOf(enrollmentResult.data).filter((row) => typeof row.course_id === 'string'
+      && ['active', 'completed'].includes(String(row.status)) && (!query.courseId || row.course_id === query.courseId));
+    const courseIds = [...new Set(enrollments.map((row) => row.course_id as string))];
+    if (!courseIds.length) return [];
+    const versionsResult = await database.from('course_versions').select('id,course_id').in('course_id', courseIds);
+    databaseFailure(versionsResult.error, 'Historical course versions could not be loaded');
+    const output: Context[] = [];
+    for (const version of recordsOf(versionsResult.data)) {
+      if (typeof version.id !== 'string' || typeof version.course_id !== 'string' || !courseIds.includes(version.course_id)) continue;
+      const outlineResult = await database.from('course_version_outline').select('version_id,course_id,outline,meta,default_language')
+        .eq('version_id', version.id).eq('course_id', version.course_id).maybeSingle();
+      databaseFailure(outlineResult.error, 'Historical course outline could not be loaded');
+      const outline = recordOf(outlineResult.data);
+      if (!outline || outline.version_id !== version.id || outline.course_id !== version.course_id) continue;
+      output.push({ enrollment: enrollments.find((row) => row.course_id === version.course_id)!, outline,
+        courseId: version.course_id, versionId: version.id, branchId: null, locale: query.locale ?? 'vi' });
+    }
+    return output;
+  }
+
+  async function historicalRecordAllowed(actor: Actor, context: Context, row: Row): Promise<boolean> {
+    if (row.user_id !== actor.userId || row.course_version_id !== context.versionId) return false;
+    try { await assertEnrollmentMembershipAccess(actor, row, database); }
+    catch (error) {
+      if (error instanceof ApiError && error.code === 'MEMBERSHIP_SUSPENDED') return false;
+      throw error;
+    }
+    return true;
+  }
+
   async function targets(context: Context): Promise<Target[]> {
     const result = await database.from('course_version_items').select('item_id,kind,grading').eq('version_id', context.versionId);
     databaseFailure(result.error, 'Pinned course tasks could not be loaded');
@@ -126,19 +162,23 @@ export function createCourseworkReadService(database: LearnerDatabase, now: () =
           submissionId: typeof row?.id === 'string' ? row.id : null, late: typeof row?.late === 'boolean' ? row.late : null });
       }
     }
-    return output;
+    // Preserve the full authorized set and its existing relative order in each group.
+    // An active exam is a resume action; its attempt timer is not a schedule deadline.
+    const activeExams = output.filter((task) => task.kind === 'exam' && task.status === 'in_progress');
+    const otherTasks = output.filter((task) => task.kind !== 'exam' || task.status !== 'in_progress');
+    return [...activeExams, ...otherTasks];
   }
 
   async function results(actor: Actor, query: Query = {}): Promise<CourseResult[]> {
     const output: CourseResult[] = [];
-    for (const context of await contexts(actor, query)) {
+    for (const context of await historicalContexts(actor, query)) {
       const [allTargets, assignments, exams, quizzes] = await Promise.all([
         targets(context),
-        database.from('assignment_submissions').select('id,item_id,block_id,status,attempt_no,submitted_at,grades(released,decision,total_points,max_points,passed,graded_at)')
+        database.from('assignment_submissions').select('id,user_id,course_version_id,branch_id,branch_scope_known,item_id,block_id,status,attempt_no,submitted_at,grades(released,decision,total_points,max_points,passed,graded_at)')
           .eq('user_id', actor.userId).eq('course_version_id', context.versionId),
-        database.from('exam_attempts').select('id,item_id,status,attempt_no,points,max_points,percent,submitted_at,result_available_at,released_at,grading_snapshot')
+        database.from('exam_attempts').select('id,user_id,course_version_id,branch_id,branch_scope_known,item_id,status,attempt_no,points,max_points,percent,submitted_at,result_available_at,released_at,grading_snapshot')
           .eq('user_id', actor.userId).eq('course_version_id', context.versionId),
-        database.from('quiz_attempts').select('id,item_id,quiz_id,points,max_points,percent,passed,submitted_at')
+        database.from('quiz_attempts').select('id,user_id,course_version_id,branch_id,branch_scope_known,item_id,quiz_id,points,max_points,percent,passed,submitted_at')
           .eq('user_id', actor.userId).eq('course_version_id', context.versionId),
       ]);
       for (const result of [assignments, exams, quizzes]) databaseFailure(result.error, 'Recorded results could not be loaded');
@@ -146,7 +186,7 @@ export function createCourseworkReadService(database: LearnerDatabase, now: () =
       for (const row of recordsOf(assignments.data)) {
         const target = byTarget.get(key(row.item_id, row.block_id));
         const grade = oneRecord(row.grades);
-        if (!target || target.kind !== 'assignment' || grade?.released !== true) continue;
+        if (!target || target.kind !== 'assignment' || grade?.released !== true || !await historicalRecordAllowed(actor, context, row)) continue;
         add(row, target, 'assignment', grade.total_points, grade.max_points, null, grade.passed, grade.graded_at, grade.decision);
       }
       for (const row of recordsOf(exams.data)) {
@@ -155,14 +195,14 @@ export function createCourseworkReadService(database: LearnerDatabase, now: () =
         const showScore = recordOf(settings?.review)?.showScore;
         const available = timestamp(row.result_available_at) !== null || (row.status === 'graded'
           && (showScore === 'immediately' || (showScore === 'on_release' && timestamp(row.released_at) !== null)));
-        if (!target || target.kind !== 'exam' || !available) continue;
+        if (!target || target.kind !== 'exam' || !available || !await historicalRecordAllowed(actor, context, row)) continue;
         add(row, target, 'exam', row.points, row.max_points, row.percent, null, row.result_available_at ?? row.submitted_at, row.status);
       }
       const fallback = context.outline.default_language === 'en' ? 'en' : 'vi';
       const outlined = new Map(outlineItems(context.outline.outline).map((item) => [item.id, item]));
       for (const row of recordsOf(quizzes.data)) {
         const item = typeof row.item_id === 'string' ? outlined.get(row.item_id) : undefined;
-        if (!item || typeof row.quiz_id !== 'string') continue;
+        if (!item || typeof row.quiz_id !== 'string' || !await historicalRecordAllowed(actor, context, row)) continue;
         const identity = { courseId: context.courseId, courseVersionId: context.versionId, branchId: context.branchId,
           itemId: item.id, blockId: row.quiz_id, title: text(item.title, context.locale, fallback),
           courseTitle: text(recordOf(context.outline.meta)?.title, context.locale, fallback), href: href(context.courseId, item.id, row.quiz_id) };
@@ -175,8 +215,14 @@ export function createCourseworkReadService(database: LearnerDatabase, now: () =
       const points = number(rawPoints), maxPoints = number(rawMax), recordedAt = timestamp(recorded);
       if (typeof row.id !== 'string' || points === null || maxPoints === null || !recordedAt) return;
       // Select only the identity: grading snapshots and draft feedback never leave the service.
-      const { courseId, courseVersionId, branchId, itemId, blockId, title, courseTitle, href: targetHref } = target;
-      output.push({ id: row.id, courseId, courseVersionId, branchId, itemId, blockId, title, courseTitle, href: targetHref,
+      const { courseId, courseVersionId, itemId, blockId, title, courseTitle } = target;
+      const branchId = row.branch_scope_known === true && typeof row.branch_id === 'string' ? row.branch_id : null;
+      const recordPath = kind === 'exam'
+        ? routes.learner.examReview(courseId, itemId, row.id)
+        : kind === 'assignment' ? routes.learner.assignmentReview(courseId, itemId, row.id)
+          : routes.learner.quizReview(courseId, itemId, row.id);
+      const recordHref = `${recordPath}${blockId ? `#${encodeURIComponent(blockId)}` : ''}`;
+      output.push({ id: row.id, courseId, courseVersionId, branchId, itemId, blockId, title, courseTitle, href: recordHref,
         kind, points, maxPoints, percent: number(rawPercent), passed: typeof passed === 'boolean' ? passed : null,
         recordedAt, status: typeof status === 'string' ? status : 'recorded' });
     }

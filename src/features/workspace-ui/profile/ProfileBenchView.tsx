@@ -93,7 +93,7 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
 
     <SectionBoundary label={t('certificates.label')}>
       <section aria-labelledby="certificates-heading" className="canvas-panel vf-block p-4 sm:p-6">
-        <div className="vf-block-head"><h2 id="certificates-heading" className="vf-h3">{legacy('certificates')}</h2>{props.certificates.length ? <Meta as="span">{t('certificates.count', { count: props.certificates.length })}</Meta> : null}</div>
+        <div className="vf-block-head"><h2 tabIndex={-1} id="certificates-heading" className="vf-h3">{legacy('certificates')}</h2>{props.certificates.length ? <Meta as="span">{t('certificates.count', { count: props.certificates.length })}</Meta> : null}</div>
         {props.certificates.length
           ? <ul className="vf-cert-list">{props.certificates.map((certificate) => <li key={certificate.id}><CalibrationCertificate certificate={certificate} /></li>)}</ul>
           : <EmptyBench kicker={t('certificates.emptyKicker')} title={legacy('noCertificates')} description={t('certificates.emptyBody')} action={<Link className="vf-btn" href={routes.learner.courses()}>{t('certificates.browse')} <span aria-hidden="true">→</span></Link>} />}
@@ -102,7 +102,7 @@ export function ProfileBenchView(props: ProfileBenchViewProps) {
 
     <SectionBoundary label={t('xp.label')}>
       <section aria-labelledby="xp-heading" className="canvas-panel vf-block p-4 sm:p-6">
-        <div className="vf-block-head"><h2 id="xp-heading" className="vf-h3">{legacy('xp')}</h2></div>
+        <div className="vf-block-head"><h2 tabIndex={-1} id="xp-heading" className="vf-h3">{legacy('xp')}</h2></div>
         {/* No weekly XP series exists yet, so the 12-week sparkline is omitted and only the total renders. */}
         <p className="vf-xp-total m-0"><span className="vf-readout-big">{new Intl.NumberFormat(intlLocale(locale)).format(props.xpTotal)}</span> <span className="vf-meta">{t('xp.unit')}</span></p>
       </section>

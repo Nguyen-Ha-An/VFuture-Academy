@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 
 const listen = (notify: () => void) => {
   window.addEventListener('popstate', notify);
@@ -14,6 +14,8 @@ const router = {
   back() { history.back(); }, forward() { history.forward(); }, refresh() {}, prefetch: async () => {},
 };
 export function useRouter() { return router; }
+// No Next server insertion context exists in this Vite fixture.
+export function useServerInsertedHTML(_callback: () => ReactNode) { return undefined; }
 export function useSelectedLayoutSegments() { return useSyncExternalStore(listen, () => snapshot().split('?')[0].split('/').filter(Boolean), () => []); }
 
 export function notFound(): never { throw new Error('Fixture not found'); }

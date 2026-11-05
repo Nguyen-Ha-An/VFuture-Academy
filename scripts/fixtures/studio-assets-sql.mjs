@@ -5,7 +5,7 @@ const db=new PGlite({extensions:{pgcrypto}});
 await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
 create schema auth; create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql as $$select null::uuid$$;
-create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid);
+create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid,metadata jsonb);
 `);
 for(const name of (await fs.readdir('supabase/migrations')).filter(n=>n.endsWith('.sql')).sort()) {
  if(name==='20260907085959_cms_pgcrypto_schema.sql') {

@@ -1,5 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import benchShared from '../../../src/messages/bench/shared.json';
+
+async function expectWorkspaceHomes(navigation: Locator, vi: boolean) {
+  for (const [name, href] of [['Studio', '/studio'], [vi ? 'Giảng dạy' : 'Teaching', '/grading'], [vi ? 'Quản trị' : 'Admin', '/admin']] as const) {
+    await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
+  }
+}
 
 const browserErrors = new WeakMap<Page, string[]>();
 test.beforeEach(({ page }) => {
@@ -91,7 +98,10 @@ for (const scenario of [{ route: '/studio/courses', width: 1440, locale: 'en', t
     expect(/<p[^>]*data-testid="server-content"[^>]*>Server-rendered course content\.<\/p>/.test(html), 'actual server child DOM').toBe(true);
     expect(html.includes('data-emotion="academy-instui'), 'server Emotion CSS').toBe(true);
     expect(html.includes('data-cid="SideNavBar"'), 'server data-cid="SideNavBar"').toBe(true);
-    expect(html.includes('data-cid="DrawerLayout"'), 'server data-cid="DrawerLayout"').toBe(true);
+    if (scenario.route.startsWith('/studio')) {
+      expect(html.includes('canvas-staff-drawer'), 'server staff layout and stable content').toBe(true);
+      expect(html.includes('id="studio-main"'), 'server-owned staff main').toBe(true);
+    } else expect(html.includes('data-cid="DrawerLayout"'), 'server native course DrawerLayout').toBe(true);
     expect(html.includes('role="tree"'), 'server role="tree"').toBe(true);
     expect(/<progress\b[^>]*aria-label="Course progress"/.test(html), 'native progress SSR DOM').toBe(true);
     // InstUI Responsive intentionally defers its render prop until element measurement.
@@ -113,20 +123,48 @@ for (const scenario of [{ route: '/studio/courses', width: 1440, locale: 'en', t
       await expect(staffTable).toContainText('Review state');
     }
 
-    if (scenario.width < 640) {
-      const menu = page.getByRole('button', { name: scenario.locale === 'vi' ? 'Mở menu' : 'Open menu', exact: true });
-      await menu.focus();
-      await page.keyboard.press('Enter');
-      await expect(page.getByRole('navigation', { name: scenario.locale === 'vi' ? 'Điều hướng toàn cục' : 'Global navigation' })).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(menu).toBeFocused();
-    } else await expect(page.getByRole('navigation', { name: 'Global navigation' })).toBeVisible();
-    expect(await page.locator('[data-cid~="SideNavBar"]').count()).toBeGreaterThan(0);
-    expect(await page.locator('[data-cid~="DrawerLayout"]').count()).toBeGreaterThan(0);
+    // Keep the fresh-load regression before Account interactions can legitimately move focus.
     if (!scenario.route.startsWith('/studio') && scenario.width === 1440) {
       await page.waitForTimeout(1250);
       await expect(page.getByRole('navigation', { name: 'Course destinations' }).getByRole('link', { name: 'Overview', exact: true })).not.toBeFocused();
     }
+
+    if (scenario.width < 640) {
+      const menu = page.getByRole('button', { name: scenario.locale === 'vi' ? 'Mở menu' : 'Open menu', exact: true });
+      await menu.focus();
+      await page.keyboard.press('Enter');
+      const global = page.getByRole('navigation', { name: scenario.locale === 'vi' ? 'Điều hướng toàn cục' : 'Global navigation', exact: true });
+      await expect(global).toBeVisible();
+      await expectWorkspaceHomes(global, scenario.locale === 'vi');
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeFocused();
+      // A second cycle preserves ordinary Escape above and tests the mobile Account handoff.
+      await page.keyboard.press('Enter');
+      await global.getByRole('button', { name: scenario.locale === 'vi' ? 'Tài khoản' : 'Account', exact: true }).click();
+    } else {
+      const global = page.getByRole('navigation', { name: 'Global navigation', exact: true });
+      await expect(global).toBeVisible();await expectWorkspaceHomes(global, false);
+      if (scenario.route.startsWith('/studio')) {
+        await expect(page.locator('[data-slot="workspace-scope-header"]')).toContainText('Central');
+        await expect(page.locator('[data-slot="workspace-scope-selector"]')).toHaveCount(0);
+      }
+      const accountTrigger = global.getByRole('button', { name: 'Account', exact: true });
+      await accountTrigger.focus();await page.keyboard.press('Enter');
+    }
+    const account = page.getByRole('dialog', { name: scenario.locale === 'vi' ? 'Tài khoản' : 'Account', exact: true });
+    await expect(account).toBeVisible();await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(account.getByRole('button', { name: scenario.locale === 'vi' ? 'Đóng' : 'Close', exact: true })).toBeFocused();
+    await expect(account.getByRole('combobox', { name: scenario.locale === 'vi' ? 'Ngôn ngữ' : 'Language', exact: true })).toBeVisible();
+    const accountTheme = account.getByRole('combobox', { name: benchShared[scenario.locale].theme.label, exact: true });
+    await accountTheme.click();
+    const automaticTheme = page.getByRole('option', { name: benchShared[scenario.locale].theme.system, exact: true });
+    await expect(automaticTheme).toBeVisible();await page.keyboard.press('Escape');
+    await expect(automaticTheme).toBeHidden();await expect(account).toBeVisible();await expect(accountTheme).toBeFocused();
+    await page.keyboard.press('Escape');await expect(account).toBeHidden();
+    await expect(scenario.width < 640 ? page.getByRole('button', { name: scenario.locale === 'vi' ? 'Mở menu' : 'Open menu', exact: true }) : page.getByRole('navigation', { name: 'Global navigation', exact: true }).getByRole('button', { name: 'Account', exact: true })).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    expect(await page.locator('[data-cid~="SideNavBar"]').count()).toBeGreaterThan(0);
+    if (!scenario.route.startsWith('/studio')) expect(await page.locator('[data-cid~="DrawerLayout"]').count()).toBeGreaterThan(0);
     const tabs = page.getByRole('tablist', { name: 'Course sections' });
     await tabs.getByRole('tab', { name: 'Modules', exact: true }).focus();
     await page.keyboard.press('ArrowRight');
@@ -157,6 +195,24 @@ for (const scenario of [{ route: '/studio/courses', width: 1440, locale: 'en', t
       await expect(page.locator('.vf-staff')).toHaveAttribute('data-state', 'collapsed');
       await page.keyboard.press('Enter');
       await expect(page.locator('.vf-staff')).toHaveAttribute('data-state', 'expanded');
+      await page.setViewportSize({ width: 390, height: 900 });
+      const mobileToggle = page.locator('header button[data-sidebar="trigger"]');
+      await mobileToggle.click();
+      const staffNavigation = page.getByRole('dialog', { name: 'Studio navigation', exact: true });
+      await expect(async () => {
+        const rect = await staffNavigation.boundingBox();
+        expect(rect).not.toBeNull();
+        expect(rect!.x).toBeGreaterThanOrEqual(0);
+        expect(rect!.x + rect!.width).toBeLessThanOrEqual(390);
+      }).toPass({ timeout: 5000 });
+      await expect(page.getByRole('dialog')).toHaveCount(1);
+      await expect(page.locator('[data-cid~="Tray"]').getByRole('dialog', { name: 'Studio navigation', exact: true })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(staffNavigation).toBeHidden();
+      await expect(mobileToggle).toBeFocused();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await expect(page.getByLabel('Selected module item')).toHaveText('introduction');
+      await expect(page.getByTestId('server-content')).toHaveText('Server-rendered course content.');
     }
     if (scenario.width < 640) {
       await expect(table.locator('th')).toHaveCount(0);

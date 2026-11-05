@@ -11,7 +11,7 @@ import { AnnouncementsWorkspace } from '@/features/instructor-grading/Announceme
 import { ScheduleWorkspace } from '@/features/instructor-grading/ScheduleWorkspace';
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => router }));
+vi.mock('next/navigation', () => ({ useServerInsertedHTML: () => undefined, useRouter: () => router }));
 const branches = [{ id: 'school', name: 'School' }, { id: 'other', name: 'Other school' }];
 const options = { courses: [{ id: 'course', title: 'Physics' }, { id: 'course2', title: 'Math' }], versions: [{ courseId: 'course', courseTitle: 'Physics', courseVersionId: 'v1', version: 1 }, { courseId: 'course2', courseTitle: 'Math', courseVersionId: 'v2', version: 2 }] };
 const ok = (data: unknown) => Promise.resolve({ ok: true, json: async () => ({ data }) } as Response);

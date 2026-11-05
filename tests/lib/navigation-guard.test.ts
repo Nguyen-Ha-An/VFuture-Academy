@@ -17,6 +17,18 @@ function deferred<T>() {
 }
 
 describe('navigation guard registry', () => {
+  it('passes a cancellable document intent through every guard before permitting mutation', async () => {
+    const controller = new AbortController();
+    const intents: unknown[] = [];
+    const unregister = registerNavigationGuard(async intent => { intents.push(intent); return true; });
+    const intent = { kind: 'document' as const, signal: controller.signal };
+    await expect(requestNavigation(intent)).resolves.toBe(true);
+    expect(intents).toEqual([intent]);
+    controller.abort();
+    await expect(requestNavigation(intent)).resolves.toBe(false);
+    expect(intents).toEqual([intent]);
+    unregister();
+  });
   it('permits navigation when the registry is empty', async () => {
     await expect(requestNavigation()).resolves.toBe(true);
   });

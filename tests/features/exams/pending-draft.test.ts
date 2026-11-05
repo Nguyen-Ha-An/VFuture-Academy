@@ -22,17 +22,39 @@ describe('pending exam draft storage', () => {
     expect(store.read()).toBeNull();
     expect(sessionStorage.getItem(store.key)).toBeNull();
 
-    sessionStorage.setItem(store.key, JSON.stringify({ version: 2, answers: { q1: 'a' }, updatedAt: 1 }));
+    sessionStorage.setItem(store.key, JSON.stringify({ version: 99, answers: { q1: 'a' }, updatedAt: 1 }));
     expect(store.read()).toBeNull();
     expect(sessionStorage.getItem(store.key)).toBeNull();
   });
 
-  it('refuses an oversized snapshot without retaining stale data', () => {
+  it('refuses an unsendable answer without deleting the prior recovery journal', () => {
     const store = createPendingExamDraftStore('attempt-large');
     store.write({ q1: 'small' });
     store.write({ q1: 'x'.repeat(70_000) });
 
-    expect(store.read()).toBeNull();
+    expect(store.read()).toEqual({q1:'small'});
+  });
+
+  it('recovers a multi-question journal larger than one network batch', () => {
+    const store=createPendingExamDraftStore('attempt-many');
+    const answers=Object.fromEntries(Array.from({length:15},(_,i)=>[`q-${i}`,'a'.repeat(5000)]));
+    expect(store.write(answers)).toBe(true);
+    expect(store.read()).toEqual(answers);
+  });
+
+  it('reads a previously saved version-one recovery snapshot', () => {
+    const store=createPendingExamDraftStore('attempt-v1');
+    sessionStorage.setItem(store.key,JSON.stringify({version:1,answers:{q:'previous'},updatedAt:1}));
+    expect(store.read()).toEqual({q:'previous'});
+  });
+
+  it('preserves the committed previous index and answers when a new generation hits quota', () => {
+    const values=new Map<string,string>();let fail=false;let successfulWrites=0;
+    const storage:Storage={get length(){return values.size;},clear:()=>values.clear(),getItem:key=>values.get(key)??null,key:index=>[...values.keys()][index]??null,removeItem:key=>{values.delete(key);},setItem:(key,value)=>{if(fail && ++successfulWrites===2)throw new DOMException('quota','QuotaExceededError');values.set(key,value);}};
+    const store=createPendingExamDraftStore('attempt-atomic',storage);
+    expect(store.write({q:'old'})).toBe(true);fail=true;
+    expect(store.write({q:'new',other:'new'})).toBe(false);
+    expect(store.read()).toEqual({q:'old'});
   });
 
   it('retains a large answer that remains within the server 64 KiB payload bound', () => {

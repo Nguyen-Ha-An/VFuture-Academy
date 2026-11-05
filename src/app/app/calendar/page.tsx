@@ -10,5 +10,5 @@ export default async function LearnerCalendarPage({ searchParams }: { searchPara
   const locale = localeValue === 'en' ? 'en' : 'vi';
   const month = calendarMonth(params.month);
   const calendar = await listLearningCalendar({ userId: user.id, roles: [] }, { start: month.start, end: month.end, locale }).catch(error => { console.error('[learner calendar] unavailable', error); return null; });
-  return <div className="canvas-page canvas-learning"><header className="canvas-page-heading"><h1>{canvasCopy(locale).calendar}</h1></header><CanvasCalendar month={month.key} events={calendar?.events ?? null} locale={locale} hrefForMonth={value => `/app/calendar?month=${encodeURIComponent(value)}`} /></div>;
+  return <div className="canvas-page canvas-learning"><header className="canvas-page-heading"><h1 tabIndex={-1}>{canvasCopy(locale).calendar}</h1></header><CanvasCalendar month={month.key} events={calendar?.events ?? null} locale={locale} hrefForMonth={value => `/app/calendar?month=${encodeURIComponent(value)}`} /></div>;
 }

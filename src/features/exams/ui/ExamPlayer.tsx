@@ -20,11 +20,15 @@ import { ExamPalette, hasAnswer } from './ExamPalette';
 import { createPendingExamDraftStore } from './pending-draft';
 import type { PendingExamDraftStore } from './pending-draft';
 import type { LearnerExam } from './types';
-import { useAutosave } from './useAutosave';
+import { useAutosave, type TerminalResolution } from './useAutosave';
 import { useExamTimer } from './useExamTimer';
 import { useIntegrityLog } from './useIntegrityLog';
-import { registerNavigationGuard } from '@/lib/navigation-guard';
+import { registerNavigationGuard, type NavigationIntent } from '@/lib/navigation-guard';
 import { useActivityLock } from '@/features/workspace-ui/learner/activity/ActivityProgress';
+import { differingOwnAnswers, isTerminalExamStatus, type ExamAnswerRecovery } from './answer-recovery';
+import { canonicalAnswers } from '@/features/learning/answer-canonical';
+import { OwnAnswerDownload } from './ExamAnswerRecoveryNotice';
+import { examUploadRuntime } from './exam-upload-runtime';
 
 registerAll();
 
@@ -38,6 +42,8 @@ export interface ExamPlayerProps {
   draftStore?: PendingExamDraftStore;
   headingLevel?: 1 | 2;
   hideTitle?: boolean;
+  onRecoverySnapshot?: (recovery: ExamAnswerRecovery) => void;
+  hasUnavailableRecovery?: boolean;
 }
 
 export function ExamPlayer(props: ExamPlayerProps) {
@@ -62,8 +68,10 @@ function formatDuration(totalSeconds: number): string {
     : `${two(minutes)}:${two(seconds)}`;
 }
 
-function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerminal, draftStore: providedDraftStore, headingLevel = 1, hideTitle = false }: ExamPlayerProps) {
+function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerminal, onRecoverySnapshot, hasUnavailableRecovery = false, draftStore: providedDraftStore, headingLevel = 1, hideTitle = false }: ExamPlayerProps) {
   const t = useTranslations('exam.player');
+  const flow = useTranslations('exam.flow');
+  const recoveryCopy = useTranslations('exam.recovery');
   // While an attempt runs the activity frame hides its pager; Back and Outline go through the guard below.
   useActivityLock(true);
   const Title = headingLevel === 1 ? 'h1' : 'h2';
@@ -88,6 +96,29 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   const answersRef = useRef(answers);
   const [answerRevision, setAnswerRevision] = useState(Object.keys(restoredDraft).length > 0 ? 1 : 0);
   const [submitError, setSubmitError] = useState(false);
+  const [submissionConfirmed, setSubmissionConfirmed] = useState(false);
+  const [reviewTransitionError, setReviewTransitionError] = useState(false);
+  const confirmedResultRef = useRef<ExamSubmitResult | null>(null);
+  const [submitOutcomeUnknown, setSubmitOutcomeUnknown] = useState(false);
+  const unknownOutcomeRef = useRef(false);
+  const incompleteSubmissionRef = useRef(false);
+  const [pendingUploads, setPendingUploads] = useState(0);
+  const pendingUploadsRef = useRef(0);
+  const [terminalUnconfirmed, setTerminalUnconfirmed] = useState(false);
+  const [checkingTerminal, setCheckingTerminal] = useState(false);
+  const deadlineExpiredRef = useRef(false);
+  const activePlayerRef = useRef(true);
+  const unavailableRecoveryRef = useRef(false);
+  const approvedDocument = useRef<AbortSignal | null>(null);
+  const pendingLeaveIntent = useRef<NavigationIntent | undefined>(undefined);
+  useEffect(() => {
+    activePlayerRef.current = true;
+    return () => { activePlayerRef.current = false; };
+  }, []);
+  const onUploadPendingChange = useCallback((delta: 1 | -1) => {
+    pendingUploadsRef.current = Math.max(0, pendingUploadsRef.current + delta);
+    if (activePlayerRef.current) setPendingUploads(pendingUploadsRef.current);
+  }, []);
   const [sectionSubmitPending, setSectionSubmitPending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
@@ -123,17 +154,57 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
     settings: exam.settings.integrity,
     submittingRef,
   });
-  const handleAutosaveTerminal = useCallback(async () => {
-    terminalTransitionRef.current = true;
+  const handleAutosaveTerminal = useCallback(async (): Promise<TerminalResolution> => {
+    if (!activePlayerRef.current) return { confirmed: false };
     submittingRef.current = true;
     setSubmitting(true);
-    await onTerminal?.();
-  }, [onTerminal]);
+    setCheckingTerminal(true);
+    setSubmitError(false);
+    setReviewTransitionError(false);
+    try {
+      const session = await client.session({ bind: false });
+      if (!activePlayerRef.current) return { confirmed: false };
+      const observed = session.attempt;
+      if (!observed || observed.attemptId !== attempt.attemptId || !isTerminalExamStatus(observed.status)) {
+        terminalTransitionRef.current = false;
+        submittingRef.current = false;
+        setSubmitting(false);
+        setSubmitDialogOpen(unknownOutcomeRef.current);
+        setTerminalUnconfirmed(true);
+        resumeIntegrity();
+        return { confirmed: false };
+      }
+      const own = differingOwnAnswers(answersRef.current, observed.answers);
+      const preserveRecovery = Object.keys(own).length > 0;
+      if (preserveRecovery) {
+        const retained = draftStore.write(own);
+        onRecoverySnapshot?.({ attemptId: attempt.attemptId, attemptNo: attempt.attemptNo, answers: own, verified: true, storageUnavailable: !retained });
+      } else draftStore.clear();
+      terminalTransitionRef.current = true;
+      unknownOutcomeRef.current = false;
+      setSubmitOutcomeUnknown(false);
+      setSubmissionConfirmed(true);
+      setTerminalUnconfirmed(false);
+      setSubmitDialogOpen(false);
+      try { await onTerminal?.(); } catch { setReviewTransitionError(true); }
+      return { confirmed: true, preserveRecovery };
+    } catch {
+      if (!activePlayerRef.current) return { confirmed: false };
+      terminalTransitionRef.current = false;
+      submittingRef.current = false;
+      setSubmitting(false);
+      setSubmitDialogOpen(unknownOutcomeRef.current);
+      setTerminalUnconfirmed(true);
+      resumeIntegrity();
+      return { confirmed: false };
+    } finally { if (activePlayerRef.current) setCheckingTerminal(false); }
+  }, [attempt.attemptId, attempt.attemptNo, client, draftStore, onRecoverySnapshot, onTerminal, resumeIntegrity]);
   const {
     closedGroups,
     markDirty,
     markSubmitted,
     lastSaveErrorCode,
+    oversizedQuestionId,
     persistAnswers,
     recoveryUnavailable,
     retryNow,
@@ -149,17 +220,60 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
     submittingRef,
   });
 
+  const answerTooLarge = lastSaveErrorCode() === 'ANSWER_TOO_LARGE';
+  const oversizedIndex = entries.findIndex(entry => entry.question.id === oversizedQuestionId);
+  const sizeError = oversizedIndex >= 0 ? t('answerTooLarge', { number: oversizedIndex + 1 }) : t('answerTooLargeGeneric');
+  const oversizedGroup = oversizedIndex >= 0 && entries[oversizedIndex].question.type === 'question_group';
+  const recoveryAtRisk = recoveryUnavailable || hasUnavailableRecovery;
+  const ownRecoveryCopy = useCallback((): ExamAnswerRecovery => ({
+    attemptId: attempt.attemptId, attemptNo: attempt.attemptNo,
+    answers: canonicalAnswers(answersRef.current), verified: false, storageUnavailable: true,
+  }), [attempt.attemptId, attempt.attemptNo]);
+  useEffect(() => { unavailableRecoveryRef.current = recoveryAtRisk; }, [recoveryAtRisk]);
+  useEffect(() => {
+    // The hook sets this only when unacknowledged responses could not be journaled.
+    if (!recoveryAtRisk) return;
+    const unload = (event: BeforeUnloadEvent) => {
+      if (approvedDocument.current && !approvedDocument.current.aborted) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', unload);
+    return () => window.removeEventListener('beforeunload', unload);
+  }, [recoveryAtRisk]);
+
+  const loadConfirmedReview = useCallback(async () => {
+    const result = confirmedResultRef.current;
+    if (!result) return;
+    setReviewTransitionError(false);
+    try { await onSubmitted(result); } catch { setReviewTransitionError(true); }
+  }, [onSubmitted]);
+
   const submitAttempt = useCallback(async (expired = false, acceptedOnly = false) => {
+    if (expired) deadlineExpiredRef.current = true;
     if (submittingRef.current) return;
+    const reconciling = unknownOutcomeRef.current;
+    if (!expired && !reconciling && pendingUploadsRef.current > 0) return;
+    if (!expired && !acceptedOnly && !reconciling && lastSaveErrorCode() === 'ANSWER_TOO_LARGE') return;
+    if (expired && !reconciling && (pendingUploadsRef.current > 0 || lastSaveErrorCode() === 'ANSWER_TOO_LARGE')) {
+      await handleAutosaveTerminal();
+      return;
+    }
+    let incompleteFlush = acceptedOnly;
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(false);
     setSectionSubmitPending(false);
     try {
-      if (!acceptedOnly) {
+      if (!acceptedOnly && !reconciling) {
         const saved = await persistAnswers();
         if (!saved) {
           if (terminalTransitionRef.current) return;
+          if (lastSaveErrorCode() === 'DEADLINE_PASSED' || lastSaveErrorCode() === 'ATTEMPT_NOT_ACTIVE') return;
+          if (expired && lastSaveErrorCode() === 'ANSWER_TOO_LARGE') {
+            await handleAutosaveTerminal();
+            return;
+          }
           if (lastSaveErrorCode() === 'SECTION_DEADLINE_PASSED' && !expired) {
             setSectionSubmitPending(true);
             setSubmitDialogOpen(false);
@@ -171,26 +285,45 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           if (lastSaveErrorCode() !== 'SECTION_DEADLINE_PASSED') {
             throw new Error('Final exam save failed.');
           }
+          incompleteFlush = true;
         }
       }
-      await flushBeforeSubmit();
+      if (!reconciling) await flushBeforeSubmit();
+      if (!reconciling) incompleteSubmissionRef.current = incompleteFlush;
       const result = await client.submit();
-      markSubmitted();
-      await onSubmitted(result);
+      if (!activePlayerRef.current) return;
+      if (result.attemptId !== attempt.attemptId || !['graded', 'pending_manual'].includes(result.status)) {
+        throw Object.assign(new Error('The server did not confirm this attempt submission.'), { code: 'SUBMIT_OUTCOME_UNKNOWN', ambiguous: true });
+      }
+      unknownOutcomeRef.current = false;
+      setSubmitOutcomeUnknown(false);
+      setTerminalUnconfirmed(false);
+      if (incompleteSubmissionRef.current) {
+        onRecoverySnapshot?.({ attemptId: attempt.attemptId, attemptNo: attempt.attemptNo, answers: canonicalAnswers(answersRef.current), verified: false, storageUnavailable: recoveryUnavailable });
+      }
+      markSubmitted({ preserveRecovery: incompleteSubmissionRef.current });
+      confirmedResultRef.current = result;
+      terminalTransitionRef.current = true;
+      setSubmissionConfirmed(true);
       setSubmitDialogOpen(false);
+      await loadConfirmedReview();
     } catch (error) {
       const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
       if (code === 'ATTEMPT_NOT_ACTIVE' || code === 'DEADLINE_PASSED') {
-        markSubmitted();
-        await onTerminal?.();
+        await handleAutosaveTerminal();
         return;
       }
-      setSubmitError(true);
+      const unknown = code === 'SUBMIT_OUTCOME_UNKNOWN'
+        || (typeof error === 'object' && error !== null && 'ambiguous' in error && error.ambiguous === true);
+      unknownOutcomeRef.current = unknown;
+      setSubmitOutcomeUnknown(unknown);
+      setSubmitError(!unknown);
+      if (unknown) setSubmitDialogOpen(true);
       submittingRef.current = false;
       setSubmitting(false);
-      resumeIntegrity();
+      if (!unknown) resumeIntegrity();
     }
-  }, [client, flushBeforeSubmit, lastSaveErrorCode, markSubmitted, onSubmitted, onTerminal, persistAnswers, resumeIntegrity]);
+  }, [attempt.attemptId, attempt.attemptNo, client, flushBeforeSubmit, handleAutosaveTerminal, lastSaveErrorCode, loadConfirmedReview, markSubmitted, onRecoverySnapshot, persistAnswers, recoveryUnavailable, resumeIntegrity]);
 
   const { announcement: timerAnnouncement, remainingSeconds } = useExamTimer({
     deadlineAt: attempt.deadlineAt,
@@ -224,18 +357,30 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   // timer keeps running. Submitting or a terminal transition leaves without asking.
   const [leaveOpen, setLeaveOpen] = useState(false);
   const leaveDecision = useRef<((leave: boolean) => void) | null>(null);
+  const closingLeaveDecision = useRef<boolean | null>(null);
   const decideLeave = useCallback((leave: boolean) => {
+    closingLeaveDecision.current = leave;
+    setLeaveOpen(false);
+  }, []);
+  const finishLeaveClose = useCallback(() => {
+    const leave = closingLeaveDecision.current;
+    if (leave === null) return;
+    closingLeaveDecision.current = null;
     const resolve = leaveDecision.current;
     leaveDecision.current = null;
-    setLeaveOpen(false);
+    const intent = pendingLeaveIntent.current;
+    pendingLeaveIntent.current = undefined;
+    if (leave && intent?.kind === 'document' && !intent.signal.aborted) approvedDocument.current = intent.signal;
     resolve?.(leave);
   }, []);
   useEffect(() => {
-    const remove = registerNavigationGuard(() => {
-      if (submittingRef.current || terminalTransitionRef.current) return Promise.resolve(true);
+    const remove = registerNavigationGuard((intent) => {
+      if (terminalTransitionRef.current && !unavailableRecoveryRef.current) return Promise.resolve(true);
+      if (!terminalTransitionRef.current && (submittingRef.current || unknownOutcomeRef.current)) return Promise.resolve(false);
       return new Promise<boolean>((resolve) => {
         leaveDecision.current?.(false);
         leaveDecision.current = resolve;
+        pendingLeaveIntent.current = intent;
         setLeaveOpen(true);
       });
     });
@@ -243,6 +388,8 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
       remove();
       leaveDecision.current?.(false);
       leaveDecision.current = null;
+      closingLeaveDecision.current = null;
+      pendingLeaveIntent.current = undefined;
     };
   }, []);
 
@@ -310,7 +457,11 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           index={index}
           value={answers[question.id]}
           onChange={(value) => {
-            if (submittingRef.current || timeExpired) return;
+            // The rendered inputs enforce the deadline. A server-accepted upload may still
+            // resolve during reconciliation; ignore it only after confirmed terminal state.
+            if (!activePlayerRef.current || terminalTransitionRef.current || unknownOutcomeRef.current || (submittingRef.current && !deadlineExpiredRef.current)) return;
+            approvedDocument.current = null;
+            if (!deadlineExpiredRef.current) setTerminalUnconfirmed(false);
             setSectionSubmitPending(false);
             setCurrentIndex(index);
             const next = { ...answersRef.current, [question.id]: value };
@@ -319,8 +470,8 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             markDirty();
             setAnswerRevision((revision) => revision + 1);
           }}
-          disabled={submitting || timeExpired || sectionClosed}
-          runtime={runtime}
+          disabled={submitting || submitOutcomeUnknown || timeExpired || sectionClosed}
+          runtime={examUploadRuntime(runtime, { attemptId: attempt.attemptId, rootQuestionId: question.id, onPendingChange: onUploadPendingChange })}
           // The question sits inside the exam card, so its frame renders flat (cards do not nest).
           depth={1}
         />
@@ -328,7 +479,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           type="button"
           className="vf-btn vf-btn-lg w-full min-[760px]:w-auto"
           // The label names the action (Flag / Remove flag), so no aria-pressed to contradict it.
-          disabled={submitting || timeExpired || sectionClosed}
+          disabled={submitting || submitOutcomeUnknown || timeExpired || sectionClosed}
           onClick={() => toggleFlag(question.id)}
         >
           {flagged.has(question.id)
@@ -361,7 +512,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
       >
         {!hideTitle ? (
           <header className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-            <Title id="exam-player-title" className="text-xl font-semibold leading-snug">{exam.title}</Title>
+            <Title tabIndex={headingLevel === 1 ? -1 : undefined} id="exam-player-title" className="text-xl font-semibold leading-snug">{exam.title}</Title>
             <div role="timer" aria-label={t('timerLabel')} className="font-mono text-lg font-semibold tabular-nums">
               {timerText}
             </div>
@@ -384,7 +535,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             ) : null}
           </div>
         ) : null}
-        {recoveryUnavailable ? <p className="mb-5 text-sm text-destructive" role="alert">{t('recoveryUnavailable')}</p> : null}
+        {recoveryUnavailable ? <div className="mb-5 grid justify-items-start gap-3"><p className="text-sm text-destructive" role="alert">{t('recoveryUnavailable')}</p><OwnAnswerDownload getRecovery={ownRecoveryCopy} label={recoveryCopy('download', { attempt: attempt.attemptNo })} /></div> : null}
         {exam.settings.layout === 'one_per_page' ? (
           <section aria-labelledby={`exam-section-${currentSection?.id}`} className="space-y-5">
             <SectionTitle
@@ -456,18 +607,27 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
               <button
                 type="button"
                 className="vf-btn vf-btn-lg min-w-0 flex-1 min-[760px]:flex-none"
-                disabled={submitting || timeExpired || atStart || exam.settings.navigation === 'sequential'}
+                disabled={submitting || submitOutcomeUnknown || timeExpired || atStart || exam.settings.navigation === 'sequential'}
                 onClick={() => move(-1)}
               >
                 {t('previous')}
               </button>
-              <button type="button" className="vf-btn vf-btn-lg min-w-0 flex-1 min-[760px]:flex-none" disabled={submitting || timeExpired || atEnd} onClick={() => move(1)}>
+              <button type="button" className="vf-btn vf-btn-lg min-w-0 flex-1 min-[760px]:flex-none" disabled={submitting || submitOutcomeUnknown || timeExpired || atEnd} onClick={() => move(1)}>
                 {t('next')}
               </button>
             </div>
           </footer>
         ) : null}
-        {submitError && !submitDialogOpen ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
+        {submitError && !submitDialogOpen && !answerTooLarge ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
+        {reviewTransitionError ? <div className="mt-4 grid justify-items-start gap-3">
+          <p className="text-sm text-destructive" role="alert">{flow('reviewError')}</p>
+          <button type="button" className="vf-btn vf-btn-lg" onClick={() => void (confirmedResultRef.current ? loadConfirmedReview() : handleAutosaveTerminal())}>{flow('retryReview')}</button>
+        </div> : null}
+        {terminalUnconfirmed ? <div className="mt-4 grid justify-items-start gap-3">
+          <p className="text-sm text-muted-foreground" role="alert">{t('terminalUnconfirmed')}</p>
+          <button type="button" className="vf-btn vf-btn-lg" disabled={checkingTerminal || submitting} onClick={() => void handleAutosaveTerminal()}>{t('checkAttemptStatus')}</button>
+          {timeExpired && pendingUploads === 0 && !answerTooLarge ? <button type="button" className="vf-btn vf-btn-lg" disabled={submitting} onClick={() => void submitAttempt(true)}>{t('retrySubmit')}</button> : null}
+        </div> : null}
       </section>
 
       <aside
@@ -516,7 +676,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             layout={exam.settings.layout}
             navigation={exam.settings.navigation}
             onNavigate={navigateTo}
-            submitting={submitting || timeExpired}
+            submitting={submitting || submitOutcomeUnknown || timeExpired}
           />
         </div>
         <div role="group" aria-label={t('actions')} className="space-y-2">
@@ -538,11 +698,13 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             </p>
           </div>
           {saveStatus === 'failed' && !timeExpired && closedGroups.size === 0 ? (
-            <button type="button" className="vf-btn vf-btn-lg w-full" disabled={submitting} onClick={() => void retryNow()}>
+            <button type="button" className="vf-btn vf-btn-lg w-full" disabled={submitting || submitOutcomeUnknown || answerTooLarge} onClick={() => void retryNow()}>
               {t('retrySave')}
             </button>
           ) : null}
-          {submitting ? <p className="text-sm text-muted-foreground" aria-live="polite">{t('submitting')}</p> : null}
+          {answerTooLarge && !submitDialogOpen ? <p className="text-sm text-destructive" role="alert">{sizeError}{oversizedGroup ? ` ${t('groupAnswerSizeLimit')}` : ''}</p> : null}
+          {submitting && !submitDialogOpen && !reviewTransitionError ? <p className="text-sm text-muted-foreground" aria-live="polite">{checkingTerminal ? t('checkingAttemptStatus') : submissionConfirmed ? flow('loadingReview') : t('submitting')}</p> : null}
+          {pendingUploads > 0 ? <p className="text-sm text-muted-foreground" role="status">{t('waitForUploads')}</p> : null}
           <div className="flex gap-2">
             {hideTitle ? (
               <button
@@ -551,32 +713,39 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
                 type="button"
                 aria-controls="exam-question-palette"
                 aria-expanded={paletteOpen}
-                disabled={submitting}
+                disabled={submitting || submitOutcomeUnknown}
                 onClick={() => setPaletteOpen((open) => !open)}
               >
                 {t('questionsButton')}
               </button>
             ) : null}
-            <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+            <Dialog open={submitDialogOpen} onOpenChange={(open) => {
+              if (!submittingRef.current && !unknownOutcomeRef.current) setSubmitDialogOpen(open);
+            }}>
               <DialogTrigger asChild>
-                <button type="button" className="vf-btn vf-btn-primary vf-btn-lg min-w-0 flex-1 min-[1100px]:w-full" disabled={submitting || timeExpired}>{t('submit')}</button>
+                <button type="button" className="vf-btn vf-btn-primary vf-btn-lg min-w-0 flex-1 min-[1100px]:w-full" disabled={submitting || timeExpired || pendingUploads > 0 || answerTooLarge}>{t('submit')}</button>
               </DialogTrigger>
               <DialogPortal container={containerRef.current}>
                 <DialogOverlay className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm" />
-                <DialogContent className="fixed left-1/2 top-1/2 z-50 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-5 text-foreground focus:outline-none min-[760px]:p-6">
+                <DialogContent aria-busy={submitting}
+                  onEscapeKeyDown={(event) => { if (submittingRef.current || unknownOutcomeRef.current) event.preventDefault(); }}
+                  onInteractOutside={(event) => { if (submittingRef.current || unknownOutcomeRef.current) event.preventDefault(); }}
+                  className="fixed left-1/2 top-1/2 z-50 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-5 text-foreground focus:outline-none min-[760px]:p-6">
                   <DialogTitle className="text-xl font-semibold">{t('dialogTitle')}</DialogTitle>
                   <DialogDescription className="mt-2 text-sm text-muted-foreground">
                     {t('dialogDescription', { count: unansweredCount })}
                   </DialogDescription>
-                  {submitError ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
+                  {submitError ? <p className="mt-4 text-sm text-destructive" role="alert">{answerTooLarge ? <>{sizeError}{oversizedGroup ? ` ${t('groupAnswerSizeLimit')}` : ''}</> : t('submitError')}</p> : null}
+                  {submitOutcomeUnknown ? <p className="mt-4 text-sm text-muted-foreground" role="alert">{t('submissionUnknown')}</p> : null}
+                  {submitting ? <p className="mt-4 text-sm text-muted-foreground" role="status">{t(submitOutcomeUnknown ? 'checkingSubmission' : 'submitting')}</p> : null}
                   <div className="mt-6 flex flex-col-reverse gap-2 min-[760px]:flex-row min-[760px]:justify-end">
                     <DialogClose asChild>
-                      <button type="button" className="vf-btn vf-btn-lg" disabled={submitting}>
+                      <button type="button" className="vf-btn vf-btn-lg" disabled={submitting || submitOutcomeUnknown}>
                         {t('cancel')}
                       </button>
                     </DialogClose>
-                    <button type="button" className="vf-btn vf-btn-primary vf-btn-lg" disabled={submitting} onClick={() => void submitAttempt()}>
-                      {submitting ? t('submitting') : submitError ? t('retrySubmit') : t('confirm')}
+                    <button type="button" className="vf-btn vf-btn-primary vf-btn-lg" disabled={submitting || (!submitOutcomeUnknown && (pendingUploads > 0 || answerTooLarge))} onClick={() => void submitAttempt()}>
+                      {submitting ? t(submitOutcomeUnknown ? 'checkingSubmission' : 'submitting') : submitOutcomeUnknown ? t('checkSubmission') : submitError ? t('retrySubmit') : t('confirm')}
                     </button>
                   </div>
                 </DialogContent>
@@ -593,9 +762,10 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
       <Dialog open={leaveOpen} onOpenChange={(open) => { if (!open) decideLeave(false); }}>
         <DialogPortal container={containerRef.current}>
           <DialogOverlay className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm" />
-          <DialogContent className="fixed left-1/2 top-1/2 z-50 grid w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-3 rounded-[8px] border border-border border-l-2 border-l-warning-border bg-card p-6 text-foreground focus:outline-none">
+          <DialogContent onCloseAutoFocus={finishLeaveClose} className="fixed left-1/2 top-1/2 z-50 grid w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 gap-3 rounded-[8px] border border-border border-l-2 border-l-warning-border bg-card p-6 text-foreground focus:outline-none">
             <DialogTitle className="text-xl font-medium">{t('leaveTitle')}</DialogTitle>
-            <DialogDescription className="text-sm leading-6 text-muted-foreground">{t('leaveBody')}</DialogDescription>
+            <DialogDescription className="text-sm leading-6 text-muted-foreground">{t(recoveryAtRisk ? 'leaveRecoveryUnavailable' : 'leaveBody')}</DialogDescription>
+            {recoveryUnavailable ? <OwnAnswerDownload getRecovery={ownRecoveryCopy} label={recoveryCopy('download', { attempt: attempt.attemptNo })} /> : null}
             <div className="mt-2 flex flex-col gap-2 min-[760px]:flex-row-reverse">
               <button type="button" className="vf-btn vf-btn-primary vf-btn-lg" onClick={() => decideLeave(false)}>{t('stay')}</button>
               <button type="button" className="vf-btn vf-btn-lg" onClick={() => decideLeave(true)}>{t('leave')}</button>

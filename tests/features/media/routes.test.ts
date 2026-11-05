@@ -239,6 +239,7 @@ describe('authenticated media redirect route', () => {
     select.mockReturnValue({ eq });
     mocks.supabaseService.mockReturnValue({
       from: vi.fn((table: string) => table === 'media_assets' ? { select } : queryResult([])),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
       storage: { from: vi.fn(() => ({ createSignedUrl })) },
     });
   });
@@ -529,6 +530,7 @@ describe('authenticated media redirect route', () => {
     const submissions = queryResult([{id:'submission-1',user_id:'learner-1',branch_id:'vinsmc',branch_scope_known:true}]);
     mocks.supabaseService.mockReturnValue({
       from: vi.fn((table: string) => ({ media_assets: media, submission_files: files, profiles: profile, assignment_submissions: submissions })[table]),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
       storage: { from: vi.fn(() => ({ createSignedUrl })) },
     });
 
@@ -554,11 +556,61 @@ describe('authenticated media redirect route', () => {
     const submissions = queryResult([{id:'submission-1',user_id:'learner-1',branch_id:'ans',branch_scope_known:true}]);
     mocks.supabaseService.mockReturnValue({
       from: vi.fn((table: string) => ({ media_assets: media, submission_files: files, profiles: profile, assignment_submissions: submissions })[table]),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
       storage: { from: vi.fn(() => ({ createSignedUrl })) },
     });
 
     const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
 
+    expect(response.status).toBe(404);
+    expect(createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('allows a grader in the recorded exam school to read an attachment linked to the submitted answer', async () => {
+    mocks.getActor.mockResolvedValue({ userId: 'instructor-1', roles: [{ role: 'instructor', branchId: 'vinsmc' }] });
+    const media = queryResult({ owner_id: 'learner-1', bucket: 'submissions', path: 'learner-1/asset_X/work.pdf', mime: 'application/pdf' });
+    const reservation = queryResult([{ asset_id: 'asset_X', owner_id: 'learner-1', state: 'ready', purpose: 'submission', request: { examAttemptId: 'attempt-1', rootQuestionId: 'group-q', questionId: 'upload-q' } }]);
+    const answers = queryResult([{ attempt_id: 'attempt-1', user_id: 'learner-1', question_id: 'group-q', answer: { 'upload-q': { files: [{ assetId: 'asset_X', name: 'work.pdf', size: 8, mime: 'application/pdf' }] } } }]);
+    const attempts = queryResult([{ id: 'attempt-1', user_id: 'learner-1', branch_id: 'vinsmc', status: 'pending_manual' }]);
+    mocks.supabaseService.mockReturnValue({ from: vi.fn((table: string) => ({ media_assets: media, submission_files: queryResult([]), media_upload_reservations: reservation, exam_answers: answers, exam_attempts: attempts })[table] ?? queryResult([])), rpc: vi.fn().mockResolvedValue({ data: [{ attempt_id: 'attempt-1', branch_id: 'vinsmc', branch_scope_known: true }], error: null }), storage: { from: vi.fn(() => ({ createSignedUrl })) } });
+    const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
+    expect(response.status).toBe(302);
+    expect(createSignedUrl).toHaveBeenCalledOnce();
+  });
+
+  it('never gives an out-of-branch grader access to an exam attachment', async () => {
+    mocks.getActor.mockResolvedValue({ userId: 'instructor-1', roles: [{ role: 'instructor', branchId: 'ans' }] });
+    const media = queryResult({ owner_id: 'learner-1', bucket: 'submissions', path: 'learner-1/asset_X/work.pdf' });
+    const reservation = queryResult([{ asset_id: 'asset_X', owner_id: 'learner-1', state: 'ready', purpose: 'submission', request: { examAttemptId: 'attempt-1', rootQuestionId: 'group-q', questionId: 'upload-q' } }]);
+    const answers = queryResult([{ attempt_id: 'attempt-1', user_id: 'learner-1', question_id: 'group-q', answer: { 'upload-q': { files: [{ assetId: 'asset_X' }] } } }]);
+    const attempts = queryResult([{ id: 'attempt-1', user_id: 'learner-1', branch_id: 'vinsmc', status: 'pending_manual' }]);
+    mocks.supabaseService.mockReturnValue({ from: vi.fn((table: string) => ({ media_assets: media, submission_files: queryResult([]), media_upload_reservations: reservation, exam_answers: answers, exam_attempts: attempts })[table] ?? queryResult([])), rpc: vi.fn().mockResolvedValue({ data: [{ attempt_id: 'attempt-1', branch_id: 'vinsmc', branch_scope_known: true }], error: null }), storage: { from: vi.fn(() => ({ createSignedUrl })) } });
+    const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
+    expect(response.status).toBe(404);
+    expect(createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('does not infer a school for an exam attachment with unknown historical scope', async () => {
+    mocks.getActor.mockResolvedValue({ userId: 'instructor-1', roles: [{ role: 'instructor', branchId: 'vinsmc' }] });
+    const media = queryResult({ owner_id: 'learner-1', bucket: 'submissions', path: 'learner-1/asset_X/work.pdf' });
+    mocks.supabaseService.mockReturnValue({
+      from: vi.fn((table: string) => table === 'media_assets' ? media : queryResult([])),
+      rpc: vi.fn().mockResolvedValue({ data: [{ attempt_id: 'attempt-1', branch_id: null, branch_scope_known: false }], error: null }),
+      storage: { from: vi.fn(() => ({ createSignedUrl })) },
+    });
+    const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
+    expect(response.status).toBe(404);
+    expect(createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('denies even an in-branch grader when the exam answer does not contain the asset', async () => {
+    mocks.getActor.mockResolvedValue({ userId: 'instructor-1', roles: [{ role: 'instructor', branchId: 'vinsmc' }] });
+    const media = queryResult({ owner_id: 'learner-1', bucket: 'submissions', path: 'learner-1/asset_X/work.pdf' });
+    const reservation = queryResult([{ asset_id: 'asset_X', owner_id: 'learner-1', state: 'ready', purpose: 'submission', request: { examAttemptId: 'attempt-1', rootQuestionId: 'group-q', questionId: 'upload-q' } }]);
+    const answers = queryResult([{ attempt_id: 'attempt-1', user_id: 'learner-1', question_id: 'group-q', answer: { 'upload-q': { files: [{ assetId: 'different-asset' }] } } }]);
+    const attempts = queryResult([{ id: 'attempt-1', user_id: 'learner-1', branch_id: 'vinsmc', status: 'pending_manual' }]);
+    mocks.supabaseService.mockReturnValue({ from: vi.fn((table: string) => ({ media_assets: media, submission_files: queryResult([]), media_upload_reservations: reservation, exam_answers: answers, exam_attempts: attempts })[table] ?? queryResult([])), rpc: vi.fn().mockResolvedValue({ data: [], error: null }), storage: { from: vi.fn(() => ({ createSignedUrl })) } });
+    const response = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
     expect(response.status).toBe(404);
     expect(createSignedUrl).not.toHaveBeenCalled();
   });

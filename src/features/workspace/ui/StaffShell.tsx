@@ -74,7 +74,7 @@ export function StaffShell({ workspace, children, permissions, userName, scopeOp
         <nav aria-label={navLabel} className="min-h-0 flex-1 overflow-auto px-3 py-5"><p className="px-3 pb-3 text-xs font-semibold text-muted-foreground">{title}</p><NavigationList items={navigation} pathname={pathname} vertical /></nav>
       </aside> : null}
       <div className="min-w-0">{!editor && scope ? <div className="staff-scope border-b border-border px-4 py-3 lg:hidden">{scope}</div> : null}
-        <main id={mainId} className={editor ? 'min-w-0 px-3 py-3 sm:px-4 lg:px-6' : 'mx-auto w-full min-w-0 max-w-[96rem] px-4 py-6 sm:px-6 lg:px-8 lg:py-8'}>
+        <main tabIndex={-1} id={mainId} className={editor ? 'min-w-0 px-3 py-3 sm:px-4 lg:px-6' : 'mx-auto w-full min-w-0 max-w-[96rem] px-4 py-6 sm:px-6 lg:px-8 lg:py-8'}>
           {!editor ? <ShellBreadcrumbs pathname={pathname} items={navigation} currentLabel={recordTitle?.pathname === pathname ? recordTitle.title : undefined} /> : null}
           {children}
         </main>

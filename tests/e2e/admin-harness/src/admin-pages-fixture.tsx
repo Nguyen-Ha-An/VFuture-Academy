@@ -1,9 +1,13 @@
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { formatStaffAuditAction, formatStaffAuditTarget } from '@/features/admin/audit-format';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { BranchesManager, type SchoolReportCells } from '@/features/admin/components/BranchesManager';
 import { FIXTURE_ACTOR_ID, FIXTURE_PEOPLE, FIXTURE_SCHOOLS } from './admin-transport';
-import type { AdminScope } from '@/lib/admin-scope';
+import { scopeKey, type AdminScope, type AdminScopeOption } from '@/lib/admin-scope';
+import { buildSchoolNavigation, SchoolNavigationRequestSchema, type SchoolNavigationRequest } from '@/features/admin/school-navigation';
+import { SchoolScopeContinue } from '@/features/admin/components/SchoolScopeNavigation';
+import { AdminForbidden } from '@/features/admin/ui/AdminForbidden';
 import type { AdminOverviewData } from '@/features/admin/dashboard';
 import type { AdminAuditEntry } from '@/features/admin/management-contracts';
 import { AdminOverviewView } from '@/features/admin/ui/AdminOverviewView';
@@ -109,11 +113,43 @@ export function BranchesFixture({ canManage, scope, permissions }: { canManage: 
   const rows = fixtureScenario() === 'empty' ? [] : fixtureScenario() === 'sparse' ? schools.slice(0, 1) : schools;
   return <BranchesManager initialBranches={rows} scope={scope} actorId={FIXTURE_ACTOR_ID} reports={fixtureScenario() === 'error' ? 'unavailable' : permissions.includes('report.branch.read') ? SCHOOL_REPORTS : undefined} canManage={canManage} />;
 }
-export function SchoolDetailFixture({ branchId, permissions }: { branchId: string; permissions: Permission[] }) {
+type FixtureScopeContext = { scope: AdminScope; scopeOptions: AdminScopeOption[] };
+
+/** Synthetic authorization options, actual shared target builder and actual managed controls. */
+function schoolNavigation(context: FixtureScopeContext, target: SchoolNavigationRequest) {
+  return buildSchoolNavigation({ actor: { userId: FIXTURE_ACTOR_ID }, scope: context.scope, options: context.scopeOptions }, target,
+    sessionStorage.getItem('admin-fixture-scope'));
+}
+
+export function SchoolEntryFixture(context: FixtureScopeContext) {
+  const router = useRouter();
+  const locale = useLocale();
+  const query = new URLSearchParams(location.search);
+  // These flags configure this Vite fixture only; all actual target inputs still
+  // pass the production strict schema, including duplicate/unknown parameters.
+  for (const flag of ['uiv2', 'lang', 'theme', 'scenario', 'scope', 'reset']) query.delete(flag);
+  const input = Object.fromEntries([...new Set(query.keys())].map(key => [key, query.getAll(key).length === 1 ? query.get(key) : query.getAll(key)]));
+  const parsed = SchoolNavigationRequestSchema.safeParse(input);
+  const navigation = parsed.success ? schoolNavigation(context, parsed.data) : null;
+  const [savedAtEntry] = useState(() => sessionStorage.getItem('admin-fixture-scope'));
+  const savedMatches = navigation !== null && savedAtEntry === scopeKey(navigation.targetScope);
+  const destination = navigation?.destination;
+  useEffect(() => { if (savedMatches && destination) router.replace(destination); }, [savedMatches, destination, router]);
+  if (!parsed.success) return <section><h1>Fixture scope target unavailable</h1><p>The target does not match the production school navigation contract.</p></section>;
+  if (!navigation) return <AdminForbidden />;
+  if (savedMatches) return null;
+  const label = locale === 'vi' ? `Tiếp tục đến ${navigation.schoolName}` : `Continue to ${navigation.schoolName}`;
+  return <main className="canvas-page canvas-admin mx-auto max-w-xl space-y-5 px-4 py-12">
+    <h1>{label}</h1>
+    <p>{locale === 'vi' ? 'Chọn tiếp tục để mở đúng hồ sơ và dữ liệu trong phạm vi trường này.' : 'Continue to open the record and data in this school’s scope.'}</p>
+    <SchoolScopeContinue navigation={navigation} label={label} />
+  </main>;
+}
+
+export function SchoolDetailFixture({ branchId, permissions, scope, scopeOptions }: { branchId: string; permissions: Permission[] } & FixtureScopeContext) {
   const t = useTranslations('centralAdmin');
   const to = useTranslations('staffUi.admin.org.schoolDetail');
   const format = useFormatter();
-  const router = useRouter();
   const locale = useLocale();
   const school = window.__adminFixture.readModel().schools.find((entry) => entry.id === branchId);
   if (!school) throw new Error('This local school fixture does not exist.');
@@ -137,23 +173,24 @@ export function SchoolDetailFixture({ branchId, permissions }: { branchId: strin
   const tabHref = (key: string, query: Record<string, string> = {}) => routes.admin.branch(school.id, { tab: key === 'overview' ? undefined : key, ...query });
   const people = tab === 'staff' ? model.members.filter((member) => member.assignments.some((assignment) => assignment.roleId !== 'member')) : model.members;
   const hasMore = people.length > page * 10;
+  const navigate = (target: SchoolNavigationRequest) => schoolNavigation({ scope, scopeOptions }, target);
   const rows = people.slice((page - 1) * 10, page * 10).map((member) => ({
-    id: member.id, name: member.displayName, email: member.email, href: routes.admin.user(member.id),
+    id: member.id, name: member.displayName, email: member.email,
+    href: navigate({ branchId, target: 'member', userId: member.id })?.href ?? tabHref('members'),
+    navigation: navigate({ branchId, target: 'member', userId: member.id }) ?? undefined,
     roles: member.assignments.map((assignment) => assignment.roleName).join(', ') || to('noRole'),
     status: member.accountStatus === 'suspended' ? 'suspended' as const : member.memberships.find((membership) => membership.branchId === school.id)?.status ?? 'active',
   }));
+  const reports = canReadReports ? navigate({ branchId, target: 'reports' }) : null;
+  const enter = navigate({ branchId, target: tab === 'cms' ? 'library' : tab === 'members' || tab === 'staff' ? 'members' : 'overview' });
   return <SchoolDetailView
     school={{ id: school.id, name: school.name, description: school.city ? `${t('schools')} · ${school.city}` : t('schools') }}
     tabs={[
       ...availableTabs.map((key) => ({ key, label: t(key), href: tabHref(key), current: key === tab })),
-      ...(canReadReports ? [{ key: 'reports', label: t('reports'), href: routes.grading.reports({ branchId: school.id }), current: false, external: true }] : []),
+      ...(reports ? [{ key: 'reports', label: t('reports'), href: reports.href, navigation: reports, current: false, external: true }] : []),
     ]}
     tabsLabel={to('sections')}
-    enter={{ action: async (form) => {
-      const response = await fetch('/api/v1/admin/scope', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: form.get('scope'), destination: form.get('destination'), actorId: FIXTURE_ACTOR_ID }) });
-      if (!response.ok) throw new Error('The fixture scope change failed.');
-      router.push(String(form.get('destination')));
-    }, scope: `branch:${school.id}`, destination: tab === 'cms' ? '/studio/library' : tab === 'members' || tab === 'staff' ? '/admin/users' : '/admin', label: t('enterSchool') }}
+    enter={enter ? { navigation: enter, label: t('enterSchool') } : undefined}
     stats={tab === 'overview' ? stats : undefined}
     unavailableLabel={to('unavailable')}
     activity={tab === 'overview' && permissions.includes('audit.read') ? { title: to('activityTitle'), emptyLabel: to('activityEmpty'), items: (fixtureScenario() === 'empty' ? [] : auditEntries(4)).map((entry) => ({ id: entry.id, actor: { name: PEOPLE.find(([id]) => id === entry.actorId)?.[1] ?? (locale === 'vi' ? 'Hệ thống' : 'System') }, action: formatStaffAuditAction(entry.action, locale).label, target: formatStaffAuditTarget(entry.targetType, locale), at: entry.at })) } : undefined}

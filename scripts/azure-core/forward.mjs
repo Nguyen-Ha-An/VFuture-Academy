@@ -14,7 +14,8 @@ const FILES = [
 const digest = value => createHash('sha256').update(value).digest('hex');
 const fail = message => { throw new Error(message); };
 function artifact() {
-  const built=buildAzureSchema();
+  // This executor is the already-released V1 package, never a general migrator.
+  const built=buildAzureSchema({through:FILES[2]});
   const names=built.receipt.migrations.map(m=>m.file);
   if(names.length!==52 || FILES.some((name,i)=>names[49+i]!==name)) fail('Unexpected migration set');
   const baseline=built.steps.filter(step=>!FILES.some(file=>step.id===`supabase/migrations/${file}`));

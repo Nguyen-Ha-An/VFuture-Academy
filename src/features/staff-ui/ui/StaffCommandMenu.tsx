@@ -30,6 +30,7 @@ export function StaffCommandMenu({ workspace, permissions, entries, className }:
   const [open, setOpen] = useState(false);
   const [requested, setRequested] = useState(false);
   const openRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   // Server snapshot is "not Apple" so the SSR markup is stable; the client corrects it after hydration.
   const apple = useApplePlatform();
 
@@ -52,6 +53,7 @@ export function StaffCommandMenu({ workspace, permissions, entries, className }:
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={t("trigger")}
         aria-haspopup="dialog"
@@ -74,7 +76,7 @@ export function StaffCommandMenu({ workspace, permissions, entries, className }:
       </button>
       {requested ? (
         <Suspense fallback={null}>
-          <StaffCommandDialog open={open} onOpenChange={setMenuOpen} workspace={workspace} permissions={permissions} entries={entries} />
+          <StaffCommandDialog open={open} onOpenChange={setMenuOpen} workspace={workspace} permissions={permissions} entries={entries} returnFocus={() => triggerRef.current?.focus({ preventScroll: true })} />
         </Suspense>
       ) : null}
     </>

@@ -1,0 +1,25 @@
+/* These are complete color values (not legacy HSL channels). The attribute belongs to
+ * app-owned portal content, so inherited zinc tokens cannot replace the Canvas surface. */
+[data-canvas-surface="light"] {
+  --vf-surface: #fff; --vf-raised: #f5f5f7; --vf-ink: #27313b; --vf-muted: #596570;
+  --vf-line: #d8dce1; --vf-line-strong: #a7afb8; --vf-signal: #08666a; --vf-signal-soft: #e9f4f4; --vf-signal-ink: #fff;
+  color-scheme: light;
+}
+[data-canvas-surface="dark"] {
+  --vf-surface: #20262e; --vf-raised: #292f39; --vf-ink: #f0f2f5; --vf-muted: #b3bdc9;
+  --vf-line: #424b57; --vf-line-strong: #738090; --vf-signal: #72d5d7; --vf-signal-soft: #203e43; --vf-signal-ink: #102c31;
+  color-scheme: dark;
+}
+[data-canvas-surface] {
+  --vf-bg: var(--vf-surface);
+  --background: var(--vf-surface); --foreground: var(--vf-ink);
+  --card: var(--vf-surface); --card-foreground: var(--vf-ink);
+  --popover: var(--vf-surface); --popover-foreground: var(--vf-ink);
+  --muted: var(--vf-raised); --muted-foreground: var(--vf-muted);
+  --secondary: var(--vf-raised); --secondary-foreground: var(--vf-ink);
+  --accent: var(--vf-signal-soft); --accent-foreground: var(--vf-signal);
+  --primary: var(--vf-signal); --primary-foreground: var(--vf-signal-ink);
+  --border: var(--vf-line); --input: var(--vf-line-strong); --ring: var(--vf-signal);
+  --radius: 4px; --radius-sm: 4px; --radius-md: 4px; --radius-lg: 4px;
+  --app-font-sans: Inter, "Be Vietnam Pro", system-ui, sans-serif;
+}
