@@ -63,7 +63,11 @@ test('mobile drawer keeps theme and closes at desktop breakpoint', async ({ page
   await page.setViewportSize({ width: 768, height: 900 });
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveAttribute('data-scroll-locked', /.+/);
-  await page.getByRole('link', { name: en.learner.focus.courses, exact: true }).click();
+  await page.getByRole('button', { name: en.learner.focus.courses, exact: true }).click();
+  const courses = page.getByRole('dialog', { name: en.learner.focus.courses, exact: true });
+  await expect(courses).toBeVisible();
+  await courses.getByRole('link', { name: 'All courses', exact: true }).click();
+  await expect(courses).toHaveCount(0);
   await expect(page).toHaveURL('/app/courses');
 });
 
@@ -144,8 +148,18 @@ test('activity frame: head, body and footer share one left edge at 1440px', asyn
   const edges = await page.evaluate(() => ['.vf-activity-head', '.vf-activity-main', '[data-activity-footer]', '.vf-activity-pager']
     .map((selector) => Math.round(document.querySelector(selector)!.getBoundingClientRect().left)));
   expect(new Set(edges).size).toBe(1);
-  const width = await page.locator('.vf-activity-head').evaluate((element) => element.getBoundingClientRect().width);
-  expect(width).toBeLessThanOrEqual(761);
+  const geometry = await page.locator('.vf-activity-body').evaluate((body) => {
+    const frame = body.getBoundingClientRect();
+    const heading = body.querySelector('.vf-activity-head')!.getBoundingClientRect();
+    const style = getComputedStyle(body);
+    return { left: heading.left - frame.left, right: frame.right - heading.right,
+      paddingLeft: parseFloat(style.paddingLeft), paddingRight: parseFloat(style.paddingRight),
+      width: heading.width, frameWidth: frame.width };
+  });
+  expect(geometry.width).toBeGreaterThan(1000);
+  expect(geometry.left).toBeCloseTo(geometry.paddingLeft, 0);
+  expect(geometry.right).toBeCloseTo(geometry.paddingRight, 0);
+  expect(geometry.width + geometry.left + geometry.right).toBeCloseTo(geometry.frameWidth, 0);
 });
 
 test('activity frame: the exam aside sits beside the questions at 1440px and stacks at 1024px', async ({ page }) => {

@@ -13,7 +13,7 @@ export type IdentityConfiguration = {
   redirectUri: string; appOrigin: string; encryptionKey: Buffer; sessionMaxAge: number;
   googleDomainHint?: string;
 };
-export type LoginTransaction = { popupAttempt?: string; provider: IdentityProvider; state: string; nonce: string; verifier: string; next: string };
+export type LoginTransaction = { popupAttempt?: string; kind?: 'google-v1'; provider: IdentityProvider; state: string; nonce: string; verifier: string; next: string };
 export type OidcMetadata = { issuer: string; authorization_endpoint: string; token_endpoint: string; jwks_uri: string; end_session_endpoint: string };
 export type IdentityClaims = Record<string, unknown> & { sub: string; oid: string; iss: string; exp: number; iat: number };
 
@@ -34,8 +34,8 @@ export function readIdentitySessionConfiguration(source: Readonly<Record<string,
   if (appUrl.protocol !== 'https:' && !(source.NODE_ENV !== 'production' && appUrl.hostname === 'localhost' && appUrl.protocol === 'http:')) throw new Error('Invalid application origin');
   const encryptionKey = Buffer.from(required('ENTRA_SESSION_ENCRYPTION_KEY'), 'base64');
   if (encryptionKey.length !== 32) throw new Error('ENTRA_SESSION_ENCRYPTION_KEY must contain 32 random bytes');
-  const sessionMaxAge = Number(source.ENTRA_SESSION_MAX_AGE_SECONDS || '86400');
-  if (!Number.isInteger(sessionMaxAge) || sessionMaxAge < 3600 || sessionMaxAge > 86400) throw new Error('Invalid session maximum age');
+  const sessionMaxAge = Number(source.ENTRA_SESSION_MAX_AGE_SECONDS || '2592000');
+  if (!Number.isInteger(sessionMaxAge) || sessionMaxAge < 3600 || sessionMaxAge > 2592000) throw new Error('Invalid session maximum age');
   return { encryptionKey, sessionMaxAge, appOrigin: appUrl.origin, redirectUri: new URL('/auth/callback', appUrl.origin).toString() };
 }
 export function readIdentityConfiguration(source: Readonly<Record<string, string | undefined>> = process.env, provider: IdentityProvider = 'external-id'): IdentityConfiguration {
@@ -119,7 +119,7 @@ export async function getOidcMetadata(config: Pick<IdentityConfiguration, 'issue
 }
 const signingKeyCache = new Map<string, { until: number; keys: JsonWebKey[] }>();
 const signingKeyRequests = new Map<string, Promise<JsonWebKey[]>>();
-export async function getSigningKeys(metadata: OidcMetadata): Promise<JsonWebKey[]> {
+export async function getSigningKeys(metadata: Pick<OidcMetadata, 'jwks_uri'>): Promise<JsonWebKey[]> {
   const uri = metadata.jwks_uri;
   const cached = signingKeyCache.get(uri);
   if (cached && cached.until > Date.now()) return cached.keys;
@@ -180,13 +180,13 @@ export async function exchangeTokens(config: IdentityConfiguration, metadata: Oi
   if (typeof result.id_token !== 'string' || (result.refresh_token !== undefined && typeof result.refresh_token !== 'string')) throw new Error('Invalid token response');
   return { idToken: result.id_token, refreshToken: result.refresh_token as string | undefined };
 }
-export function encryptRefreshToken(token: string, sessionHash: string, config: IdentityConfiguration): string {
+export function encryptRefreshToken(token: string, sessionHash: string, config: Pick<IdentityConfiguration, 'provider'|'encryptionKey'>): string {
   const nonce = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', config.encryptionKey, nonce);
   cipher.setAAD(Buffer.from(`${config.provider}:${sessionHash}`));
   const ciphertext = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
   return [nonce, cipher.getAuthTag(), ciphertext].map(part => part.toString('base64url')).join('.');
 }
-export function decryptRefreshToken(value: string, sessionHash: string, config: IdentityConfiguration): string {
+export function decryptRefreshToken(value: string, sessionHash: string, config: Pick<IdentityConfiguration, 'provider'|'encryptionKey'>): string {
   const parts = value.split('.'); if (parts.length !== 3) throw new Error('Invalid session credential');
   const [nonce, tag, ciphertext] = parts.map(part => Buffer.from(part, 'base64url'));
   const decipher = createDecipheriv('aes-256-gcm', config.encryptionKey, nonce); decipher.setAAD(Buffer.from(`${config.provider}:${sessionHash}`)); decipher.setAuthTag(tag);

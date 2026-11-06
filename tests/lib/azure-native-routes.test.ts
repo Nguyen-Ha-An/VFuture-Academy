@@ -36,6 +36,8 @@ describe('same-origin native authentication routes',()=>{
     expect(mocks.verify.mock.calls[0][0]).toBe('private-id-token');expect(mocks.create).toHaveBeenCalledOnce();
     const text=await result.text();expect(text).toContain('complete');expect(text).not.toMatch(/private-|Password1/);
     expect(result.headers.get('location')).toBeNull();
+    expect(result.cookies.get('academy_session')?.maxAge).toBe(2592000);
+    expect(mocks.create.mock.calls[0][1].expiresAt - Math.floor(Date.now()/1000)).toBe(2592000);
   });
   it('encrypts continuation state and binds the one-use handle to the browser cookie',async()=>{
     mocks.start.mockResolvedValue({step:'code',flow:{mode:'signup',step:'code',continuation:'private-continuation',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000}});
@@ -74,13 +76,22 @@ describe('same-origin native authentication routes',()=>{
     const one=await a.json(),two=await b.json();expect(one.attemptId).not.toBe(two.attemptId);
     expect(a.cookies.get('academy_native_'+one.attemptId)).toBeDefined();expect(b.cookies.get('academy_native_'+two.attemptId)).toBeDefined();
   });
-  it('initializes a verified signup from its bound submitted name when provider name is absent',async()=>{
+  it.each([undefined,'New User'])('initializes a verified signup from its bound submitted name when provider name is %s',async providerName=>{
     const flow={mode:'signup',step:'code',continuation:'private',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000,verifiedEmail:true,displayName:'Đặng Thị Ánh'};
     mocks.start.mockResolvedValue({step:'complete',flow,tokens:{idToken:'private-id-token',refreshToken:'private-refresh'}});
-    mocks.verify.mockResolvedValue({iss:vars.ENTRA_ISSUER,oid:'33333333-3333-4333-8333-333333333333',sub:'subject',exp:Math.floor(Date.now()/1000)+3600});
+    mocks.verify.mockResolvedValue({iss:vars.ENTRA_ISSUER,oid:'33333333-3333-4333-8333-333333333333',sub:'subject',name:providerName,exp:Math.floor(Date.now()/1000)+3600});
     mocks.resolve.mockResolvedValue({id:'44444444-4444-4444-8444-444444444444'});
     const result=await nativeAuthentication(request({action:'start',mode:'signup',email:'a@example.com',password:'Password1!',displayName:'Đặng Thị Ánh'}));
     expect(result.status).toBe(200);
     expect(mocks.resolve).toHaveBeenCalledWith(expect.objectContaining({name:'Đặng Thị Ánh',email_verified:true}));
+  });
+  it('does not replace a provider name from an unverified signup flow',async()=>{
+    const flow={mode:'signup',step:'code',continuation:'private',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000,displayName:'Unverified Input'};
+    mocks.start.mockResolvedValue({step:'complete',flow,tokens:{idToken:'private-id-token',refreshToken:'private-refresh'}});
+    mocks.verify.mockResolvedValue({iss:vars.ENTRA_ISSUER,oid:'33333333-3333-4333-8333-333333333333',sub:'subject',name:'Provider Name',exp:Math.floor(Date.now()/1000)+3600});
+    mocks.resolve.mockResolvedValue({id:'44444444-4444-4444-8444-444444444444'});
+    const result=await nativeAuthentication(request({action:'start',mode:'signup',email:'a@example.com',password:'Password1!',displayName:'Unverified Input'}));
+    expect(result.status).toBe(200);
+    expect(mocks.resolve).toHaveBeenCalledWith(expect.objectContaining({name:'Provider Name'}));
   });
 });

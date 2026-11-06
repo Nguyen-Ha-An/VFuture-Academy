@@ -2,7 +2,8 @@ import { academyBackend } from '@/lib/identity/provider';
 import 'server-only';
 import { getLocale } from 'next-intl/server';
 import { actorDisplayNames } from '@/features/admin/actor-directory';
-import type { ContentRow, ReviewRow } from '@/features/admin/components/ContentReviewWorkspace';
+import type { ContentRow, ReviewRow, ReviewPreview } from '@/features/admin/components/ContentReviewWorkspace';
+import { pinnedBankPreview } from '@/features/content-review/pinned-bank-preview';
 import { createContentReviewService, type ContentReviewDatabase } from '@/features/admin/content-review';
 import { contentEditorHref } from '@/features/content-review/lifecycle';
 import { studioPageContext } from '@/features/workspace/context';
@@ -354,4 +355,12 @@ export async function studioReviewsData(): Promise<StudioReviewsData> {
     titles,
     submitters,
   };
+}
+
+/** Direct links authorize the selected immutable snapshot again; queue membership is not authority. */
+export async function studioReviewData(reviewId: string): Promise<StudioReviewsData & { initialReview: ReviewPreview }> {
+  const context = await studioPageContext();
+  const service = createContentReviewService({ database: supabaseService() as unknown as ContentReviewDatabase, actor: context.actor, scope: context.scope });
+  const initialReview = await pinnedBankPreview(await service.reviewPreview(reviewId)) as ReviewPreview;
+  return { ...await studioReviewsData(), initialReview };
 }

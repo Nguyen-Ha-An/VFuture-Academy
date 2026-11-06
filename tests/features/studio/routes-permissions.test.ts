@@ -29,6 +29,8 @@ const requiredRoutes = [
 
 const branchScopedPermissions = new Set([
   'submission.grade',
+  'teaching.assignment.manage',
+  'teaching.scope.all',
   'teaching.announcement.manage',
   'teaching.schedule.manage',
   'exam.release',
@@ -103,14 +105,62 @@ describe('Studio route authorization boundary', () => {
     }
   });
 
-  it('guards every teaching route with scoped teaching authorization', () => {
-    const routes = routeFiles(join(apiRouteRoot, 'teaching'));
+  it('guards each teaching route according to its capability and learner-read contract', () => {
+    const teachingRoot = join(apiRouteRoot, 'teaching');
+    const routes = routeFiles(teachingRoot);
     expect(routes.length).toBeGreaterThan(0);
     for (const path of routes) {
+      const relative = path.slice(teachingRoot.length + 1).replaceAll('\\', '/');
       const source = guardedRouteSource(path);
-      expect(source, path).toMatch(/requirePermission\s*\(\s*['"]teaching\.(announcement|schedule)\.manage['"]\s*,|hasPermission\s*\(\s*actor\s*,\s*['"]teaching\.(announcement|schedule)\.manage['"]\s*,/);
-      expect(source, path).toMatch(/\bbranchId\b/);
+      if (relative.startsWith('announcements/')) {
+        expect(source, path).toMatch(/requirePermission\s*\(\s*['"]teaching\.announcement\.manage['"]\s*,\s*{branchId:/);
+      } else if (relative === 'schedules/route.ts') {
+        expect(source, path).toMatch(/requirePermission\s*\(\s*['"]teaching\.schedule\.manage['"]\s*,\s*{branchId:/);
+      } else if (relative === 'options/route.ts') {
+        expect(source, path).toMatch(/await getActor\(\)/);
+        expect(source, path).toMatch(/if\s*\(!actor\)\s*throw new ApiError\(401/);
+        for (const permission of ['assignment', 'schedule', 'announcement']) {
+          expect(source, path).toContain(`hasPermission(actor,'teaching.${permission}.manage',{branchId})`);
+        }
+        expect(source, path).toContain('teachingOptions(actor, branchId, locale)');
+      } else if (relative === 'teacher-options/route.ts') {
+        expect(source, path).toMatch(/requirePermission\(['"]teaching\.assignment\.manage['"],\s*{\s*branchId\s*}/);
+        expect(source, path).toContain('teacherOptions(actor, branchId, page, pageSize)');
+        expect(source, path).not.toMatch(/export const (POST|PUT|PATCH|DELETE)/);
+      } else if (relative === 'courses/[courseId]/teachers/route.ts') {
+        // GET permits an enrolled learner; SQL must resolve their historical
+        // branch. PUT independently requires management at its body branch.
+        expect(source, path).toMatch(/await getActor\(\)/);
+        expect(source, path).toMatch(/if\s*\(!actor\)\s*throw new ApiError\(401/);
+        expect(source, path).toContain('getCourseTeachers(actor, courseId, branchId)');
+        expect(source, path).toMatch(/export const PUT = withHandler/);
+        expect(source, path).toMatch(/requirePermission\(['"]teaching\.assignment\.manage['"],\s*{\s*branchId: input\.branchId\s*}/);
+        expect(source, path).toContain('replaceCourseTeachers(actor, courseId, input)');
+      } else if (relative === 'assigned-courses/route.ts') {
+        // Own assignments are available to any live actor; ordinary learners
+        // receive an empty list rather than needing a teaching permission.
+        expect(source, path).toMatch(/await getActor\(\)/);
+        expect(source, path).toMatch(/if\s*\(!actor\)\s*throw new ApiError\(401/);
+        expect(source, path).toContain('assignedCourses(actor, locale)');
+        expect(source, path).not.toMatch(/export const (POST|PUT|PATCH|DELETE)/);
+      } else {
+        throw new Error(`Teaching route needs an explicit authorization contract: ${relative}`);
+      }
     }
+  });
+
+  it('binds assignment API services to actor-aware authoritative SQL RPCs', () => {
+    const service = readFileSync(join(process.cwd(), 'src/features/teaching/assignments.ts'), 'utf8');
+    const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20261106010000_course_teaching_assignments.sql'), 'utf8');
+    for (const rpc of ['teaching_course_teachers', 'replace_course_teachers', 'teaching_teacher_options', 'teaching_assigned_courses']) {
+      expect(service).toMatch(new RegExp(`\\.rpc\\('${rpc}', \\{\\s*p_actor_id: actor\\.userId`));
+    }
+    expect(sql).toContain("authorization_assert_actor(p_actor_id,'teaching.assignment.manage','branch',p_branch_id)");
+    expect(sql).toContain('e.user_id=p_actor_id and e.course_id=p_course_id');
+    expect(sql).toContain('case when e.branch_scope_known then e.branch_id else null end');
+    expect(sql).toContain('where a.user_id=p_actor_id and public.teaching_candidate(a.user_id,a.branch_id)');
+    expect(sql).toContain('public.teaching_assigned_courses(uuid,text) from public,anon,authenticated');
+    expect(sql).toContain('public.teaching_assigned_courses(uuid,text) to service_role');
   });
 
   it('keeps the grading namespace outside learner authentication and behind the grading workspace guard', () => {

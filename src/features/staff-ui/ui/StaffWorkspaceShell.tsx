@@ -9,7 +9,7 @@ import { useWorkspaceSurfaceTheme } from "@/components/ui/workspace-surface-cont
 import { usePathname, useRouter } from "next/navigation";
 import { requestNavigation } from "@/lib/navigation-guard";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import type { StaffChrome } from "@/features/staff-ui/types";
 import { StaffTitleContext } from "@/features/workspace/ui/StaffTitleContext";
@@ -27,6 +27,7 @@ import { CanvasProvider } from "@/features/canvas/ui/CanvasProvider";
 import { Tray } from "@instructure/ui-tray/v11_7";
 import { GlobalNavigation } from "@/features/canvas/ui/GlobalNavigation";
 import { AccountTray, ACCOUNT_TRAY_ID, useAccountTrayController } from "@/features/canvas/ui/AccountTray";
+import { CoursesTray, COURSES_TRAY_ID } from "@/features/canvas/ui/CoursesTray";
 import "../staff-tokens.css";
 import "../shell.css";
 import "@/features/canvas/canvas.css";
@@ -58,12 +59,24 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
   const common = useTranslations("common");
   const navigation = useStaffNavigation(workspace, permissions);
   const mainId = `${workspace}-main`;
+  const reviewWorkbench = workspace === 'studio' && /^\/studio\/reviews\/[^/]+\/?$/.test(pathname);
   const editor = isCourseEditorRoute(workspace, pathname) || workspace === "grading" && /^\/grading\/(assignments|exams)\/[^/]+/.test(pathname);
   const courseWorkspace = isCourseWorkspacePage(workspace, pathname);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const account = useAccountTrayController(triggerRef);
+  const [coursesOpen, setCoursesOpen] = useState(false);
+  const coursesTrigger = useRef<HTMLElement | null>(null);
+  const openCourses = useCallback((event: SyntheticEvent<unknown>) => {
+    coursesTrigger.current = event.currentTarget instanceof HTMLElement ? event.currentTarget : triggerRef.current;
+    setCoursesOpen(true);
+  }, []);
+  const restoreCoursesFocus = useCallback(() => {
+    const selector = `button[aria-controls="${COURSES_TRAY_ID}"]`;
+    const candidates = [coursesTrigger.current?.matches(selector) ? coursesTrigger.current : null, ...document.querySelectorAll<HTMLElement>(selector), triggerRef.current];
+    candidates.find(element => element?.isConnected && !element.closest('[inert], [hidden], [aria-hidden="true"]') && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden')?.focus({ preventScroll: true });
+  }, []);
   const { openAfterClose } = account;
-  const drawerHandoff = useRef<{ kind: 'account'; identity: string } | { kind: 'scope'; identity: string; scope: string } | { kind: 'navigation'; identity: string; href: string; token: number } | null>(null);
+  const drawerHandoff = useRef<{ kind: 'account'; identity: string } | { kind: 'courses'; identity: string } | { kind: 'scope'; identity: string; scope: string } | { kind: 'navigation'; identity: string; href: string; token: number } | null>(null);
   const navigationToken = useRef(0);
   const scopeIdentity = workspace + ':' + (activeScope ? scopeKey(activeScope) : 'none') + ':' + pathname;
   const latestScopeIdentity = useRef(scopeIdentity);
@@ -84,7 +97,7 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
     setScopeQueued(false);
     if (scopeFrame.current !== null) { cancelAnimationFrame(scopeFrame.current); scopeFrame.current = null; }
   }, []);
-  useEffect(() => { navigationToken.current += 1; cancelScopeHandoff(); drawerHandoff.current = null; }, [scopeIdentity, cancelScopeHandoff]);
+  useEffect(() => { navigationToken.current += 1; cancelScopeHandoff(); drawerHandoff.current = null; setCoursesOpen(false); }, [scopeIdentity, cancelScopeHandoff]);
   useEffect(() => { live.current = true; return () => { live.current = false; scopeLease.current = null; if (scopeFrame.current !== null) cancelAnimationFrame(scopeFrame.current); }; }, []);
   const requestScope = useCallback((next: string, closeOverlay?: () => void) => {
     if (!activeScope || scopePending || queuedRef.current || scopeKey(activeScope) === next
@@ -123,6 +136,15 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
     if (!action) return;
     if (action.identity !== latestScopeIdentity.current || !live.current) { cancelScopeHandoff(); return; }
     if (action.kind === 'account') { openAfterClose(triggerRef.current); return; }
+    if (action.kind === 'courses') {
+      scopeFrame.current = requestAnimationFrame(() => {
+        scopeFrame.current = null;
+        if (action.identity !== latestScopeIdentity.current || !live.current || drawerVisible.current) return;
+        coursesTrigger.current = triggerRef.current;
+        setCoursesOpen(true);
+      });
+      return;
+    }
     if (action.kind === 'navigation') {
       // Native onExited runs before its portal-removal commit. Let that commit
       // release the old focus region before opening a dirty-work confirmation.
@@ -178,6 +200,14 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
     persistSidebarState(next);
   }, [editor, compact]);
 
+  if (reviewWorkbench) return <CanvasProvider theme={chrome.theme} nonce={nonce}>
+    <StaffTitleContext.Provider value={registerTitle}>
+      <div className="vf-staff vf-canvas canvas-review-shell" data-workspace={workspace} data-theme={workspaceThemeAttribute(chrome.theme)}>
+        <main id={mainId} tabIndex={-1} className="min-w-0 outline-none">{children}</main>
+      </div>
+    </StaffTitleContext.Provider>
+  </CanvasProvider>;
+
   return (
     <CanvasProvider theme={chrome.theme} nonce={nonce}><StaffTitleContext.Provider value={registerTitle}>
       <StaffScopeTransitionContext.Provider value={{ state: scopeState, queued: scopeQueued, compact, request: requestScope }}><SidebarProvider
@@ -194,7 +224,7 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
         >
           {common("skipToContent")}
         </a>
-        <GlobalNavigation studio={entries.studio} grading={entries.grading} admin={entries.admin} onAccount={account.onAccount} accountOpen={account.open} accountControls={ACCOUNT_TRAY_ID} />
+        <GlobalNavigation studio={entries.studio} grading={entries.grading} admin={entries.admin} onAccount={account.onAccount} accountOpen={account.open} accountControls={ACCOUNT_TRAY_ID} onCourses={openCourses} coursesOpen={coursesOpen} coursesControls={COURSES_TRAY_ID} />
         <StaffDrawer compact={compact} label={navigation.label} visibilityRef={drawerVisible} onOpened={drawerOpened} onClosed={finishDrawerHandoff} navigation={<StaffSidebar
           workspace={workspace}
           navigation={navigation}
@@ -205,6 +235,8 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
           theme={chrome.theme}
           onAccount={() => { if (!scopeState.pending && !scopeQueued) drawerHandoff.current = { kind: 'account', identity: latestScopeIdentity.current }; }}
           accountOpen={account.open}
+          onCourses={() => { if (!scopeState.pending && !scopeQueued) drawerHandoff.current = { kind: 'courses', identity: latestScopeIdentity.current }; }}
+          coursesOpen={coursesOpen}
           onNavigateRequest={requestSidebarNavigation}
         />}>
         <SidebarInset className={cn(courseWorkspace && "vf-staff-course-editor")} data-editor={editor ? "" : undefined}>
@@ -227,7 +259,7 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
             tabIndex={-1}
             className={cn(
               "min-w-0 flex-1 scroll-mt-[57px] outline-none",
-              editor ? "px-3 py-3 sm:px-4 lg:px-6" : "mx-auto w-full max-w-[96rem] p-4 md:p-8",
+              editor ? "px-3 py-3 sm:px-4 lg:px-6" : "w-full p-4 md:p-6",
             )}
           >
             {children}
@@ -235,6 +267,7 @@ export function StaffWorkspaceShell({ workspace, chrome, permissions, scopeOptio
         </SidebarInset>
         </StaffDrawer>
         <AccountTray open={account.open} onOpenChange={account.setOpen} restoreFocus={account.restoreFocus} identity={chrome.identity} theme={chrome.theme} />
+        <CoursesTray open={coursesOpen} onOpenChange={setCoursesOpen} restoreFocus={restoreCoursesFocus} />
         <StaffScopeEffects state={scopeState} />
         <ShellRouteEffects mainId={mainId} pathname={pathname} triggerRef={triggerRef} />
       </SidebarProvider></StaffScopeTransitionContext.Provider>

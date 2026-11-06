@@ -2204,6 +2204,8 @@
     "scope": "Phạm vi quản lý",
     "central": "Trung tâm · Toàn hệ thống",
     "scopeError": "Quyền truy cập đã thay đổi hoặc chưa chọn được phạm vi. Vui lòng thử lại.",
+    "sessionChecking": "Đang kiểm tra phiên đăng nhập…",
+    "sessionUnavailable": "Chưa thể kiểm tra phiên đăng nhập. Không gian làm việc đang được ẩn cho đến khi bạn thử lại.",
     "switchingScope": "Đang tải không gian quản trị…",
     "overview": "Tổng quan",
     "overviewDescription": "Thành viên, học tập và nội dung trong phạm vi bạn quản lý.",

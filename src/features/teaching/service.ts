@@ -2,17 +2,21 @@ import 'server-only';
 import { ApiError } from '@/lib/api';
 import { branchCanAccess } from '@/features/learning/shared';
 import { supabaseService } from '@/lib/supabase/server';
-import type { Actor } from '@/lib/permissions';
+import { can, type Actor } from '@/lib/permissions';
 import { assignmentLocators, type ScheduleSchema, type AnnouncementCreateSchema, type AnnouncementUpdateSchema } from './contracts';
 import type { z } from 'zod';
+import { assertCourseTeaching, teachingCourseScope } from './assignments';
 import { assignmentTitle, teachingTitle, type TeachingLocale } from './titles';
 
 const database = () => supabaseService();
-function failure(error: unknown): void { if (error) throw new ApiError(503, 'TEACHING_UNAVAILABLE', 'Teaching data is unavailable'); }
+function failure(error: unknown): void {
+  if (typeof error === 'object' && error !== null && 'code' in error && error.code === '42501') throw new ApiError(403, 'FORBIDDEN', 'Permission denied');
+  if (error) throw new ApiError(503, 'TEACHING_UNAVAILABLE', 'Teaching data is unavailable');
+}
 function missing(): never { throw new ApiError(404, 'TEACHING_NOT_FOUND', 'Course or teaching record not found for this school'); }
 
 /** Current accessible versions and versions pinned to a school enrollment. */
-export async function teachingOptions(branchId: string, locale: TeachingLocale = 'vi') {
+async function availableTeachingOptions(branchId: string, locale: TeachingLocale = 'vi') {
   const db = database();
   const [courses, enrollments] = await Promise.all([
     db.from('courses').select('id,status,current_version_id,ownership_kind,owner_branch_id'),
@@ -38,12 +42,23 @@ export async function teachingOptions(branchId: string, locale: TeachingLocale =
   });
   return {courses:[...new Map(rows.map(row=>[row.courseId,{id:row.courseId,title:row.courseTitle}])).values()],versions:rows};
 }
+export async function teachingOptions(actor: Actor, branchId: string, locale: TeachingLocale = 'vi') {
+  const options = await availableTeachingOptions(branchId, locale);
+  if (can(actor, 'teaching.assignment.manage', { kind: 'branch', branchId })) return options;
+  const scopes = await Promise.all([
+    teachingCourseScope(actor, 'teaching.schedule.manage'),
+    teachingCourseScope(actor, 'teaching.announcement.manage'),
+  ]);
+  const permitted = (courseId: string) => scopes.some(scope => scope.all || scope.branchIds.includes(branchId)
+    || scope.assignments.some(pair => pair.branchId === branchId && pair.courseId === courseId));
+  return { courses: options.courses.filter(course => permitted(course.id)), versions: options.versions.filter(version => permitted(version.courseId)) };
+}
 async function assertCourseSchool(branchId: string, courseId: string) {
-  const options=await teachingOptions(branchId);
+  const options=await availableTeachingOptions(branchId);
   if (!options.courses.some(course=>course.id===courseId)) return missing();
 }
 async function versionCourse(branchId: string, versionId: string): Promise<string> {
-  const options=await teachingOptions(branchId);
+  const options=await availableTeachingOptions(branchId);
   const version=options.versions.find(row=>row.courseVersionId===versionId);
   if (!version) return missing();
   return version.courseId;
@@ -54,12 +69,14 @@ function announcement(row: Record<string, unknown>) {
 function schedule(row: Record<string, unknown>) {
   return { branchId:row.branch_id, courseVersionId:row.course_version_id, itemId:row.item_id, blockId:row.block_id, dueAt:row.due_at, updatedAt:row.updated_at };
 }
-export async function listAnnouncements(branchId:string, courseId:string) {
+export async function listAnnouncements(actor:Actor, branchId:string, courseId:string) {
+  await assertCourseTeaching(actor, 'teaching.announcement.manage', courseId, branchId);
   await assertCourseSchool(branchId,courseId);
   const result = await database().from('teaching_announcements').select('*').eq('branch_id',branchId).eq('course_id',courseId).order('updated_at',{ascending:false});
   failure(result.error); return { announcements:(result.data ?? []).map(announcement) };
 }
 export async function createAnnouncement(actor:Actor, input:z.infer<typeof AnnouncementCreateSchema>) {
+  await assertCourseTeaching(actor, 'teaching.announcement.manage', input.courseId, input.branchId);
   await assertCourseSchool(input.branchId,input.courseId);
   const result = await database().from('teaching_announcements').insert({branch_id:input.branchId,course_id:input.courseId,title:input.title,body:input.body,created_by:actor.userId,updated_by:actor.userId}).select('*').single();
   failure(result.error); if (!result.data) return missing();
@@ -72,6 +89,7 @@ export async function getAnnouncement(id:string) {
 export async function changeAnnouncement(actor:Actor, id:string, branchId:string, action:'edit'|'publish'|'archive'|'delete', expectedRevision:number, input?:Omit<z.infer<typeof AnnouncementUpdateSchema>, 'expectedRevision'>) {
   const before = await getAnnouncement(id);
   if (before.branch_id !== branchId) return missing();
+  await assertCourseTeaching(actor, 'teaching.announcement.manage', before.course_id, branchId);
   if (before.revision !== expectedRevision) throw new ApiError(409,'STALE_ANNOUNCEMENT','Announcement changed');
   if (action === 'edit' || action === 'publish') await assertCourseSchool(branchId,before.course_id);
   if (action === 'edit' && before.status !== 'draft' || action === 'publish' && before.status !== 'draft' || action === 'archive' && before.status === 'archived' || action === 'delete' && before.status !== 'draft') throw new ApiError(409,'INVALID_ANNOUNCEMENT_STATE','This announcement cannot be changed in its current state');
@@ -86,8 +104,9 @@ export async function changeAnnouncement(actor:Actor, id:string, branchId:string
   failure(result.error); if (!result.data) throw new ApiError(409,'STALE_ANNOUNCEMENT','Announcement changed');
   return {announcement:announcement(result.data)};
 }
-export async function listSchedules(branchId:string, versionId:string, locale: TeachingLocale = 'vi') {
-  await versionCourse(branchId,versionId);
+export async function listSchedules(actor:Actor, branchId:string, versionId:string, locale: TeachingLocale = 'vi') {
+  const courseId = await versionCourse(branchId,versionId);
+  await assertCourseTeaching(actor, 'teaching.schedule.manage', courseId, branchId);
   const db=database();
   const [rows,items] = await Promise.all([
     db.from('assignment_schedules').select('*').eq('branch_id',branchId).eq('course_version_id',versionId),
@@ -102,7 +121,7 @@ export async function listSchedules(branchId:string, versionId:string, locale: T
   return {schedules:(rows.data ?? []).map(schedule),assignments};
 }
 export async function putSchedule(actor:Actor, input:z.infer<typeof ScheduleSchema>) {
-  const existing = await listSchedules(input.branchId,input.courseVersionId);
+  const existing = await listSchedules(actor,input.branchId,input.courseVersionId);
   if (!existing.assignments.some(a=>a.itemId===input.itemId && a.blockId===input.blockId)) return missing();
   const result = await database().from('assignment_schedules').upsert({branch_id:input.branchId,course_version_id:input.courseVersionId,item_id:input.itemId,block_id:input.blockId,due_at:input.dueAt,updated_by:actor.userId,updated_at:new Date().toISOString()},{onConflict:'branch_id,course_version_id,item_id,block_id'}).select('*').single();
   failure(result.error); if (!result.data) return missing();

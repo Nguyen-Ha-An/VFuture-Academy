@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { expectNoHorizontalScroll, seriousAxeFindings, settle, withQuery } from '../studio-harness/staff-ui-support';
 import memberMessages from '../../../src/messages/staff-ui/admin-members.json';
+import overviewMessages from '../../../src/messages/staff-ui/admin-overview.json';
 import baseEn from '../../../src/messages/en.json';
 import baseVi from '../../../src/messages/vi.json';
 
@@ -25,9 +26,31 @@ for (const lang of ['en', 'vi'] as const) {
           await expectNoHorizontalScroll(page);
           expect(await seriousAxeFindings(page), route).toEqual([]);
           if (route === '/admin') {
+            const overview = overviewMessages[lang].overview;
             const summary = page.locator('main dl[data-slot="stat-grid"]');
-            await expect(summary.locator('dt')).toHaveCount(2);
-            await expect(summary.locator('dd')).toHaveCount(2);
+            const expected = [
+              { label: overview.kpi.members, href: '/admin/users' },
+              { label: overview.kpi.activeLearners, value: '771' },
+              { label: overview.kpi.pendingGrading, value: '62', href: '/grading/queue?status=pending' },
+              { label: overview.kpi.pendingReview, value: '6', href: '/studio/reviews' },
+            ];
+            // Waiting counts moved into the compact summary when Work waiting was removed.
+            // Check each actual metric and its action, rather than only the number of terms.
+            await expect(summary.locator('dt')).toHaveText(expected.map(metric => metric.label));
+            for (const metric of expected) {
+              const card = summary.locator('[data-slot="stat-card"]').filter({ has: page.getByText(metric.label, { exact: true }) });
+              await expect(card).toHaveCount(1);
+              await expect(card.locator('dd')).toHaveCount(1);
+              const value = card.locator('dd > span').first();
+              if (metric.value) await expect(value).toHaveText(metric.value);
+              else await expect(value).not.toBeEmpty();
+              if (metric.href) await expect(card.getByRole('link', { name: metric.label, exact: true })).toHaveAttribute('href', metric.href);
+            }
+            await expect(page.getByRole('region', { name: overview.pipeline.title, exact: true })).toHaveCount(0);
+            await expect(page.locator('main .admin-work')).toHaveCount(0);
+            for (const label of [overview.kpi.pendingGrading, overview.kpi.pendingReview]) {
+              await expect(page.locator('main').getByText(label, { exact: true })).toHaveCount(1);
+            }
           }
           if (route === '/admin/users') {
             const invite = page.getByRole('button', { name: (lang === 'en' ? baseEn : baseVi).memberAdmin.inviteMember, exact: true });

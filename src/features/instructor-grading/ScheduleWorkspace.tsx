@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CanvasButton as Button, CanvasSelect } from '@/features/canvas/ui';
 import { useUnsavedChanges } from '@/features/studio/ui/useUnsavedChanges';
@@ -20,6 +20,29 @@ export function ScheduleWorkspace({ branches, locale }: Props) {
   const [branchId, setBranchId] = useState(branches.length === 1 ? branches[0].id : '');
   const [versionId, setVersionId] = useState('');
   const { options, error: optionsError } = useTeachingOptions(branchId, locale);
+  // The URL is only an initial suggestion; the selected school and its fetched
+  // options remain authoritative, and later user choices are never overwritten.
+  const initialCourse = useRef<{ courseId: string; branchId: string } | null>(null);
+  const initialApplied = useRef(false);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const requestedCourse = query.get('courseId');
+    const requestedBranch = query.get('branchId');
+    if (!requestedCourse) return;
+    const initialBranch = requestedBranch && branches.some(branch => branch.id === requestedBranch)
+      ? requestedBranch : branches.length === 1 && !requestedBranch ? branches[0].id : '';
+    if (!initialBranch) return;
+    initialCourse.current = { courseId: requestedCourse, branchId: initialBranch };
+    setBranchId(initialBranch);
+  }, [branches]);
+  useEffect(() => {
+    const initial = initialCourse.current;
+    if (!initial || initialApplied.current || initial.branchId !== branchId || !options.versions.length) return;
+    const chosen = options.versions.find(version => version.courseId === initial.courseId) ?? options.versions[0];
+    initialApplied.current = true;
+    setVersionId(chosen.courseVersionId);
+  }, [branchId, options]);
+
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [itemKey, setItemKey] = useState('');
@@ -60,7 +83,7 @@ export function ScheduleWorkspace({ branches, locale }: Props) {
   const weekday = new Date(`${month}-01T00:00:00Z`).getUTCDay();
   const selectClass = 'min-h-11 rounded-md border border-input bg-background px-3 text-sm';
   return <div className="canvas-page mx-auto max-w-7xl space-y-6"><header><Link href="/grading" className="text-sm text-muted-foreground">← {vi ? 'Giảng dạy' : 'Teaching'}</Link><h1 tabIndex={-1} className="mt-2 text-2xl font-semibold">{vi ? 'Lịch học' : 'Schedule'}</h1><p className="mt-1 text-sm text-muted-foreground">{vi ? 'Hạn nộp theo trường và phiên bản khóa học. Nội dung khóa học không thay đổi.' : 'Deadlines are scoped to a school and course version. Course content remains unchanged.'}</p></header>
-    <div className="canvas-toolbar grid gap-4 sm:grid-cols-2"><CanvasSelect label={vi ? 'Trường' : 'School'} disabled={busy} value={branchId} onChange={value => void changeContext(() => { setBranchId(value); setVersionId(''); setItemKey(''); setDue(''); setSavedDue(''); setAssignments([]); setSchedules([]); setMessage(''); })} options={[{ value: '', label: vi ? 'Chọn trường' : 'Select school' }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} /><CanvasSelect label={vi ? 'Phiên bản khóa học' : 'Course version'} disabled={busy} value={versionId} onChange={value => void changeContext(() => { setVersionId(value); setItemKey(''); setDue(''); setSavedDue(''); setAssignments([]); setSchedules([]); setMessage(''); })} options={[{ value: '', label: vi ? 'Chọn phiên bản' : 'Select version' }, ...options.versions.map(version => ({ value: version.courseVersionId, label: `${version.courseTitle} · ${vi ? 'Phiên bản' : 'Version'} ${version.version ?? '—'}` }))]} /></div>
+    <div className="canvas-toolbar grid gap-4 sm:grid-cols-2"><CanvasSelect label={vi ? 'Trường' : 'School'} disabled={busy} value={branchId} onChange={value => void changeContext(() => { initialApplied.current = true; setBranchId(value); setVersionId(''); setItemKey(''); setDue(''); setSavedDue(''); setAssignments([]); setSchedules([]); setMessage(''); })} options={[{ value: '', label: vi ? 'Chọn trường' : 'Select school' }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} /><CanvasSelect label={vi ? 'Phiên bản khóa học' : 'Course version'} disabled={busy} value={versionId} onChange={value => void changeContext(() => { initialApplied.current = true; setVersionId(value); setItemKey(''); setDue(''); setSavedDue(''); setAssignments([]); setSchedules([]); setMessage(''); })} options={[{ value: '', label: vi ? 'Chọn phiên bản' : 'Select version' }, ...options.versions.map(version => ({ value: version.courseVersionId, label: `${version.courseTitle} · ${vi ? 'Phiên bản' : 'Version'} ${version.version ?? '—'}` }))]} /></div>
     {optionsError && <p role="alert" className="rounded-md border border-destructive p-3 text-sm">{optionsError}</p>}
     {error && <p role="alert" className="rounded-md border border-destructive p-3 text-sm">{error}</p>}{message && <p role="status">{message}</p>}
     {branchId && versionId && <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start"><section className="canvas-panel order-2 grid min-w-0 gap-4 rounded-lg border p-5 xl:sticky xl:top-20"><h2 className="font-semibold">{vi ? 'Chỉnh hạn nộp' : 'Edit deadline'}</h2><p className="text-sm text-muted-foreground">{vi ? 'Múi giờ: Asia/Ho_Chi_Minh (UTC+07:00). Để trống để bỏ hạn nộp.' : 'Time zone: Asia/Ho_Chi_Minh (UTC+07:00). Leave blank to remove the deadline.'}</p><CanvasSelect label={vi ? 'Bài tập' : 'Assignment'} value={itemKey} disabled={busy} onChange={key => void changeContext(() => { const nextDue = localValue(schedules.find(row => keyOf(row) === key)?.dueAt ?? null); setItemKey(key); setDue(nextDue); setSavedDue(nextDue); setMessage(''); })} options={[{ value: '', label: vi ? 'Chọn bài tập' : 'Select assignment' }, ...assignments.map((item, index) => ({ value: keyOf(item), label: `${itemLabel(item)}${item.blockId ? ` · ${vi ? 'Phần' : 'Part'} ${index + 1}` : ''}` }))]} /><label className="grid gap-1 text-sm">{vi ? 'Hạn nộp (không bắt buộc)' : 'Deadline (optional)'}<input className={selectClass} type="datetime-local" disabled={!itemKey || busy} value={due} onChange={e => setDue(e.target.value)} /></label><div className="flex flex-wrap items-center gap-3"><Button disabled={!itemKey || busy || !dirty} onClick={() => void save()}>{vi ? 'Lưu lịch' : 'Save schedule'}</Button><p className="text-sm text-muted-foreground">{dirty ? (vi ? 'Có thay đổi chưa lưu' : 'Unsaved changes') : ''}</p></div></section>

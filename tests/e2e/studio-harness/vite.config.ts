@@ -25,7 +25,7 @@ export default defineConfig({
           response.end();
           return;
         }
-        const known = /^\/studio(?:\/(?:courses(?:\/[^/]+(?:\/notebooks\/[^/]+)?)?|bank(?:\/[^/]+)?|library|resources(?:\/[^/]+)?|opportunities(?:\/[^/]+)?|projects(?:\/[^/]+)?|media|reviews|mcp|connect\/authorize))?$/.test(url.pathname);
+        const known = /^\/studio(?:\/(?:courses(?:\/[^/]+(?:\/notebooks\/[^/]+)?)?|bank(?:\/[^/]+)?|library|resources(?:\/[^/]+)?|opportunities(?:\/[^/]+)?|projects(?:\/[^/]+)?|media|reviews(?:\/[^/]+)?|mcp|connect\/authorize))?$/.test(url.pathname);
         if (url.pathname.startsWith('/studio/') && !known) {
           response.statusCode = 404;
           response.setHeader('Content-Type', 'text/html');

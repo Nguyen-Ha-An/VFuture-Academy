@@ -117,7 +117,7 @@ drop function if exists public.academy_identity_create_session(text,uuid,text,uu
 create or replace function public.academy_identity_create_session(p_hash text,p_user_id uuid,p_issuer text,p_subject uuid,p_oidc_subject text,p_expires_at timestamptz,p_token_expires_at timestamptz,p_refresh_ciphertext text,p_provider text default 'external-id')
 returns void language plpgsql security definer set search_path = pg_catalog, academy_identity as $$
 begin
-  if p_expires_at > now()+interval '24 hours 1 minute' or p_expires_at <= now() or p_token_expires_at <= now() then raise exception 'Invalid session lifetime'; end if;
+  if p_expires_at > now()+interval '30 days 1 minute' or p_expires_at <= now() or p_token_expires_at <= now() then raise exception 'Invalid session lifetime'; end if;
   if not exists(select 1 from academy_identity.mappings m join academy_identity.users u on u.id=m.user_id where m.issuer=p_issuer and m.subject=p_subject and m.user_id=p_user_id and u.disabled_at is null and u.deleted_at is null) then raise exception 'Identity mapping missing'; end if;
   if p_provider='microsoft' and public.academy_identity_find_staff(p_issuer,p_subject) is null then raise exception 'Staff identity required'; end if;
   insert into academy_identity.sessions(token_hash,user_id,provider,issuer,subject,oidc_subject,expires_at,token_expires_at,refresh_ciphertext)

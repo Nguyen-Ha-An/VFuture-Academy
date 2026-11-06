@@ -7,7 +7,7 @@ import type { ReactElement } from 'react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getCourse: vi.fn(), listCatalog: vi.fn(), requireUser: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getCourse: vi.fn(), getCourseTeachers: vi.fn(async () => ({ courseId: "course-1", branchId: "historical", branchScopeKnown: true, revision: 1, teachers: [{ displayName: "Teacher Lan", role: "primary" }] })), listCatalog: vi.fn(), requireUser: vi.fn() }));
 const messages: Record<string, string> = {
   'learner.course.back': 'Back to courses', 'learner.course.outcomes': 'Learning outcomes', 'learner.course.skills': 'Skills', 'learner.course.outline': 'Course outline', 'learner.course.outlinePreview': 'Preview the course outline. Enroll to open the lessons and activities.', 'learner.course.previewLocked': 'Available after enrollment', 'learner.course.requirements': 'Completion requirements', 'learner.course.enrolled': 'Enrolled', 'learner.course.continue': 'Continue learning', 'learner.course.review': 'Review course', 'learner.course.required': 'Required', 'learner.course.optional': 'Optional', 'learner.course.requirementPending': 'Not yet met', 'learner.course.requirementMet': 'Met', 'learner.course.nextStep': 'Next step', 'learner.enums.pathway.core-future-skills': 'Core Future Skills', 'learner.course.requirementsMap.all_items': 'Complete every required item', 'learner.focus.courseInformation': 'Course information', 'learner.focus.courses': 'Courses', 'learner.enums.pathway.ai-emerging-technology': 'AI & Emerging Technology', 'learner.enums.kind.lesson': 'Lesson', 'learner.enums.status.not_started': 'Not started', 'learner.enums.status.in_progress': 'In progress', 'learner.enums.status.completed': 'Completed',
 };
@@ -16,6 +16,7 @@ vi.mock('next-intl/server', () => ({ getLocale: vi.fn().mockResolvedValue('en'),
   if (`${namespace}.${key}` === 'learner.course.requirementProgress') return `${values?.done} of ${values?.total}`;
   return messages[`${namespace}.${key}`] ?? key;
 }) }));
+vi.mock('@/features/teaching/assignments', () => ({ getCourseTeachers: mocks.getCourseTeachers }));
 vi.mock('@/lib/auth', () => ({ requireUser: mocks.requireUser }));
 vi.mock('@/features/coursework/service', () => ({ listCourseTasks: vi.fn(async () => []), listCourseResults: vi.fn(async () => []), listLearningAnnouncements: vi.fn(async () => []), listLearningCalendar: vi.fn(async () => ({ events: [] })) }));
 vi.mock('@/features/catalog/service', () => ({ getCourse: mocks.getCourse, listCatalog: mocks.listCatalog }));
@@ -34,6 +35,8 @@ describe('learner course overview', () => {
   it('reviews the first item for completed enrollment even when an optional item is unfinished', async () => {
     mocks.getCourse.mockResolvedValue(course({ status: 'completed' }));
     render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
+    expect(mocks.getCourseTeachers).toHaveBeenCalledWith({ userId: 'learner-1', roles: [] }, 'course-1');
+    expect(screen.getByText('Teacher Lan')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Review course' })).toHaveAttribute('href', '/app/courses/course-1/items/first');
   });
   it('continues the first incomplete item for active enrollment and has no item CTA for an empty outline', async () => {

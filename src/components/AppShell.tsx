@@ -12,6 +12,7 @@ import { LearnerCommandMenu } from '@/features/workspace-ui/learner/command/Lear
 import type { WorkspaceTheme } from '@/features/workspace-ui/theme';
 import { WorkspaceSurface } from '@/features/workspace-ui/ui/WorkspaceSurface';
 import { CanvasProvider } from '@/features/canvas/ui/CanvasProvider';
+import { CoursesTray, COURSES_TRAY_ID } from '@/features/canvas/ui/CoursesTray';
 import { GlobalNavigation } from '@/features/canvas/ui/GlobalNavigation';
 import '@/features/workspace-ui/learner/learner.css';
 import '@/features/canvas/canvas.css';
@@ -28,6 +29,11 @@ export function AppShell({ children, canAccessStudio = false, studioDestination,
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const account = useAccountTrayController(menuButtonRef);
   const accountHandoff = useRef<string | null>(null);
+  const coursesHandoff = useRef<string | null>(null);
+  const [coursesOpen, setCoursesOpen] = useState(false);
+  const coursesTrigger = useRef<HTMLElement | null>(null);
+  const openCourses = (event: React.SyntheticEvent<unknown>) => { coursesTrigger.current = event.currentTarget instanceof HTMLElement ? event.currentTarget : null; account.setOpen(false); setCoursesOpen(true); };
+  const restoreCoursesFocus = useCallback(() => { const candidates = [coursesTrigger.current, menuButtonRef.current, ...document.querySelectorAll<HTMLElement>(`button[aria-controls="${COURSES_TRAY_ID}"]`)]; candidates.find(element => element?.isConnected && !element.closest('[hidden], [inert], [aria-hidden="true"]') && element.getClientRects().length > 0)?.focus({ preventScroll: true }); }, []);
   const navigation = useMemo<ShellNavItem[]>(() => [
     { key: 'learning', href: routes.learner.dashboard(), label: t('learning') },
     { key: 'courses', href: routes.learner.courses(), label: t('courses') },
@@ -67,7 +73,7 @@ export function AppShell({ children, canAccessStudio = false, studioDestination,
   const accountProps = { studioDestination: studioDestination ?? (canAccessStudio ? routes.studio.dashboard() : null), gradingDestination, adminDestination, userName, initials, handle };
   const isFocusRoute = /^\/app\/courses\/[^/]+\/items\/[^/]+(?:\/notebook)?$/.test(pathname);
   // The frame (learner.css): home draws the full-width trace, focus routes own their frame, the rest share the column.
-  const layout = isFocusRoute ? 'focus' : pathname === routes.learner.dashboard() ? 'home' : undefined;
+  const layout = isFocusRoute ? 'focus' : pathname.startsWith('/app/courses/') ? 'course' : pathname === routes.learner.dashboard() ? 'home' : undefined;
   const exploreSection = /^\/app\/(resources|opportunities|projects)(?:\/|$)/.test(pathname);
   // Resources, opportunities and projects belong to Explore in the nav; pages own their breadcrumbs.
   const navPath = exploreSection ? routes.learner.explore() : pathname;
@@ -78,21 +84,25 @@ export function AppShell({ children, canAccessStudio = false, studioDestination,
   return <CanvasProvider theme={theme} nonce={nonce}><WorkspaceSurface theme={theme} density="comfortable" className="vf-learner-refined vf-canvas">
     <div inert={drawerOpen || undefined} className="min-h-dvh canvas-learner-body">
       <a href="#learner-main" className="vf-l-skip">{learner('skipToContent')}</a>
-      <GlobalNavigation studio={accountProps.studioDestination} grading={gradingDestination} admin={adminDestination} onAccount={account.onAccount} accountOpen={account.open} accountControls={ACCOUNT_TRAY_ID} />
-      <CanvasLearnerHeader title={navigation.find(item => navPath === item.href || item.href !== '/app' && navPath.startsWith(`${item.href}/`))?.label ?? common('brand')} menuButton={<MenuButton ref={menuButtonRef} className="md:hidden" controls="learner-mobile-navigation" expanded={drawerOpen} onClick={() => setDrawerOpen(true)} />} search={<LearnerCommandMenu onOpenAccount={account.openAfterClose} destinations={{ studio: accountProps.studioDestination, grading: gradingDestination, admin: adminDestination }} />} />
+      <GlobalNavigation studio={accountProps.studioDestination} grading={gradingDestination} admin={adminDestination} onCourses={openCourses} coursesOpen={coursesOpen} coursesControls={COURSES_TRAY_ID} onAccount={event => { setCoursesOpen(false); account.onAccount(event); }} accountOpen={account.open} accountControls={ACCOUNT_TRAY_ID} />
+      <CanvasLearnerHeader title={navigation.find(item => navPath === item.href || item.href !== '/app' && navPath.startsWith(`${item.href}/`))?.label ?? common('brand')} menuButton={<MenuButton ref={menuButtonRef} className="md:hidden" controls="learner-mobile-navigation" expanded={drawerOpen} onClick={() => { setCoursesOpen(false); account.setOpen(false); setDrawerOpen(true); }} />} search={<LearnerCommandMenu onOpenAccount={account.openAfterClose} destinations={{ studio: accountProps.studioDestination, grading: gradingDestination, admin: adminDestination }} />} />
       <MobileNavigationDrawer id="learner-mobile-navigation" open={drawerOpen} onOpenChange={setDrawerOpen} title={common('learnerNavigation')} returnFocusRef={menuButtonRef} themeClassName="vf-learner-refined" closeAt="(min-width: 48rem)" onAfterClose={() => {
+        const coursePath = coursesHandoff.current;
+        coursesHandoff.current = null;
+        if (coursePath === pathname) { coursesTrigger.current = menuButtonRef.current; requestAnimationFrame(() => setCoursesOpen(true)); return true; }
         const requestedPath = accountHandoff.current;
         accountHandoff.current = null;
         if (requestedPath !== pathname) return false;
         account.openAfterClose(menuButtonRef.current);
         return true;
       }}>
-        <GlobalNavigation studio={accountProps.studioDestination} grading={gradingDestination} admin={adminDestination} mobile onNavigate={() => setDrawerOpen(false)} onAccount={() => { accountHandoff.current = pathname; setDrawerOpen(false); }} accountOpen={account.open} accountControls={ACCOUNT_TRAY_ID} />
+        <GlobalNavigation studio={accountProps.studioDestination} grading={gradingDestination} admin={adminDestination} mobile onNavigate={() => setDrawerOpen(false)} onCourses={() => { coursesHandoff.current = pathname; setDrawerOpen(false); }} coursesOpen={coursesOpen} coursesControls={COURSES_TRAY_ID} onAccount={() => { accountHandoff.current = pathname; setDrawerOpen(false); }} accountOpen={account.open} accountControls={ACCOUNT_TRAY_ID} />
       </MobileNavigationDrawer>
       <main id="learner-main" tabIndex={-1} className="vf-l-main" data-layout={layout}>
         {children}
       </main>
     </div>
+    <CoursesTray open={coursesOpen} onOpenChange={setCoursesOpen} restoreFocus={restoreCoursesFocus} />
     <AccountTray open={account.open} onOpenChange={account.setOpen} restoreFocus={account.restoreFocus} identity={{ name: userName, initials, handle }} theme={theme} />
   </WorkspaceSurface></CanvasProvider>;
 }

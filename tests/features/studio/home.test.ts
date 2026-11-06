@@ -19,7 +19,7 @@ describe('Studio overview',()=>{
  it('never offers a grading or reporting destination from the content workspace',async()=>{
   mocks.context.mockResolvedValue({permissions:['course.read','bank.edit']});
   const html=await render();
-  expect(html).toContain('/studio/courses');expect(html).toContain('/studio/bank');
+  expect(html).toContain('/studio/library');expect(html).not.toContain('/studio/bank');expect(html).not.toContain('Lối tắt');
   expect(html).not.toContain('/grading');expect(html).not.toContain('/admin');
  });
  it('offers no destination and reads nothing for a grading-only operator',async()=>{

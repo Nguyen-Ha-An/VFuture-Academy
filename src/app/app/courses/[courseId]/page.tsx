@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import type { Locale } from '@/content-engine';
 import { getCourse, listCatalog } from '@/features/catalog/service';
+import { getCourseTeachers } from '@/features/teaching/assignments';
+import { learnerTeacherLabel } from '@/features/teaching/ui/learner-teacher-label';
 import { listCourseResults, listCourseTasks, listLearningAnnouncements, listLearningCalendar } from '@/features/coursework/service';
 import { parseCatalogContext, type CatalogSearchParams } from '@/features/learner/catalog-filters';
 import { CourseCta } from '@/features/learner/ui/CourseCta';
@@ -50,6 +52,14 @@ export default async function LearnerCoursePage({ params, searchParams }: { para
   let course: Course;
   try { course = await getCourse(actor, courseId, locale); }
   catch (error) { if (error instanceof ApiError && error.status === 404) notFound(); throw error; }
+  // Omitted branch is resolved by the service from the historical enrollment, never the current profile.
+  let teachers: Awaited<ReturnType<typeof getCourseTeachers>> | null = null;
+  if (course.enrollment) {
+    try { teachers = await getCourseTeachers(actor, courseId); }
+    catch (error) { console.error('[learner course] teachers unavailable', error); }
+  }
+  const teacherLabel = locale === 'en' ? 'Teachers' : 'Giáo viên';
+  const teacherValue = learnerTeacherLabel(locale, Boolean(course.enrollment), teachers);
   const prerequisites = await prerequisiteLinks(user.id, course, locale);
   const items = course.outline.modules.flatMap(module => module.items);
   const firstItem = items[0];
@@ -67,6 +77,7 @@ export default async function LearnerCoursePage({ params, searchParams }: { para
     course.meta.level ? { label: catalog('level'), value: enums(`level.${course.meta.level}`) } : null,
     course.meta.difficulty ? { label: catalog('difficulty'), value: enums(`difficulty.${course.meta.difficulty}`) } : null,
     durationLabel ? { label: t('duration'), value: durationLabel } : null,
+    { label: teacherLabel, value: teacherValue },
   ].filter((entry): entry is { label: string; value: string } => entry !== null);
   const outline = <section aria-labelledby="outline-heading" className="vf-l-outline"><div className="canvas-section-heading"><h3 id="outline-heading">{t('outline')}</h3></div>
     {!course.enrollment && <p className="vf-l-outline-note">{t('outlinePreview')}</p>}

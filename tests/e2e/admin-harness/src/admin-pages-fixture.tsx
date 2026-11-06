@@ -14,6 +14,7 @@ import { AdminOverviewView } from '@/features/admin/ui/AdminOverviewView';
 import { buildAdminOverviewView } from '@/features/admin/ui/overview/view-model';
 import { AuditView, type AuditViewRow } from '@/app/admin/audit/AuditView';
 import { SchoolDetailView, type SchoolDetailStat } from '@/app/admin/branches/SchoolDetailView';
+import { CourseTeachersManager } from '@/features/teaching/ui/CourseTeachersManager';
 import type { Permission } from '@/lib/permissions';
 import { routes } from '@/lib/routes';
 import type { WorkspaceEntries } from '@/lib/workspace-navigation';
@@ -157,7 +158,7 @@ export function SchoolDetailFixture({ branchId, permissions, scope, scopeOptions
   const params = new URLSearchParams(location.search);
   const canReadMembers = permissions.includes('member.read');
   const canReadReports = permissions.includes('report.branch.read');
-  const availableTabs = ['overview', ...(canReadMembers ? ['members', 'staff'] : []), ...(permissions.includes('content.read') ? ['cms'] : [])];
+  const availableTabs = ['overview', ...(canReadMembers ? ['members', 'staff'] : []), ...(permissions.includes('content.read') ? ['cms'] : []), ...(permissions.includes('teaching.assignment.manage') ? ['courses'] : [])];
   const tab = availableTabs.includes(params.get('tab') ?? '') ? params.get('tab')! : 'overview';
   const page = Math.max(1, Number(params.get('page')) || 1);
   const cells = SCHOOL_REPORTS[school.id] ?? { activeLearners30d: 0, enrollments: 0, completedEnrollments: 0, completionPercent: null, pendingGrading: 0, averagePercent: null };
@@ -186,7 +187,7 @@ export function SchoolDetailFixture({ branchId, permissions, scope, scopeOptions
   return <SchoolDetailView
     school={{ id: school.id, name: school.name, description: school.city ? `${t('schools')} · ${school.city}` : t('schools') }}
     tabs={[
-      ...availableTabs.map((key) => ({ key, label: t(key), href: tabHref(key), current: key === tab })),
+      ...availableTabs.map((key) => ({ key, label: key === 'courses' ? (locale === 'en' ? 'Courses & teachers' : 'Khóa học và giáo viên') : t(key), href: tabHref(key), current: key === tab })),
       ...(reports ? [{ key: 'reports', label: t('reports'), href: reports.href, navigation: reports, current: false, external: true }] : []),
     ]}
     tabsLabel={to('sections')}
@@ -204,6 +205,7 @@ export function SchoolDetailFixture({ branchId, permissions, scope, scopeOptions
       labels: { member: to('columns.member'), roles: to('columns.roles'), status: to('columns.status'), empty: tab === 'staff' ? to('emptyStaff') : to('emptyMembers'), unavailable: to('membersUnavailable'), pagination: to('pagination') },
       action: tab === 'overview' ? { label: to('viewAllMembers'), href: tabHref('members') } : undefined,
     } : undefined}
+    content={tab === 'courses' ? <CourseTeachersManager branchId={branchId} locale={locale === 'en' ? 'en' : 'vi'} /> : undefined}
     note={tab === 'cms' ? to('cmsDescription') : undefined}
   />;
 }

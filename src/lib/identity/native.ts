@@ -90,7 +90,9 @@ export function createNativeClient(config: IdentityConfiguration, request: typeo
         return code(challenged,selected);
       }
       const path=mode==='signup'?'signup/v1.0':'resetpassword/v1.0';
-      const data=await call(`${path}/start`,{username:input.email,challenge_type:'oob password redirect',...(mode==='signup'?{password:input.password??'',...(input.displayName?{attributes:JSON.stringify({displayName:input.displayName})}:{})}:{})});
+      // Full name belongs to the bound application flow; the hosted Google flow
+      // no longer selects Display Name as a provider-collected attribute.
+      const data=await call(`${path}/start`,{username:input.email,challenge_type:'oob password redirect',...(mode==='signup'?{password:input.password??''}:{})});
       // Password recovery must not disclose whether a customer exists.
       if(mode==='reset'&&['user_not_found','invalid_grant'].includes(String(data.error)))return {step:'code',flow:{...flow,continuation:'unavailable',decoy:true,codeLength:8}};
       const started=continued(flow,check(data));

@@ -16,6 +16,7 @@ import { safeInternalHref } from '@/features/instructor-grading/safe-url';
 import { routes } from '@/lib/routes';
 import { localizeOutlineTitle, versionTitles } from './titles';
 import { canGradeSubmissionBranch } from '@/features/submissions/permissions';
+import { assertCourseTeaching } from '@/features/teaching/assignments';
 import { ApiError } from '@/lib/api';
 import { can, hasGlobalPermission, type Actor } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
@@ -126,6 +127,7 @@ export interface GradingDetailRepository {
     integrityEventCount: number;
   } | null>;
   getExamAnswers(attemptId: string): Promise<ExamAnswerRecord[]>;
+  getCourseId(courseVersionId: string): Promise<string | null>;
 }
 
 function historicalSourceUnavailable(): never {
@@ -322,6 +324,7 @@ export function createGradingDetailService(repository: GradingDetailRepository) 
       }
       const source = await repository.getAssignmentSource(submission.courseVersionId, submission.itemId);
       if (!source) historicalSourceUnavailable();
+      await assertCourseTeaching(actor, 'submission.grade', source.courseId, submission.branchId);
       return assignmentDetail(submission, source, locale);
     },
 
@@ -332,6 +335,9 @@ export function createGradingDetailService(repository: GradingDetailRepository) 
       if (!canViewExam(actor, entry.attempt.branchId)) {
         throw new ApiError(403, 'FORBIDDEN', 'Permission denied');
       }
+      const courseId = await repository.getCourseId(entry.attempt.courseVersionId);
+      if (!courseId) historicalSourceUnavailable();
+      await assertCourseTeaching(actor, 'submission.grade', courseId, entry.attempt.branchId);
       return examDetail(entry, await repository.getExamAnswers(attemptId));
     },
   };
@@ -416,6 +422,11 @@ export function createSupabaseGradingDetailRepository(
         learnerName: profileName(profile, attempt.userId),
         integrityEventCount: eventsResult.count ?? 0,
       };
+    },
+    async getCourseId(courseVersionId) {
+      const result = await client.from('course_versions').select('course_id').eq('id', courseVersionId).maybeSingle();
+      const row = record(queryData(result, 'load course version'));
+      return typeof row?.course_id === 'string' ? row.course_id : null;
     },
     getExamAnswers(attemptId) {
       return examRepo.listAnswers(attemptId);
@@ -645,6 +656,12 @@ export async function gradingWorkbenchHeader(
       const id = nonEmptyText(row?.id);
       if (!row || !id) return empty;
       if (!canGradeSubmissionBranch(input.actor, recordBranch(row))) return empty;
+      const versionId = nonEmptyText(row.course_version_id);
+      if (!versionId) return empty;
+      const version = await database.from('course_versions').select('course_id').eq('id', versionId).maybeSingle();
+      const courseId = nonEmptyText(record(version.data)?.course_id);
+      if (version.error || !courseId) return empty;
+      await assertCourseTeaching(input.actor, 'submission.grade', courseId, recordBranch(row));
       // Started before the titles are awaited, so both reads overlap.
       const nextHref = nextAssignmentHref(input, { id, submittedAt: nonEmptyText(row.submitted_at) }, dependencies.queue ?? readSubmissionQueue);
       const titles = await workbenchTitles(loadTitles, nonEmptyText(row.course_version_id), nonEmptyText(row.item_id), input.locale);
@@ -661,6 +678,10 @@ export async function gradingWorkbenchHeader(
     if (!row || !id || !courseVersionId || !itemId) return empty;
     const branchId = recordBranch(row);
     if (!canViewExam(input.actor, branchId)) return empty;
+    const version = await database.from('course_versions').select('course_id').eq('id', courseVersionId).maybeSingle();
+    const courseId = nonEmptyText(record(version.data)?.course_id);
+    if (version.error || !courseId) return empty;
+    await assertCourseTeaching(input.actor, 'submission.grade', courseId, branchId);
     const nextHref = nextExamHref(input, { id, courseVersionId, itemId, branchId, submittedAt: nonEmptyText(row.submitted_at) }, database);
     const titles = await workbenchTitles(loadTitles, courseVersionId, itemId, input.locale);
     return { titles, nextHref };

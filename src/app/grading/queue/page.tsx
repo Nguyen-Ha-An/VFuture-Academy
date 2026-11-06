@@ -14,7 +14,7 @@ export default async function GradingQueuePage() {
     ? { global: false, branchIds: [context.scope.branchId] }
     : instructorBranchScope(context.actor, "submission.grade");
   if (!scope.global && scope.branchIds.length === 0) forbidden();
-  const { branches, metadata } = await loadInstructorPageData(locale, scope);
+  const { branches, metadata } = await loadInstructorPageData(locale, scope, context.actor, ['submission.grade']);
   // Only assignment and exam items are ever labelled here; lessons never reach the client.
   const gradedItems = [...metadata.assignments, ...metadata.exams];
   const titles = await queueTitles(

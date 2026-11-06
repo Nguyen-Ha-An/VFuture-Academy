@@ -9,7 +9,7 @@ import { ApiError, withHandler } from '@/lib/api';
 import { isEligibleResourceAsset, isEnrolledForAsset } from '@/features/media/access';
 import { checkBoundAssessmentOwnerAccess } from '@/features/media/assessment-owner';
 import { canReviewProjectCover, canViewProjectCover } from '@/features/projects/service';
-import { canGradeSubmissionBranch } from '@/features/submissions/permissions';
+import { assertCourseTeaching } from '@/features/teaching/assignments';
 import { requireApiUser } from '@/lib/auth';
 import { can, getActor, type ResourceOwner } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
@@ -30,6 +30,26 @@ function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+async function canTeachVersion(
+  database: ReturnType<typeof supabaseService>,
+  actor: NonNullable<Awaited<ReturnType<typeof getActor>>>,
+  versionId: unknown,
+  historicalBranch: unknown,
+) {
+  if (typeof versionId !== 'string') return false;
+  const result = await database.from('course_versions').select('course_id').eq('id', versionId).maybeSingle();
+  if (result.error) throw new ApiError(503, 'ATTACHMENT_SCOPE_UNAVAILABLE', 'Attachment course could not be verified');
+  const courseId = record(result.data)?.course_id;
+  if (typeof courseId !== 'string') return false;
+  try {
+    await assertCourseTeaching(actor, 'submission.grade', courseId, typeof historicalBranch === 'string' ? historicalBranch : null);
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) return false;
+    throw error;
+  }
 }
 
 async function canReadSubmissionAsset(
@@ -57,23 +77,30 @@ async function canReadSubmissionAsset(
   });
   if (submissionIds.length) {
     const submissions = await database.from('assignment_submissions')
-      .select('id,user_id,branch_id,branch_scope_known')
+      .select('id,user_id,course_version_id,branch_id,branch_scope_known')
       .in('id', submissionIds).eq('user_id', ownerId);
     if (submissions.error) throw new Error('Submission history lookup failed');
-    if ((Array.isArray(submissions.data) ? submissions.data : []).some(value => {
+    for (const value of Array.isArray(submissions.data) ? submissions.data : []) {
       const row = record(value);
-      if (row?.user_id !== ownerId || typeof row.id !== 'string' || !submissionIds.includes(row.id)) return false;
-      const branchId = row.branch_scope_known === true && typeof row.branch_id === 'string' ? row.branch_id : null;
-      return canGradeSubmissionBranch(actor, branchId);
-    })) return true;
+      if (row?.user_id !== ownerId || typeof row.id !== 'string' || !submissionIds.includes(row.id)) continue;
+      if (await canTeachVersion(database, actor, row.course_version_id, row.branch_scope_known === true ? row.branch_id : null)) return true;
+    }
   }
   const exams = await database.rpc('exam_attachment_gradeable_attempts', { p_asset: assetId, p_owner: ownerId });
   if (exams.error) throw new Error('Exam attachment lookup failed');
-  return (Array.isArray(exams.data) ? exams.data : []).some(value => {
+  for (const value of Array.isArray(exams.data) ? exams.data : []) {
     const row = record(value);
-    const branchId = row?.branch_scope_known === true && typeof row.branch_id === 'string' ? row.branch_id : null;
-    return canGradeSubmissionBranch(actor, branchId);
-  });
+    if (typeof row?.attempt_id !== 'string') continue;
+    // The gradeable-asset RPC validates pinned answer references; resolve the
+    // immutable attempt itself rather than trusting an asset's current owner school.
+    const result = await database.from('exam_attempts')
+      .select('user_id,course_version_id,branch_id,branch_scope_known').eq('id', row.attempt_id).maybeSingle();
+    if (result.error) throw new ApiError(503, 'ATTACHMENT_SCOPE_UNAVAILABLE', 'Attachment scope could not be verified');
+    const attempt = record(result.data);
+    if (attempt?.user_id !== ownerId) continue;
+    if (await canTeachVersion(database, actor, attempt.course_version_id, attempt.branch_scope_known === true ? attempt.branch_id : null)) return true;
+  }
+  return false;
 }
 
 /** Redirects an authenticated caller to a short-lived URL for a private asset. */

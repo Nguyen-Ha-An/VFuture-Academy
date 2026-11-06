@@ -18,10 +18,24 @@ beforeEach(()=>{window.innerWidth=390;window.history.replaceState(null,'','/stud
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 async function open(){fireEvent.click(screen.getByRole('button',{name:en.common.menu}));return screen.findByRole('dialog',{name:en.common.studioNavigation});}
 it.each([['contextual','/studio/courses'],['global','/app/courses']])('releases mobile %s navigation before the real dirty guard; Stay preserves and Discard navigates once',async(_kind,href)=>{
- render(<View />);let drawer=await open();const link=drawer.querySelector<HTMLAnchorElement>(`a[href="${href}"]`);expect(link).not.toBeNull();fireEvent.click(link!);
+ render(<View />);
+ const choose = async () => {
+   const drawer = await open();
+   if (_kind === 'global') {
+     fireEvent.click(within(drawer).getByRole('button', { name: 'Courses' }));
+     const courses = await screen.findByRole('dialog', { name: 'Courses' });
+     await waitFor(() => expect(document.querySelectorAll('.canvas-staff-overlay-mount [role="dialog"]')).toHaveLength(0));
+     expect(screen.queryByRole('dialog', { name: en.studioWorkspace.leaveTitle })).toBeNull();
+     fireEvent.click(within(courses).getByRole('link', { name: 'All courses' }));
+   } else {
+     const link = drawer.querySelector<HTMLAnchorElement>(`a[href="${href}"]`);
+     expect(link).not.toBeNull(); fireEvent.click(link!);
+   }
+ };
+ await choose();
  let guard=await screen.findByRole('dialog',{name:en.studioWorkspace.leaveTitle});expect(document.querySelectorAll('.canvas-staff-overlay-mount [role="dialog"]')).toHaveLength(0);expect(screen.getAllByRole('dialog')).toHaveLength(1);
  fireEvent.click(within(guard).getByRole('button',{name:en.studioWorkspace.stay}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(nav.push).not.toHaveBeenCalled();expect(screen.getByRole('textbox',{name:'Draft'})).toHaveValue('Retained draft');
- drawer=await open();fireEvent.click(drawer.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!);guard=await screen.findByRole('dialog',{name:en.studioWorkspace.leaveTitle});fireEvent.click(within(guard).getByRole('button',{name:en.studioWorkspace.discard}));await waitFor(()=>expect(nav.push).toHaveBeenCalledExactlyOnceWith(href));
+ await choose();guard=await screen.findByRole('dialog',{name:en.studioWorkspace.leaveTitle});fireEvent.click(within(guard).getByRole('button',{name:en.studioWorkspace.discard}));await waitFor(()=>expect(nav.push).toHaveBeenCalledExactlyOnceWith(href));
 });
 it('keeps modified clicks native and rejects an approval after another navigation drawer session opens',async()=>{
  render(<View />);let drawer=await open();const link=drawer.querySelector<HTMLAnchorElement>('a[href="/studio/courses"]')!;expect(fireEvent.click(link,{metaKey:true,button:0})).toBe(true);expect(screen.queryByRole('dialog',{name:en.studioWorkspace.leaveTitle})).toBeNull();expect(nav.push).not.toHaveBeenCalled();

@@ -9,6 +9,7 @@ import { useAuthPopup } from '@/lib/identity/use-auth-popup';
 import { navigateAfterAuth } from '@/lib/post-auth-navigation';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { routes } from '@/lib/routes';
+import { notifyIdentityChanged, notifyIdentitySignedOut } from '@/lib/identity/browser-session';
 
 type FlowView={step:'code'|'mfa-code'|'new-password'|'poll';flowId:string;attemptId:string;codeLength?:number;target?:string;retryAfterSeconds?:number};
 const handle=/^[A-Za-z0-9_-]{43}$/;
@@ -50,9 +51,10 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
         const destination=new URL(data.next,window.location.origin);
         const target=destination.origin===window.location.origin&&destination.pathname==='/welcome'
           ? routes.auth.welcome({next:safeInternalPath(destination.searchParams.get('next'))}) : safeInternalPath(data.next);
+        notifyIdentityChanged();
         navigateAfterAuth(target);return;
       }
-      if(data.step==='reset-complete'){setFlow(null);setDone(true);return;}
+      if(data.step==='reset-complete'){notifyIdentitySignedOut();setFlow(null);setDone(true);return;}
       if(!hasFlow)throw new Error('Invalid authentication response');
     } catch {
       if(current===serial.current)setError(t('genericError'));

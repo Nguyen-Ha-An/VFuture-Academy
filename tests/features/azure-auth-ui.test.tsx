@@ -8,7 +8,7 @@ vi.mock('next-intl',()=>({useLocale:()=> 'en',useTranslations:()=> (key:string)=
 vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams('next=%2Fapp%2Fcourses%2Ftest')}));
 vi.mock('@/lib/post-auth-navigation',()=>({navigateAfterAuth:navigate}));
 import { AzureAuthPanel } from '@/components/AzureAuthPanel';
-beforeEach(()=>{vi.clearAllMocks();vi.spyOn(window,'open').mockReturnValue({closed:false,close:vi.fn(),focus:vi.fn()} as unknown as Window);});
+beforeEach(()=>{window.localStorage.clear();vi.clearAllMocks();vi.spyOn(window,'open').mockReturnValue({closed:false,close:vi.fn(),focus:vi.fn()} as unknown as Window);});
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('inline Azure identity UI',()=>{
   it('shows the normal credentials form and signup link, with popups only for social login',()=>{
@@ -31,6 +31,7 @@ describe('inline Azure identity UI',()=>{
     fireEvent.click(screen.getByRole('button',{name:'signIn'}));
     await waitFor(()=>expect(navigate).toHaveBeenCalledWith('/welcome?next=%2Fapp'));
     expect(window.open).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('vfuture:auth:changed')).toBeTruthy();
     expect(fetcher.mock.calls[0][0]).toBe('/api/v1/public/auth/native');
     expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({mode:'login',email:'learner@example.com',password:'Password1!'});
   });

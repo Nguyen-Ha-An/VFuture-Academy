@@ -19,6 +19,7 @@ export default defineConfig({
     { find: 'next-intl/server', replacement: path.join(__dirname, 'src/i18n.ts') },
     ...['@/lib/api', '@/lib/auth', '@/features/catalog/service', '@/features/learner/summary', '@/features/coursework/service', '@/features/progress/service', '@/features/submissions/service', '@/features/me/service', '@/features/skills/service', '@/features/xp/service'].map((find) => ({ find, replacement: fixture })),
     { find: '@/features/learner/ui/ItemPlayer', replacement: path.join(__dirname, 'src/item-player.tsx') },
+    { find: '@/features/teaching/assignments', replacement: path.join(root, 'tests/e2e/learner-harness/src/teacher-service.ts') },
     { find: '@', replacement: path.join(root, 'src') },
   ] },
   css: { postcss: { plugins: [tailwindcss()] } },

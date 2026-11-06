@@ -88,7 +88,7 @@ describe('bench learner shell', () => {
     const nav = screen.getByRole('navigation', { name: 'Global navigation' });
     expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
     expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    expect(within(nav).getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
+    expect(within(nav).getByRole('button', { name: 'Courses' })).toHaveAttribute('aria-haspopup', 'dialog');
     expect(within(nav).getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/app/explore');
     expect(within(nav).getByRole('link', { name: 'Calendar' })).toHaveAttribute('href', '/app/calendar');
     expect(screen.getByRole('link', { name: en.learner.skipToContent })).toHaveAttribute('href', '#learner-main');
@@ -129,7 +129,7 @@ describe('bench learner shell', () => {
     fireEvent.click(trigger);
     const drawer = await screen.findByRole('dialog', { name: en.common.learnerNavigation });
     expect(drawer).toHaveAttribute('id', 'learner-mobile-navigation');
-    expect(within(drawer).getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
+    expect(within(drawer).getByRole('button', { name: 'Courses' })).toHaveAttribute('aria-haspopup', 'dialog');
     expect(within(drawer).queryByRole('combobox')).not.toBeInTheDocument();
     expect(within(drawer).queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
     fireEvent.click(within(drawer).getByRole('button', { name: 'Account' }));

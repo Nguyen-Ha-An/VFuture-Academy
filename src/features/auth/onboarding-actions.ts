@@ -5,12 +5,15 @@ import { redirect, unstable_rethrow } from 'next/navigation';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { profileState } from '@/lib/profile-state';
+import { isMissingProfileName } from '@/lib/identity/display-name';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { supabaseUser } from '@/lib/supabase/server';
 import type { OnboardingState } from './onboarding-state';
+import { repairPlaceholderProfile } from './placeholder-profile';
+import { PROFILE_HANDLE_PATTERN } from '@/lib/profile-handle';
 
 const profileSchema = z.object({
-  displayName: z.string().trim().min(1).max(120),
+  displayName: z.string().trim().min(1).max(120).refine(value => !isMissingProfileName(value)),
 });
 
 function textField(formData: FormData, name: string): string {
@@ -42,6 +45,10 @@ async function saveProfile(userId: string, values: OnboardingState['values']): P
     }
 
     failure = 'profileUpdateError';
+    const repaired = await repairPlaceholderProfile(userId, {
+      handle: current.data.handle!, display_name: current.data.display_name,
+    }, parsed.data.displayName);
+    if (repaired) return null;
     const { data, error } = await supabase.from('profiles').update({
       display_name: parsed.data.displayName,
     }).eq('id', userId).eq('display_name', current.data.display_name).select('id, handle, display_name').maybeSingle();
@@ -53,7 +60,7 @@ async function saveProfile(userId: string, values: OnboardingState['values']): P
       if (!latest.error && latest.data?.id === userId && profileState(latest) === 'complete') return null;
       return { ...state, error: 'profileUpdateError' };
     }
-    if (data.id !== userId || data.handle !== current.data.handle || data.display_name !== parsed.data.displayName) {
+    if (data.id !== userId || typeof data.handle !== 'string' || !PROFILE_HANDLE_PATTERN.test(data.handle) || data.display_name !== parsed.data.displayName || profileState({ data, error: null }) !== 'complete') {
       return { ...state, error: 'profileUpdateError' };
     }
     return null;

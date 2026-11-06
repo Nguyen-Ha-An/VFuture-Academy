@@ -1,0 +1,11 @@
+.canvas-courses-mount { position: fixed; inset-block-start: 0; inset-inline-start: var(--canvas-rail, 84px); width: min(370px, calc(100vw - var(--canvas-rail, 84px))); height: 100dvh; contain: layout paint; z-index: 60; pointer-events: none; }
+.canvas-courses-mount[data-open] { pointer-events: auto; }
+.canvas-courses-panel { display: flex; flex-direction: column; height: 100dvh; min-height: 0; border-inline-end: 1px solid var(--vf-line); color: var(--vf-ink); background: var(--vf-surface); }
+.canvas-courses-heading { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--vf-line); }
+.canvas-courses-heading h2 { margin: 0; font-size: 19px; }
+.canvas-courses-scroll { overflow-y: auto; padding: 24px; }
+.canvas-courses-scroll section { margin-top: 24px; }
+.canvas-courses-scroll h3 { font-size: 14px; font-weight: 600; }
+.canvas-courses-scroll ul { list-style: none; padding: 0; margin: 0; }
+.canvas-courses-scroll li a { display: flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+@media (max-width: 767px) { .canvas-courses-mount { inset-inline-start: 0; width: 100vw; } }

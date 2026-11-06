@@ -13,6 +13,7 @@ import { PendingSubmit } from '@/features/workspace-ui/auth/PendingSubmit';
 import { Kicker } from '@/features/workspace-ui/ui/primitives';
 import { navigateAfterAuth } from '@/lib/post-auth-navigation';
 import { routes } from '@/lib/routes';
+import { notifyIdentityChanged } from '@/lib/identity/browser-session';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { supabaseBrowser } from '@/lib/supabase/client';
 
@@ -129,6 +130,7 @@ function LegacyAuthForm({ mode, bench = false }: AuthFormProps) {
           return;
         }
         if (data?.session && data.user) {
+          notifyIdentityChanged();
           const destination = await postAuthDestination(next);
           if (!destination) setServerError(t('profileLoadError'));
           else navigateAfterAuth(destination);
@@ -148,6 +150,7 @@ function LegacyAuthForm({ mode, bench = false }: AuthFormProps) {
         setServerError(t('sessionError'));
         return;
       }
+      notifyIdentityChanged();
       const destination = await postAuthDestination(next);
       if (!destination) setServerError(t('profileLoadError'));
       else navigateAfterAuth(destination);

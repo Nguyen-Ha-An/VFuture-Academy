@@ -388,7 +388,9 @@ describe('learner command entries', () => {
     renderShell();
     const nav = screen.getByRole('navigation', { name: 'Global navigation' });
     const destinations = within(nav).getAllByRole('link').map(link => link.getAttribute('href'));
-    expect(destinations).toEqual(expect.arrayContaining(hrefs('goTo')));
+    expect(destinations).toEqual(expect.arrayContaining(hrefs('goTo').filter(href => href !== '/app/courses')));
+    expect(within(nav).getByRole('button', { name: 'Courses' })).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(hrefs('goTo')).toContain('/app/courses');
     expect(entries.filter(entry => entry.group === 'goTo').map(entry => [entry.code, entry.shortcutKey])).toEqual([['A1', '1'], ['A2', '2'], ['A3', '3']]);
   });
 

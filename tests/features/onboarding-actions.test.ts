@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   supabaseUser: vi.fn(),
+  supabaseService: vi.fn(),
   assertActiveAccount: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
-vi.mock('@/lib/supabase/server', () => ({ supabaseUser: mocks.supabaseUser }));
+vi.mock('@/lib/supabase/server', () => ({ supabaseUser: mocks.supabaseUser, supabaseService: mocks.supabaseService }));
 vi.mock('@/lib/account-access', () => ({ assertActiveAccount: mocks.assertActiveAccount }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers()) }));
@@ -83,7 +84,7 @@ describe('completeOnboarding server action', () => {
     expect(mocks.revalidatePath.mock.invocationCallOrder.at(-1)).toBeLessThan(vi.mocked(redirect).mock.invocationCallOrder[0]);
   });
 
-  it.each([' ', 'a'.repeat(121)])('validates a missing provider name without writing', async displayName => {
+  it.each([' ', 'unknown', ' UNKNOWN ', 'a'.repeat(121)])('validates a missing provider name without writing', async displayName => {
     expect(await completeOnboarding(initialOnboardingState, form({ displayName }))).toEqual({
       values: { displayName }, fieldErrors: { displayName: 'invalidDisplayName' }, error: null,
     });
@@ -114,6 +115,33 @@ describe('completeOnboarding server action', () => {
     await expect(completeOnboarding(initialOnboardingState, form({ handle: '!' }))).rejects.toThrow('NEXT_REDIRECT');
     expect(db.update).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith(next);
+  });
+
+  it('repairs a missing provider placeholder name and untouched generated handle together before completing', async () => {
+    db.readResult.mockResolvedValue({ data: { ...pending, handle: 'STU-unknown', display_name: 'unknown' }, error: null });
+    const guarded = {
+      eq: vi.fn(() => guarded), select: vi.fn(() => guarded),
+      maybeSingle: vi.fn(async () => ({ data: { id: userId, ...serviceUpdate.mock.calls[0][0] }, error: null })),
+    };
+    const serviceUpdate = vi.fn((_values: Record<string, string>) => guarded);
+    const history = { select: vi.fn(() => history), eq: vi.fn(() => history), limit: vi.fn().mockResolvedValue({ data: [], error: null }) };
+    mocks.supabaseService.mockReturnValue({ from: (table: string) => table === 'profile_handle_changes' ? history : { update: serviceUpdate } });
+
+    await expect(completeOnboarding(initialOnboardingState, form({ displayName: 'Actual Name' }))).rejects.toThrow('NEXT_REDIRECT');
+    expect(serviceUpdate).toHaveBeenCalledExactlyOnceWith({ display_name: 'Actual Name', handle: expect.stringMatching(/^STU-actual-name-[a-f0-9]{6}$/) });
+    expect(guarded.eq.mock.calls).toEqual([['id', userId], ['handle', 'STU-unknown'], ['display_name', 'unknown']]);
+    expect(db.update).not.toHaveBeenCalled();
+    expect(redirect).toHaveBeenCalledWith(next);
+  });
+
+  it('keeps a placeholder repair collision retryable without writing the name separately', async () => {
+    db.readResult.mockResolvedValue({ data: { ...pending, handle: 'STU-unknown', display_name: 'unknown' }, error: null });
+    const guarded = { eq: vi.fn(() => guarded), select: vi.fn(() => guarded), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { code: '23505' } }) };
+    const history = { select: vi.fn(() => history), eq: vi.fn(() => history), limit: vi.fn().mockResolvedValue({ data: [], error: null }) };
+    mocks.supabaseService.mockReturnValue({ from: (table: string) => table === 'profile_handle_changes' ? history : { update: () => guarded } });
+    expect(await completeOnboarding(initialOnboardingState, form())).toMatchObject({ error: 'profileUpdateError' });
+    expect(db.update).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it.each([

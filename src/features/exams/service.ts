@@ -19,12 +19,16 @@ import type {
   ExamEventInput,
   ExamEventType,
   ExamRepo,
+  ExamPermission,
   LoadExamItem,
 } from './types';
 import { ExamError } from './types';
 import type { AnalyticsEventName, ServerAnalyticsProps } from '../../lib/analytics';
 
 export interface ExamServiceDependencies {
+  listStaffReleaseAttempts?: (actor: ExamActor, target: { itemId: string; courseVersionId: string }) => Promise<ExamAttemptRecord[]>;
+  /** Authoritative course + immutable historical school check for every staff access. */
+  authorizeStaffAttempt?: (actor: ExamActor, permission: ExamPermission, attempt: ExamAttemptRecord) => Promise<void>;
   validateAnswerAttachments?: (actor: ExamActor, attempt: ExamAttemptRecord, answers: Record<string, unknown>) => Promise<void>;
   authorizeHistoricalReview?: (actor: ExamActor, attempt: ExamAttemptRecord, courseId: string) => Promise<boolean>;
   repo: ExamRepo;
@@ -592,6 +596,12 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       .catch((error: unknown) => console.error('Analytics tracking failed', error));
   }
 
+  async function requireStaffAttempt(actor: ExamActor, permission: ExamPermission, attempt: ExamAttemptRecord) {
+    requirePermission(actor, permission, attempt.branchId);
+    if (!dependencies.authorizeStaffAttempt) throw new ExamError('FORBIDDEN', 'Teaching scope could not be verified.');
+    await dependencies.authorizeStaffAttempt(actor, permission, attempt);
+  }
+
   async function attemptFor(
     actor: ExamActor,
     attemptId: string,
@@ -607,9 +617,10 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       }
       return attempt;
     }
-    if (!(access.permission && can(actor, access.permission, attempt.branchId))) {
+    if (!access.permission || !can(actor, access.permission, attempt.branchId)) {
       throw new ExamError('FORBIDDEN', 'The attempt is not available to this actor.');
     }
+    await requireStaffAttempt(actor, access.permission, attempt);
     return attempt;
   }
 
@@ -1049,7 +1060,9 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       const attempt = await repo.getAttempt(target.attemptId);
       attempts = attempt ? [attempt] : [];
     } else {
-      attempts = await repo.listAttempts(null, target.itemId, target.courseVersionId);
+      attempts = dependencies.listStaffReleaseAttempts
+        ? await dependencies.listStaffReleaseAttempts(actor, target)
+        : await repo.listAttempts(null, target.itemId, target.courseVersionId);
     }
     if (!attempts.length) throw new ExamError('FORBIDDEN', 'No releasable exam attempts were found.');
     const at = clock.now();
@@ -1066,6 +1079,17 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
         }
         continue;
       }
+      try {
+        await requireStaffAttempt(actor, 'exam.release', attempt);
+      } catch (error) {
+        // Batch release skips inaccessible records without exposing their ids.
+        if ((error instanceof ExamError && error.code === 'FORBIDDEN')
+          || (error instanceof Error && 'status' in error && error.status === 403)) {
+          result.skipped.forbidden += 1;
+          continue;
+        }
+        throw error;
+      }
       if (attempt.status !== 'graded') {
         result.skipped.notReleasable.push(attempt.id);
         continue;
@@ -1074,7 +1098,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
         result.skipped.alreadyReleased.push(attempt.id);
         continue;
       }
-      const transition = await repo.releaseAttempt(attempt.id, at);
+      const transition = await repo.releaseAttempt(attempt.id, at, actor.id);
       if (!transition.transitioned) {
         if (transition.attempt.releasedAt !== null) result.skipped.alreadyReleased.push(attempt.id);
         else result.skipped.notReleasable.push(attempt.id);
@@ -1107,7 +1131,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
   ): Promise<ExamAttemptRecord> {
     const attempt = await repo.getAttempt(attemptId);
     if (!attempt) throw new ExamError('FORBIDDEN', 'The attempt is not available.');
-    requirePermission(actor, 'submission.grade', attempt.branchId);
+    await requireStaffAttempt(actor, 'submission.grade', attempt);
     if (attempt.status !== 'pending_manual') {
       throw new ExamError(
         'ATTEMPT_NOT_ACTIVE',
@@ -1147,7 +1171,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       manualFeedback: structuredClone(feedback),
       gradedBy: actor.id,
       updatedAt: clock.now(),
-    });
+    }, actor.id);
     if (!accepted) {
       throw new ExamError(
         'ATTEMPT_NOT_ACTIVE',
@@ -1173,7 +1197,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
   ): Promise<ExamCompleteGradingOutcome> {
     const attempt = await repo.getAttempt(attemptId);
     if (!attempt) throw new ExamError('FORBIDDEN', 'The attempt is not available.');
-    requirePermission(actor, 'submission.grade', attempt.branchId);
+    await requireStaffAttempt(actor, 'submission.grade', attempt);
     if (attempt.status === 'graded') {
       // A row written before result availability existed is fully graded but carries
       // no availability timestamp. Answering 200 here would either break this
@@ -1224,7 +1248,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
         maxPoints: regraded.maxPoints,
         percent: regraded.percent,
         resultAvailableAt: updatedAt,
-      }, storedAnswers, resultRecords);
+      }, storedAnswers, resultRecords, actor.id);
       if (completion.answersChanged) continue;
       if (!completion.transitioned) {
         if (completion.attempt.status !== 'graded') {

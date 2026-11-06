@@ -649,3 +649,31 @@ test.describe('directory filter geometry', () => {
     });
   }
 });
+
+test('Courses tray follows the rail and fills mobile width without replacing the course page', async ({ page }) => {
+  await page.route('**/api/v1/learning/courses?*', route => route.fulfill({ json: { data: { courses: [{ id: 'ai-basics', title: 'AI basics' }] } } }));
+  await page.route('**/api/v1/teaching/assigned-courses?*', route => route.fulfill({ json: { data: { courses: [] } } }));
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '/app/courses/ai-basics', 'en');
+    const heading = page.locator('main h1');
+    const frame = page.locator('main').first();
+    if (width < 768) {
+      await page.locator('button[aria-controls="learner-mobile-navigation"]').click();
+      await page.getByRole('dialog', { name: en.common.learnerNavigation }).getByRole('button', { name: 'Courses', exact: true }).click();
+    } else await page.locator('.canvas-global-nav:not(.canvas-global-nav-mobile)').getByRole('button', { name: 'Courses', exact: true }).click();
+    const tray = page.getByRole('dialog', { name: 'Courses', exact: true });
+    await expect(tray).toBeVisible();
+    await expect(tray.getByRole('link', { name: 'AI basics' })).toBeVisible();
+    await expect(heading).toHaveCount(1);
+    if (width >= 768) await expect.poll(async () => (await tray.boundingBox())?.x ?? -1).toBeGreaterThan(0);
+    const box = await tray.boundingBox();
+    expect(box).not.toBeNull();
+    if (width < 768) { expect(box!.x).toBeLessThanOrEqual(1); expect(box!.width).toBeGreaterThanOrEqual(width - 1); }
+    else { expect(box!.x).toBeGreaterThan(0); expect((await frame.boundingBox())!.width).toBeGreaterThan(1000); }
+    await page.keyboard.press('Escape');
+    await expect(tray).toHaveCount(0);
+    await expect(page.locator(width < 768 ? 'button[aria-controls="learner-mobile-navigation"]' : 'button[aria-controls="academy-courses-tray"]').first()).toBeFocused();
+    await viewport(page);
+  }
+});

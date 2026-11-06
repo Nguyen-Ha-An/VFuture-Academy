@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
+const scopeCheck = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
+vi.mock('@/features/teaching/assignments', () => ({ assertCourseTeaching: scopeCheck }));
 
 import {
   createGradingDetailService,
@@ -71,11 +73,28 @@ function repository(overrides: Partial<GradingDetailRepository> = {}): GradingDe
       attempt: examAttempt, learnerName: 'Learner', integrityEventCount: 2,
     })),
     getExamAnswers: vi.fn(async () => answers),
+    getCourseId: vi.fn(async () => 'course-a'),
     ...overrides,
   };
 }
 
 describe('exam grading detail result availability', () => {
+  it('authorizes exam and assignment detail against their resolved course and historical school', async () => {
+    scopeCheck.mockClear();
+    const service = createGradingDetailService(repository());
+    await service.assignment(grader, 'submission', 'school-a', 'vi');
+    await service.exam(grader, 'attempt', 'school-a');
+    expect(scopeCheck).toHaveBeenCalledTimes(2);
+    expect(scopeCheck).toHaveBeenNthCalledWith(1, grader, 'submission.grade', 'course-a', 'school-a');
+    expect(scopeCheck).toHaveBeenNthCalledWith(2, grader, 'submission.grade', 'course-a', 'school-a');
+  });
+  it('does not expose answers when course authorization is revoked', async () => {
+    scopeCheck.mockRejectedValueOnce(new Error('forbidden'));
+    const repo = repository();
+    await expect(createGradingDetailService(repo).exam(grader, 'attempt', 'school-a')).rejects.toThrow('forbidden');
+    expect(repo.getExamAnswers).not.toHaveBeenCalled();
+  });
+
   it('projects a null result timestamp for a historical graded attempt', async () => {
     const detail = await createGradingDetailService(repository())
       .exam(grader, '33333333-3333-4333-8333-333333333333', 'school-a');

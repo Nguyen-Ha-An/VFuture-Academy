@@ -237,6 +237,31 @@ describe('SupabaseExamRepo', () => {
     })]]);
   });
 
+  it('forwards the trusted actor to draft and completion RPCs and maps revoked assignment errors', async () => {
+    const database = new DatabaseStub({
+      'rpc:exam_save_manual_draft': [{ data: true, error: null }],
+      'rpc:exam_complete_manual_grading': [{ data: null, error: { code: '42501', message: 'private assignment data' } }],
+    });
+    const repo = new SupabaseExamRepo(database);
+    const answer = { attemptId: 'attempt', questionId: 'q', answer: 'text', result: null, manualPoints: 1,
+      manualFeedback: 'feedback', gradedBy: 'grader', updatedAt: new Date('2026-09-02T00:00:00Z') };
+    await expect(repo.saveManualDraft('attempt', answer, 'grader')).resolves.toBe(true);
+    expect(database.rpcCalls[0]).toEqual(['exam_save_manual_draft', expect.objectContaining({
+      p_actor_id: 'grader', p_attempt_id: 'attempt', p_answer: expect.objectContaining({ gradedBy: 'grader' }),
+    })]);
+    await expect(repo.completeManualGrading('attempt', { points: 1, maxPoints: 1, percent: 100, resultAvailableAt: new Date() },
+      [], [], 'grader')).rejects.toMatchObject({ code: 'FORBIDDEN', httpStatus: 403 });
+    expect(database.rpcCalls[1]).toEqual(['exam_complete_manual_grading', expect.objectContaining({ p_actor_id: 'grader' })]);
+  });
+
+  it('never invokes a privileged staff mutation without the actor identity', async () => {
+    const database = new DatabaseStub({}); const repo = new SupabaseExamRepo(database);
+    await expect(repo.releaseAttempt('attempt', new Date())).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(repo.saveManualDraft('attempt', {} as never)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(repo.completeManualGrading('attempt', {} as never, [], [])).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(database.rpcCalls).toEqual([]);
+  });
+
   it('releases an attempt through one timestamp-preserving compare-and-set call', async () => {
     const row = { ...attemptRow(1), released_at: '2026-09-02T01:00:00.000Z' };
     const database = new DatabaseStub({
@@ -245,13 +270,14 @@ describe('SupabaseExamRepo', () => {
     const repo = new SupabaseExamRepo(database);
     const at = new Date('2026-09-02T01:00:00.000Z');
 
-    await expect(repo.releaseAttempt(row.id, at)).resolves.toMatchObject({
+    await expect(repo.releaseAttempt(row.id, at, 'grader')).resolves.toMatchObject({
       transitioned: true,
       attempt: { id: row.id, releasedAt: at },
     });
     expect(database.rpcCalls).toEqual([['exam_release_attempt', {
       p_attempt_id: row.id,
       p_released_at: at.toISOString(),
+      p_actor_id: 'grader',
     }]]);
   });
 

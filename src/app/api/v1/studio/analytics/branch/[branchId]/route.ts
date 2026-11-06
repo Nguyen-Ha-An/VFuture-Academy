@@ -14,7 +14,7 @@ export const GET = withHandler(async (_request, context) => {
   const branchId = BranchIdSchema.parse(rawBranchId);
   const actor = await requirePermission('report.branch.read', { kind: 'branch', branchId });
   const service = createAdminAnalyticsService({
-    repository: createSupabaseAnalyticsRepository(supabaseService()),
+    repository: createSupabaseAnalyticsRepository(supabaseService(), actor.userId),
   });
   return ok(await service.branch(actor, branchId));
 });

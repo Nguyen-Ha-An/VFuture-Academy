@@ -24,6 +24,7 @@ class QueryStub implements OverviewQuery {
   select(columns: string, options?: unknown) { this.operations.push(['select', columns, options]); return this; }
   eq(column: string, value: unknown) { this.operations.push(['eq', column, value]); return this; }
   in(column: string, values: unknown[]) { this.operations.push(['in', column, values]); return this; }
+  or(filters: string, options?: { referencedTable?: string }) { this.operations.push(['or', filters, options]); return this; }
   gte(column: string, value: string) { this.operations.push(['gte', column, value]); return this; }
   lt(column: string, value: string) { this.operations.push(['lt', column, value]); return this; }
   order(column: string, options?: unknown) { this.operations.push(['order', column, options]); return this; }
@@ -102,7 +103,7 @@ const actors = vi.fn(async () => new Map([['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
 
 function run(scope: { global: boolean; branchIds: string[] }, resolve = defaultResolve, queue: (actor: Actor, filter: unknown) => Promise<{ items: SubmissionQueueSubmission[]; nextCursor: string | null }> = vi.fn(async () => ({ items: [waitingItem()], nextCursor: null }))) {
   const { db, queries } = database(resolve);
-  const result = gradingOverview({ actor: grader, scope, locale: 'en' }, { database: db, queue, titles, actors, now: () => NOW });
+  const result = gradingOverview({ actor: grader, scope, locale: 'en' }, { database: db, queue, titles, actors, now: () => NOW, teachingScope: async () => ({ all: scope.global, branchIds: scope.branchIds, assignments: [] }) });
   return { result, queries, queue };
 }
 
@@ -267,5 +268,21 @@ describe('throughput helpers', () => {
       { day: '2026-09-24', received: 0, released: 0 },
       { day: '2026-09-25', received: 0, released: 1 },
     ]);
+  });
+});
+
+describe('course teaching scope', () => {
+  it('scopes a global instructor to exact assigned version and historical branch before counts and limits', async () => {
+    const { db, queries } = database((query) => query.table === 'course_versions'
+      ? { data: [{ id: VERSION, course_id: 'course-a' }], error: null }
+      : defaultResolve(query));
+    await gradingOverview({ actor: grader, scope: { global: true, branchIds: [] }, locale: 'en' }, {
+      database: db, queue: async () => ({ items: [], nextCursor: null }), titles, actors,
+      teachingScope: async () => ({ all: false, branchIds: [], assignments: [{ courseId: 'course-a', branchId: 'school-a' }] }),
+    });
+    const count = queries.find((q) => q.table === 'assignment_submissions' && q.isCount)!;
+    expect(count.operations).toContainEqual(['or', `and(branch_scope_known.eq.true,branch_id.eq."school-a",course_version_id.eq."${VERSION}")`, undefined]);
+    const recent = queries.find((q) => q.table === 'grades' && q.operations.some(([name]) => name === 'limit'))!;
+    expect(recent.operations).toContainEqual(['or', expect.stringContaining(`course_version_id.eq."${VERSION}"`), { referencedTable: 'assignment_submissions' }]);
   });
 });

@@ -9,19 +9,34 @@ const customerTenant = 'f3152aa5-61de-40fd-bb76-780b9fbe5428';
 const workforceTenant = '157419c9-2de9-45e7-a6f9-91546dbef629';
 const flowId = '76c08150-f837-47b9-b793-f119e781d283';
 
-export function entryCollectionPatch(flow) {
+export function entryCollectionPlan(flow) {
+  const applications = flow.conditions?.applications?.includeApplications;
   if (flow.id !== flowId || flow.displayName !== 'AcademySignIn'
-    || !flow.conditions?.applications?.includeApplications?.some(app => app.appId === '88634bca-540c-4d38-8061-3d8e0f43bfd3')) throw new Error('Unexpected Academy flow');
+    || applications?.length !== 1 || applications[0].appId !== '88634bca-540c-4d38-8061-3d8e0f43bfd3') throw new Error('Unexpected Academy flow');
   const collection = structuredClone(flow.onAttributeCollection);
   const inputs = collection?.attributeCollectionPage?.views?.flatMap(view => view.inputs ?? []) ?? [];
   const names = inputs.filter(input => input.attribute === 'displayName');
-  if (names.length !== 1 || !inputs.some(input => input.attribute === 'email' && input.hidden === true)) throw new Error('Unexpected collection fields');
-  Object.assign(names[0], { hidden: true, editable: true, required: false, writeToDirectory: true });
-  // Attribute definitions are a read projection; patch only the page configuration.
-  return { '@odata.type': '#microsoft.graph.externalUsersSelfServiceSignUpEventsFlow', onAttributeCollection: {
-    '@odata.type': '#microsoft.graph.onAttributeCollectionExternalUsersSelfServiceSignUp',
-    attributeCollectionPage: collection.attributeCollectionPage,
-  } };
+  const attributes = collection?.attributes;
+  if (!Array.isArray(attributes) || names.length > 1
+    || attributes.filter(attribute => attribute.id === 'displayName').length !== names.length
+    || attributes.filter(attribute => attribute.id === 'email').length !== 1
+    || inputs.filter(input => input.attribute === 'email' && input.hidden === true).length !== 1) throw new Error('Unexpected collection fields');
+  collection.attributes = attributes.filter(attribute => attribute.id !== 'displayName');
+  for (const view of collection.attributeCollectionPage.views) {
+    view.inputs = view.inputs.filter(input => input.attribute !== 'displayName');
+  }
+  // The documented relationship DELETE removes both selection and page input.
+  // Merely hiding the input leaves Display Name selected for collection.
+  return {
+    removeDisplayName: names.length === 1,
+    path: `/identity/authenticationEventsFlows/${flowId}/microsoft.graph.externalUsersSelfServiceSignUpEventsFlow/onAttributeCollection/microsoft.graph.onAttributeCollectionExternalUsersSelfServiceSignUp/attributes/displayName/$ref`,
+    expectedCollection: collection,
+  };
+}
+
+export function assertEntryCollectionReadback(plan, after) {
+  if (entryCollectionPlan(after).removeDisplayName
+    || !isDeepStrictEqual(after.onAttributeCollection, plan.expectedCollection)) throw new Error('Collection readback differs');
 }
 
 export function workforceClaimsPatch(app) {
@@ -58,17 +73,17 @@ async function main() {
   const apps = await workforce(`/applications?$filter=appId eq '${appId}'&$select=id,appId,displayName,signInAudience,optionalClaims`);
   if (apps.value?.length !== 1) throw new Error('Workforce application not found');
   const app = apps.value[0];
-  const collection = entryCollectionPatch(flow), claims = workforceClaimsPatch(app);
+  const collection = entryCollectionPlan(flow), claims = workforceClaimsPatch(app);
   if (!process.argv.includes('--apply')) { console.log(JSON.stringify({ dryRun: true, flow: flow.displayName, workforce: app.displayName, collection, claims })); return; }
   const directory = resolve('build/azure-core/private');
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const backup = `${directory}/entry-flow-before-${Date.now()}.json`;
   writeFileSync(backup, JSON.stringify({ flowId, onAttributeCollection: flow.onAttributeCollection, workforceObjectId: app.id, optionalClaims: app.optionalClaims }, null, 2), { mode: 0o600, flag: 'wx' });
-  // Configure required claims first; hiding a field must not leave staff claims absent.
+  // Configure required claims first; collection changes must not leave staff claims absent.
   await workforce(`/applications/${app.id}`, 'PATCH', claims);
-  await customer(`/identity/authenticationEventsFlows/${flowId}`, 'PATCH', collection);
+  if (collection.removeDisplayName) await customer(collection.path, 'DELETE');
   const after = await customer(`/identity/authenticationEventsFlows/${flowId}`);
-  if (!isDeepStrictEqual(after.onAttributeCollection.attributeCollectionPage, collection.onAttributeCollection.attributeCollectionPage)) throw new Error('Collection readback differs');
+  assertEntryCollectionReadback(collection, after);
   const appAfter = await workforce(`/applications/${app.id}?$select=signInAudience,optionalClaims`);
   if (!isDeepStrictEqual(appAfter.optionalClaims, claims.optionalClaims)) throw new Error('Claims readback differs');
   console.log(JSON.stringify({ configured: true, backup, hostedSignupVerified: false }));

@@ -23,16 +23,14 @@ function provider(content:React.ReactNode){return <NextIntlClientProvider locale
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks();navigation.search='';});
 describe('Central review interface',()=>{
  it('shows exact submitted content and changes before a decision, escaping source text',async()=>{
-  const fetch=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(JSON.stringify({data:{review:row,snapshot:{revision_key:'v2',ownership_kind:'central',owner_branch_id:null,audience:{scope:'global'},dependencies:[]},reviewed_source:{title:'<img src=x onerror=alert(1)>',summary:'New text'},published_snapshot:{source:{title:'Old title',summary:'Old text'},revision_key:'v1'}}}),{headers:{'Content-Type':'application/json'}}));vi.stubGlobal('fetch',fetch);
-  render(provider(<ReviewQueue {...props} rows={[row]} canReview canPublish/>));
-  await userEvent.click(screen.getByRole('button',{name:'Read submitted version'}));
+  const initialReview={review:row,snapshot:{revision_key:'v2',ownership_kind:'central',owner_branch_id:null,audience:{scope:'global'},dependencies:[]},reviewed_source:{title:'<img src=x onerror=alert(1)>',summary:'New text'},published_snapshot:{source:{title:'Old title',summary:'Old text'},revision_key:'v1'}};
+  render(provider(<ReviewQueue {...props} rows={[row]} canReview canPublish initialReview={initialReview}/>));
   expect(await screen.findByRole('heading',{name:'Read submitted version: guide'})).toBeInTheDocument();
   expect(screen.getByText('Review snapshot')).toBeInTheDocument();
-  expect(screen.getByRole('tabpanel',{name:'Read submitted version'})).toHaveAttribute('aria-labelledby','review-preview-tab');
+  expect(screen.getByRole('tabpanel',{name:'Read submitted version'})).toHaveAttribute('aria-labelledby',screen.getByRole('tab',{name:'Read submitted version'}).id);
   await userEvent.click(screen.getByRole('tab',{name:'Changes from the published version'}));
   expect(screen.getByRole('heading',{name:'Changes from the published version'})).toBeInTheDocument();
   expect(screen.getByText('Old title')).toBeInTheDocument();expect(screen.queryByRole('img')).not.toBeInTheDocument();
-  expect(String(fetch.mock.calls[0]?.[0])).toContain('actorId=operator');
  });
  it('requires a review note before the atomic approval and publication request',async()=>{
   const fetch=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(JSON.stringify({data:{status:'published'}})));vi.stubGlobal('fetch',fetch);

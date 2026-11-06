@@ -32,6 +32,7 @@ export default defineConfig({
     '@/features/skills/service': path.join(__dirname, 'src/skills-service.ts'),
     '@/features/resources/service': path.join(__dirname, 'src/resources-service.ts'),
     '@/features/ecosystem/context': path.join(__dirname, 'src/ecosystem-context.ts'),
+    '@/features/teaching/assignments': path.join(root, 'tests/e2e/learner-harness/src/teacher-service.ts'),
     '@/lib/supabase/server': path.join(__dirname, 'src/no-database.ts'),
     '@/lib/api': path.join(root, 'src/lib/api-error.ts'),
     '@': path.join(root, 'src'),

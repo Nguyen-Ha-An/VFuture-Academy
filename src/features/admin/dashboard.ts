@@ -102,7 +102,6 @@ export type AdminDashboardOptions = {
 
 export const ACTIVITY_DAYS = 30;
 export const SCHOOL_RANKING_SIZE = 5;
-const DAILY_PAGE_SIZE = 1000;
 const DAY_MS = 86_400_000;
 
 /** Permissions that gate each field of the `dashboard` operation (20260906065949_admin_management.sql). */
@@ -459,24 +458,14 @@ export async function adminDashboard(
     if (options.summary || !canReadReports(context)) return undefined;
     const days = utcDayRange(now);
     try {
-      const rows: unknown[] = [];
-      // One row per school and day: page through so a large scope is never silently truncated.
-      for (let offset = 0; ; offset += DAILY_PAGE_SIZE) {
-        let query = database
-          .from("analytics_branch_daily")
-          .select("branch_id, day, lesson_completions, quiz_attempts, exam_attempts")
-          .gte("day", days[0])
-          .lte("day", days[days.length - 1]);
-        if (branchId) query = query.eq("branch_id", branchId);
-        const response = (await query
-          .order("day", { ascending: true })
-          .order("branch_id", { ascending: true })
-          .range(offset, offset + DAILY_PAGE_SIZE - 1)) as RowsResponse;
-        if (response.error || !Array.isArray(response.data))
-          throw new Error("Unable to load learning activity");
-        rows.push(...response.data);
-        if (response.data.length < DAILY_PAGE_SIZE) break;
-      }
+      const response = await database.rpc('teaching_analytics_daily', {
+        p_actor_id: context.actor.userId,
+        p_branch_id: branchId,
+        p_from: days[0],
+        p_to: days[days.length - 1],
+      });
+      if (response.error || !Array.isArray(response.data)) throw new Error("Unable to load learning activity");
+      const rows = response.data;
       return sumActivityByDay(rows, days);
     } catch {
       unavailable.add("activitySeries");

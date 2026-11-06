@@ -4,10 +4,11 @@ import { ownedMigrationNames,azureSchemaStepNames,buildAzureSchema } from '../..
 it.each(['._0001_identity.sql','_0001_identity.sql','.0001_identity.sql','.hidden.sql','manual.sql','00001_identity.sql','2026090606594_identity.sql','0001_identity.SQL','__MACOSX','.DS_Store','._notes.md'])('rejects metadata or unknown SQL rather than silently selecting around it: %s',name=>{
   expect(()=>ownedMigrationNames(['0001_identity.sql',name])).toThrow('Unexpected migration directory entry');
 });
-it('accepts only the current numeric owned migration names in deterministic order',()=>{
+it('accepts the explicit59 owned migrations and the five-file teacher release suffix in deterministic order',()=>{
   const names=readdirSync(new URL('../../supabase/migrations/',import.meta.url));
   const eligible=ownedMigrationNames(names);
-  expect(eligible).toHaveLength(54);
+  expect(eligible).toHaveLength(59);
+  expect(eligible.slice(54)).toEqual(['20261106010000_course_teaching_assignments.sql','20261106011000_exam_teaching_scope.sql','20261106020000_teaching_grading_guards.sql','20261106030000_teaching_report_scope.sql','20261106040000_management_teaching_scope.sql']);
   expect(ownedMigrationNames([...eligible].reverse())).toEqual(eligible);
   const artifact=buildAzureSchema();
   expect(artifact.receipt.migrations.map(migration=>migration.file)).toEqual(eligible);

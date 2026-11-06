@@ -89,6 +89,7 @@ afterEach(() => {
 function harness(item: CompiledItem) {
   const repo = new InMemoryExamRepo();
   const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
     repo,
     clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
     bank: bankSource,

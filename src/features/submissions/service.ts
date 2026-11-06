@@ -46,6 +46,7 @@ import {
   type SubmissionQueueSubmission,
 } from './contracts';
 import { canGradeSubmissionBranch } from './permissions';
+import { assertCourseTeaching, teachingCourseScope } from '@/features/teaching/assignments';
 
 export { submissionAuditSnapshot } from './audit-snapshot';
 
@@ -310,6 +311,11 @@ function assignmentRubric(grading: GradingItem, assignmentId: string): Rubric | 
   const parsed = RubricSchema.safeParse(raw);
   if (!parsed.success) throw new ApiError(500, 'SUBMISSION_CONFIG_INVALID', 'Assignment grading configuration is invalid');
   return parsed.data;
+}
+
+// Quote values embedded in PostgREST logic so branch names cannot alter the filter.
+function postgrestValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 function permissionBranches(actor: Actor, permission: Permission): string[] {
@@ -959,6 +965,29 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
       else effectiveBranches = branches;
     }
 
+    const teachingScope = await teachingCourseScope(actor, 'submission.grade');
+    let pairFilters: string[] | undefined;
+    if (!teachingScope.all) {
+      const pairs = teachingScope.assignments.filter(pair => (!effectiveBranch || pair.branchId === effectiveBranch)
+        && (!effectiveBranches || effectiveBranches.includes(pair.branchId)) && (!filter.courseId || pair.courseId === filter.courseId));
+      const unrestrictedBranches = teachingScope.branchIds.filter(branch => (!effectiveBranch || branch === effectiveBranch)
+        && (!effectiveBranches || effectiveBranches.includes(branch)));
+      pairFilters = unrestrictedBranches.map(branch => `and(branch_scope_known.eq.true,branch_id.eq.${postgrestValue(branch)})`);
+      if (pairs.length) {
+        const versions = await database.from('course_versions').select('id,course_id').in('course_id', [...new Set(pairs.map(pair => pair.courseId))]);
+        if (versions.error) databaseFailure('Unable to load assigned course versions');
+        for (const value of Array.isArray(versions.data) ? versions.data : []) {
+          const row = record(value);
+          const id = stringValue(row?.id);
+          const course = stringValue(row?.course_id);
+          if (!id || !course) continue;
+          for (const pair of pairs.filter(pair => pair.courseId === course)) {
+            pairFilters.push(`and(branch_scope_known.eq.true,branch_id.eq.${postgrestValue(pair.branchId)},course_version_id.eq.${postgrestValue(id)})`);
+          }
+        }
+      }
+      if (!pairFilters.length) return { items: [], nextCursor: null };
+    }
     let versionIds: string[] | undefined;
     if (filter.courseId) {
       const versionsResult = await database.from('course_versions')
@@ -980,6 +1009,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
       if (effectiveBranch) query = query.eq('branch_scope_known', true).eq('branch_id', effectiveBranch);
       else if (effectiveBranches) query = query.eq('branch_scope_known', true).in('branch_id', effectiveBranches);
       if (versionIds) query = query.in('course_version_id', versionIds);
+      if (pairFilters) query = query.or(pairFilters.join(','));
       if (statusFilter && DATABASE_STATUS_FILTERS.has(statusFilter)) query = query.eq('status', statusFilter);
       else if (statusFilter === 'pending') query = query.in('status', [...WAITING_STORED_STATUSES]);
       if (filter.assignmentId) {
@@ -1007,16 +1037,16 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
         });
       }
       const candidateItems = rows.flatMap((value) => queueSubmission(value) ?? []);
-      const locatorKey = (item: Pick<SubmissionQueueSubmission, 'userId' | 'courseVersionId' | 'itemId' | 'blockId'>) =>
-        JSON.stringify([item.userId, item.courseVersionId, item.itemId, item.blockId]);
+      const locatorKey = (item: Pick<SubmissionQueueSubmission, 'userId' | 'courseVersionId' | 'itemId' | 'blockId' | 'branchId'>) =>
+        JSON.stringify([item.userId, item.courseVersionId, item.itemId, item.blockId, item.branchId]);
       const pendingLocators = new Map(candidateItems
         .filter((item) => item.status === 'submitted' || item.status === 'in_review')
         .map((item) => [locatorKey(item), item]));
       const historicallyApproved = new Set<string>();
       if (pendingLocators.size) {
-        const locatorFilters = [...pendingLocators.values()].map((item) => `and(user_id.eq.${item.userId},course_version_id.eq.${item.courseVersionId},item_id.eq.${item.itemId},${item.blockId === null ? 'block_id.is.null' : `block_id.eq.${item.blockId}`})`);
+        const locatorFilters = [...pendingLocators.values()].map((item) => `and(user_id.eq.${item.userId},course_version_id.eq.${item.courseVersionId},item_id.eq.${item.itemId},${item.blockId === null ? 'block_id.is.null' : `block_id.eq.${item.blockId}`},${item.branchId === null ? 'branch_scope_known.eq.false' : `branch_scope_known.eq.true,branch_id.eq.${postgrestValue(item.branchId)}`})`);
         const approval = await database.from('assignment_submissions')
-          .select('user_id,course_version_id,item_id,block_id,grades!inner(decision,released)')
+          .select('user_id,course_version_id,item_id,block_id,branch_id,branch_scope_known,grades!inner(decision,released)')
           .eq('grades.released', true)
           .eq('grades.decision', 'approved')
           .or(locatorFilters.join(','));
@@ -1025,7 +1055,9 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
           const row = record(raw);
           if (typeof row?.user_id !== 'string' || typeof row.course_version_id !== 'string'
             || typeof row.item_id !== 'string' || (row.block_id !== null && typeof row.block_id !== 'string')) continue;
-          historicallyApproved.add(JSON.stringify([row.user_id, row.course_version_id, row.item_id, row.block_id]));
+          const branch = historicalBranch(row);
+          if (branch === undefined) continue;
+          historicallyApproved.add(JSON.stringify([row.user_id, row.course_version_id, row.item_id, row.block_id, branch]));
         }
       }
       return candidateItems
@@ -1101,6 +1133,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
     if (courseResult.error) databaseFailure('Unable to load submission course');
     const courseId = stringValue(record(courseResult.data)?.course_id);
     if (!courseId) databaseFailure('Submission course could not be resolved');
+    await assertCourseTeaching(actor, 'submission.grade', courseId, branchId);
 
     const existingResult = await database.from('grades')
       .select('rubric_scores,total_points,max_points,feedback,decision,passed,graded_at,released')
@@ -1172,6 +1205,7 @@ export function createSubmissionsService(dependencies: SubmissionServiceDependen
       p_audit_after: submissionAuditSnapshot(auditAfter),
     });
     if (gradeResult.error) {
+      if (record(gradeResult.error)?.code === '42501') throw new ApiError(403, 'FORBIDDEN', 'Permission denied');
       if (isNamedDatabaseError(gradeResult.error, 'GRADE_RELEASED')) {
         throw new ApiError(409, 'GRADE_RELEASED', 'A released approved grade cannot be changed');
       }

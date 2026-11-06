@@ -54,6 +54,19 @@ describe.skipIf(!runtime)('Azure identity SQL contracts', () => {
     await db.query('select public.academy_identity_delete_session($1)', [hash]);
     expect((await db.query('select public.academy_identity_read_session($1) result', [hash])).rows[0].result).toBeNull();
   });
+  it('admits a thirty-day session and never extends its expiry when the token rotates', async () => {
+    const hash='t'.repeat(64), lease='a'.repeat(43);
+    const expiry=new Date(Date.now()+2592000000).toISOString();
+    await db.query('select public.academy_identity_create_session($1,$2,$3,$4,$5,$6,$7,$8)', [hash,original,issuer,oid,'pairwise-sub',expiry,new Date(Date.now()+3600000).toISOString(),'encrypted']);
+    const before=(await db.query('select expires_at from academy_identity.sessions where token_hash=$1',[hash])).rows[0].expires_at;
+    expect((await db.query('select public.academy_identity_claim_refresh($1,$2,$3) result',[hash,1,lease])).rows[0].result).toBe(true);
+    expect((await db.query('select public.academy_identity_rotate_session($1,$2,$3,$4,$5) result',[hash,1,new Date(Date.now()+7200000).toISOString(),'rotated',lease])).rows[0].result).toBe(true);
+    expect((await db.query('select expires_at from academy_identity.sessions where token_hash=$1',[hash])).rows[0].expires_at).toEqual(before);
+    await expect(db.query('select public.academy_identity_create_session($1,$2,$3,$4,$5,$6,$7,$8)', ['u'.repeat(64),original,issuer,oid,'pairwise-sub',new Date(Date.now()+2678400000).toISOString(),new Date(Date.now()+3600000).toISOString(),'encrypted'])).rejects.toThrow('Invalid session lifetime');
+    await db.query("update academy_identity.sessions set expires_at=clock_timestamp()-interval '1 millisecond' where token_hash=$1",[hash]);
+    expect((await db.query('select public.academy_identity_read_session($1) result',[hash])).rows[0].result).toBeNull();
+    expect((await db.query('select public.academy_identity_claim_refresh($1,$2,$3) result',[hash,2,lease])).rows[0].result).toBe(false);
+  });
   it('fences expired refresh owners from rotating, revoking or releasing a successor lease', async () => {
     const hash='f'.repeat(64), oldLease='a'.repeat(43), newLease='b'.repeat(43);
     await db.query('select public.academy_identity_create_session($1,$2,$3,$4,$5,$6,$7,$8)',[hash,original,issuer,oid,'pairwise-sub',new Date(Date.now()+3600000).toISOString(),new Date(Date.now()+1800000).toISOString(),'encrypted']);
@@ -184,5 +197,18 @@ describe.skipIf(!runtime)('Azure identity SQL contracts', () => {
     expect(result).toBe('VFU-unique-member');
     expect((await db.query("select user_id from public.profile_handle_aliases where handle='STU-occupied'")).rows[0].user_id).toBe(user);
     await expect(db.query("insert into public.profile_handle_aliases(handle,user_id) values('VFU-occupied',$1)",[user])).rejects.toThrow();
+  });
+  it('repairs an untouched placeholder atomically while retaining its old URL and manual change allowance',async()=>{
+    const user='34444444-4444-4444-8444-444444444444';
+    await db.query("insert into academy_identity.users(id,raw_user_meta_data) values($1,'{\"full_name\":\"unknown\"}'::jsonb)",[user]);
+    const previous=(await db.query('select handle from public.profiles where id=$1',[user])).rows[0].handle;
+    await db.exec('set role service_role');
+    try {
+      const result=await db.query("update public.profiles set handle='STU-real_name-abcdef',display_name='Real Name' where id=$1 and handle=$2 and display_name='unknown' returning id,handle,display_name",[user,previous]);
+      expect(result.rows).toEqual([{id:user,handle:'STU-real_name-abcdef',display_name:'Real Name'}]);
+      expect((await db.query('select user_id from public.profile_handle_aliases where handle=$1',[previous])).rows[0].user_id).toBe(user);
+      expect((await db.query('select count(*)::integer count from public.profile_handle_changes where user_id=$1',[user])).rows[0].count).toBe(0);
+      expect((await db.query("update public.profiles set handle='STU-stale_repair',display_name='Stale Name' where id=$1 and handle=$2 and display_name='unknown' returning id",[user,previous])).rows).toEqual([]);
+    } finally {await db.exec('reset role');}
   });
 });

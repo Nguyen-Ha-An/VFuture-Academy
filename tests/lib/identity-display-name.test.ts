@@ -17,6 +17,8 @@ describe('verified provider display names', () => {
     expect(identityDisplayName({ name: ' ', given_name: ' Đặng ', family_name: ' Thị Ánh ' })).toBe('Đặng Thị Ánh');
     expect(identityDisplayName({ given_name: ' An ' })).toBe('An');
     expect(identityDisplayName({ family_name: ' Nguyễn ' })).toBe('Nguyễn');
+    expect(identityDisplayName({ name: ' UNKNOWN ', given_name: ' Đặng ', family_name: ' Ánh ' })).toBe('Đặng Ánh');
+    expect(identityDisplayName({ name: 'unknown', email: 'person@example.test' })).toBe('');
   });
   it('bounds provider names and never falls back to an email or username', () => {
     expect(identityDisplayName({ name: 'x'.repeat(200) })).toHaveLength(160);

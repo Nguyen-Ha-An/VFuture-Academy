@@ -76,16 +76,10 @@ type FailedDatabaseRow = {
 
 const number = (value: number | string) => typeof value === 'number' ? value : Number(value);
 
-export function createSupabaseAnalyticsRepository(client: SupabaseClient): AnalyticsRepository {
+export function createSupabaseAnalyticsRepository(client: SupabaseClient, actorId: string): AnalyticsRepository {
   return {
     async daily(branchId, from, to) {
-      const { data, error } = await client
-        .from('analytics_branch_daily')
-        .select('branch_id, day, active_learners_7d, active_learners_30d, enrollments, lesson_progress_total, lesson_completions, quiz_attempts, exam_attempts')
-        .eq('branch_id', branchId)
-        .gte('day', from)
-        .lte('day', to)
-        .order('day', { ascending: true });
+      const { data, error } = await client.rpc('teaching_analytics_daily', { p_actor_id: actorId, p_branch_id: branchId, p_from: from, p_to: to });
       if (error) throw new Error('Unable to load branch analytics');
       return ((data ?? []) as DailyDatabaseRow[]).map((row) => ({
         branchId: row.branch_id,
@@ -100,13 +94,7 @@ export function createSupabaseAnalyticsRepository(client: SupabaseClient): Analy
       }));
     },
     async courses(branchId, from, to) {
-      const { data, error } = await client
-        .from('analytics_branch_course_daily')
-        .select('branch_id, course_id, day, quiz_attempts, exam_attempts, average_percent, score_sum, score_count')
-        .eq('branch_id', branchId)
-        .gte('day', from)
-        .lte('day', to)
-        .order('day', { ascending: true });
+      const { data, error } = await client.rpc('teaching_analytics_course_daily', { p_actor_id: actorId, p_branch_id: branchId, p_from: from, p_to: to });
       if (error) throw new Error('Unable to load course analytics');
       return ((data ?? []) as CourseDatabaseRow[]).map((row) => ({
         branchId: row.branch_id,
@@ -120,12 +108,13 @@ export function createSupabaseAnalyticsRepository(client: SupabaseClient): Analy
       }));
     },
     async pending(branchId) {
-      const { data, error } = await client.rpc('analytics_pending_grading', { p_branch_id: branchId });
+      const { data, error } = await client.rpc('teaching_analytics_pending', { p_actor_id: actorId, p_branch_id: branchId });
       if (error) throw new Error('Unable to load grading workload');
       return Number(data ?? 0);
     },
     async topFailed(branchId, from, to) {
-      const { data, error } = await client.rpc('top_failed_questions', {
+      const { data, error } = await client.rpc('teaching_analytics_failed', {
+        p_actor_id: actorId,
         p_branch_id: branchId,
         p_from: from,
         p_to: to,

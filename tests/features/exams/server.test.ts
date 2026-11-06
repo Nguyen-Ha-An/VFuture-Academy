@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   recompute: vi.fn(),
+  teaching: vi.fn(),
   supabaseService: vi.fn(),
   repo: {
     listStudioAttempts: vi.fn(),
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     countUnassignedStudioAttempts: vi.fn(),
   },
 }));
+vi.mock('@/features/teaching/assignments', () => ({ assertCourseTeaching: mocks.teaching }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: mocks.supabaseService }));
 vi.mock('@/features/progress/service', () => ({ recompute: mocks.recompute }));
@@ -21,6 +23,7 @@ vi.mock('@/features/exams/supabase-repo', () => ({
 }));
 
 import {
+  assertExamTeaching,
   createExamEnrollmentChecker,
   createExamProgressHook,
   listStudioExamAttempts,
@@ -93,6 +96,7 @@ describe('exam server composition', () => {
       permissions: ['submission.grade'],
       branchId: 'branch-1',
       global: true,
+      staffActor: globalAdmin,
     });
     expect(studioExamActor(scopedInstructor, 'branch-1', 'exam.release')).toEqual({
       id: 'instructor-1',
@@ -100,6 +104,7 @@ describe('exam server composition', () => {
       permissions: ['exam.release'],
       branchId: 'branch-1',
       global: false,
+      staffActor: scopedInstructor,
     });
   });
 
@@ -108,6 +113,8 @@ describe('exam server composition', () => {
       userId: 'instructor-1',
       roles: [{ role: 'instructor', branchId: 'branch-1' }],
     };
+    mocks.supabaseService.mockReturnValue({ from: () => new EnrollmentQuery({ course_id: 'course-1' }) });
+    mocks.teaching.mockResolvedValue(undefined);
     mocks.repo.listStudioAttempts.mockResolvedValue(Array.from({ length: 51 }, (_, index) => ({
       attempt: {
         id: `attempt-${index}`, userId: `learner-${index}`, courseVersionId: 'version-1', itemId: 'exam-one',
@@ -126,5 +133,37 @@ describe('exam server composition', () => {
 
     expect(result.attempts).toHaveLength(50);
     expect(mocks.repo.listAnswers).toHaveBeenCalledTimes(50);
+  });
+});
+
+
+describe('exam pinned version teaching resolution', () => {
+  it('resolves the exact historical version before asserting the historical school', async () => {
+    const actor: Actor = { userId: 'teacher', roles: [] };
+    const query = new EnrollmentQuery({ course_id: 'historical-course' });
+    mocks.teaching.mockResolvedValueOnce(undefined);
+    await assertExamTeaching({ from: vi.fn(() => query) } as never, actor, 'submission.grade', 'historical-version', 'historical-school');
+    expect(query.calls).toContainEqual(['eq', 'id', 'historical-version']);
+    expect(mocks.teaching).toHaveBeenLastCalledWith(actor, 'submission.grade', 'historical-course', 'historical-school');
+  });
+  it('passes unknown historical school as null, and fails closed on a missing course or a lookup failure', async () => {
+    const actor: Actor = { userId: 'teacher', roles: [] };
+    mocks.teaching.mockRejectedValueOnce({ status: 403 });
+    await expect(assertExamTeaching({ from: () => new EnrollmentQuery({ course_id: 'course' }) } as never,
+      actor, 'exam.release', 'version', null)).rejects.toMatchObject({ status: 403 });
+    expect(mocks.teaching).toHaveBeenLastCalledWith(actor, 'exam.release', 'course', null);
+    await expect(assertExamTeaching({ from: () => new EnrollmentQuery(null) } as never,
+      actor, 'submission.grade', 'missing-version', 'school')).rejects.toMatchObject({ status: 403 });
+    await expect(assertExamTeaching({ from: () => new EnrollmentQuery(null, new Error('offline')) } as never,
+      actor, 'submission.grade', 'version', 'school')).rejects.toMatchObject({ status: 503 });
+  });
+  it('denies an unassigned list before querying attempts, answers, or counts', async () => {
+    mocks.repo.listStudioAttempts.mockClear(); mocks.repo.listAnswers.mockClear(); mocks.repo.countUnassignedStudioAttempts.mockClear();
+    mocks.supabaseService.mockReturnValue({ from: () => new EnrollmentQuery({ course_id: 'course' }) });
+    mocks.teaching.mockRejectedValueOnce({ status: 403 });
+    await expect(listStudioExamAttempts({ userId: 'teacher', roles: [{ role: 'instructor', branchId: null }] },
+      'exam', 'school', 'version')).rejects.toMatchObject({ status: 403 });
+    expect(mocks.repo.listStudioAttempts).not.toHaveBeenCalled(); expect(mocks.repo.listAnswers).not.toHaveBeenCalled();
+    expect(mocks.repo.countUnassignedStudioAttempts).not.toHaveBeenCalled();
   });
 });

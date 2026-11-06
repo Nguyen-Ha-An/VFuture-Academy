@@ -7,11 +7,14 @@ const mocks = vi.hoisted(() => ({
   admin: vi.fn(),
   grading: vi.fn(),
   studio: vi.fn(),
+  assignedCourses: vi.fn(),
+  assertCourseTeaching: vi.fn(),
   redirect: vi.fn((path: string) => { throw new Error(`redirect:${path}`); }),
   forbidden: vi.fn(() => { throw new Error('forbidden:403'); }),
   notFound: vi.fn(() => { throw new Error('not-found:404'); }),
 }));
 
+vi.mock('@/features/teaching/assignments', () => ({ assignedCourses: mocks.assignedCourses, assertCourseTeaching: mocks.assertCourseTeaching }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/headers', () => ({ cookies: async () => ({
   get: () => mocks.cookie === undefined ? undefined : { value: mocks.cookie },
@@ -35,8 +38,8 @@ function context() {
     actor: { userId: 'operator' },
     scope: activeScope,
     options: [
-      { scope: activeScope, label: 'School A', permissions: ['admin.access', 'member.read', 'report.branch.read', 'content.read'] },
-      { scope: targetScope, label: 'School B', permissions: ['admin.access', 'member.read', 'report.branch.read', 'content.read'] },
+      { scope: activeScope, label: 'School A', permissions: ['admin.access', 'member.read', 'report.branch.read', 'content.read', 'submission.grade'] },
+      { scope: targetScope, label: 'School B', permissions: ['admin.access', 'member.read', 'report.branch.read', 'content.read', 'submission.grade'] },
     ],
   };
 }
@@ -61,6 +64,7 @@ beforeEach(() => {
   mocks.admin.mockResolvedValue(context());
   mocks.grading.mockResolvedValue(context());
   mocks.studio.mockResolvedValue(context());
+  mocks.assignedCourses.mockResolvedValue({ courses: [{ courseId: 'course-a', branchId: 'school-b' }] });
 });
 
 describe('read-only school scope entry', () => {
@@ -69,11 +73,32 @@ describe('read-only school scope entry', () => {
     [{ branchId: 'school-b', target: 'members' }, '/admin/users'],
     [{ branchId: 'school-b', target: 'overview' }, '/admin'],
     [{ branchId: 'school-b', target: 'reports' }, '/grading/reports?branchId=school-b'],
+    [{ branchId: 'school-b', target: 'teaching', courseId: 'course-a' }, '/grading/queue?courseId=course-a&branchId=school-b'],
     [{ branchId: 'school-b', target: 'library' }, '/studio/library'],
   ] as const)('redirects an already saved and authorized scope to its exact canonical target %o', async (query, destination) => {
     mocks.cookie = 'branch:school-b';
     await expect(open(query)).rejects.toThrow(`redirect:${destination}`);
     expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it('rejects teaching entries without the exact current assignment', async () => {
+    mocks.assignedCourses.mockResolvedValue({ courses: [{ courseId: 'course-a', branchId: 'school-a' }] });
+    await expect(open({ target: 'teaching', courseId: 'course-a', branchId: 'school-b' })).rejects.toThrow('forbidden:403');
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['exam.release', '/grading/assessments'],
+    ['teaching.announcement.manage', '/grading/announcements'],
+    ['teaching.schedule.manage', '/grading/schedule'],
+    ['report.branch.read', '/grading/reports'],
+    ['analytics.branch.read', '/grading/reports'],
+  ])('chooses the authorized %s destination for the assigned course', async (permission, path) => {
+    const base = context();
+    mocks.grading.mockResolvedValue({ ...base, options: [{ scope: targetScope, label: 'School B', permissions: [permission] }] });
+    mocks.cookie = 'branch:school-b';
+    await expect(open({ target: 'teaching', courseId: 'course-a', branchId: 'school-b' })).rejects.toThrow(`redirect:${path}?courseId=course-a&branchId=school-b`);
+    expect(mocks.assertCourseTeaching).toHaveBeenCalledWith(base.actor, permission, 'course-a', 'school-b');
   });
 
   it('requires explicit continuation when another school is saved, without changing it on GET', async () => {

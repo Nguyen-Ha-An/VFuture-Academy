@@ -2,19 +2,24 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { NextIntlClientProvider } from 'next-intl';
+import en from '@/messages/en.json';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getActor: vi.fn(),
+  router: { replace: vi.fn(), refresh: vi.fn() },
+  subscribe: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
   readWorkspaceTheme: vi.fn(),
   loginDestination: vi.fn(),
   learnerIdentity: vi.fn(async () => ({ name: 'Nguyễn An', initials: 'NA', handle: 'an-nguyen' })),
   redirect: vi.fn((destination: string) => { throw new Error(`redirect:${destination}`); }),
 }));
 
-vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
+vi.mock('next/navigation', () => ({ redirect: mocks.redirect, useRouter: () => mocks.router }));
+vi.mock('@/lib/supabase/client', () => ({ supabaseBrowser: () => ({ auth: { onAuthStateChange: mocks.subscribe } }) }));
 vi.mock('@/lib/permissions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/permissions')>()),
   getActor: mocks.getActor,
@@ -32,6 +37,10 @@ vi.mock('@/components/AppShell', () => ({
 
 import LearnerLayout from '@/app/app/layout';
 
+function view(layout: React.ReactNode) {
+  return render(<NextIntlClientProvider locale="en" messages={en}>{layout}</NextIntlClientProvider>);
+}
+
 function pageFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const child = join(directory, entry.name);
@@ -42,14 +51,30 @@ function pageFiles(directory: string): string[] {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe('learner application layout', () => {
+  it('guards the actual learner shell against another tab changing the server actor', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'azure');
+    mocks.getActor.mockResolvedValue({ userId: 'learner-1', roles: [] });
+    mocks.readWorkspaceTheme.mockResolvedValue('dark');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ userId: 'learner-1' })).mockResolvedValue(Response.json({ userId: 'learner-2' })));
+    const layout = await LearnerLayout({ children: <p>Original learner answers</p> });
+    await act(async () => { view(layout); });
+    expect(screen.getByText('Original learner answers')).toBeVisible();
+    await act(async () => { window.dispatchEvent(new StorageEvent('storage', { key: 'vfuture:auth:changed', newValue: 'new-login' })); });
+    expect(screen.queryByTestId('app-shell')).not.toBeInTheDocument();
+    expect(screen.queryByText('Original learner answers')).not.toBeInTheDocument();
+    expect(mocks.router.replace).toHaveBeenCalledWith('/app');
+  });
+
   it('renders the learner shell with the saved theme', async () => {
     mocks.getActor.mockResolvedValue({ userId: 'learner-1', roles: [] });
     mocks.readWorkspaceTheme.mockResolvedValue('dark');
 
-    render(await LearnerLayout({ children: <p>content</p> }));
+    view(await LearnerLayout({ children: <p>content</p> }));
 
     expect(screen.getByTestId('app-shell')).toHaveAttribute('data-theme', 'dark');
   });
@@ -58,7 +83,7 @@ describe('learner application layout', () => {
     mocks.getActor.mockResolvedValue({ userId: 'learner-1', roles: [] });
     mocks.readWorkspaceTheme.mockResolvedValue('system');
 
-    render(await LearnerLayout({ children: <p>content</p> }));
+    view(await LearnerLayout({ children: <p>content</p> }));
 
     const shell = screen.getByTestId('app-shell');
     expect(shell).toHaveAttribute('data-user-name', 'Nguyễn An');
@@ -75,7 +100,7 @@ describe('learner application layout', () => {
       },
     });
 
-    render(await LearnerLayout({ children: <p>content</p> }));
+    view(await LearnerLayout({ children: <p>content</p> }));
 
     const shell = screen.getByTestId('app-shell');
     expect(shell).toHaveAttribute('data-grading', '/grading');
@@ -92,7 +117,7 @@ describe('learner application layout', () => {
       },
     });
 
-    render(await LearnerLayout({ children: <p>content</p> }));
+    view(await LearnerLayout({ children: <p>content</p> }));
 
     expect(screen.getByTestId('app-shell')).toHaveAttribute('data-grading', '/grading');
     expect(screen.getByTestId('app-shell')).toHaveAttribute('data-admin', 'null');
@@ -118,7 +143,7 @@ describe('learner application layout', () => {
       },
     });
 
-    render(await LearnerLayout({ children: <p>learner content</p> }));
+    view(await LearnerLayout({ children: <p>learner content</p> }));
 
     expect(screen.getByTestId('app-shell')).toHaveAttribute('data-studio', '/studio');
     expect(screen.getByTestId('app-shell')).toHaveAttribute('data-grading', '/grading');

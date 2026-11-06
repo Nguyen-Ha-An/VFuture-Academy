@@ -26,6 +26,27 @@ describe('Azure server session boundary', () => {
     mocks.read.mockResolvedValue({ provider: 'external-id', user, expiresAt: Date.now() / 1000 - 1, tokenExpiresAt: Date.now() / 1000 + 900 });
     expect(await getAzureSession()).toBeNull();
   });
+  it.each([-1, 0, 1])('enforces the stored absolute thirty-day expiry at offset %s seconds', async (offset) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const login = Date.UTC(2026, 10, 6) / 1000;
+    vi.setSystemTime((login + 2592000 + offset) * 1000);
+    mocks.cookies.mockResolvedValue({ get: () => ({ value: 'a'.repeat(43) }) });
+    mocks.read.mockResolvedValue({ provider: 'external-id', user: { id: '33333333-3333-4333-8333-333333333333' }, expiresAt: login + 2592000, tokenExpiresAt: login + 2592000 + 3600 });
+    const session = await getAzureSession();
+    if (offset < 0) expect(session?.expiresAt).toBe(login + 2592000);
+    else expect(session).toBeNull();
+    expect(mocks.claim).not.toHaveBeenCalled();
+  });
+  it('keeps an existing shorter session expiry when the configured maximum increases', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const login = Date.UTC(2026, 10, 6) / 1000;
+    vi.setSystemTime((login + 86400) * 1000);
+    vi.stubEnv('ENTRA_SESSION_MAX_AGE_SECONDS', '2592000');
+    mocks.cookies.mockResolvedValue({ get: () => ({ value: 'a'.repeat(43) }) });
+    mocks.read.mockResolvedValue({ provider: 'external-id', user: { id: '33333333-3333-4333-8333-333333333333' }, expiresAt: login + 86400, tokenExpiresAt: login + 100000 });
+    expect(await getAzureSession()).toBeNull();
+    expect(mocks.claim).not.toHaveBeenCalled();
+  });
   it('does not mistake a database outage for an authenticated or signed-out session', async () => {
     mocks.cookies.mockResolvedValue({ get: () => ({ value: 'a'.repeat(43) }) });
     mocks.read.mockRejectedValue(new Error('database unavailable'));
@@ -53,6 +74,7 @@ describe('Azure refresh continuity', ()=>{
    const old = await mocks.read();
    mocks.read.mockResolvedValueOnce(old).mockResolvedValue({...old,tokenExpiresAt:Date.now()/1000+3600,version:2});
    expect((await getAzureSession())?.user.id).toBe('44444444-4444-4444-8444-444444444444');
+   expect((await getAzureSession())?.expiresAt).toBe(old.expiresAt);
    expect(mocks.refresh).toHaveBeenCalledOnce();
    expect(mocks.refresh.mock.calls[0][3]).not.toContain('rotated');
  });

@@ -21,23 +21,23 @@ const privateDir=resolve('build/azure-core/private');mkdirSync(privateDir,{recur
 const probe=process.argv.includes('--probe');
 const cutover=process.argv.includes('--cutover');
 const forward=process.argv.includes('--forward');
-const handles=process.argv.includes('--forward-54');
-const assessment=process.argv.includes('--forward-53')||handles;
-if(handles&&process.argv.includes('--forward-53'))throw new Error('Choose one fixed forward package');
-const lane=handles?'54':'53';
-const bounded=handles?await import('../../../scripts/azure-core/forward-54-artifact.mjs'):null;
-const boundedFiles=handles?bounded.forward54SourceFiles:forward53SourceFiles;
-const boundedEvidence=handles?bounded.forward54Evidence:forward53Evidence;
-const boundedManifest=handles?bounded.createForward54ArtifactManifest:createForward53ArtifactManifest;
-const boundedReview=handles?(await import('../../../scripts/azure-core/forward-54-package.mjs')).createForward54PackageManifest:createForward53PackageManifest;
-const manifestPath=handles?bounded.FORWARD54_MANIFEST:FORWARD53_MANIFEST;
-const evidencePath=handles?bounded.FORWARD54_EVIDENCE:FORWARD53_EVIDENCE;
-const planPath=handles?bounded.FORWARD54_PLAN:FORWARD53_PLAN;
+const selectedLanes=['53','54','55'].filter(value=>process.argv.includes(`--forward-${value}`));
+if(selectedLanes.length>1)throw new Error('Choose one fixed forward package');
+const assessment=selectedLanes.length===1;
+const lane=selectedLanes[0]??'53';
+const bounded=lane!=='53'?await import(`../../../scripts/azure-core/forward-${lane}-artifact.mjs`):null;
+const boundedFiles=bounded?.[`forward${lane}SourceFiles`]??forward53SourceFiles;
+const boundedEvidence=bounded?.[`forward${lane}Evidence`]??forward53Evidence;
+const boundedManifest=bounded?.[`createForward${lane}ArtifactManifest`]??createForward53ArtifactManifest;
+const boundedReview=bounded?(await import(`../../../scripts/azure-core/forward-${lane}-package.mjs`))[`createForward${lane}PackageManifest`]:createForward53PackageManifest;
+const manifestPath=bounded?.[`FORWARD${lane}_MANIFEST`]??FORWARD53_MANIFEST;
+const evidencePath=bounded?.[`FORWARD${lane}_EVIDENCE`]??FORWARD53_EVIDENCE;
+const planPath=bounded?.[`FORWARD${lane}_PLAN`]??FORWARD53_PLAN;
 if([probe,cutover,forward,assessment].filter(Boolean).length>1)throw new Error('Choose one package action');
 const snapshot=probe||forward||assessment?null:JSON.parse(readFileSync(join(privateDir,'source-snapshot.json'),'utf8'));
 // The released V1 forward job is fixed at52. New migrations use their separately
 // reviewed executor/package, never an implicit expansion of this archive.
-const currentSchema=probe?null:buildAzureSchema(forward?{through:'20261105020000_teaching_permissions_activation.sql'}:assessment?{through:handles?'20261106000000_managed_profile_handles.sql':'20261105030000_exam_attachment_bindings.sql'}:{});
+const currentSchema=probe?null:buildAzureSchema(forward?{through:'20261105020000_teaching_permissions_activation.sql'}:assessment?{through:lane==='55'?'20261106040000_management_teaching_scope.sql':lane==='54'?'20261106000000_managed_profile_handles.sql':'20261105030000_exam_attachment_bindings.sql'}:{});
 if(forward&&currentSchema.receipt.migrations.length!==52)throw new Error('Forward package requires the fixed reviewed 52 migrations');
 if(snapshot&&snapshot.schemaSha256!==currentSchema.receipt.schemaSha256)throw new Error('Snapshot schema digest differs from current reviewed code; rebuild/rehearse before upload.');
 const originalProvenance=forward||assessment?sourceProvenance():null;

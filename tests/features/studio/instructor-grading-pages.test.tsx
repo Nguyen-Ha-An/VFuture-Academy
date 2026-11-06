@@ -97,6 +97,7 @@ function createDatabase() {
   }
 
   const database = {
+    rpc: vi.fn(async () => ({ data: { all: false, branchIds: [], assignments: [{ courseId: 'course-a', branchId: 'branch-a' }] }, error: null })),
     from: vi.fn((table: string) => {
       const call: QueryCall = { table, filters: [], orders: [], ranges: [] };
       calls.push(call);
@@ -173,9 +174,9 @@ describe('instructor grading page authorization', () => {
       method: 'eq', column: 'branch_scope_known', value: true,
     });
     expect(fixture.calls.find(({ table }) => table === 'enrollments')?.filters).toContainEqual({
-      method: 'in', column: 'branch_id', value: ['branch-a'],
+      method: 'eq', column: 'branch_id', value: 'branch-a',
     });
-    expect(fixture.calls.find(({ table }) => table === 'course_versions')?.filters).toContainEqual({
+    expect(fixture.calls.find(({ table, filters }) => table === 'course_versions' && filters.some((f) => f.column === 'id'))?.filters).toContainEqual({
       method: 'in', column: 'id', value: ['version-a'],
     });
     expect(fixture.calls.every(({ ranges }) => ranges.some(([from, to]) => from === 0 && to === 49))).toBe(true);

@@ -71,7 +71,8 @@ export function buildAzureSchema(options = {}) {
   for(const [id,path] of suffixSteps){
     // Released explicit boundaries retain the identity SQL reviewed at that time.
     const historical=options.through!==undefined&&options.through<='20261105030000_exam_attachment_bindings.sql'&&id==='src/lib/identity/schema.sql';
-    steps.push({id,sql:readFileSync(historical?new URL('baselines/identity-pre-handles.sql',import.meta.url):path,'utf8')});
+    const handles=options.through==='20261106000000_managed_profile_handles.sql'&&id==='src/lib/identity/schema.sql';
+    steps.push({id,sql:readFileSync(historical?new URL('baselines/identity-pre-handles.sql',import.meta.url):handles?new URL('baselines/identity-post-handles.sql',import.meta.url):path,'utf8')});
   }
   const sql = steps.map(step=>step.sql).join('\n\n');
   return { sql, steps, receipt: { ...receipt, schemaSha256: hash(sql) } };

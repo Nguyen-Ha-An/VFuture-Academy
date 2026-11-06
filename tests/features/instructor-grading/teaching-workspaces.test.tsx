@@ -15,9 +15,73 @@ const branches = [{ id: 'school-1', name: 'School One' }];
 const options = { courses: [{ id: 'course-1', title: 'Physics' }], versions: [{ courseId: 'course-1', courseTitle: 'Physics', courseVersionId: 'version-1', version: 2 }] };
 const response = (data: unknown) => Promise.resolve({ ok: true, json: async () => ({ data }) } as Response);
 beforeEach(() => { vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState({}, '', '/'); });
 
 describe('teaching workspaces', () => {
+  it.each([
+    ['announcements', AnnouncementsWorkspace],
+    ['schedules', ScheduleWorkspace],
+  ] as const)('opens the linked authorized course in %s for the active school', async (kind, Component) => {
+    window.history.replaceState({}, '', '/?branchId=school-1&courseId=course-2');
+    const scopedOptions = {
+      courses: [...options.courses, { id: 'course-2', title: 'Chemistry' }],
+      versions: [...options.versions, {courseId:'course-2', courseTitle:'Chemistry', courseVersionId:'version-2', version:1}],
+    };
+    const fetchMock = vi.fn((url: string) => url.startsWith('/api/v1/teaching/options') ? response(scopedOptions)
+      : kind === 'announcements' ? response({announcements:[]}) : response({assignments:[],schedules:[]}));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<NextIntlClientProvider locale="en" messages={staffUiTestMessages(messages, 'en')}><CanvasProvider><Component branches={branches} locale="en" /></CanvasProvider></NextIntlClientProvider>);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => kind === 'announcements'
+      ? url.includes('announcements?branchId=school-1&courseId=course-2')
+      : url.includes('schedules?branchId=school-1&courseVersionId=version-2'))).toBe(true));
+  });
+
+  it.each([
+    ['announcements', AnnouncementsWorkspace],
+    ['schedules', ScheduleWorkspace],
+  ] as const)('falls back to an accessible option for an unknown course in %s', async (kind, Component) => {
+    window.history.replaceState({}, '', '/?branchId=school-1&courseId=not-assigned');
+    const fetchMock = vi.fn((url: string) => url.startsWith('/api/v1/teaching/options') ? response(options)
+      : kind === 'announcements' ? response({announcements:[]}) : response({assignments:[],schedules:[]}));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<NextIntlClientProvider locale="en" messages={staffUiTestMessages(messages, 'en')}><CanvasProvider><Component branches={branches} locale="en" /></CanvasProvider></NextIntlClientProvider>);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => kind === 'announcements'
+      ? url.includes('announcements?branchId=school-1&courseId=course-1')
+      : url.includes('schedules?branchId=school-1&courseVersionId=version-1'))).toBe(true));
+    expect(fetchMock.mock.calls.some(([url]) => url.includes('not-assigned'))).toBe(false);
+  });
+
+  it.each([
+    ['announcements', AnnouncementsWorkspace],
+    ['schedules', ScheduleWorkspace],
+  ] as const)('keeps a user selection when %s options are refetched', async (kind, Component) => {
+    window.history.replaceState({}, '', '/?branchId=school-1&courseId=course-1');
+    const scopedOptions = { courses: [...options.courses, {id:'course-2',title:'Chemistry'}], versions: [...options.versions, {courseId:'course-2',courseTitle:'Chemistry',courseVersionId:'version-2',version:1}] };
+    const fetchMock = vi.fn((url: string) => url.startsWith('/api/v1/teaching/options') ? response(scopedOptions)
+      : kind === 'announcements' ? response({announcements:[]}) : response({assignments:[],schedules:[]}));
+    vi.stubGlobal('fetch', fetchMock);
+    const view = (locale: 'en' | 'vi') => <NextIntlClientProvider locale="en" messages={staffUiTestMessages(messages, 'en')}><CanvasProvider><Component branches={branches} locale={locale} /></CanvasProvider></NextIntlClientProvider>;
+    const user = userEvent.setup();
+    const {rerender} = render(view('en'));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url.includes(kind === 'announcements' ? 'courseId=course-1' : 'courseVersionId=version-1'))).toBe(true));
+    await user.click(screen.getByLabelText(kind === 'announcements' ? 'Course' : 'Course version'));
+    await user.click(await screen.findByRole('option', {name: kind === 'announcements' ? 'Chemistry' : 'Chemistry · Version 1'}));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url.includes(kind === 'announcements' ? 'courseId=course-2' : 'courseVersionId=version-2'))).toBe(true));
+    rerender(view('vi'));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url.startsWith('/api/v1/teaching/options')).length).toBeGreaterThan(1));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url.includes(kind === 'announcements' ? 'courseId=course-2' : 'courseVersionId=version-2')).length).toBeGreaterThan(1));
+  });
+
+  it.each([AnnouncementsWorkspace, ScheduleWorkspace])('ignores a link for a different school', async Component => {
+    window.history.replaceState({}, '', '/?branchId=other-school&courseId=course-1');
+    const fetchMock = vi.fn((url: string) => url.startsWith('/api/v1/teaching/options') ? response(options)
+      : response({announcements:[],assignments:[],schedules:[]}));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<NextIntlClientProvider locale="en" messages={staffUiTestMessages(messages, 'en')}><CanvasProvider><Component branches={branches} locale="en" /></CanvasProvider></NextIntlClientProvider>);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.some(([url]) => url.includes('other-school') || url.includes('/announcements?') || url.includes('/schedules?'))).toBe(false);
+  });
+
   it('saves a private draft then publishes it only on the explicit action', async () => {
     let published = false;
     let saved = false;

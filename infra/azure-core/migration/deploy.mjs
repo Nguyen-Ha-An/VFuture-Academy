@@ -12,7 +12,7 @@ const probe=process.argv.includes('--probe');
 const cutover=process.argv.includes('--map-identities')?'map-identities':process.argv.includes('--final-sync')?'final-sync':null;
 const forward=Object.keys(FORWARD_ACTIONS).find(name=>process.argv.includes(`--${name}`));
 const assessment=Object.keys(ASSESSMENT_ACTIONS).find(name=>process.argv.includes(`--${name}`));
-const lane=assessment?.startsWith('forward-54-')?'54':'53';
+const lane=assessment?.startsWith('forward-55-')?'55':assessment?.startsWith('forward-54-')?'54':'53';
 if([probe,configureAuthenticator,process.argv.includes('--map-identities'),process.argv.includes('--final-sync'),...[...Object.keys(FORWARD_ACTIONS),...Object.keys(ASSESSMENT_ACTIONS)].map(name=>process.argv.includes(`--${name}`))].filter(Boolean).length>1)throw new Error('Choose only one job action');
 const requestedAction=assessment??forward??cutover??(probe?'probe':configureAuthenticator?'configure-authenticator':'schema-import');
 if(!['--prepare','--start','--receipt'].includes(action))throw new Error('Usage: node infra/azure-core/migration/deploy.mjs --prepare|--start|--receipt');
@@ -101,7 +101,7 @@ if(action==='--prepare') {
     if(failure.status!=='failed'||!stages.includes(failure.stage)||failure.errorCode!=='MIGRATION_STAGE_FAILED')throw new Error('Invalid diagnostic failure receipt');
     const safe={status:'failed',stage:failure.stage,errorCode:failure.errorCode};
     if(failure.stage==='forward_action'&&failure.childErrorCode==='FORWARD_FAILED')safe.childErrorCode='FORWARD_FAILED';
-    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
+    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED','FORWARD_55_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
     if(/^[0-9A-Z]{5}$/.test(failure.sqlState??''))safe.sqlState=failure.sqlState;
     if(Number.isInteger(failure.childExitCode))safe.childExitCode=failure.childExitCode;
     if(Number.isInteger(failure.httpStatus))safe.httpStatus=failure.httpStatus;

@@ -13,6 +13,7 @@ import { SupabaseBankSource, type BankDatabase } from './bank-source';
 import { createExamService } from './service';
 import { SupabaseExamRepo, type ExamDatabase } from './supabase-repo';
 import { pendingManualQuestionsForAttempt } from './studio';
+import { assertCourseTeaching } from '@/features/teaching/assignments';
 import { validateExamAnswerAttachments } from './attachments';
 import { createHistoricalExamReviewAuthorizer, type HistoricalReviewDatabase } from './historical-access';
 import type {
@@ -150,14 +151,42 @@ export function studioExamActor(
     locale: 'vi',
     permissions: [permission],
     branchId,
-    global: hasGlobalPermission(actor, permission),
+    global: hasGlobalPermission(actor, 'teaching.scope.all'),
+    staffActor: actor,
   };
+}
+
+export async function assertExamTeaching(
+  database: Pick<ServiceClient, 'from'>,
+  actor: Actor,
+  permission: ExamPermission,
+  courseVersionId: string,
+  branchId: string | null,
+) {
+  const result = await database.from('course_versions').select('course_id').eq('id', courseVersionId).maybeSingle();
+  if (result.error) throw new ApiError(503, 'EXAM_SCOPE_UNAVAILABLE', 'Exam course could not be verified');
+  const courseId = record(result.data)?.course_id;
+  if (typeof courseId !== 'string') throw new ApiError(403, 'FORBIDDEN', 'Exam course is unavailable');
+  await assertCourseTeaching(actor, permission, courseId, branchId);
 }
 
 export function createServerExamService() {
   const database = supabaseService();
+  const repo = new SupabaseExamRepo(database as unknown as ExamDatabase);
   return createExamService({
-    repo: new SupabaseExamRepo(database as unknown as ExamDatabase),
+    repo,
+    listStaffReleaseAttempts: async (actor, target) => {
+      if (!actor.staffActor || !actor.branchId) throw new ApiError(403, 'FORBIDDEN', 'Teaching scope is required');
+      await assertExamTeaching(database, actor.staffActor, 'exam.release', target.courseVersionId, actor.branchId);
+      const includeUnknown = hasGlobalPermission(actor.staffActor, 'teaching.scope.all')
+        && hasGlobalPermission(actor.staffActor, 'exam.release');
+      return (await repo.listStudioAttempts(target.itemId, target.courseVersionId, actor.branchId, includeUnknown))
+        .map(row => row.attempt);
+    },
+    authorizeStaffAttempt: async (actor, permission, attempt) => {
+      if (!actor.staffActor) throw new ApiError(403, 'FORBIDDEN', 'Teaching identity is required');
+      await assertExamTeaching(database, actor.staffActor, permission, attempt.courseVersionId, attempt.branchId);
+    },
     bank: new SupabaseBankSource(database as unknown as BankDatabase),
     clock: { now: () => new Date() },
     loadItem: examItemLoader(database),
@@ -242,24 +271,22 @@ export function examAttemptDto(attempt: ExamAttemptRecord): ExamAttemptDto {
  * Completes grading for one attempt, resolving the branch from the attempt itself so
  * the client does not nominate its own scope. The permission check is the same one
  * that guards reading the attempt in `@/features/grading/detail`: `submission.grade`
- * on the attempt's branch, with a global holder additionally covering an attempt
- * whose branch is unknown. The service re-checks the same branch, so a scope that
- * changes between these two reads cannot widen access.
+ * plus its assigned course and immutable school. Unknown historical school needs
+ * explicit global teaching scope as well as the base grading operation. The
+ * mutation RPC checks the live assignment again under the attempt-row lock.
  */
 export async function completeExamGrading(actor: Actor, attemptId: string) {
   const attempt = await new SupabaseExamRepo().getAttempt(attemptId);
   if (!attempt) throw new ApiError(404, 'EXAM_ATTEMPT_NOT_FOUND', 'Exam attempt not found');
-  const permitted = attempt.branchId === null
-    ? hasGlobalPermission(actor, 'submission.grade')
-    : can(actor, 'submission.grade', { kind: 'branch', branchId: attempt.branchId });
-  if (!permitted) throw new ApiError(403, 'FORBIDDEN', 'Permission denied');
+  await assertExamTeaching(supabaseService(), actor, 'submission.grade', attempt.courseVersionId, attempt.branchId);
   const { attempt: completed, transitioned } = await createServerExamService().completeGrading(
     {
       id: actor.userId,
       locale: 'vi',
       permissions: ['submission.grade'],
       branchId: attempt.branchId,
-      global: hasGlobalPermission(actor, 'submission.grade'),
+      global: hasGlobalPermission(actor, 'teaching.scope.all'),
+      staffActor: actor,
     },
     attemptId,
   );
@@ -273,8 +300,11 @@ export async function listStudioExamAttempts(
   courseVersionId: string,
 ) {
   const repo = new SupabaseExamRepo();
-  const includeUnassigned = hasGlobalPermission(actor, 'submission.grade')
-    || hasGlobalPermission(actor, 'exam.release');
+  // Resolve the pinned version before fetching or paginating any learner records.
+  const permission = can(actor, 'submission.grade', { kind: 'branch', branchId }) ? 'submission.grade' : 'exam.release';
+  await assertExamTeaching(supabaseService(), actor, permission, courseVersionId, branchId);
+  const includeUnassigned = hasGlobalPermission(actor, 'teaching.scope.all')
+    && hasGlobalPermission(actor, permission);
   const attempts = (await repo.listStudioAttempts(itemId, courseVersionId, branchId, includeUnassigned)).slice(0, 50);
   const summaries = await Promise.all(attempts.map(async ({ attempt, eventCount, learnerName }) => ({
     ...attemptSummary(attempt, eventCount),
@@ -286,9 +316,8 @@ export async function listStudioExamAttempts(
   return {
     attempts: summaries,
     skipped: {
-      unassigned: includeUnassigned
-        ? 0
-        : await repo.countUnassignedStudioAttempts(itemId, courseVersionId),
+      // Unknown-school counts are outside an ordinary teacher's assigned scope.
+      unassigned: 0,
     },
   };
 }

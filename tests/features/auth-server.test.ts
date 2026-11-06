@@ -70,6 +70,7 @@ describe('server authentication routing', () => {
     expect(profileState({ data: null, error: null })).toBe('unavailable');
     expect(profileState({ data: { handle: null, display_name: 'Known Name' }, error: null })).toBe('unavailable');
     expect(profileState({ data: { handle: 'STU-learner', display_name: '   ' }, error: null })).toBe('incomplete');
+    expect(profileState({ data: { handle: 'STU-unknown', display_name: ' UNKNOWN ' }, error: null })).toBe('incomplete');
   });
 
   it('returns an existing profile to the exact validated public action page', async () => {

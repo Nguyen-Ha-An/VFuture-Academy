@@ -7,6 +7,7 @@ import { AppShell } from '@/components/AppShell';
 import { ShellBreadcrumbs } from '@/components/ShellPrimitives';
 import en from '@/messages/en.json';
 import { withBenchMessages } from '@/messages/bench';
+import { registerNavigationGuard } from '@/lib/navigation-guard';
 import { RECOVERY_SIGNED_OUT_KEY } from '@/features/studio/recovery/tab';
 
 const location = vi.hoisted(() => ({ pathname: '/app', push: vi.fn() }));
@@ -17,6 +18,37 @@ afterEach(() => { cleanup(); location.pathname = '/app'; location.push.mockReset
   localStorage.removeItem(RECOVERY_SIGNED_OUT_KEY); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('student navigation regressions', () => {
+  it('opens Courses as a native tray, loads enrollments lazily, and respects navigation cancellation', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify({ data: String(input).includes('/learning/courses') ? { courses: [{ id: 'one', title: 'First course' }] } : { courses: [] } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(wrap(<AppShell><h1 tabIndex={-1}>Learning</h1></AppShell>));
+    expect(fetchMock).not.toHaveBeenCalled();
+    const trigger = screen.getByRole('button', { name: 'Courses' });
+    vi.spyOn(trigger, 'getClientRects').mockReturnValue([new DOMRect(0, 0, 44, 44)] as unknown as DOMRectList);
+    fireEvent.click(trigger);
+    const tray = await screen.findByRole('dialog', { name: 'Courses' });
+    expect(await within(tray).findByRole('link', { name: 'First course' })).toHaveAttribute('href', '/app/courses/one');
+    expect(within(tray).queryByText('Other course')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Learning', hidden: true })).toBeInTheDocument();
+    const unregister = registerNavigationGuard(async () => false);
+    fireEvent.click(within(tray).getByRole('link', { name: 'First course' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Courses' })).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(location.push).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  it('navigates All courses when it clears existing course filters', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: { courses: [] } }), { status: 200 })));
+    location.pathname = '/app/courses';
+    window.history.replaceState(null, '', '/app/courses?tab=discover&q=ai');
+    render(wrap(<AppShell><h1 tabIndex={-1}>Courses</h1></AppShell>));
+    fireEvent.click(screen.getByRole('button', { name: 'Courses' }));
+    const tray = await screen.findByRole('dialog', { name: 'Courses' });
+    fireEvent.click(within(tray).getByRole('link', { name: 'All courses' }));
+    await waitFor(() => expect(location.push).toHaveBeenCalledWith('/app/courses'));
+  });
+
   it('keeps the native sign-out form on cancel and submits it after the Account tray exits with the recovery signal', async () => {
     render(wrap(<AppShell><h1>Learning</h1></AppShell>));
     localStorage.removeItem(RECOVERY_SIGNED_OUT_KEY);

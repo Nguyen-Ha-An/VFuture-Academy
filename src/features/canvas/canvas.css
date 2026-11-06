@@ -62,7 +62,7 @@
 .vf-canvas.vf-staff [data-slot='sidebar-menu-button'] { min-height: 38px; }
 .vf-canvas.vf-staff [data-slot='sidebar-menu-button'][data-active='true'] { border-left: 3px solid var(--vf-signal); border-radius: 0; font-weight: 650; }
 .vf-canvas.vf-staff [data-slot='sidebar-group-label'] { color: var(--vf-muted); }
-.vf-canvas.vf-staff main { max-width: 100rem; }
+.vf-canvas.vf-staff main { max-width: none; }
 .vf-canvas .vf-l-main { max-width: 100rem; }
 @media (max-width: 767px) {
   .canvas-global-nav:not(.canvas-global-nav-mobile) { display: none; }
@@ -140,3 +140,27 @@
 .canvas-staff-overlay-mount[data-open] { pointer-events: auto; }
 .canvas-staff-overlay-mount .canvas-context-navigation { height: 100dvh; min-height: 0; max-height: 100dvh; }
 @media (max-width: 767px) { .canvas-staff-overlay-mount { inset-inline-start: 0; } }
+
+/* Staff data and authoring surfaces use the width left by their navigation. */
+.vf-canvas.vf-staff .vf-staff-course-editor { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
+.vf-canvas.vf-staff .vf-staff-course-editor > main { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+.vf-canvas.vf-staff .vf-staff-course-editor > main > .canvas-editor-workspace { flex: 1; min-height: 0; height: auto; }
+.canvas-editor-workspace { height: calc(100dvh - 6rem); }
+.canvas-editor-panes > #studio-editor, .canvas-editor-panes > #studio-preview { height: 100%; }
+.canvas-editor-workspace > :not(.canvas-editor-panes) { flex-shrink: 0; }
+.vf-staff .canvas-preview-expanded { position: fixed; inset: 0; z-index: 100; display: block !important; height: 100dvh !important; width: 100%; background: var(--background); }
+.vf-staff .canvas-preview-expanded > section > header { flex-shrink: 0; flex-wrap: wrap; padding-block: 8px; }
+.vf-staff .canvas-preview-expanded .vf-staff-preview-island { padding: 32px; }
+.vf-staff .canvas-preview-expanded :is(.canvas-preview-course, .canvas-preview-document) { width: 100%; max-width: none; }
+.vf-staff .canvas-preview-expanded .canvas-preview-course > div > p { max-width: 78ch; }
+.vf-canvas.vf-staff.canvas-review-shell { display: block; min-height: 100dvh; padding-left: 0; }
+.canvas-review-back { position: sticky; top: 0; z-index: 20; padding: 12px 16px; border-bottom: 1px solid var(--vf-line); background: var(--vf-bg); }
+.canvas-review-header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; }
+.canvas-review-heading { display: flex; min-width: 0; flex: 1; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.canvas-review-metadata { position: relative; }
+.canvas-review-metadata[open] > dl { position: absolute; right: 0; top: 100%; z-index: 15; width: min(38rem, calc(100vw - 48px)); margin-top: 8px; background: var(--vf-bg); box-shadow: 0 4px 12px rgb(0 0 0 / 12%); }
+.canvas-review-workbench { padding-bottom: 24px; }
+.canvas-review-workbench .canvas-review-outline { position: sticky; top: 80px; max-height: calc(100dvh - 96px); overflow: auto; }
+@media (max-width: 767px) {
+  .canvas-review-workbench .canvas-review-outline { position: static; max-height: 16rem; }
+}

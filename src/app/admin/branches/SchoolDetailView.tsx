@@ -1,5 +1,6 @@
 import "@/features/admin/ui/admin.css";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ArrowUpRightIcon, LogInIcon } from "lucide-react";
 
 import { CanvasButton as Button } from "@/features/canvas/ui";
@@ -75,6 +76,7 @@ export type SchoolDetailViewProps = {
   };
   /** Overview insight: the school's recent activity (hidden without audit access). */
   activity?: { title: string; emptyLabel: string; items: ActivityItem[] };
+  content?: ReactNode;
   note?: string;
 };
 
@@ -82,7 +84,7 @@ export type SchoolDetailViewProps = {
  * /admin/branches/[branchId]: header with "Enter school", tab links, the school's KPI row and a
  * paged member table. Presentational: every string and href arrives as a prop.
  */
-export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavailableLabel, members, activity, note }: SchoolDetailViewProps) {
+export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavailableLabel, members, activity, content, note }: SchoolDetailViewProps) {
   return (
     <section className="canvas-page canvas-admin space-y-6">
       <StaffPageHeader
@@ -155,6 +157,7 @@ export function SchoolDetailView({ school, tabs, tabsLabel, enter, stats, unavai
       {activity ? (
         <ActivityFeed title={activity.title} items={activity.items} emptyLabel={activity.emptyLabel} />
       ) : null}
+      {content}
       {note ? <p className="text-sm leading-normal text-muted-foreground">{note}</p> : null}
     </section>
   );

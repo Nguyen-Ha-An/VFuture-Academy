@@ -2204,6 +2204,8 @@
     "scope": "Management scope",
     "central": "Central · All schools",
     "scopeError": "Your access changed or the scope could not be selected. Please try again.",
+    "sessionChecking": "Checking your sign-in…",
+    "sessionUnavailable": "Your session could not be checked. Your workspace is hidden until you try again.",
     "switchingScope": "Loading your authorized workspace…",
     "overview": "Overview",
     "overviewDescription": "People, learning and content across your management scope.",

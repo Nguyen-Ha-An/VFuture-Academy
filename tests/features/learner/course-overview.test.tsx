@@ -6,7 +6,7 @@ import type { ReactElement } from 'react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getCourse: vi.fn(), requireUser: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getCourse: vi.fn(), getCourseTeachers: vi.fn(async () => ({ courseId: "course-1", branchId: "historical", branchScopeKnown: true, revision: 1, teachers: [{ displayName: "Teacher Lan", role: "primary" }] })), requireUser: vi.fn() }));
 vi.mock('next/navigation', () => ({ notFound: vi.fn(() => { throw new Error('not found'); }) }));
 vi.mock('next/link', () => ({ default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => <a href={href} {...props}>{children}</a> }));
 vi.mock('next-intl/server', () => ({
@@ -24,6 +24,7 @@ vi.mock('next-intl/server', () => ({
     return messages[`${namespace}.${key}`] ?? key;
   }),
 }));
+vi.mock('@/features/teaching/assignments', () => ({ getCourseTeachers: mocks.getCourseTeachers }));
 vi.mock('@/lib/auth', () => ({ requireUser: mocks.requireUser }));
 vi.mock('@/features/coursework/service', () => ({ listCourseTasks: vi.fn(async () => []), listCourseResults: vi.fn(async () => []), listLearningAnnouncements: vi.fn(async () => []), listLearningCalendar: vi.fn(async () => ({ events: [] })) }));
 vi.mock('@/features/catalog/service', () => ({ getCourse: mocks.getCourse }));
@@ -61,6 +62,8 @@ describe('learner course overview', () => {
     expect(within(disclosure).getAllByRole('link')).toHaveLength(2);
     cleanup();
     render(await LearnerCoursePage({ params: Promise.resolve({ courseId: 'course-1' }) }));
+    expect(mocks.getCourseTeachers).toHaveBeenCalledWith({ userId: 'learner-1', roles: [] }, 'course-1');
+    expect(screen.getByText('Teacher Lan')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Course information' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Continue learning' })).toHaveAttribute('href', '/app/courses/course-1/items/next');
   });

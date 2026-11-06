@@ -9,5 +9,6 @@ export type ProfileLookup = {
  */
 export function profileState(result: ProfileLookup): 'complete' | 'incomplete' | 'unavailable' {
   if (result.error || !result.data || !result.data.handle || typeof result.data.display_name !== 'string') return 'unavailable';
-  return result.data.display_name.trim() ? 'complete' : 'incomplete';
+  return isMissingProfileName(result.data.display_name) ? 'incomplete' : 'complete';
 }
+import { isMissingProfileName } from '@/lib/identity/display-name';

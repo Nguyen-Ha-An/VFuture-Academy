@@ -19,6 +19,7 @@ for (const name of (await fs.readdir('supabase/migrations')).filter((entry) => e
 }
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const assignedActorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab';
 const learnerId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const reviewerId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const publisherId = '77777777-7777-4777-8777-777777777777';
@@ -57,22 +58,26 @@ const grading = JSON.stringify({
 
 await db.exec(`
   insert into auth.users(id,email) values
-    ('${actorId}','actor@example.test'),('${learnerId}','learner@example.test'),
+    ('${actorId}','actor@example.test'),('${assignedActorId}','assigned-actor@example.test'),('${learnerId}','learner@example.test'),
     ('${reviewerId}','reviewer@example.test'),('${publisherId}','publisher@example.test');
   update public.profiles set branch_id='vinsmc' where id='${learnerId}';
   insert into public.role_definitions(id,name,scope_kind,permissions)
     values
-      ('analytics_compat','Analytics compatibility','central',array['analytics.global.read']),
+      ('analytics_compat','Analytics compatibility with global scope','central',array['analytics.global.read','teaching.scope.all']),
+      ('analytics_assigned','Assigned analytics','central',array['analytics.global.read','analytics.branch.read']),
       ('review_only','Review only','central',array['content.review']),
       ('publish_only','Publish only','central',array['content.publish']);
   insert into public.role_assignments(user_id,role_definition_id,branch_id)
-    values ('${actorId}','analytics_compat',null),('${reviewerId}','review_only',null),
+    values ('${actorId}','analytics_compat',null),('${assignedActorId}','analytics_assigned',null),('${reviewerId}','review_only',null),
       ('${publisherId}','publish_only',null);
   insert into public.courses(id,slug,owner_id,status) values ('course-a','course-a','${actorId}','published');
   insert into public.course_versions(id,course_id,version,manifest,checksum,summary,published_by,published_at) values
     ('${versionV1}','course-a',1,'{}','checksum-v1','{"meta":{"title":{"vi":"Khoá học A"}}}','${actorId}','2026-08-01T00:00:00Z'),
     ('${versionV2}','course-a',2,'{}','checksum-v2','{"meta":{"title":{"vi":"Khoá học A"}}}','${actorId}','2026-08-20T00:00:00Z');
   update public.courses set current_version_id='${versionV2}' where id='course-a';
+  insert into public.branch_memberships(user_id,branch_id) values ('${assignedActorId}','vinsmc');
+  insert into public.course_teaching_groups(course_id,branch_id,revision) values ('course-a','vinsmc',1);
+  insert into public.course_teaching_assignments(course_id,branch_id,user_id,role) values ('course-a','vinsmc','${assignedActorId}','primary');
   insert into public.course_version_items(version_id,item_id,kind,source,grading,checksum) values
     ('${versionV1}','exam-one','exam','{}','${grading.replaceAll("'", "''")}','exam-v1'),
     ('${versionV2}','exam-one','exam','{}','${grading.replaceAll("'", "''")}','exam-v2'),
@@ -124,6 +129,19 @@ const branchReleased = await db.query(`select public.studio_learning_report(
   '${actorId}'::uuid,'vinsmc',null,'2026-08-09'::date,'2026-09-07'::date,'released',false
 ) as report`);
 assert.equal(branchReleased.rows[0].report.overview.attempts.quiz, 0);
+
+// Ordinary global analytics capability still needs the exact course/school assignment.
+// It can never include the unknown-branch V1 quiz, even when the RPC flag is set.
+const assignedReport = () => db.query(`select public.studio_learning_report(
+  '${assignedActorId}'::uuid,null,'course-a','2026-08-09'::date,'2026-09-07'::date,'all',true
+) as report`).then(result => result.rows[0].report);
+const assigned = await assignedReport();
+assert.equal(assigned.overview.attempts.quiz, 0);
+assert.equal(assigned.overview.attempts.exam, 3);
+await db.exec(`delete from public.course_teaching_assignments where user_id='${assignedActorId}'`);
+const revoked = await assignedReport();
+assert.equal(revoked.overview.attempts.exam, 0);
+assert.equal(revoked.overview.attempts.quiz, 0);
 
 const reviewRows = await db.query(`select public.cms_list_reviews(
   '${reviewerId}'::uuid,'central',null
@@ -195,6 +213,8 @@ await historyDb.exec(`
 for (const name of migrationNames.filter((entry) => entry >= '20260907091000')) {
   await historyDb.exec(await fs.readFile(`supabase/migrations/${name}`, 'utf8'));
 }
+// This actor must explicitly hold global scope-all to read unknown historical branches.
+await historyDb.exec("update public.role_definitions set permissions=array['analytics.global.read','teaching.scope.all'] where id='analytics_history'");
 const historicalRow = await historyDb.query(`select user_id,branch_id,branch_scope_known,branch_scope_source from public.quiz_attempts order by user_id`);
 const movedAttempt = historicalRow.rows.find((row) => row.user_id === learnerId);
 const exactAttempt = historicalRow.rows.find((row) => row.user_id === exactHistoryLearnerId);

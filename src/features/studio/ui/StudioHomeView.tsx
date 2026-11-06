@@ -11,7 +11,7 @@ export type StudioHomeViewProps = { data: StudioHomeData };
 
 /**
  * Studio dashboard: H1 + one primary action, KPI row, lifecycle strip, content-by-type chart with the
- * recent activity feed, then the anchor list and the shortcuts. Presentational: every value comes from
+ * recent activity feed, then the anchor list. Presentational: every value comes from
  * studioHomeData(), so a harness can render it with fixtures. Stage counts are snapshots (no deltas).
  */
 export function StudioHomeView({ data }: StudioHomeViewProps) {
@@ -69,7 +69,7 @@ export function StudioHomeView({ data }: StudioHomeViewProps) {
       : [];
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6">
+    <section className="canvas-studio-home w-full space-y-6">
       <StaffPageHeader
         eyebrow={t('eyebrow')}
         title={t('title')}
@@ -106,7 +106,7 @@ export function StudioHomeView({ data }: StudioHomeViewProps) {
       ) : null}
 
       {content.state !== 'hidden' || activity.state !== 'hidden' ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           {content.state !== 'hidden' ? (
             <ChartCard
               title={t('chart.title')}
@@ -119,7 +119,7 @@ export function StudioHomeView({ data }: StudioHomeViewProps) {
               data={chartRows}
               series={chartSeries}
               state={content.state === 'ready' ? 'ready' : 'unavailable'}
-              height={Math.max(200, chartRows.length * 44 + 72)}
+              height={Math.max(144, chartRows.length * 32 + 40)}
               footer={content.state === 'ready' && content.total > 0 ? t('chart.summary', { total: content.total, types: content.byType.length }) : undefined}
             />
           ) : null}
@@ -136,24 +136,7 @@ export function StudioHomeView({ data }: StudioHomeViewProps) {
 
       <StudioHomeAnchor data={data} />
 
-      {data.shortcuts.length ? (
-        <nav aria-label={t('shortcuts.title')} className="space-y-3">
-          <h2 className="text-sm font-medium leading-normal">{t('shortcuts.title')}</h2>
-          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {data.shortcuts.map((shortcut) => (
-              <li key={shortcut.key} className="min-w-0">
-                <Link
-                  href={shortcut.href}
-                  className="flex h-full flex-col gap-1 rounded-lg border border-border bg-card p-6 outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
-                >
-                  <span className="text-sm font-medium leading-normal">{t(`shortcuts.${shortcut.key}.title`)}</span>
-                  <span className="text-sm leading-normal text-muted-foreground">{t(`shortcuts.${shortcut.key}.description`)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      ) : null}
+
     </section>
   );
 }

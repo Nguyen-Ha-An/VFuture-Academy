@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({ revision: 1, status: 'draft', race: false, filters: [] as [string, unknown][], deleted: false }));
 vi.mock('server-only', () => ({}));
+vi.mock('@/features/teaching/assignments', () => ({ assertCourseTeaching: async () => {}, teachingCourseScope: async () => ({all: true, branchIds: [], assignments: []}) }));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: () => ({
   from: () => {
     let updating = false;

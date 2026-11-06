@@ -61,6 +61,7 @@ function harness(item: CompiledItem, at = AT, overrides: Partial<ExamRepo> = {})
   const clock = new MutableClock(new Date(at));
   const recomputeProgress = vi.fn(async () => undefined);
   const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
     repo,
     clock,
     bank: bankSource,
@@ -423,6 +424,7 @@ describe('explicit grading completion', () => {
     const item = manualExam();
     const clock = new MutableClock(new Date(AT));
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock,
       bank: bankSource,
@@ -520,6 +522,7 @@ describe('explicit grading completion', () => {
     });
     const item = manualExam();
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date(AT)),
       bank: bankSource,

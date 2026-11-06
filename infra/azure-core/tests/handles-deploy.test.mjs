@@ -15,7 +15,7 @@ const artifact=buildAzureSchema({through:'20261106000000_managed_profile_handles
 const provenance={sourceClean:true,sourceCommit:commit,sourceTree:tree};
 function reviewPlan(content='4'.repeat(64)) {
   return {action:'forward-54-plan',source:provenance,packageContentSha256:content,plan:{
-    action:'apply',filename:artifact.file,sourceSha256:artifact.sourceSha256,azureSha256:artifact.azureSha256,identitySha256:hash(readFileSync(join(source,'src/lib/identity/schema.sql'))),
+    action:'apply',filename:artifact.file,sourceSha256:artifact.sourceSha256,azureSha256:artifact.azureSha256,identitySha256:hash(readFileSync(join(source,'scripts/azure-core/baselines/identity-post-handles.sql'))),
     baseline:'273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149',activationSha:activation,
     priorReceiptDigest:'5'.repeat(64),roleCount:3,roleDigest:'6'.repeat(64),workforceMappedCount:1,workforceEligibleCount:0,workforceExcludedCount:1,source:provenance,
   }};
