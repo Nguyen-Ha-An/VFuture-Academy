@@ -81,7 +81,7 @@ describe('AdminOverviewView', () => {
   it('renders KPIs as a description list with honest values', () => {
     const { container } = renderView(FULL);
     const grid = container.querySelector<HTMLElement>('dl[data-slot="stat-grid"]')!;
-    expect(grid.querySelectorAll('dt')).toHaveLength(2);
+    expect(grid.querySelectorAll('dt')).toHaveLength(4);
     const cards = [...grid.querySelectorAll('[data-slot="stat-card"]')] as HTMLElement[];
     expect(within(cards[0]).getByRole('link', { name: 'Members' })).toHaveAttribute('href', '/admin/users');
     expect(cards[0].querySelector('dd')).toHaveTextContent('1,240');
@@ -91,12 +91,9 @@ describe('AdminOverviewView', () => {
     expect(cards[1]).toHaveTextContent('Last 30 days');
     expect(cards[1].querySelector('[data-slot="stat-delta"]')).toHaveAttribute('data-direction', 'up');
     expect(cards[1]).toHaveTextContent('vs previous 30 days');
-    expect(within(grid).queryByText('Waiting to grade')).not.toBeInTheDocument();
-    expect(within(grid).queryByText('Waiting for review')).not.toBeInTheDocument();
-    const waiting = screen.getByRole('region', { name: 'Work waiting' });
-    expect(waiting.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(waiting).getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
-    expect(within(waiting).getByText('Unavailable')).toBeInTheDocument();
+    expect(within(grid).getByText('Waiting to grade')).toBeInTheDocument();
+    expect(within(grid).getByText('Waiting for review')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Work waiting' })).not.toBeInTheDocument();
     // Only the trend card carries a delta.
     expect(grid.querySelectorAll('[data-slot="stat-delta"]')).toHaveLength(1);
   });
@@ -109,14 +106,6 @@ describe('AdminOverviewView', () => {
     expect(unavailable.querySelector('dd')).toHaveTextContent('Unavailable');
     expect(unavailable.querySelector('dd')).not.toHaveTextContent('0');
     expect(within(grid as HTMLElement).getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
-  });
-
-  it('keeps read-only waiting states as text and never invents a management destination', () => {
-    renderView({ ...FULL, pipeline: FULL.pipeline!.map((stage) => ({ ...stage, href: undefined })) });
-    const waiting = screen.getByRole('region', { name: 'Work waiting' });
-    expect(within(waiting).getAllByRole('listitem')).toHaveLength(4);
-    expect(within(waiting).queryByRole('link')).not.toBeInTheDocument();
-    expect(within(waiting).getByText('Unavailable')).toBeInTheDocument();
   });
 
   it('says when the pending-invitation count failed instead of showing 0', () => {
@@ -149,17 +138,10 @@ describe('AdminOverviewView', () => {
     expect(within(items[1]).queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('renders the work pipeline with review states and waiting to grade', () => {
+  it('omits the redundant work waiting section', () => {
     renderView(FULL);
-    const strip = screen.getByRole('region', { name: 'Work waiting' });
-    const stages = within(strip).getAllByRole('listitem');
-    expect(stages.map((stage) => stage.getAttribute('data-stage'))).toEqual(['pending', 'changesRequested', 'approved', 'pendingGrading']);
-    expect(stages[0]).toHaveTextContent('4Waiting for review');
-    expect(within(stages[0]).getByRole('link')).toHaveAttribute('href', '/studio/reviews');
-    expect(stages[2]).toHaveTextContent('0Approved, not yet published');
-    expect(stages[3]).toHaveTextContent('UnavailableWaiting to grade');
-    const activity = screen.getByRole('region', { name: 'Learning activity, 30 days' });
-    expect(strip.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Work waiting' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Waiting for review' })).toHaveAttribute('href', '/studio/reviews');
   });
 
   it('anchors on recent activity with actor names and a link to the audit log', () => {

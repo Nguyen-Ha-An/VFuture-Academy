@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 
 export default async function ReviewsPage() {
   const [data, t] = await Promise.all([studioReviewsData(), getTranslations("cmsAdmin")]);
-  return <section className="mx-auto max-w-7xl space-y-6"><StaffPageHeader title={t("reviewsTitle")} description={t("reviewsDescription")} /><ReviewQueue {...data} /></section>;
+  return <section className="w-full space-y-6"><StaffPageHeader title={t("reviewsTitle")} description={t("reviewsDescription")} /><ReviewQueue {...data} /></section>;
 }

@@ -1,4 +1,5 @@
 "use client";
+import { notifyIdentitySignedOut } from '@/lib/identity/browser-session';
 
 import * as Dropdown from '@radix-ui/react-dropdown-menu';
 import Link from 'next/link';
@@ -55,7 +56,7 @@ export function StaffShell({ workspace, children, permissions, userName, scopeOp
     <Dropdown.Item asChild><Link className="staff-account-item" href={routes.learner.profile()}>{common('accountSettings')}</Link></Dropdown.Item>
     <Dropdown.Item asChild><Link className="staff-account-item" href={routes.learner.dashboard()}>{common('openLearning')}</Link></Dropdown.Item>
     <Dropdown.Separator className="my-2 h-px bg-border" />
-    <form action={routes.auth.signout()} method="post"><Dropdown.Item asChild onSelect={event => event.preventDefault()}><button type="submit" className="staff-account-item">{common('signOut')}</button></Dropdown.Item></form>
+    <form action={routes.auth.signout()} method="post" onSubmit={notifyIdentitySignedOut}><Dropdown.Item asChild onSelect={event => event.preventDefault()}><button type="submit" className="staff-account-item">{common('signOut')}</button></Dropdown.Item></form>
   </Dropdown.Content></Dropdown.Portal></Dropdown.Root>;
   const switcher = (stacked = false) => entries ? <WorkspaceSwitcher entries={entries} active={workspace} stacked={stacked} onNavigate={() => setDrawerOpen(false)} /> : null;
   const scope = activeScope && scopeOptions ? <AdminScopeSelector options={scopeOptions} active={activeScope} endpoint={`/api/v1/${workspace}/scope`} destination={workspaceHome(workspace)} /> : null;

@@ -9,7 +9,7 @@ import { StudioShell } from '@/components/StudioShell';
 import { MembersDirectory } from '@/features/admin/components/MembersDirectory';
 import { MemberProfile } from '@/features/admin/components/MemberProfile';
 import { McpBlockView } from '@/features/admin/components/McpBlockView';
-import { ContentInventory, ReviewQueue, type ReviewRow } from '@/features/admin/components/ContentReviewWorkspace';
+import { ContentInventory, ReviewQueue, type ReviewRow, type ReviewPreview } from '@/features/admin/components/ContentReviewWorkspace';
 import { RoleManager } from '@/features/admin/components/RoleManager';
 import { StaffPageHeader } from '@/features/workspace/ui/StaffPageHeader';
 import AdminLoading from '@/app/admin/loading';
@@ -18,6 +18,7 @@ import { AdminForbidden } from '@/features/admin/ui/AdminForbidden';
 import { EnrollmentMigrationPanel } from '@/features/enrollment/EnrollmentMigrationPanel';
 import { createAdminTransport, FIXTURE_ACTOR_ID, FIXTURE_PEOPLE, FIXTURE_SCHOOLS } from './admin-transport';
 import { createSupportTransport } from '../../support/support-transport';
+import { teacherTransport } from './teacher-transport';
 import { canonicalPreviewUrl } from './canonical-routes';
 import { BUILT_IN_ROLE_PERMISSIONS, type Permission } from '@/lib/authorization';
 import { scopeKey, type AdminScope } from '@/lib/admin-scope';
@@ -66,11 +67,12 @@ roles.push({id:'school-mentor',name:locale==='vi'?'Cố vấn dự án':'Project
 /** Directory KPI row, as member-stats.ts returns it (no deltas). */
 function memberStats(scope:AdminScope){const model=window.__adminFixture.readModel(scope),rows=model.members;return{members:rows.length,learners:rows.filter(member=>!member.assignments.length).length,suspended:rows.filter(member=>member.accountStatus==='suspended').length,pendingInvitations:model.invitations.filter(invitation=>invitation.status==='pending').length};}
 const mcpBlocks = new Map<string, { reason: string | null; blockedAt: string }>();
-let failPublishOnce = new URLSearchParams(location.search).has('failPublishOnce');
+const reviewReturnParams = new URL(params.get('returnTo') ?? '/studio/reviews', location.origin).searchParams;
+let failPublishOnce = params.has('failPublishOnce') || reviewReturnParams.has('failPublishOnce');
 const holdScope = new URLSearchParams(location.search).has('holdScope');
 const review:ReviewRow={id:'00000000-0000-4000-8000-000000000105',content_type:'resource',content_id:'huong-dan-hoc-tap',status:'pending',owner_branch_id:null,submitted_at:'2026-09-06T08:00:00Z',decision_note:null,self_review:false,revision_key:'v2',checksum:'review-checksum',dependencies:[]};
 // `?reviews=many` queues more requests, so the master-detail layout has something to choose between.
-const manyReviews=new URLSearchParams(location.search).get('reviews')==='many';
+const manyReviews=params.get('reviews')==='many'||reviewReturnParams.get('reviews')==='many';
 const extraReviews:ReviewRow[]=manyReviews?([['course','python-co-ban','Python cơ bản'],['opportunity','hoc-bong-mua-thu','Học bổng mùa thu 2026'],['project','vuon-truong-thong-minh','Vườn trường thông minh']] as const).map(([content_type,content_id],index)=>({...review,id:`00000000-0000-4000-8000-00000000011${index}`,content_type,content_id,submitted_at:`2026-09-0${7+index}T08:00:00Z`,revision_key:'v1',checksum:`review-checksum-${index}`})):[];
 const reviewTitles:Record<string,{vi:string}>={'huong-dan-hoc-tap':{vi:'Hướng dẫn học tập'},'python-co-ban':{vi:'Python cơ bản'},'hoc-bong-mua-thu':{vi:'Học bổng mùa thu 2026'},'vuon-truong-thong-minh':{vi:'Vườn trường thông minh'}};
 /** Library rows: the reviewed resource plus 29 more, so the 25-row pages show an honest total. */
@@ -114,7 +116,12 @@ window.fetch=async(input,init)=>{
  if(data===undefined)return new Response(JSON.stringify({error:{code:'FIXTURE_NOT_IMPLEMENTED',message:`This fixture does not implement ${url.pathname}`}}),{status:501,headers:{'Content-Type':'application/json'}});
  return new Response(JSON.stringify({data}),{status:200,headers:{'Content-Type':'application/json'}});
 };
-window.fetch=createSupportTransport(window.fetch.bind(window));
+window.fetch=teacherTransport(createSupportTransport(window.fetch.bind(window)));
+function ReviewDetailFixture({ reviewId, ...props }: Parameters<typeof ReviewQueue>[0] & { reviewId: string }) {
+ const [initialReview, setInitialReview] = useState<ReviewPreview>();
+ useEffect(() => { let current = true; void fetch(`/api/v1/studio/reviews/${encodeURIComponent(reviewId)}`).then(response => response.json()).then(payload => { if (current) setInitialReview(payload.data); }); return () => { current = false; }; }, [reviewId]);
+ return initialReview ? <ReviewQueue {...props} initialReview={initialReview} returnHref={params.get('returnTo') ?? undefined} /> : <p role="status">Loading review fixture…</p>;
+}
 function App(){
  const pathname=usePathname();const [scope,setScope]=useState(active);const [,setRevision]=useState(0);
  useEffect(()=>{const update=()=>setRevision(value=>value+1);window.addEventListener('admin-demo-update',update);return()=>window.removeEventListener('admin-demo-update',update);},[]);
@@ -131,6 +138,7 @@ function App(){
   :pathname==='/grading/reports'?null
   :pathname==='/admin/enrollment-migration'?permissions.includes('course.publish')?<EnrollmentMigrationPanel courses={scenario==='empty'?[]:[{id:'python-foundations',title:locale==='vi'?'Python cơ bản':'Python foundations'},{id:'ai-foundations',title:locale==='vi'?'Nền tảng trí tuệ nhân tạo':'AI foundations'}]}/>:<AdminForbidden/>
   :pathname==='/studio/reviews'?<section className="space-y-6"><StaffPageHeader title="Duyệt nội dung"/><ReviewQueue {...shared} rows={[review,...extraReviews]} canReview={central} canPublish={central} titles={manyReviews?Object.fromEntries([review,...extraReviews].map(entry=>[`${entry.content_type}:${entry.content_id}`,reviewTitles[entry.content_id]])):undefined} submitters={manyReviews?{}:undefined}/></section>
+  :pathname.startsWith('/studio/reviews/')?<ReviewDetailFixture {...shared} reviewId={pathname.split('/').at(-1)!} rows={[review,...extraReviews]} canReview={central} canPublish={central} titles={manyReviews?Object.fromEntries([review,...extraReviews].map(entry=>[`${entry.content_type}:${entry.content_id}`,reviewTitles[entry.content_id]])):undefined}/>
   :pathname==='/studio/library'?<section className="space-y-6"><ContentInventory {...shared} title="Thư viện nội dung" creatableTypes={['resource']} requestableKeys={libraryRows.map(row=>`${row.content_type}:${row.content_id}`)} rows={libraryRows}/></section>
   :pathname==='/admin/roles'?<RoleManager scope={scope} actorId={FIXTURE_ACTOR_ID}/>
   :pathname==='/admin/mcp'?central&&permissions.includes('user.manage.global')?<McpBlockView initialUserId={new URLSearchParams(location.search).get('userId')??''} actorId={FIXTURE_ACTOR_ID}/>:<AdminForbidden/>

@@ -41,6 +41,11 @@ function fakeDatabase(handler: Handler) {
   const log: { table: string; calls: Call[] }[] = [];
   return {
     log,
+    async rpc(name: string, args: unknown) {
+      const calls: Call[] = [['rpc', args]];
+      log.push({ table: name, calls });
+      return handler(name, calls);
+    },
     from(table: string) {
       const calls: Call[] = [];
       log.push({ table, calls });
@@ -85,7 +90,7 @@ function defaultHandler(overrides: Partial<Record<string, Handler>> = {}): Handl
   return (table, calls) => {
     const override = overrides[table];
     if (override) return override(table, calls);
-    if (table === 'analytics_branch_daily' || table === 'cms_review_requests') return { data: [], error: null };
+    if (table === 'teaching_analytics_daily' || table === 'cms_review_requests') return { data: [], error: null };
     return { count: 0, error: null };
   };
 }
@@ -221,27 +226,20 @@ describe('learning activity series', () => {
     expect(() => sumActivityByDay([{ day: '2026-09-25', lesson_completions: 'x', quiz_attempts: 0, exam_attempts: 0 }], ['2026-09-25'])).toThrow();
   });
 
-  it('reads analytics_branch_daily for the 30-day UTC window, paging past 1000 rows, filtered to the school in school scope', async () => {
-    const first = Array.from({ length: 1000 }, () => ({ day: '2026-09-24', lesson_completions: 1, quiz_attempts: 0, exam_attempts: 0 }));
-    let page = 0;
+  it('reads actor-scoped daily activity for the selected school and UTC window', async () => {
     const database = fakeDatabase(defaultHandler({
-      analytics_branch_daily: () => ({ data: page++ === 0 ? first : [{ day: '2026-09-24', lesson_completions: 1, quiz_attempts: 1, exam_attempts: 1 }], error: null }),
+      teaching_analytics_daily: () => ({ data: [{ day: '2026-09-24', lesson_completions: 2, quiz_attempts: 1, exam_attempts: 1 }], error: null }),
     }));
     mocks.database = database;
     const data = await adminDashboard(context({ branch: ['report.branch.read'] }, { kind: 'branch', branchId: 'ans' }), { now: NOW });
-
-    const reads = database.log.filter((entry) => entry.table === 'analytics_branch_daily');
-    expect(reads).toHaveLength(2);
-    expect(reads[0].calls).toContainEqual(['gte', 'day', '2026-08-27']);
-    expect(reads[0].calls).toContainEqual(['lte', 'day', '2026-09-25']);
-    expect(eqValue(reads[0].calls, 'branch_id')).toBe('ans');
-    expect(reads[0].calls).toContainEqual(['range', 0, 999]);
-    expect(reads[1].calls).toContainEqual(['range', 1000, 1999]);
-    expect(data.activitySeries?.find((day) => day.day === '2026-09-24')).toEqual({ day: '2026-09-24', lessonCompletions: 1001, attempts: 2 });
+    const reads = database.log.filter((entry) => entry.table === 'teaching_analytics_daily');
+    expect(reads).toHaveLength(1);
+    expect(reads[0].calls).toContainEqual(['rpc', { p_actor_id: '00000000-0000-4000-8000-000000000001', p_branch_id: 'ans', p_from: '2026-08-27', p_to: '2026-09-25' }]);
+    expect(data.activitySeries?.find((day) => day.day === '2026-09-24')).toEqual({ day: '2026-09-24', lessonCompletions: 2, attempts: 2 });
   });
 
   it('says unavailable when the daily read fails, and hides the chart without report permission', async () => {
-    mocks.database = fakeDatabase(defaultHandler({ analytics_branch_daily: () => ({ data: null, error: { message: 'boom' } }) }));
+    mocks.database = fakeDatabase(defaultHandler({ teaching_analytics_daily: () => ({ data: null, error: { message: 'boom' } }) }));
     const failed = await adminDashboard(context({ central: ALL_CENTRAL }), { now: NOW });
     expect(failed.activitySeries).toBeUndefined();
     expect(failed.unavailable).toContain('activitySeries');

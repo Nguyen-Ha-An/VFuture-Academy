@@ -9,7 +9,8 @@ const fail=message=>{throw new Error(message);};
 function artifact(){
  const built=buildAzureSchema({through:FILE});
  if(built.receipt.migrations.length!==54||built.receipt.migrations[53].file!==FILE)fail('Unexpected handle migration inventory');
- const identity=readFileSync(new URL('../../src/lib/identity/schema.sql',import.meta.url),'utf8');
+ // Preserve54 identity bytes as the next release changes session lifetime.
+ const identity=readFileSync(new URL('./baselines/identity-post-handles.sql',import.meta.url),'utf8');
  return {entry:built.receipt.migrations[53],sql:built.steps.find(step=>step.id===`supabase/migrations/${FILE}`).sql,identity,identitySha256:hash(identity)};
 }
 const postcondition=`select (

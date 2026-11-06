@@ -10,7 +10,7 @@ vi.mock('@/lib/database/azure-client', () => ({ createAzureDataClient: () => ({}
 vi.mock('@/lib/rate-limit', () => ({ enforceRequestRateLimit: mocks.rateLimit }));
 import { azureCallback, azureLogin, azureLogout } from '@/lib/identity/routes';
 
-const vars = { MICROSOFT_ENTRA_TENANT_ID: '157419c9-2de9-45e7-a6f9-91546dbef629', MICROSOFT_ENTRA_CLIENT_ID: '66666666-6666-4666-8666-666666666666', MICROSOFT_ENTRA_CLIENT_SECRET: 'internal-secret', ENTRA_TENANT_ID: '11111111-1111-4111-8111-111111111111', ENTRA_CLIENT_ID: '22222222-2222-4222-8222-222222222222', ENTRA_CLIENT_SECRET: 'secret', ENTRA_ISSUER: 'https://test.ciamlogin.com/tenant/v2.0', ENTRA_AUTHORITY: 'https://test.ciamlogin.com/tenant/v2.0', NEXT_PUBLIC_APP_URL: 'https://academy.example', ENTRA_SESSION_ENCRYPTION_KEY: Buffer.alloc(32, 4).toString('base64') };
+const vars = { MICROSOFT_ENTRA_TENANT_ID: '157419c9-2de9-45e7-a6f9-91546dbef629', MICROSOFT_ENTRA_CLIENT_ID: '66666666-6666-4666-8666-666666666666', MICROSOFT_ENTRA_CLIENT_SECRET: 'internal-secret', ENTRA_TENANT_ID: '11111111-1111-4111-8111-111111111111', ENTRA_CLIENT_ID: '22222222-2222-4222-8222-222222222222', ENTRA_CLIENT_SECRET: 'secret', ENTRA_ISSUER: 'https://test.ciamlogin.com/tenant/v2.0', ENTRA_AUTHORITY: 'https://test.ciamlogin.com/tenant/v2.0', NEXT_PUBLIC_APP_URL: 'https://academy.example', GOOGLE_CLIENT_ID:'1234567890-example.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET:'google-secret', ENTRA_SESSION_ENCRYPTION_KEY: Buffer.alloc(32, 4).toString('base64') };
 describe('Azure authentication routes', () => {
   beforeEach(() => { vi.clearAllMocks(); for (const [key, value] of Object.entries(vars)) vi.stubEnv(key, value); mocks.cookies.mockResolvedValue({ get: () => undefined }); });
   it('rejects callbacks without a matching browser-bound single-use transaction', async () => {
@@ -26,7 +26,8 @@ describe('Azure authentication routes', () => {
     mocks.metadata.mockResolvedValue({ authorization_endpoint: 'https://test.ciamlogin.com/authorize' });
     const response = await azureLogin(new Request('https://academy.example/auth/login?provider=google&next=https://evil.example'));
     expect(response.status).toBe(303);
-    expect(new URL(response.headers.get('location')!).host).toBe('test.ciamlogin.com');
+    expect(new URL(response.headers.get('location')!).host).toBe('accounts.google.com');
+    expect(mocks.store.mock.calls[0][2].kind).toBe('google-v1');
     expect(response.headers.get('set-cookie')).toContain('HttpOnly');
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(mocks.store.mock.calls[0][2].next).toBe('/app');
@@ -59,6 +60,8 @@ describe('Azure authentication routes', () => {
     expect(mocks.create.mock.calls[0][1].user.id).toBe('44444444-4444-4444-8444-444444444444');
     expect(mocks.create.mock.calls[0][1].refreshCiphertext).not.toContain('private-refresh-token');
     expect(mocks.revoke).toHaveBeenCalledOnce();
+    expect(response.cookies.get('academy_session')?.maxAge).toBe(2592000);
+    expect(mocks.create.mock.calls[0][1].expiresAt - Math.floor(Date.now()/1000)).toBe(2592000);
   });
 
 });
@@ -82,6 +85,8 @@ describe('Microsoft callback provider and staff binding',()=>{
   expect(response.headers.get('location')).toBe('https://academy.example/welcome?next=%2Fstudio');
   expect(mocks.create.mock.calls[0][1]).toMatchObject({provider:'microsoft',issuer:workforceIssuer,user:{id:'88888888-8888-4888-8888-888888888888'}});
   expect(mocks.resolve).not.toHaveBeenCalled();
+  expect(response.cookies.get('academy_session')?.maxAge).toBe(2592000);
+  expect(mocks.create.mock.calls[0][1].expiresAt - Math.floor(Date.now()/1000)).toBe(2592000);
  });
  it('denies unmatched or nonstaff Microsoft identities even with a valid signed token',async()=>{
   mocks.staff.mockResolvedValue(null);

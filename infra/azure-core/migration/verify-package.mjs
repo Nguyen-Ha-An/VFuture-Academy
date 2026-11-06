@@ -21,7 +21,7 @@ try{
   if(receipt.packageType==='probe'){
     // Resolve from the relocated package, not from this verifier's module directory.
     execFileSync(process.execPath,['--input-type=module','-e','await import(process.argv[1]);',pathToFileURL(join(folder,'infra','azure-core','migration','probe.mjs')).href],{cwd:folder,env:{PATH:process.env.PATH,LC_ALL:'C'},stdio:'pipe'});
-  }else if(['forward-53','forward-54'].includes(receipt.packageType)){
+  }else if(['forward-53','forward-54','forward-55'].includes(receipt.packageType)){
     const output=execFileSync(process.execPath,[`scripts/azure-core/${receipt.packageType}-job.mjs`,'verify'],{cwd:folder,env:{PATH:process.env.PATH,LC_ALL:'C'},stdio:['ignore','pipe','pipe'],encoding:'utf8'});
     const actual=JSON.parse(output);
     const manifest=readFileSync(join(folder,`build/azure-core/private/${receipt.packageType}-source-manifest.json`));

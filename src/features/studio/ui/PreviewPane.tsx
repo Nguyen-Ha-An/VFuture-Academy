@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { CompiledCourse, CompiledItem, LearnerItem } from '@/content-engine/compile';
 import { refKey, refLabel, type DocumentRef, type ValidationReport } from '@/content-engine/diagnostics';
 import { AssignmentRenderer, createPreviewRuntime, ExamPreviewRenderer, LessonRenderer, registerAll } from '@/content-engine/render';
@@ -10,6 +10,7 @@ import { mediaHref } from '@/features/media/urls';
 import { record, type WorkspaceSnapshot } from '../workspace-state';
 import { readApiData, WorkspaceApiError, workspaceIssueReport } from './client';
 import { measureStudioOperation, startStudioTiming } from './studio-performance';
+import { CanvasButton as Button } from '@/features/canvas/ui';
 
 registerAll();
 export function previewMediaHref(ref: { assetId: string } | { url: string }): string {
@@ -20,16 +21,19 @@ export type WorkspacePreview = { item: CompiledItem | null; course: CompiledCour
 function title(value: unknown, locale: Locale): string {
   return typeof value === 'string' ? value : String(record(value)?.[locale] ?? Object.values(record(value) ?? {})[0] ?? '');
 }
-export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, validating = false, languages, defaultLanguage, onReport }: {
+export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, validating = false, languages, defaultLanguage, onReport, expanded = false, onExpandedChange }: {
   courseId: string; selectedRef: DocumentRef; payload: WorkspaceSnapshot | null; sourceRevision: string;
   validating?: boolean;
   languages: Locale[]; defaultLanguage: Locale;
   /** The revision the report was computed for; the caller drops anything stale. */
   onReport: (report: ValidationReport, revision: string) => void;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   const selectedDocId = refLabel(selectedRef);
   const selectedKey = refKey(selectedRef);
   const t = useTranslations('studioWorkspace');
+  const uiLocale = useLocale();
   const [chosenLocale, setLocale] = useState(defaultLanguage);
   const locale = languages.includes(chosenLocale) ? chosenLocale : defaultLanguage;
   const cache = useRef(new Map<string, { result: WorkspacePreview; revision: string }>());
@@ -105,6 +109,7 @@ export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, va
   return <section aria-label={t('preview')} className="flex h-full min-h-0 flex-col bg-background">
     <header className="flex min-h-12 items-center justify-between gap-2 border-b border-border px-4">
       <h2 className="text-sm font-medium">{t('preview')}</h2>
+      {onExpandedChange ? <Button variant="outline" size="sm" onClick={() => onExpandedChange(!expanded)}>{uiLocale === 'vi' ? expanded ? 'Trở lại trình soạn thảo' : 'Xem toàn màn hình' : expanded ? 'Back to editor' : 'Full screen preview'}</Button> : null}
       {languages.length > 1 ? <div role="group" aria-label={t('language')} className="flex gap-1">{languages.map(value => <button key={value} type="button" aria-pressed={locale === value} onClick={() => setLocale(value)} className="min-h-9 rounded px-3 text-xs uppercase hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring aria-pressed:bg-muted">{value}</button>)}</div> : null}
       {requestState?.state === 'loading' && !failed ? <span role="status" className="text-xs text-muted-foreground">{t('updating')}</span> : null}
     </header>
@@ -112,12 +117,12 @@ export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, va
     {/* Light island: inside the staff shell the learner rendering keeps the app-default tokens and font (shell.css). */}
     <div className="vf-staff-preview-island min-h-0 flex-1 overflow-auto p-5">
       {!visible ? <p role="status" className="py-20 text-center text-sm text-muted-foreground">{t(failed ? 'previewInvalid' : 'updating')}</p> : null}
-      {selectedRef.kind === 'course' && course ? <article className="mx-auto max-w-2xl space-y-6">
+      {selectedRef.kind === 'course' && course ? <article className="canvas-preview-course mx-auto max-w-2xl space-y-6">
         <div><p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">{t('courseOverview')}</p><h3 className="text-2xl font-semibold">{title(course.meta.title, locale)}</h3><p className="mt-3 text-sm leading-relaxed text-muted-foreground">{title(course.meta.summary, locale)}</p></div>
         <ul className="list-disc space-y-2 pl-5 text-sm">{course.meta.learningOutcomes.map((outcome, index) => <li key={index}>{title(outcome, locale)}</li>)}</ul>
         {course.outline.modules.map(module => <section key={module.id} className="border-t border-border pt-4"><h4 className="font-semibold">{title(module.title, locale)}</h4><ol className="mt-3 space-y-2">{module.items.map((entry, index) => <li key={entry.id} className="text-sm text-muted-foreground">{index + 1}. {title(entry.title, locale)}</li>)}</ol></section>)}
       </article> : null}
-      {item && render && runtime ? <div key={`${key}-${item.checksum}`} lang={locale} className="mx-auto max-w-3xl">
+      {item && render && runtime ? <div key={`${key}-${item.checksum}`} lang={locale} className="canvas-preview-document mx-auto max-w-3xl">
         {item.kind === 'lesson' ? <LessonRenderer item={render} runtime={runtime} /> : null}
         {item.kind === 'exam' ? <ExamPreviewRenderer item={render} runtime={runtime} /> : null}
         {item.kind === 'assignment' ? <AssignmentRenderer assignment={render} runtime={runtime} /> : null}

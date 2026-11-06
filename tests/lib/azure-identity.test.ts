@@ -66,6 +66,10 @@ describe('Azure identity protocol boundaries', () => {
       expect(body.get('refresh_token')).toBe('native-refresh');expect(body.has('client_secret')).toBe(false);
     } finally {vi.unstubAllGlobals();}
   });
+  it('accepts only whole session ages within one hour and thirty days', () => {
+    for (const age of ['3600', '86400', '2592000']) expect(readIdentityConfiguration({ ...env, ENTRA_SESSION_MAX_AGE_SECONDS: age }).sessionMaxAge).toBe(Number(age));
+    for (const age of ['3599', '2592001', '2592000.5', 'Infinity', 'invalid']) expect(() => readIdentityConfiguration({ ...env, ENTRA_SESSION_MAX_AGE_SECONDS: age })).toThrow('Invalid session maximum age');
+  });
   it('rejects weak keys, insecure endpoints and tenant placeholders', () => {
     for (const change of [{ ENTRA_SESSION_ENCRYPTION_KEY: 'weak' }, { ENTRA_AUTHORITY: 'http://example.ciamlogin.com' }, { ENTRA_TENANT_ID: 'common' }, { ENTRA_ISSUER: '' }]) {
       expect(() => readIdentityConfiguration({ ...env, ...change })).toThrow();

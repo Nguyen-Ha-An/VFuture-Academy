@@ -16,9 +16,13 @@ export default async function AssessmentsPage() {
   const gradingScope = context.scope.kind === "branch"
     ? { global: false, branchIds: canGrade ? [context.scope.branchId] : [] }
     : instructorBranchScope(context.actor, "submission.grade");
-  const readableScope = releaseScope.global || gradingScope.global
-    ? { global: true, branchIds: [] }
-    : { global: false, branchIds: [...new Set([...releaseScope.branchIds, ...gradingScope.branchIds])] };
-  const { branches, metadata } = await loadInstructorPageData(locale, readableScope);
-  return <AssessmentsWorkspace assignments={canGrade?metadata.assignments:[]} canGrade={canGrade} branches={branches} courses={metadata.courses} exams={metadata.exams} canRelease={canRelease} gradingBranchIds={gradingScope.global ? null : gradingScope.branchIds} releaseBranchIds={releaseScope.global ? null : releaseScope.branchIds} />;
+  const empty = { branches: [], metadata: { courses: [], assignments: [], exams: [] } };
+  const [grading, release] = await Promise.all([
+    canGrade ? loadInstructorPageData(locale, gradingScope, context.actor, ['submission.grade']) : empty,
+    canRelease ? loadInstructorPageData(locale, releaseScope, context.actor, ['exam.release']) : empty,
+  ]);
+  const branches = [...new Map([...grading.branches, ...release.branches].map((branch) => [branch.id, branch])).values()];
+  const courses = [...new Map([...grading.metadata.courses, ...release.metadata.courses].map((course) => [course.id, course])).values()];
+  const exams = [...new Map([...grading.metadata.exams, ...release.metadata.exams].map((exam) => [`${exam.courseVersionId}:${exam.itemId}`, exam])).values()];
+  return <AssessmentsWorkspace assignments={grading.metadata.assignments} canGrade={canGrade} branches={branches} courses={courses} exams={exams} canRelease={canRelease} gradingBranchIds={gradingScope.global ? null : gradingScope.branchIds} releaseBranchIds={releaseScope.global ? null : releaseScope.branchIds} />;
 }

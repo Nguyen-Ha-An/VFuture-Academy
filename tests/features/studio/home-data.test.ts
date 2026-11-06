@@ -5,15 +5,16 @@ import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '@/messages/en.json';
 import { staffUiTestMessages } from '@/messages/staff-ui';
 
-const mocks = vi.hoisted(() => ({ context: vi.fn(), listContent: vi.fn(), listReviews: vi.fn(), actors: vi.fn(), locale: 'en' }));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), listContent: vi.fn(), listReviews: vi.fn(), reviewPreview: vi.fn(), pinnedPreview: vi.fn(async value => value), actors: vi.fn(), locale: 'en' }));
 vi.mock('server-only', () => ({}));
 vi.mock('next-intl/server', () => ({ getLocale: async () => mocks.locale }));
 vi.mock('@/features/workspace/context', () => ({ studioPageContext: mocks.context }));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn(() => ({})) }));
-vi.mock('@/features/admin/content-review', () => ({ createContentReviewService: () => ({ listContent: mocks.listContent, listReviews: mocks.listReviews }) }));
+vi.mock('@/features/admin/content-review', () => ({ createContentReviewService: () => ({ listContent: mocks.listContent, listReviews: mocks.listReviews, reviewPreview: mocks.reviewPreview }) }));
+vi.mock('@/features/content-review/pinned-bank-preview', () => ({ pinnedBankPreview: mocks.pinnedPreview }));
 vi.mock('@/features/admin/actor-directory', () => ({ actorDisplayNames: mocks.actors }));
 
-import { studioHomeData, studioReviewsData, type StudioHomeData } from '@/features/studio/home-data';
+import { studioHomeData, studioReviewsData, studioReviewData, type StudioHomeData } from '@/features/studio/home-data';
 import { StudioHomeView } from '@/features/studio/ui/StudioHomeView';
 
 const SUBMITTER = '00000000-0000-4000-8000-0000000000aa';
@@ -136,5 +137,25 @@ describe('studioReviewsData', () => {
     expect(data.submitters).toEqual({ [SUBMITTER]: 'Nguyễn Minh Anh' });
     mocks.listContent.mockRejectedValue(new Error('forbidden'));
     expect((await studioReviewsData()).titles).toEqual({});
+  });
+});
+
+describe('direct review links', () => {
+  it('authorizes the selected immutable snapshot before loading queue metadata', async () => {
+    mocks.context.mockResolvedValue(reviewer);
+    const snapshot = { review: { id: 'immutable-review', status: 'pending' }, reviewed_source: { title: 'Frozen source' }, snapshot: { dependencies: [] } };
+    mocks.reviewPreview.mockResolvedValue(snapshot);
+    const data = await studioReviewData('immutable-review');
+    expect(mocks.reviewPreview).toHaveBeenCalledWith('immutable-review');
+    expect(mocks.pinnedPreview).toHaveBeenCalledWith(snapshot);
+    expect(data.initialReview).toBe(snapshot);
+    expect(mocks.reviewPreview.mock.invocationCallOrder[0]).toBeLessThan(mocks.listReviews.mock.invocationCallOrder[0]);
+  });
+  it('stops on service authorization failure without reading queue or pinned dependencies', async () => {
+    mocks.context.mockResolvedValue(author);
+    mocks.reviewPreview.mockRejectedValueOnce(new Error('Forbidden'));
+    await expect(studioReviewData('immutable-review')).rejects.toThrow('Forbidden');
+    expect(mocks.listReviews).not.toHaveBeenCalled();
+    expect(mocks.pinnedPreview).not.toHaveBeenCalled();
   });
 });

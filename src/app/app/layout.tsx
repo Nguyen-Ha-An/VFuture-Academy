@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 
+import { AdminSessionGuard } from '@/features/admin/components/AdminSessionGuard';
 import { AppShell } from '@/components/AppShell';
 import { learnerIdentity } from '@/features/workspace-ui/identity.server';
 import { readWorkspaceTheme } from '@/features/workspace-ui/theme.server';
@@ -16,5 +17,5 @@ export default async function LearnerLayout({ children }: { children: React.Reac
   // grader-only or report-only operator still reaches their own workspace.
   const entries = workspaceEntries(actor);
   const [theme, identity, requestHeaders] = await Promise.all([readWorkspaceTheme(), learnerIdentity(), headers()]);
-  return <AppShell nonce={requestHeaders.get('x-nonce') ?? undefined} studioDestination={entries.studio} gradingDestination={entries.grading} adminDestination={entries.admin} userName={identity.name} initials={identity.initials} handle={identity.handle} theme={theme}>{children}</AppShell>;
+  return <AdminSessionGuard key={actor.userId} actorId={actor.userId} destination="/app"><AppShell nonce={requestHeaders.get('x-nonce') ?? undefined} studioDestination={entries.studio} gradingDestination={entries.grading} adminDestination={entries.admin} userName={identity.name} initials={identity.initials} handle={identity.handle} theme={theme}>{children}</AppShell></AdminSessionGuard>;
 }

@@ -70,33 +70,22 @@ describe('Review queue master–detail', () => {
   const earlier: ReviewRow = { ...pending, id: 'review-0', status: 'changes_requested', decision_note: 'Add alt text', submitted_at: '2026-09-01T00:00:00Z' };
   const titles = { 'course:python': { vi: 'Python cơ bản', en: 'Python basics' } };
 
-  it('keeps the list beside the detail and shows decision buttons only in the detail once a request is open', async () => {
-    const fetch = vi.fn(async () => new Response(JSON.stringify({ data: { review: pending, snapshot: { revision_key: 'v2', ownership_kind: 'central', owner_branch_id: null, audience: { scope: 'global' }, dependencies: [] }, reviewed_source: { title: 'Python basics' }, published_snapshot: null } })));
-    vi.stubGlobal('fetch', fetch);
-    render(provider(<ReviewQueue {...props} rows={[pending, other, earlier]} canReview canPublish titles={titles} submitters={{ [SUBMITTER]: 'Nguyễn Minh Anh' }} />));
-    expect(screen.getAllByRole('heading', { name: 'Python basics' })).toHaveLength(2);
-    expect(screen.getByRole('heading', { name: 'guide' })).toBeInTheDocument();
-    expect(screen.getAllByText('Submitted by Nguyễn Minh Anh')).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: 'Approve and publish' })).toHaveLength(2);
-    expect(screen.getByRole('heading', { name: 'Select a review request' })).toBeInTheDocument();
-
-    await userEvent.click(screen.getAllByRole('button', { name: 'Read submitted version' })[0]);
-    const detail = await screen.findByRole('region', { name: 'Read submitted version: Python basics' });
+  it('opens a separate authorized detail with only its own decisions and a safe queue return', async () => {
+    navigation.search = 'scope=central&q=Python&type=course';
+    const initialReview = { review: pending, snapshot: { revision_key: 'v2', ownership_kind: 'central', owner_branch_id: null, audience: { scope: 'global' }, dependencies: [] }, reviewed_source: { title: 'Python basics' }, published_snapshot: null };
+    const rendered = render(provider(<ReviewQueue {...props} rows={[pending, other, earlier]} canReview canPublish titles={titles} submitters={{ [SUBMITTER]: 'Nguyễn Minh Anh' }} />));
+    const link = screen.getAllByRole('link', { name: 'Read submitted version' })[0];
+    const href = new URL(link.getAttribute('href')!, 'https://academy.invalid');
+    expect(href.pathname).toBe('/studio/reviews/review-1');
+    expect(href.searchParams.get('returnTo')).toBe('/studio/reviews?scope=central&q=Python&type=course');
+    rendered.rerender(provider(<ReviewQueue {...props} rows={[pending, other, earlier]} canReview canPublish titles={titles} submitters={{ [SUBMITTER]: 'Nguyễn Minh Anh' }} initialReview={initialReview} returnHref={href.searchParams.get('returnTo')!} />));
+    const detail = screen.getByRole('region', { name: 'Read submitted version: Python basics' });
+    expect(screen.queryByRole('region', { name: 'Review requests' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Approve and publish' })).toHaveLength(1);
-    expect(within(detail).getByRole('button', { name: 'Approve and publish' })).toBeEnabled();
-    expect(screen.queryAllByRole('button', { name: 'Request changes' })).toHaveLength(1);
-    expect(screen.getByRole('heading', { name: 'guide' })).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Review requests' })).getAllByRole('heading', { name: 'Python basics' }).map((heading) => heading.closest('li')?.getAttribute('aria-current') ?? null)).toEqual(['true', null]);
-
+    expect(screen.getByRole('link', { name: 'Back to review queue' })).toHaveAttribute('href', '/studio/reviews?scope=central&q=Python&type=course');
     await userEvent.click(within(detail).getByRole('tab', { name: 'History' }));
     const history = within(detail).getByRole('region', { name: 'Review history' });
     expect(within(history).getAllByRole('listitem')).toHaveLength(2);
-    expect(within(history).getByText('Awaiting Central review')).toHaveClass('bg-warning');
-    expect(within(history).getByText('Changes requested')).toHaveClass('bg-destructive/10');
     expect(within(history).getByText('Add alt text')).toBeInTheDocument();
-    expect(within(history).getAllByText(/by Nguyễn Minh Anh/)).toHaveLength(2);
-
-    await userEvent.click(within(detail).getByRole('button', { name: 'Close' }));
-    expect(screen.getAllByRole('button', { name: 'Approve and publish' })).toHaveLength(2);
   });
 });

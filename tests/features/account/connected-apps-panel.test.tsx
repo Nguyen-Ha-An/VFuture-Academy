@@ -12,10 +12,16 @@ function show(state: Parameters<typeof ConnectedAppsPanel>[0]['state'] = ready, 
   return render(<ConnectedAppsPanel state={state} accountEmail="editor@example.com" locale={locale} theme="system" />);
 }
 
-beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
+beforeEach(() => { window.localStorage.clear(); vi.stubGlobal('fetch', vi.fn()); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('connected apps account panel', () => {
+  it('broadcasts logout intent before the native sign-out form submits', () => {
+    show();
+    const form=screen.getByRole('button',{name:'Sign out'}).closest('form')!;
+    fireEvent.submit(form);
+    expect(window.localStorage.getItem('vfuture:auth:signed-out')).toBeTruthy();
+  });
   it('directs Azure grant changes to the administrator and never displays an empty grant list', () => {
     show({ kind: 'microsoft' });
     expect(screen.getByText(/Microsoft manages/i)).toBeInTheDocument();

@@ -11,6 +11,6 @@ export async function teachingPageData(permission: 'teaching.announcement.manage
     ? { global: false, branchIds: [context.scope.branchId] }
     : instructorBranchScope(context.actor, permission);
   if (!scope.global && !scope.branchIds.length) forbidden();
-  const { branches, metadata } = await loadInstructorPageData(locale, scope);
+  const { branches, metadata } = await loadInstructorPageData(locale, scope, context.actor, [permission]);
   return { branches, metadata, locale: locale === 'vi' ? 'vi' as const : 'en' as const };
 }

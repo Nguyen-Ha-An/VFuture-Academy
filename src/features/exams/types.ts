@@ -8,7 +8,7 @@ import type {
 import type { ScoringPolicy } from '../../content-engine/grading';
 import type { QuestionResult } from '../../content-engine/grading/types';
 import type { Locale } from '../../content-engine/schema/common';
-import type { Permission } from '../../lib/permissions';
+import type { Actor, Permission } from '../../lib/permissions';
 
 export type AttemptStatus =
   | 'in_progress'
@@ -62,7 +62,9 @@ export interface ExamActor {
   locale: Locale;
   permissions?: readonly ExamPermission[];
   branchId?: string | null;
-  /** Allows a globally scoped studio actor to access unassigned learners. */
+  /** Original trusted staff identity; never supplied by request bodies. */
+  staffActor?: Actor;
+  /** Coarse scope-all marker; authoritative teaching checks still apply. */
   global?: boolean;
 }
 
@@ -202,7 +204,7 @@ export interface ExamRepo {
    * `completeManualGrading` so a draft cannot land on an attempt whose total was
    * already published without it.
    */
-  saveManualDraft(attemptId: string, answer: ExamAnswerRecord): Promise<boolean>;
+  saveManualDraft(attemptId: string, answer: ExamAnswerRecord, actorId?: string): Promise<boolean>;
   /**
    * Atomically completes one `pending_manual` attempt: writes the recomputed graded
    * answers, transitions to `graded` and stamps result availability. An attempt that
@@ -214,9 +216,10 @@ export interface ExamRepo {
     patch: Pick<ExamAttemptRecord, 'points' | 'maxPoints' | 'percent' | 'resultAvailableAt'>,
     expectedAnswers: readonly ExamAnswerRecord[],
     resultAnswers: readonly ExamAnswerRecord[],
+    actorId?: string,
   ): Promise<ExamCompleteGradingResult>;
   /** Atomically preserves the first release timestamp for one graded attempt. */
-  releaseAttempt(id: string, releasedAt: Date): Promise<ExamReleaseTransition>;
+  releaseAttempt(id: string, releasedAt: Date, actorId?: string): Promise<ExamReleaseTransition>;
   upsertAnswers(answers: readonly ExamAnswerRecord[]): Promise<void>;
   listAnswers(attemptId: string, questionIds?: readonly string[]): Promise<ExamAnswerRecord[]>;
   upsertGrade(grade: ExamGradeRecord): Promise<ExamGradeRecord>;

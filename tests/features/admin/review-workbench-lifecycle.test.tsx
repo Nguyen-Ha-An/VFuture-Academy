@@ -9,7 +9,7 @@ import { staffUiTestMessages } from '@/messages/staff-ui';
 import { ReviewQueue, type ReviewRow } from '@/features/admin/components/ContentReviewWorkspace';
 
 const navigation = vi.hoisted(() => ({ refresh: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => navigation }));
+vi.mock('next/navigation', () => ({ useRouter: () => navigation, useSearchParams: () => new URLSearchParams(), usePathname: () => '/studio/reviews' }));
 const messages = staffUiTestMessages(en, 'en');
 const row: ReviewRow = { id: 'review-1', content_type: 'resource', content_id: 'guide', status: 'approved', owner_branch_id: null, submitted_at: '2026-09-06T00:00:00Z', decision_note: null, self_review: false, revision_key: 'v2', checksum: 'x', dependencies: [] };
 const view = (canPublish = true, status = row.status) => <NextIntlClientProvider locale="en" messages={messages}><ReviewQueue scope={{ kind: 'central' }} actorId="operator" branches={[]} rows={[{ ...row, status }]} canReview canPublish={canPublish} /></NextIntlClientProvider>;
@@ -52,13 +52,11 @@ describe('review workbench publication', () => {
     rendered.rerender(view());
     expect(screen.queryByRole('button', { name: 'Complete publication' })).not.toBeInTheDocument();
   });
-  it('uses a newer approved preview state while the original pending row arrives late', async () => {
-    const fetch = vi.fn(async () => new Response(JSON.stringify({ data: { review: { ...row, status: 'approved' }, snapshot: { revision_key: 'v2', ownership_kind: 'central', owner_branch_id: null, audience: {}, dependencies: [] }, reviewed_source: { title: 'Guide' }, published_snapshot: null } })));
-    vi.stubGlobal('fetch', fetch); const rendered = render(view(true, 'pending'));
-    await userEvent.click(screen.getByRole('button', { name: 'Read submitted version' }));
-    expect(await screen.findByRole('button', { name: 'Complete publication' })).toBeEnabled();
-    rendered.rerender(view(true, 'pending'));
+  it('uses the reauthorized snapshot status on direct links while queue rows arrive late', () => {
+    const initialReview = { review: { ...row, status: 'approved' }, snapshot: { revision_key: 'v2', ownership_kind: 'central', owner_branch_id: null, audience: {}, dependencies: [] }, reviewed_source: { title: 'Guide' }, published_snapshot: null };
+    render(<NextIntlClientProvider locale="en" messages={messages}><ReviewQueue scope={{ kind: 'central' }} actorId="operator" branches={[]} rows={[{ ...row, status: 'pending' }]} canReview canPublish initialReview={initialReview} /></NextIntlClientProvider>);
     expect(screen.getByRole('button', { name: 'Complete publication' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Request changes' })).toBeNull();
   });
   it('keeps a failed publication available for a retry after a server failure', async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ error: { message: 'Publication could not be saved' } }), { status: 503 }));

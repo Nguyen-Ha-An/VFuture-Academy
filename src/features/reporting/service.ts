@@ -104,7 +104,7 @@ export function createStudioReportingService(dependencies: StudioReportDependenc
         if (!can(actor, 'report.global.read', scope) && !can(actor, 'analytics.global.read', scope)) {
           throw new ApiError(403, 'FORBIDDEN', 'Permission denied');
         }
-        includeUnknownHistoricalBranch = branchId === null;
+        includeUnknownHistoricalBranch = branchId === null && can(actor, 'teaching.scope.all', { kind: 'central' });
       }
 
       const to = query.to ?? localCalendarDate(dependencies.now?.() ?? new Date());

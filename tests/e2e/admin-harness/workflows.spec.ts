@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { withQuery } from '../studio-harness/staff-ui-support';
 
 async function openPublication(page: Page) {
-  await page.getByRole('button', { name: 'Xem bản gửi duyệt', exact: true }).click();
+  await page.getByRole('link', { name: 'Xem bản gửi duyệt', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Xem bản gửi duyệt: huong-dan-hoc-tap' })).toBeVisible();
   await page.getByRole('button', { name: 'Duyệt và xuất bản', exact: true }).click();
   const dialog = page.getByRole('dialog');
@@ -15,7 +15,6 @@ test('reviewed resource approves and publishes atomically and follows confirmed 
   const dialog = await openPublication(page);
   await dialog.getByRole('button', { name: 'Duyệt và xuất bản', exact: true }).click();
   await expect(dialog).toBeHidden();
-  await page.getByRole('button', { name: 'Đóng', exact: true }).click();
   await expect(page.getByText('Đã xuất bản', { exact: false }).last()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Duyệt và xuất bản', exact: true })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('review-published.png'), fullPage: true });

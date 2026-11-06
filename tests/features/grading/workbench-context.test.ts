@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
+vi.mock('@/features/teaching/assignments', () => ({ assertCourseTeaching: async () => {}, teachingCourseScope: async () => ({all:true, branchIds:[], assignments:[]}) }));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn(() => { throw new Error('no service client in tests'); }) }));
 
 import { gradingWorkbenchContext, type WorkbenchDatabase, type WorkbenchQuery } from '@/features/grading/detail';
@@ -43,7 +44,7 @@ function fakeDatabase(resolve: (call: Call) => { data: unknown; error: unknown }
       for (const name of ['select', 'eq', 'is', 'or', 'order', 'limit'] as const) {
         (builder as unknown as Record<string, unknown>)[name] = (...args: unknown[]) => { call.ops.push([name, args]); return builder; };
       }
-      builder.maybeSingle = () => Promise.resolve(resolve(call));
+      builder.maybeSingle = () => Promise.resolve(table === 'course_versions' ? {data:{course_id:'course-a'},error:null} : resolve(call));
       (builder as unknown as { then: PromiseLike<unknown>['then'] }).then = (onFulfilled, onRejected) =>
         Promise.resolve(resolve(call)).then(onFulfilled, onRejected);
       return builder;

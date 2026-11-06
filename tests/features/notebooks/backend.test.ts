@@ -6,6 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn() }));
 vi.mock('@/features/submissions/service', () => ({ session: vi.fn().mockResolvedValue({ attemptsUsed: 0 }) }));
 
 import type { Actor } from '@/lib/permissions';
+import { supabaseService } from '@/lib/supabase/server';
 import type { NotebookContext } from '@/features/notebooks/access';
 import {
   beginNotebookUpload,
@@ -289,7 +290,8 @@ describe('gateway notebook grants', () => {
   });
   it('charges an authorized grader rather than the submission owner', async () => {
     const row = artifact({ purpose: 'submission' });
-    const database = new FakeDatabase({ assignment_submissions: [ok({ id: 'submission-1', user_id: actor.userId, course_version_id: row.course_version_id, item_id: row.item_id, block_id: row.block_id, branch_id: 'school-1', branch_scope_known: true, payload: { notebook: { assetId: row.id, checksum: row.checksum } } })], notebook_artifacts: [ok(row)] });
+    const database = new FakeDatabase({ assignment_submissions: [ok({ id: 'submission-1', user_id: actor.userId, course_version_id: row.course_version_id, item_id: row.item_id, block_id: row.block_id, branch_id: 'school-1', branch_scope_known: true, payload: { notebook: { assetId: row.id, checksum: row.checksum } } })], course_versions: [ok({ course_id: row.course_id })], notebook_artifacts: [ok(row)], 'rpc:teaching_course_scope': [ok({ all: false, branchIds: [], assignments: [{ courseId: row.course_id, branchId: 'school-1' }] })] });
+    vi.mocked(supabaseService).mockReturnValue(database as never);
     enableGateway(database);
     const grader: Actor = { userId: '55555555-5555-4555-8555-555555555555', roles: [], authorization: { source: 'database', accountStatus: 'active', memberships: [{ branchId: 'school-1', status: 'active' }], assignments: [{ roleDefinitionId: 'grader', scope: { kind: 'branch', branchId: 'school-1' }, permissions: ['submission.grade'] }] } };
     const result = await readSubmissionNotebook(grader, 'submission-1', database as never);

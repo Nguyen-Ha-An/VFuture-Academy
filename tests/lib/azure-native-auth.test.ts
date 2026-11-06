@@ -25,13 +25,16 @@ describe('server-side Entra native protocol',()=>{
     expect(requests.every(r=>!r.body.has('client_secret'))).toBe(true);
   });
   it('verifies signup email inline before creating the authenticated session',async()=>{
-    const {client}=provider([{continuation_token:'signup'},{continuation_token:'code',challenge_type:'oob',code_length:8},{continuation_token:'verified'},{id_token:'id',refresh_token:'refresh'}]);
+    const {client,requests}=provider([{continuation_token:'signup'},{continuation_token:'code',challenge_type:'oob',code_length:8},{continuation_token:'verified'},{id_token:'id',refresh_token:'refresh'}]);
     const start=await client.start('signup',{email:'new@example.com',password:'Password1!',displayName:'New learner',next:'/app'});
     expect(start.step).toBe('code');
     if(start.step!=='code')throw new Error('Expected verification');
     expect(JSON.stringify(start.flow)).not.toContain('Password1!');
+    expect(start.flow.displayName).toBe('New learner');
+    expect(requests[0].body.has('attributes')).toBe(false);
     const done=await client.advance(start.flow,{code:'12345678'});
     expect(done.step).toBe('complete');expect(done.flow.verifiedEmail).toBe(true);
+    expect(done.flow.displayName).toBe('New learner');
   });
   it('preserves a wrong-code retry but never forwards provider error text',async()=>{
     const {client}=provider([{continuation_token:'signup'},{continuation_token:'code',challenge_type:'oob'},{error:'invalid_grant',suberror:'invalid_oob_value',error_description:'PRIVATE TRACE',continuation_token:'retry'}]);

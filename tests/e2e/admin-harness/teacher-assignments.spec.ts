@@ -1,0 +1,32 @@
+import { expect, test } from '@playwright/test';
+
+for (const width of [390, 1440]) test(`teacher assignment controls and conflict recovery at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/admin/branches/ans?tab=courses&lang=en&uiv2=1');
+  await expect(page.getByRole('heading', { name: 'Courses & teachers' })).toBeVisible();
+  await expect(page.getByText('Fixture course')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  const primary = page.getByRole('combobox', { name: 'Primary teacher' });
+  await expect(primary).toBeVisible();
+  await primary.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(primary).toHaveValue('An Nguyen (@an)');
+  const assistant = page.getByRole('checkbox', { name: 'Be Tran (@be)' });
+  await assistant.focus();
+  await page.keyboard.press('Space');
+  await expect(assistant).toBeChecked();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Save assignments' }).click();
+  await expect(page.getByRole('status')).toContainText('latest version has been loaded');
+  const first = JSON.parse((await page.evaluate(() => sessionStorage.getItem('teacher-fixture-last-save'))) ?? '{}');
+  expect(first).toEqual({ branchId: 'ans', expectedRevision: 1, teachers: [{ userId: '00000000-0000-4000-8000-000000000101', role: 'primary' }, { userId: '00000000-0000-4000-8000-000000000102', role: 'assistant' }] });
+  await expect(primary).toHaveValue('Be Tran (@be)');
+  await page.getByRole('button', { name: 'Save assignments' }).click();
+  await expect(page.getByRole('status')).toContainText('Assignments saved');
+  const second = JSON.parse((await page.evaluate(() => sessionStorage.getItem('teacher-fixture-last-save'))) ?? '{}');
+  expect(second.expectedRevision).toBe(2);
+  expect(second.teachers).toEqual([{ userId: '00000000-0000-4000-8000-000000000102', role: 'primary' }]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

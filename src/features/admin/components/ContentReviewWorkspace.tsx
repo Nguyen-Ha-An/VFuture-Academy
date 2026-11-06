@@ -6,8 +6,10 @@ import { ContentWorkflowPanel, type ContentWorkflow } from '@/features/content-r
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
-import { CanvasButton as Button, CanvasDataTable } from "@/features/canvas/ui";
+import { useEffect, useState } from "react";
+import { routes } from "@/lib/routes";
+import { rememberReviewQueueScroll, restoreReviewQueueScroll, reviewQueueReturnHref } from "@/features/content-review/review-navigation";
+import { CanvasButton as Button, CanvasDataTable, CanvasTabs } from "@/features/canvas/ui";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DataCard } from "@/features/staff-ui/components/DataCard";
 import { DataPagination } from "@/features/staff-ui/components/DataPagination";
@@ -57,7 +59,7 @@ export type ReviewRow = {
   /** Returned by cms_list_reviews; resolved to a name through the optional `submitters` map. */
   submitted_by?: string | null;
 };
-type ReviewPreview = {
+export type ReviewPreview = {
   resolvedBankQuestions?: Record<string,unknown>;
   review: Pick<ReviewRow, "id" | "content_type" | "content_id" | "status">;
   snapshot: {
@@ -397,9 +399,8 @@ export function ContentInventory({
 }
 
 /**
- * /studio/reviews. Master–detail: the request list on the left, the submitted version on the right
- * from `lg` (stacked below). Row decision buttons show only while nothing is selected, so
- * "Approve and publish" never appears twice. Titles come from `titles` (keyed `type:id`, falling back
+ * Full-width review queue and the independently authorized full-screen detail page.
+ * Titles come from `titles` (keyed `type:id`, falling back
  * to the id) and submitter names from `submitters` (keyed by lower-cased user id).
  */
 export function ReviewQueue({
@@ -412,6 +413,8 @@ export function ReviewQueue({
   branches,
   titles,
   submitters,
+  initialReview,
+  returnHref,
 }: ScopeProps & {
   rows: ReviewRow[];
   canReview: boolean;
@@ -419,6 +422,9 @@ export function ReviewQueue({
   publishableTypes?: readonly string[];
   titles?: Record<string, unknown>;
   submitters?: Record<string, string>;
+  /** Authorized on the server from the immutable review snapshot. */
+  initialReview?: ReviewPreview;
+  returnHref?: string;
 }) {
   const router = useRouter();
   const t = useTranslations("cmsAdmin");
@@ -428,9 +434,10 @@ export function ReviewQueue({
   const locale = useLocale();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const previewHeading = useRef<HTMLHeadingElement>(null);
-  const previewTrigger = useRef<HTMLButtonElement | null>(null);
-  const [selected, setSelected] = useState<ReviewPreview | null>(null);
+  const selected = initialReview ?? null;
+  const searchParams = useSearchParams();
+  const queueHref = reviewQueueReturnHref(`/studio/reviews${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`);
+  const backHref = reviewQueueReturnHref(returnHref);
   const [previewTab, setPreviewTab] = useState<"preview" | "changes" | "dependencies" | "history">("preview");
   const [decision, setDecision] = useState<{
     row: ReviewRow;
@@ -441,15 +448,20 @@ export function ReviewQueue({
   const [publicationNote, setPublicationNote] = useState("");
   const checklistCopy = useTranslations("staffUi.studio.courses.checklist");
   const [checklist, setChecklist] = useState<PublishChecklist>(emptyPublishChecklist);
-  const [query,setQuery]=useState('');
-  const [typeFilter,setTypeFilter]=useState('');
-  const [stateFilter,setStateFilter]=useState('');
+  const query = searchParams?.get('q') ?? '';
+  const typeFilter = searchParams?.get('type') ?? '';
+  const stateFilter = searchParams?.get('status') ?? '';
   const [confirmedTransitions, setConfirmedTransitions] = useState<Record<string, { from: string[]; to: string }>>({});
   // A successful mutation is authoritative while refresh is pending. A later
   // server state supersedes this transition; immutable preview data never does.
   const currentRows = rows.map((row) => {
     const transition = confirmedTransitions[row.id];
-    return transition?.from.includes(row.status) ? { ...row, status: transition.to } : row;
+    const snapshotStatus = selected?.review.id === row.id ? selected.review.status : null;
+    // A freshly read snapshot may advance pending/approved queue rows. Terminal queue
+    // states remain authoritative if a decision completed between those server reads.
+    const current = snapshotStatus && (row.status === 'pending' || row.status === 'approved' && snapshotStatus !== 'pending')
+      ? { ...row, status: snapshotStatus } : row;
+    return transition?.from.includes(current.status) ? { ...current, status: transition.to } : current;
   });
   const selectedRow = currentRows.find((row) => row.id === selected?.review.id);
   const titleFor = (contentType: string, contentId: string) =>
@@ -462,45 +474,11 @@ export function ReviewQueue({
   const needle = query.trim().toLowerCase();
   const filteredRows=currentRows.filter(row=>(!typeFilter||row.content_type===typeFilter)&&(!stateFilter||row.status===stateFilter)&&(!needle||`${titleFor(row.content_type,row.content_id)} ${row.content_id} ${row.decision_note??''}`.toLowerCase().includes(needle)));
   useEffect(() => {
-    if (selected) {
-      previewHeading.current?.focus({ preventScroll: true });
-      previewHeading.current?.scrollIntoView?.({
-        block: "start",
-        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
-          ?.matches
-          ? "auto"
-          : "smooth",
-      });
-    }
-  }, [selected]);
+    if (initialReview) return;
+    const frame = requestAnimationFrame(() => restoreReviewQueueScroll(queueHref));
+    return () => cancelAnimationFrame(frame);
+  }, [initialReview, queueHref]);
   const url = (path: string) => scopedUrl(path, scope, { actorId });
-  async function preview(row: ReviewRow) {
-    if (busy) return;
-    setBusy(row.id);
-    setError(null);
-    setSelected(null);
-    setPreviewTab("preview");
-    try {
-      const loaded = await readData<ReviewPreview>(
-        url(`/api/v1/studio/reviews/${row.id}`), undefined, "GET",
-      );
-      setSelected(loaded);
-      setConfirmedTransitions((previous) => {
-        const confirmed = previous[row.id];
-        // A delayed preview must not roll back a state already confirmed by a
-        // mutation or a newer preview of this immutable review request.
-        if (confirmed && (confirmed.to === loaded.review.status || confirmed.from.includes(loaded.review.status))) return previous;
-        return {
-          ...previous,
-          [row.id]: { from: [...(confirmed?.from ?? []), row.status], to: loaded.review.status },
-        };
-      });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("failed"));
-    } finally {
-      setBusy(null);
-    }
-  }
   async function decide() {
     if (!decision || busy || !note.trim()) return;
     setBusy(decision.row.id);
@@ -518,7 +496,6 @@ export function ReviewQueue({
         [decision.row.id]: { from: [decision.row.status], to: 'changes_requested' },
       }));
       setDecision(null);
-      setSelected(null);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("failed"));
@@ -584,20 +561,24 @@ export function ReviewQueue({
   );
   const tabs = ["preview", "changes", "dependencies", "history"] as const;
   return (
-    <div className="canvas-page space-y-5">
+    <div className={cn("canvas-page space-y-5", selected && "canvas-review-workbench")}>
+      {selected ? <header className="canvas-review-back canvas-review-header">
+        <Button href={backHref} variant="outline">{locale === "vi" ? "Trở lại danh sách duyệt" : "Back to review queue"}</Button>
+        <div className="canvas-review-heading"><h1 tabIndex={-1} id="review-preview-title" className="min-w-0 break-words text-base font-semibold leading-normal outline-none">{t("preview")}: {titleFor(selected.review.content_type, selected.review.content_id)}</h1>{selectedRow ? <StatusBadge kind="review" value={selectedRow.status} label={stateLabel(selectedRow.status)} /> : null}</div>
+        {selectedRow ? <div className="canvas-review-decisions flex flex-wrap gap-2">{decisionButtons(selectedRow)}</div> : null}
+      </header> : null}
       {error ? (
         <p role="alert" className={errorNotice}>
           {error}
         </p>
       ) : null}
-      <div className={cn("grid items-start gap-6", canReview && "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]")}>
+      <div className="min-w-0">
+        {!selected ? (
         <DataCard
           className="canvas-panel"
           title={reviews("listTitle")}
           toolbar={
             <DataToolbar
-              values={{ q: query, type: typeFilter, status: stateFilter }}
-              onValuesChange={(next) => { setQuery(next.q ?? ""); setTypeFilter(next.type ?? ""); setStateFilter(next.status ?? ""); }}
               searchLabel={reviews("search")}
               filters={[
                 { param: "type", label: reviews("type"), allLabel: t("allTypes"), options: [...new Set(currentRows.map((row) => row.content_type))].map((type) => ({ value: type, label: typeOf(type) })) },
@@ -613,19 +594,16 @@ export function ReviewQueue({
           ) : (
             <ul className="divide-y divide-border">
               {filteredRows.map((row) => {
-                const isSelected = row.id === selected?.review.id;
                 const submitted = validDate(row.submitted_at);
                 const submitter = submitterFor(row);
                 return (
                   <li
                     key={row.id}
-                    aria-current={isSelected ? "true" : undefined}
-                    className={cn("flex flex-col gap-3 px-6 py-4", isSelected && "bg-muted/60")}
+                    className="flex flex-col gap-3 px-6 py-4"
                   >
                     <div className="min-w-0 space-y-1">
                       <p className="text-xs leading-normal text-muted-foreground">
                         {typeOf(row.content_type)} · {ownerFor(row.owner_branch_id)}
-                        {isSelected ? <> · <span className="font-medium text-foreground">{reviews("viewing")}</span></> : null}
                       </p>
                       <h3 className="break-words text-sm font-medium leading-normal">{titleFor(row.content_type, row.content_id)}</h3>
                       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-normal text-muted-foreground">
@@ -647,18 +625,16 @@ export function ReviewQueue({
                     <div className="flex flex-wrap items-center gap-2">
                       {canReview ? (
                         <Button
-                          variant={isSelected ? "secondary" : "outline"}
+                          variant="outline"
                           size="sm"
                           disabled={busy !== null}
-                          onClick={(event) => {
-                            previewTrigger.current = event.currentTarget;
-                            void preview(row);
-                          }}
+                          href={scopedUrl(routes.studio.review(row.id), scope, { actorId, returnTo: queueHref })}
+                          onClick={() => rememberReviewQueueScroll(queueHref)}
                         >
                           {t("preview")}
                         </Button>
                       ) : null}
-                      {selected ? null : decisionButtons(row)}
+                      {decisionButtons(row)}
                     </div>
                   </li>
                 );
@@ -666,40 +642,16 @@ export function ReviewQueue({
             </ul>
           )}
         </DataCard>
+        ) : null}
         {selected ? (
           <section
             aria-labelledby="review-preview-title"
-            className="min-w-0 space-y-5 rounded-lg border border-border bg-card p-6 text-card-foreground"
+            className="min-w-0 space-y-5 bg-card p-4 text-card-foreground sm:p-6"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h2
-                ref={previewHeading}
-                tabIndex={-1}
-                id="review-preview-title"
-                className="min-w-0 break-words text-base font-semibold leading-normal outline-none"
-              >
-                {t("preview")}: {titleFor(selected.review.content_type, selected.review.content_id)}
-              </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelected(null);
-                  previewTrigger.current?.focus();
-                }}
-              >
-                {t("close")}
-              </Button>
-            </div>
-            {selectedRow && (canReview && selectedRow.status === 'pending' || mayPublish(selectedRow) && selectedRow.status === 'approved') ? (
-              <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-                {decisionButtons(selectedRow)}
-              </div>
-            ) : null}
-            <p className="text-sm leading-normal text-muted-foreground">{t("snapshotHint")} {reviews("readOnlyPreview")}</p>
-            <div role="tablist" aria-label={reviews("detailsLabel")} className="flex flex-nowrap gap-1 overflow-x-auto border-b border-border">
-              {tabs.map((tab) => <button key={tab} id={`review-${tab}-tab`} type="button" role="tab" aria-selected={previewTab === tab} aria-controls={`review-${tab}-panel`} tabIndex={previewTab === tab ? 0 : -1} onKeyDown={(event) => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { const index = tabs.indexOf(tab); const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; setPreviewTab(next); document.getElementById(`review-${next}-tab`)?.focus(); } }} onClick={() => setPreviewTab(tab)} className={cn("-mb-px min-h-9 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium leading-normal text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none", previewTab === tab ? "border-foreground text-foreground" : "border-transparent")}>{tab === "preview" ? t("preview") : tab === "changes" ? t("changes") : tab === "dependencies" ? reviews("dependenciesTab") : reviews("historyTab")}</button>)}
-            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+              <p>{locale === "vi" ? "Bản gửi duyệt · Chỉ đọc" : "Submitted version · Read only"}</p>
+              <details className="canvas-review-metadata">
+                <summary className="cursor-pointer">{locale === "vi" ? "Thông tin bản duyệt" : "Snapshot details"}</summary>
             <dl className="grid gap-4 rounded-md border border-border p-4 sm:grid-cols-3">
               <div className="min-w-0">
                 <dt className="text-sm leading-normal text-muted-foreground">{t("owner")}</dt>
@@ -724,8 +676,13 @@ export function ReviewQueue({
                 <dd className="break-all text-xs leading-normal text-muted-foreground">{selected.snapshot.revision_key}</dd>
               </div>
             </dl>
-            {previewTab === "preview" ? <div id="review-preview-panel" role="tabpanel" aria-labelledby="review-preview-tab" className="space-y-3 border-y border-border py-5"><ReviewSourcePreview source={selected.reviewed_source} locale={locale} resolvedBankQuestions={selected.resolvedBankQuestions} /></div> : null}
-            {previewTab === "changes" ? <div id="review-changes-panel" role="tabpanel" aria-labelledby="review-changes-tab" className="space-y-3"><h3 className="text-sm font-medium leading-normal">{t("changes")}</h3>
+              </details>
+            </div>
+            <CanvasTabs screenReaderLabel={reviews("detailsLabel")} onRequestTabChange={(_event, { index }) => setPreviewTab(tabs[index])}>
+              <CanvasTabs.Panel renderTitle={t("preview")} isSelected={previewTab === "preview"} padding="0">
+                <div className="space-y-3 py-5"><ReviewSourcePreview source={selected.reviewed_source} locale={locale} resolvedBankQuestions={selected.resolvedBankQuestions} /></div>
+              </CanvasTabs.Panel>
+              <CanvasTabs.Panel renderTitle={t("changes")} isSelected={previewTab === "changes"} padding="0"><div className="space-y-3 py-5"><h3 className="text-sm font-medium leading-normal">{t("changes")}</h3>
             {!selected.published_snapshot ? (
               <p className="text-sm leading-normal text-muted-foreground">
                 {t("firstPublication")}
@@ -738,9 +695,10 @@ export function ReviewQueue({
             ]} />
             {changes.length > 500 ? (
               <p className="text-sm leading-normal">{t("moreChanges")}</p>
-            ) : null}</div> : null}
-            {previewTab === "dependencies" ? <div id="review-dependencies-panel" role="tabpanel" aria-labelledby="review-dependencies-tab"><ReviewDependencies dependencies={selected.snapshot.dependencies} locale={locale}/></div> : null}
-            {previewTab === "history" ? <div id="review-history-panel" role="tabpanel" aria-labelledby="review-history-tab"><ReviewHistory rows={currentRows.filter(row=>row.content_type===selected.review.content_type&&row.content_id===selected.review.content_id)} locale={locale} submitters={submitters}/></div> : null}
+            ) : null}</div></CanvasTabs.Panel>
+              <CanvasTabs.Panel renderTitle={reviews("dependenciesTab")} isSelected={previewTab === "dependencies"} padding="0"><ReviewDependencies dependencies={selected.snapshot.dependencies} locale={locale}/></CanvasTabs.Panel>
+              <CanvasTabs.Panel renderTitle={reviews("historyTab")} isSelected={previewTab === "history"} padding="0"><ReviewHistory rows={currentRows.filter(row=>row.content_type===selected.review.content_type&&row.content_id===selected.review.content_id)} locale={locale} submitters={submitters}/></CanvasTabs.Panel>
+            </CanvasTabs>
             <details>
               <summary className="cursor-pointer text-sm font-medium leading-normal">
                 {t("source")}
@@ -750,13 +708,6 @@ export function ReviewQueue({
               </pre>
             </details>
           </section>
-        ) : canReview ? (
-          <EmptyState
-            className="hidden lg:flex"
-            headingLevel={2}
-            title={reviews("selectTitle")}
-            description={reviews("selectDescription")}
-          />
         ) : null}
       </div>
       <ConfirmationDialog

@@ -69,6 +69,7 @@ async function playerHarness(
   const repo = new InMemoryExamRepo();
   const clock = new MutableClock(new Date('2026-09-02T00:00:00.000Z'));
   const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
     repo,
     clock,
     track: async () => {},

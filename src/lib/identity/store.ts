@@ -71,3 +71,28 @@ export async function releaseSessionRefresh(hash: string, version: number, lease
 export async function revokeSessionRefresh(hash: string, version: number, lease: string) {
   return rpc<boolean>('academy_identity_revoke_refresh', { p_hash: hash, p_version: version, p_lease: lease });
 }
+
+/** The caller has separately verified Google and resolved its immutable directory binding. */
+export async function resolveMappedGoogleUser(binding: import('./google-directory').GoogleDirectoryBinding, identity: import('./google').GoogleIdentity): Promise<User> {
+  const row = await rpc<UserRow>('academy_identity_resolve_user', { p_issuer: binding.issuer, p_subject: binding.objectId,
+    p_email: identity.email, p_email_verified: identity.emailVerified, p_display_name: identityDisplayName({ name:identity.name,given_name:identity.givenName,family_name:identity.familyName }) });
+  // Legacy rows may have no email. This value is from verified Google claims,
+  // never an email lookup or a binding decision.
+  return { ...authUser(row), email: identity.email };
+}
+export async function initializeMappedGoogleProfile(userId: string, identity: import('./google').GoogleIdentity): Promise<string> {
+  const displayName = identityDisplayName({ name:identity.name,given_name:identity.givenName,family_name:identity.familyName });
+  if (displayName) {
+    const client = createAzureDataClient('service_role');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const before = await client.from('profiles').select('handle,display_name').eq('id',userId).maybeSingle();
+      if (before.error) throw new Error('Identity profile unavailable');
+      if (!before.data || typeof before.data.handle !== 'string' || typeof before.data.display_name !== 'string' || before.data.display_name.trim().toLowerCase() !== 'unknown') break;
+      const { repairPlaceholderProfile } = await import('@/features/auth/placeholder-profile');
+      if (await repairPlaceholderProfile(userId,{handle:before.data.handle,display_name:before.data.display_name},displayName,client)) break;
+      // One reread handles a concurrent handle edit. A real edited name is
+      // preserved, and a second CAS miss never becomes an unbounded retry.
+    }
+  }
+  return rpc<string>('profile_initialize',{p_user_id:userId,p_display_name:displayName});
+}

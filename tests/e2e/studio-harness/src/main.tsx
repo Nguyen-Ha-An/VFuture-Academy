@@ -7,6 +7,7 @@ import { StudioContentFixture } from './studio-content-fixture';
 import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { NextIntlClientProvider } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import enBase from '../../../../src/messages/en.json';
 import viBase from '../../../../src/messages/vi.json';
 import { withStaffUiMessages } from '../../../../src/messages/staff-ui';
@@ -91,12 +92,14 @@ type ShellProps = { workspace: StaffWorkspace; redesigned: boolean; permissions:
 
 /** The legacy shell for the workspace, or StaffWorkspaceShell under `?uiv2=1`, with the same entries, permissions and scopes. */
 function Shell({ workspace, redesigned, permissions, activeScope, scopeOptions, children }: ShellProps) {
-  if (STAFF_UI) return <Suspense fallback={null}><StaffHarnessShell workspace={workspace} permissions={permissions} activeScope={activeScope} scopeOptions={scopeOptions} entries={WORKSPACE_ENTRIES}>{children}</StaffHarnessShell></Suspense>;
+  if (STAFF_UI || /^\/studio\/reviews\/[^/]+$/.test(location.pathname)) return <Suspense fallback={null}><StaffHarnessShell workspace={workspace} permissions={permissions} activeScope={activeScope} scopeOptions={scopeOptions} entries={WORKSPACE_ENTRIES}>{children}</StaffHarnessShell></Suspense>;
   const Legacy = workspace === 'grading' ? GradingShell : StudioShell;
   return <Legacy redesigned={redesigned} permissions={permissions} userName="Browser test" activeScope={activeScope} scopeOptions={scopeOptions} entries={WORKSPACE_ENTRIES}>{children}</Legacy>;
 }
 
 function App() {
+  // Render the destination fixture when the mocked Next router traverses history.
+  usePathname();
   const initialDraft = useMemo(draft, []);
   const params = new URLSearchParams(location.search);
   const localeCookie = document.cookie.split('; ').find(entry => entry.startsWith('locale='))?.slice('locale='.length);
@@ -120,7 +123,7 @@ function App() {
   if (/^\/grading\/assignments\/sub-\d+$/.test(location.pathname)) return page(gradingLocale ?? 'en', 'grading', GRADING_PERMISSIONS, gradingScope, <QueuedWorkbenchFixture id={location.pathname.split('/').at(-1)!} />);
   if (location.pathname === '/studio') return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <StudioHomeFixture />);
   if (location.pathname === '/studio/media') return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <MediaFixture />);
-  if (/^\/studio\/(?:bank(?:\/[^/]+)?|library|resources(?:\/[^/]+)?|opportunities(?:\/[^/]+)?|projects(?:\/[^/]+)?|reviews|mcp|connect\/authorize)$/.test(location.pathname) || /^\/studio\/courses\/[^/]+\/notebooks\/[^/]+$/.test(location.pathname)) return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <StudioContentFixture path={location.pathname} />);
+  if (/^\/studio\/(?:bank(?:\/[^/]+)?|library|resources(?:\/[^/]+)?|opportunities(?:\/[^/]+)?|projects(?:\/[^/]+)?|reviews(?:\/[^/]+)?|mcp|connect\/authorize)$/.test(location.pathname) || /^\/studio\/courses\/[^/]+\/notebooks\/[^/]+$/.test(location.pathname)) return page(locale, 'studio', STUDIO_PAGE_PERMISSIONS, studioScope, <StudioContentFixture path={location.pathname} />);
   if (location.pathname === '/admin/audit') return page(locale, 'admin', [...BUILT_IN_ROLE_PERMISSIONS.central_admin], studioScope, <StudioContentFixture path={location.pathname} />);
 
   // `?fixture=diacritics` keeps the plain list page whose 12px Vietnamese eyebrow the shell's clipping check reads.

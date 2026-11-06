@@ -8,6 +8,7 @@ import { queue as readQueue } from '@/features/submissions/service';
 import type { Actor } from '@/lib/permissions';
 import { routes } from '@/lib/routes';
 import { supabaseService } from '@/lib/supabase/server';
+import { teachingCourseScope } from '@/features/teaching/assignments';
 import { resolveCourseTitle, resolveItemTitle, versionTitles, type VersionTitles } from './titles';
 
 /**
@@ -82,6 +83,7 @@ export interface OverviewQuery extends PromiseLike<QueryResult> {
   select(columns: string, options?: { count?: 'exact'; head?: boolean }): this;
   eq(column: string, value: unknown): this;
   in(column: string, values: unknown[]): this;
+  or(filters: string, options?: { referencedTable?: string }): this;
   gte(column: string, value: string): this;
   lt(column: string, value: string): this;
   order(column: string, options?: { ascending?: boolean }): this;
@@ -99,6 +101,7 @@ export type GradingOverviewDependencies = {
   titles?: typeof versionTitles;
   actors?: (ids: Iterable<string | null | undefined>) => Promise<Map<string, ActorDisplay>>;
   now?: () => Date;
+  teachingScope?: typeof teachingCourseScope;
 };
 
 export type GradingOverviewInput = {
@@ -183,12 +186,43 @@ export async function gradingOverview(
     return cachedDatabase;
   };
 
+  const teaching = await (dependencies.teachingScope ?? teachingCourseScope)(actor, 'submission.grade');
+  const allowedBranch = (id: string) => scope.global || scope.branchIds.includes(id);
+  const unrestricted = scope.global && teaching.all;
+  const branches = [...new Set((teaching.all && !scope.global ? scope.branchIds : teaching.branchIds).filter(allowedBranch))];
+  const assignments = teaching.assignments.filter((entry) => allowedBranch(entry.branchId) && !branches.includes(entry.branchId));
+  const versionPairs: Array<{ versionId: string; branchId: string }> = [];
+  const courseIds = [...new Set(assignments.map((entry) => entry.courseId))];
+  for (let offset = 0; offset < courseIds.length; offset += 50) {
+    const ids = courseIds.slice(offset, offset + 50);
+    for (let from = 0; ; from += 1000) {
+      const result = await database().from('course_versions').select('id,course_id').in('course_id', ids).order('id').range(from, from + 999);
+      if (result.error || !Array.isArray(result.data)) throw new Error('Grading overview versions could not be loaded');
+      for (const value of result.data) {
+        const row = record(value);
+        const versionId = text(row?.id);
+        const courseId = text(row?.course_id);
+        if (versionId && courseId) for (const assignment of assignments) {
+          if (assignment.courseId === courseId) versionPairs.push({ versionId, branchId: assignment.branchId });
+        }
+      }
+      if (result.data.length < 1000) break;
+    }
+  }
+  // Values are quoted as PostgREST filter literals, including escaped punctuation.
+  const literal = (value: string) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  const conditions = [
+    ...branches.map((id) => `and(branch_scope_known.eq.true,branch_id.eq.${literal(id)})`),
+    ...versionPairs.map(({ versionId, branchId }) => `and(branch_scope_known.eq.true,branch_id.eq.${literal(branchId)},course_version_id.eq.${literal(versionId)})`),
+  ];
   const scoped = <Q extends OverviewQuery>(query: Q, prefix = ''): Q => {
-    if (scope.global) return query;
-    const branchScoped = query.eq(`${prefix}branch_scope_known`, true);
-    return scope.branchIds.length === 1
-      ? branchScoped.eq(`${prefix}branch_id`, scope.branchIds[0])
-      : branchScoped.in(`${prefix}branch_id`, scope.branchIds);
+    if (unrestricted) return query;
+    if (branches.length && !versionPairs.length) {
+      const known = query.eq(`${prefix}branch_scope_known`, true);
+      return branches.length === 1 ? known.eq(`${prefix}branch_id`, branches[0]) : known.in(`${prefix}branch_id`, branches);
+    }
+    if (!conditions.length) return query.eq(`${prefix}branch_id`, '__no_teaching_scope__');
+    return query.or(conditions.join(','), prefix ? { referencedTable: prefix.slice(0, -1) } : undefined);
   };
   const count = async (build: () => OverviewQuery): Promise<number> => {
     const result = await build();
@@ -201,7 +235,7 @@ export async function gradingOverview(
     .eq('status', status)));
   const releasedCount = (from: Date, to: Date) => count(() => {
     const base = database().from('grades')
-      .select(scope.global ? 'id' : 'id,assignment_submissions!inner(branch_id,branch_scope_known)', { count: 'exact', head: true })
+      .select(unrestricted ? 'id' : 'id,assignment_submissions!inner(branch_id,branch_scope_known,course_version_id)', { count: 'exact', head: true })
       .eq('released', true)
       .gte('graded_at', from.toISOString())
       .lt('graded_at', to.toISOString());
@@ -272,7 +306,7 @@ export async function gradingOverview(
         (query) => query.order('submitted_at', { ascending: true }).order('id', { ascending: true }), 'submitted_at'),
         pagedStamps((head) => scoped(database()
           .from('grades')
-          .select(scope.global ? 'graded_at' : 'graded_at,assignment_submissions!inner(branch_id,branch_scope_known)', headOptions(head))
+          .select(unrestricted ? 'graded_at' : 'graded_at,assignment_submissions!inner(branch_id,branch_scope_known,course_version_id)', headOptions(head))
           .eq('released', true)
           .gte('graded_at', since), 'assignment_submissions.'),
         (query) => query.order('graded_at', { ascending: true }).order('id', { ascending: true }), 'graded_at'),

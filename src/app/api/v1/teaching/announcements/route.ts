@@ -8,8 +8,8 @@ const Query = z.object({branchId:z.string().min(1).max(100),courseId:z.string().
 export const GET = withHandler(async request => {
   const params = new URL(request.url).searchParams;
   const input = Query.parse({branchId:params.get('branchId'),courseId:params.get('courseId')});
-  await requirePermission('teaching.announcement.manage',{branchId:input.branchId});
-  return listAnnouncements(input.branchId,input.courseId);
+  const actor = await requirePermission('teaching.announcement.manage',{branchId:input.branchId});
+  return listAnnouncements(actor,input.branchId,input.courseId);
 });
 export const POST = withHandler(async request => {
   const input = AnnouncementCreateSchema.parse(await readJsonBodyLimited(request));

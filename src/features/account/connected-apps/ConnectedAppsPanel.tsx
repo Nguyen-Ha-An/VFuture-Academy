@@ -1,4 +1,5 @@
 'use client';
+import { notifyIdentitySignedOut } from '@/lib/identity/browser-session';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -69,7 +70,7 @@ export function ConnectedAppsPanel({ state, accountEmail, locale, theme }: {
     <header className="border-b border-border bg-card">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
         <Link href="/" className="inline-flex min-h-11 items-center font-medium text-foreground">{t.brand}</Link>
-        <form action="/auth/signout" method="post"><button className="min-h-11 rounded-md border border-border px-4 text-sm font-medium hover:bg-muted" type="submit">{t.signOut}</button></form>
+        <form action="/auth/signout" method="post" onSubmit={notifyIdentitySignedOut}><button className="min-h-11 rounded-md border border-border px-4 text-sm font-medium hover:bg-muted" type="submit">{t.signOut}</button></form>
       </div>
     </header>
     <main id="connected-apps-main" className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">

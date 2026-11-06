@@ -10,6 +10,7 @@ import { can, effectivePermissions } from "@/lib/permissions";
 import { ADMIN_SCOPE_COOKIE } from "@/lib/admin-scope";
 import { routes } from "@/lib/routes";
 import { SchoolDetailView, type SchoolDetailStat } from "../SchoolDetailView";
+import { CourseTeachersManager } from "@/features/teaching/ui/CourseTeachersManager";
 import { schoolMembers, schoolOverview } from "../data";
 
 function pageNumber(raw: string | undefined) {
@@ -58,6 +59,7 @@ export default async function BranchPage({
     "overview",
     ...(can(context.actor, "member.read", scope) ? ["members", "staff"] : []),
     ...(can(context.actor, "content.read", scope) ? ["cms"] : []),
+    ...(can(context.actor, "teaching.assignment.manage", scope) ? ["courses"] : []),
   ];
   const tab = tabs.includes(rawTab ?? "") ? rawTab! : "overview";
   const page = pageNumber(rawPage);
@@ -146,7 +148,7 @@ export default async function BranchPage({
   const reportNavigation = canReadReports ? await schoolNavigationFor({ branchId: branch.id, target: 'reports' }) : null;
 
   const viewTabs = [
-    ...tabs.map((key) => ({ key, label: t(key), href: tabHref(key), current: key === tab })),
+    ...tabs.map((key) => ({ key, label: key === "courses" ? (locale === "vi" ? "Khóa học và giáo viên" : "Courses & teachers") : t(key), href: tabHref(key), current: key === tab })),
     ...(reportNavigation
       ? [{ key: "reports", label: t("reports"), href: reportNavigation.href, navigation: reportNavigation, current: false, external: true }]
       : []),
@@ -185,6 +187,7 @@ export default async function BranchPage({
               }
             : undefined
       }
+      content={tab === "courses" ? <CourseTeachersManager branchId={branch.id} locale={locale === "en" ? "en" : "vi"} /> : undefined}
       note={tab === "cms" ? to("cmsDescription") : undefined}
     />
   );

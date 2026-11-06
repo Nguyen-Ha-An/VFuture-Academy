@@ -44,7 +44,7 @@ const PAGES: StaffPage[] = [
   },
   {
     harness: 'admin', key: 'reviews', path: '/studio/reviews', query: { reviews: 'many' }, heading: 'Duyệt nội dung',
-    actions: (page) => [page.getByRole('button', { name: 'Xem bản gửi duyệt', exact: true }).first()],
+    actions: (page) => [page.getByRole('link', { name: 'Xem bản gửi duyệt', exact: true }).first()],
   },
 ];
 
@@ -132,22 +132,20 @@ test.describe('admin page interactions', () => {
     await expect(sheet).toBeHidden();
   });
 
-  test('reviews: master–detail keeps the list beside the detail and shows decisions only in the detail', async ({ page }, info) => {
+  test('reviews: selecting a request opens its full-screen authorized route', async ({ page }, info) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openView(page, PAGES[7]!, { theme: 'light' });
-    await expect(page.getByRole('heading', { name: studioHome.vi.reviews.selectTitle })).toBeVisible();
     const decisions = page.getByRole('button', { name: 'Duyệt và xuất bản', exact: true });
     await expect(decisions).toHaveCount(4);
-    await page.getByRole('button', { name: 'Xem bản gửi duyệt', exact: true }).nth(1).click();
+    await page.getByRole('link', { name: 'Xem bản gửi duyệt', exact: true }).nth(1).click();
+    await expect(page).toHaveURL(/\/studio\/reviews\/00000000-0000-4000-8000-000000000110\?/);
     const detail = page.getByRole('region', { name: 'Xem bản gửi duyệt: Python cơ bản' });
     await expect(detail).toBeVisible();
     await expect(decisions).toHaveCount(1);
-    await expect(detail.getByRole('button', { name: 'Duyệt và xuất bản', exact: true })).toBeVisible();
-    const list = page.getByRole('region', { name: studioHome.vi.reviews.listTitle });
-    const listBox = (await list.boundingBox())!;
-    const detailBox = (await detail.boundingBox())!;
-    expect(detailBox.x).toBeGreaterThan(listBox.x + listBox.width - 1);
-    await expect(list.locator('li[aria-current="true"]')).toContainText('Python cơ bản');
+    await expect(page.getByRole('button', { name: 'Duyệt và xuất bản', exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: studioHome.vi.reviews.listTitle })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Trở lại danh sách duyệt' })).toBeInViewport();
+    await expect(page.locator('.canvas-global-nav')).toHaveCount(0);
     await pageShot(page, info, 'admin-reviews-1440-light-detail');
   });
 });

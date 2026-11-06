@@ -1,3 +1,4 @@
+import { notifyIdentityChanged } from './browser-session';
 import { navigateAfterAuth } from '@/lib/post-auth-navigation';
 import { routes } from '@/lib/routes';
 import { safeInternalPath } from '@/lib/safe-internal-path';
@@ -38,6 +39,7 @@ export function startAuthPopup(options: { url: string; next: string; onPhase: (p
       if (!active) return;
       if (!session || typeof session !== 'object' || !('userId' in session) || typeof session.userId !== 'string' || !session.userId) { fail('session'); return; }
       cleanup(); close();
+      notifyIdentityChanged();
       navigateAfterAuth(routes.auth.welcome({ next: safeInternalPath(options.next) }));
     } catch { if (active) fail('session'); } finally { clearTimeout(verificationTimeout); }
   };

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
+const teaching = vi.hoisted(() => ({ scope: { all: true, branchIds: [] as string[], assignments: [] as Array<{courseId:string;branchId:string}> } }));
+vi.mock('@/features/teaching/assignments', () => ({ assertCourseTeaching: async () => {}, teachingCourseScope: async () => teaching.scope }));
 const mocks = vi.hoisted(() => ({
   recompute: vi.fn(),
   supabaseService: vi.fn(),
@@ -643,6 +645,31 @@ describe('guarded assignment lifecycle', () => {
 });
 
 describe('submission grading queue', () => {
+  it('restricts a grader to assigned course versions and historical school before paging', async () => {
+    teaching.scope = { all: false, branchIds: [], assignments: [{ courseId: 'course-a', branchId: 'vinsmc' }] };
+    try {
+      const database = new SupabaseStub({ course_versions: [successful([{id:'version-a', course_id:'course-a'}])], assignment_submissions: [successful([])] });
+      await serviceFor(database).service.queue(instructor, {});
+      const query = database.queries.find(({table}) => table === 'assignment_submissions')!;
+      const scope = query.operations.find(([name]) => name === 'or');
+      expect(scope?.[1]).toContain('branch_id.eq."vinsmc"');
+      expect(scope?.[1]).toContain('course_version_id.eq."version-a"');
+      expect(query.operations.findIndex(([name]) => name === 'or')).toBeLessThan(query.operations.findIndex(([name]) => name === 'limit'));
+    } finally {
+      teaching.scope = { all: true, branchIds: [], assignments: [] };
+    }
+  });
+  it('returns an empty queue without querying submissions when no course is assigned', async () => {
+    teaching.scope = { all: false, branchIds: [], assignments: [] };
+    try {
+      const database = new SupabaseStub();
+      await expect(serviceFor(database).service.queue(instructor, {})).resolves.toEqual({items: [], nextCursor: null});
+      expect(database.queries).toEqual([]);
+    } finally {
+      teaching.scope = { all: true, branchIds: [], assignments: [] };
+    }
+  });
+
   function queueRow(id: string, branchId: string): Record<string, unknown> {
     return {
       id,
@@ -763,17 +790,17 @@ describe('submission grading queue', () => {
     const database = new SupabaseStub({
       assignment_submissions: [successful([pending]), successful([{
         user_id: 'learner-submission-new', course_version_id: 'version-1',
-        item_id: 'assignment', block_id: null,
+        item_id: 'assignment', block_id: null, branch_id: 'vinsmc', branch_scope_known: true,
       }])],
     });
 
-    await expect(serviceFor(database).service.queue(instructor, { status: 'in_review' }))
+    await expect(serviceFor(database).service.queue(instructor, { status: 'pending' }))
       .resolves.toMatchObject({ items: [] });
     const approvalQuery = database.queries.filter(({ table }) => table === 'assignment_submissions')[1];
     expect(approvalQuery?.operations).toEqual(expect.arrayContaining([
       ['eq', 'grades.released', true],
       ['eq', 'grades.decision', 'approved'],
-      ['or', 'and(user_id.eq.learner-submission-new,course_version_id.eq.version-1,item_id.eq.assignment,block_id.is.null)'],
+      ['or', 'and(user_id.eq.learner-submission-new,course_version_id.eq.version-1,item_id.eq.assignment,block_id.is.null,branch_scope_known.eq.true,branch_id.eq."vinsmc")'],
     ]));
   });
 

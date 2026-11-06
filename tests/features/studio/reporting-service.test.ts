@@ -51,3 +51,16 @@ describe('Studio learning report service', () => {
     expect(() => studioReportQueryFromUrl('https://example.test?from=2025-01-01&to=2026-09-01')).toThrow();
   });
 });
+
+describe('historical branch visibility', () => {
+  it('does not include unknown historical branches for an ordinary global reporter', async () => {
+    const report = vi.fn(async () => emptyReport);
+    const actor: Actor = { userId: 'global', roles: [], authorization: {
+      source: 'database', accountStatus: 'active', memberships: [],
+      assignments: [{ roleDefinitionId: 'reporter', scope: { kind: 'central' }, permissions: ['report.global.read'] }],
+    } };
+    const result = await createStudioReportingService({ report }).load(actor, { kind: 'central' }, {});
+    expect(result.visibility.unknownHistoricalBranch).toBe(false);
+    expect(report).toHaveBeenCalledWith(expect.objectContaining({ includeUnknownHistoricalBranch: false }));
+  });
+});

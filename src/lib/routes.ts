@@ -117,6 +117,7 @@ export const routes = {
     project: (projectId: string, query?: RouteQuery) => withQuery(`/studio/projects/${segment(projectId)}`, query),
     resources: path('/studio/resources'),
     reviews: path('/studio/reviews'),
+    review: (reviewId: string, query?: RouteQuery) => withQuery(`/studio/reviews/${segment(reviewId)}`, query),
     resource: (resourceId: string, query?: RouteQuery) => withQuery(`/studio/resources/${segment(resourceId)}`, query),
     submissions: path('/studio/submissions'),
     users: path('/studio/users'),

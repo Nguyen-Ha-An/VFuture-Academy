@@ -10,7 +10,7 @@ function signal(attempt:string,source:unknown=popup,origin=window.location.origi
  const event=new MessageEvent('message',{origin,data:{type:'academy-auth-popup',attempt,status}});Object.defineProperty(event,'source',{value:source});window.dispatchEvent(event);
 }
 describe('popup completion authentication boundary',()=>{
- beforeEach(()=>{vi.clearAllMocks();channels=[];popup.closed=false;vi.stubGlobal('BroadcastChannel',FakeChannel);vi.spyOn(window,'open').mockReturnValue(popup as unknown as Window);vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({userId:'verified-user'}))));});
+ beforeEach(()=>{window.localStorage.clear();vi.clearAllMocks();channels=[];popup.closed=false;vi.stubGlobal('BroadcastChannel',FakeChannel);vi.spyOn(window,'open').mockReturnValue(popup as unknown as Window);vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({userId:'verified-user'}))));});
  afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
  it('reports blocked popups without navigating the parent',()=>{
   vi.mocked(window.open).mockReturnValue(null);const error=vi.fn();startAuthPopup({url:'/auth/login?provider=google',next:'/app',onPhase:vi.fn(),onError:error});
@@ -22,13 +22,14 @@ describe('popup completion authentication boundary',()=>{
   expect(attempt).toMatch(/^[a-f0-9]{48}$/);
   signal(attempt,{},window.location.origin);signal(attempt,popup,'https://evil.example');signal('0'.repeat(48));expect(fetch).not.toHaveBeenCalled();
   signal(attempt);await vi.waitFor(()=>expect(mocks.navigate).toHaveBeenCalledWith('/welcome?next=%2Fapp'));
+  expect(window.localStorage.getItem('vfuture:auth:changed')).toBeTruthy();
   expect(fetch).toHaveBeenCalledWith('/api/v1/auth/session',expect.objectContaining({credentials:'same-origin',cache:'no-store'}));handle.cancel();
  });
  it('accepts an attempt-bound channel after COOP severs opener, but still denies an absent session',async()=>{
   vi.mocked(fetch).mockResolvedValue(new Response('{}',{status:401}));const error=vi.fn();const handle=startAuthPopup({url:'/auth/login?provider=microsoft',next:'/studio',onPhase:vi.fn(),onError:error});
   const attempt=channels[0].name.replace('academy-auth-popup:','');
   channels[0].onmessage?.(new MessageEvent('message',{origin:window.location.origin,data:{type:'academy-auth-popup',attempt,status:'success'}}));
-  await vi.waitFor(()=>expect(error).toHaveBeenCalledWith('session'));expect(mocks.navigate).not.toHaveBeenCalled();handle.cancel();
+  await vi.waitFor(()=>expect(error).toHaveBeenCalledWith('session'));expect(window.localStorage.getItem('vfuture:auth:changed')).toBeNull();expect(mocks.navigate).not.toHaveBeenCalled();handle.cancel();
  });
  it('continues listening after a severed window looks closed and ignores cancelled attempts',()=>{
   vi.useFakeTimers();const phase=vi.fn();const handle=startAuthPopup({url:'/auth/login?provider=google',next:'/app',onPhase:phase,onError:vi.fn()});

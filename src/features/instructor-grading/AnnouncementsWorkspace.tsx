@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CanvasButton as Button, CanvasSelect, CanvasTextInput, CanvasTextArea } from '@/features/canvas/ui';
 import { useUnsavedChanges } from '@/features/studio/ui/useUnsavedChanges';
@@ -16,6 +16,29 @@ export function AnnouncementsWorkspace({ branches, locale }: Props) {
   const [branchId, setBranchId] = useState(branches.length === 1 ? branches[0].id : '');
   const [courseId, setCourseId] = useState('');
   const { options, error: optionsError } = useTeachingOptions(branchId, locale);
+  // The URL is only an initial suggestion; the selected school and its fetched
+  // options remain authoritative, and later user choices are never overwritten.
+  const initialCourse = useRef<{ courseId: string; branchId: string } | null>(null);
+  const initialApplied = useRef(false);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const requestedCourse = query.get('courseId');
+    const requestedBranch = query.get('branchId');
+    if (!requestedCourse) return;
+    const initialBranch = requestedBranch && branches.some(branch => branch.id === requestedBranch)
+      ? requestedBranch : branches.length === 1 && !requestedBranch ? branches[0].id : '';
+    if (!initialBranch) return;
+    initialCourse.current = { courseId: requestedCourse, branchId: initialBranch };
+    setBranchId(initialBranch);
+  }, [branches]);
+  useEffect(() => {
+    const initial = initialCourse.current;
+    if (!initial || initialApplied.current || initial.branchId !== branchId || !options.courses.length) return;
+    const chosen = options.courses.find(course => course.id === initial.courseId) ?? options.courses[0];
+    initialApplied.current = true;
+    setCourseId(chosen.id);
+  }, [branchId, options]);
+
   const [rows, setRows] = useState<Announcement[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [editingRevision, setEditingRevision] = useState<number | null>(null);
@@ -63,7 +86,7 @@ export function AnnouncementsWorkspace({ branches, locale }: Props) {
   }
   return <div className="canvas-page mx-auto max-w-7xl space-y-6">
     <header><Link href="/grading" className="text-sm text-muted-foreground">← {vi ? 'Giảng dạy' : 'Teaching'}</Link><h1 tabIndex={-1} className="mt-2 text-2xl font-semibold">{vi ? 'Thông báo' : 'Announcements'}</h1><p className="mt-1 text-sm text-muted-foreground">{vi ? 'Soạn bản nháp và công bố cho khóa học tại trường đã chọn.' : 'Draft and publish announcements for a course at the selected school.'}</p></header>
-    <div className="canvas-toolbar grid gap-4 sm:grid-cols-2"><CanvasSelect label={vi ? 'Trường' : 'School'} disabled={busy} value={branchId} onChange={value => void changeContext(() => { setBranchId(value); setCourseId(''); setRows([]); reset(); })} options={[{ value: '', label: vi ? 'Chọn trường' : 'Select school' }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} /><CanvasSelect label={vi ? 'Khóa học' : 'Course'} disabled={busy} value={courseId} onChange={value => void changeContext(() => { setCourseId(value); setRows([]); reset(); })} options={[{ value: '', label: vi ? 'Chọn khóa học' : 'Select course' }, ...options.courses.map(course => ({ value: course.id, label: course.title }))]} /></div>
+    <div className="canvas-toolbar grid gap-4 sm:grid-cols-2"><CanvasSelect label={vi ? 'Trường' : 'School'} disabled={busy} value={branchId} onChange={value => void changeContext(() => { initialApplied.current = true; setBranchId(value); setCourseId(''); setRows([]); reset(); })} options={[{ value: '', label: vi ? 'Chọn trường' : 'Select school' }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} /><CanvasSelect label={vi ? 'Khóa học' : 'Course'} disabled={busy} value={courseId} onChange={value => void changeContext(() => { initialApplied.current = true; setCourseId(value); setRows([]); reset(); })} options={[{ value: '', label: vi ? 'Chọn khóa học' : 'Select course' }, ...options.courses.map(course => ({ value: course.id, label: course.title }))]} /></div>
     {optionsError && <p role="alert" className="rounded-md border border-destructive p-3 text-sm">{optionsError}</p>}
     {error && <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive p-3"><p role="alert" className="text-sm">{error}</p><Button variant="outline" size="sm" disabled={busy || loading} onClick={() => void load()}>{vi ? 'Tải lại danh sách' : 'Refresh announcements'}</Button></div>}
     {branchId && courseId && <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.9fr)] lg:items-start"><section className="canvas-panel space-y-4 rounded-lg border p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">{vi ? 'Thông báo trong khóa học' : 'Course announcements'}</h2><Button variant="outline" disabled={busy} onClick={() => void changeContext(reset)}>{vi ? 'Tạo mới' : 'New'}</Button></div>{loading ? <p role="status">{vi ? 'Đang tải…' : 'Loading…'}</p> : rows.length === 0 ? <p className="canvas-empty text-sm text-muted-foreground">{vi ? 'Chưa có thông báo.' : 'No announcements yet.'}</p> : <ul className="divide-y">{rows.map(row => <li key={row.id} className="space-y-2 py-4"><div className="flex flex-wrap justify-between gap-2"><strong className="min-w-0 break-words">{row.title}</strong><span className="text-sm text-muted-foreground">{row.status === 'draft' ? (vi ? 'Bản nháp' : 'Draft') : row.status === 'published' ? (vi ? 'Đã công bố' : 'Published') : (vi ? 'Đã lưu trữ' : 'Archived')}</span></div><details className="text-sm"><summary className="min-h-9 cursor-pointer py-2 text-primary">{vi ? 'Đọc nội dung thông báo' : 'Read announcement'}</summary><p className="whitespace-pre-wrap break-words leading-relaxed">{row.body}</p></details><div className="flex flex-wrap gap-2">{row.status === 'draft' && <><Button size="sm" variant="outline" disabled={busy} onClick={() => void changeContext(() => { setSelected(row.id); setEditingRevision(row.revision); setTitle(row.title); setBody(row.body); setSaved(JSON.stringify({ title: row.title, body: row.body })); })}>{vi ? 'Sửa bản nháp' : 'Edit draft'}</Button><Button size="sm" disabled={busy || dirty} onClick={() => void action(row.id, 'publish')}>{vi ? 'Công bố' : 'Publish'}</Button></>}{row.status !== 'archived' && <Button size="sm" variant="outline" disabled={busy || dirty} onClick={() => void action(row.id, 'archive')}>{vi ? 'Lưu trữ' : 'Archive'}</Button>}</div></li>)}</ul>}</section>

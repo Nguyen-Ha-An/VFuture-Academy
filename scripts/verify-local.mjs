@@ -29,7 +29,7 @@ if (webpack) {
 const sqlRuntime = mkdtempSync(join(tmpdir(), 'vfuture-local-sql-'));
 try {
   run('npm', ['install', '--prefix', sqlRuntime, '--ignore-scripts', '--no-audit', '--no-fund', '@electric-sql/pglite@0.5.8']);
-  for (const script of ['verify-admin-migrations.mjs', 'verify-teaching-canvas.mjs', 'verify-admin-foundation.mjs', 'verify-admin-management.mjs', 'verify-admin-content-review.mjs', 'verify-admin-content-publication.mjs', 'verify-notebook-foundation.mjs', 'verify-studio-transactions.mjs', 'verify-studio-workflow-concurrency.mjs', 'verify-security-catalog-quiz.mjs', 'verify-resource-create-ownership.mjs', 'fixtures/studio-assets-sql.mjs', 'fixtures/studio-reports-sql.mjs', 'verify-exam-result-availability.mjs', 'verify-exam-attachment-bindings.mjs', 'fixtures/exam-sweep-scheduler-sql.mjs', 'verify-studio-mcp-access-blocks.mjs', 'verify-shared-admission.mjs', 'verify-shared-admission-concurrency.mjs', 'verify-media-upload-reservations.mjs']) {
+  for (const script of ['verify-admin-migrations.mjs', 'verify-teaching-canvas.mjs', 'verify-teacher-assignments.mjs', 'verify-exam-teaching-scope.mjs', 'verify-management-teaching-scope.mjs', 'verify-admin-foundation.mjs', 'verify-admin-management.mjs', 'verify-admin-content-review.mjs', 'verify-admin-content-publication.mjs', 'verify-notebook-foundation.mjs', 'verify-studio-transactions.mjs', 'verify-studio-workflow-concurrency.mjs', 'verify-security-catalog-quiz.mjs', 'verify-resource-create-ownership.mjs', 'fixtures/studio-assets-sql.mjs', 'fixtures/studio-reports-sql.mjs', 'verify-exam-result-availability.mjs', 'verify-exam-attachment-bindings.mjs', 'fixtures/exam-sweep-scheduler-sql.mjs', 'verify-studio-mcp-access-blocks.mjs', 'verify-shared-admission.mjs', 'verify-shared-admission-concurrency.mjs', 'verify-media-upload-reservations.mjs']) {
     run(process.execPath, [`scripts/${script}`], {
       PGLITE_RUNTIME: join(sqlRuntime, 'node_modules/@electric-sql/pglite'),
       PGLITE_MODULE_PATH: sqlRuntime,
@@ -46,12 +46,14 @@ try {
   run(process.execPath, ['scripts/azure-core/rehearse-forward.mjs']);
   run(process.execPath, ['scripts/azure-core/rehearse-forward-53.mjs']);
   run(process.execPath, ['scripts/azure-core/rehearse-forward-54.mjs']);
+  run(process.execPath, ['scripts/azure-core/rehearse-forward-55.mjs']);
   run('npx', ['vitest', 'run', 'tests/scripts/azure-identity-schema.test.ts', 'tests/scripts/azure-admin-schema.test.ts', 'tests/scripts/azure-media-delete-schema.test.ts', '--maxWorkers=1'], azureSqlEnvironment);
 } finally { rmSync(sqlRuntime, { recursive: true, force: true }); }
 
 const browsers = full ? ['chromium', 'firefox', 'webkit'] : ['chromium'];
 run('npx', ['playwright', 'install', ...browsers]);
 run('npx', ['playwright', 'test', '--config', 'tests/e2e/auth-popup.config.ts'], { CI: 'true' });
+run('npx', ['playwright', 'test', '--config', 'tests/e2e/session-guard.config.ts'], { CI: 'true' });
 for (const config of ['studio', 'admin', 'learner', 'student', 'student-runtime', ...(full ? ['student-visual'] : [])]) {
   const projects = config === 'student' || config === 'student-runtime' ? ['--project', ...browsers] : [];
   run('npx', ['playwright', 'test', '--config', `playwright.${config}.config.ts`, ...projects, '--reporter=line', '--trace', 'off'], { CI: 'true', STUDENT_CAPTURE_EVIDENCE: String(full) });

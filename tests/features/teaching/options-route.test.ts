@@ -9,6 +9,10 @@ function actor(permissions:Permission[], branchId='ans'):Actor {
 }
 describe('teaching options authorization',()=>{
   beforeEach(()=>{state.options.mockReset().mockResolvedValue({courses:[],versions:[]});});
+  it('allows assignment managers to list accessible and pinned courses',async()=>{
+    state.actor=actor(['teaching.assignment.manage']);
+    expect((await GET(new Request('https://example.test/api/v1/teaching/options?branchId=ans'))).status).toBe(200);
+  });
   it('allows an announcement-only school role',async()=>{
     state.actor=actor(['teaching.announcement.manage']);
     expect((await GET(new Request('https://example.test/api/v1/teaching/options?branchId=ans'))).status).toBe(200);
@@ -16,7 +20,7 @@ describe('teaching options authorization',()=>{
   it('passes the requested locale and rejects unsupported values',async()=>{
     state.actor=actor(['teaching.schedule.manage']);
     expect((await GET(new Request('https://example.test/api/v1/teaching/options?branchId=ans&locale=en'))).status).toBe(200);
-    expect(state.options).toHaveBeenCalledWith('ans','en');
+    expect(state.options).toHaveBeenCalledWith(state.actor,'ans','en');
     state.options.mockClear();
     expect((await GET(new Request('https://example.test/api/v1/teaching/options?branchId=ans&locale=fr'))).status).toBe(400);
     expect(state.options).not.toHaveBeenCalled();

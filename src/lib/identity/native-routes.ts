@@ -7,7 +7,6 @@ import { enforceRequestRateLimit } from '@/lib/rate-limit';
 import { routes } from '@/lib/routes';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { academyBackend } from './provider';
-import { identityDisplayName } from './display-name';
 import { createNativeClient, NativeAuthError, type NativeFlow, type NativeResult } from './native';
 import { decryptRefreshToken, encryptRefreshToken, getOidcMetadata, getSigningKeys, hashToken, randomToken, readIdentityConfiguration, verifyIdToken, NATIVE_REFRESH_PREFIX, type IdentityConfiguration } from './oidc';
 import { consumeIdentityTransaction, createStoredSession, initializeIdentityProfile, resolveIdentityUser, storeIdentityTransaction } from './store';
@@ -58,7 +57,9 @@ async function complete(result:NativeResult,browser:string,config:IdentityConfig
   if(result.flow.mode==='signup'&&result.flow.verifiedEmail) {
     if(typeof claims.email==='string'&&claims.email.toLowerCase()!==result.flow.email.toLowerCase())throw new NativeAuthError('request_failed');
     claims.email=result.flow.email;claims.email_verified=true;
-    if(!identityDisplayName(claims)&&result.flow.displayName)claims.name=result.flow.displayName;
+    // Prefer the full name submitted in this verified, encrypted signup flow.
+    // Directory defaults must not replace the person's explicit application name.
+    if(result.flow.displayName)claims.name=result.flow.displayName;
   }
   const user=await resolveIdentityUser(claims);
   await initializeIdentityProfile(user.id,claims);

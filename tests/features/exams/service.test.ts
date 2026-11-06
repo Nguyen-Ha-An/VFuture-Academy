@@ -37,6 +37,7 @@ function harness(
   const repo = new InMemoryExamRepo();
   const clock = new MutableClock(new Date(at));
   const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
     repo,
     clock,
     bank: bankSource,
@@ -141,6 +142,7 @@ describe('exam lifecycle', () => {
     const repo = new InMemoryExamRepo();
     const onExamPassed = vi.fn(async () => { throw new Error('skills unavailable'); });
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -165,6 +167,7 @@ describe('exam lifecycle', () => {
     const clock = new MutableClock(new Date('2026-09-02T00:00:00.000Z'));
     const track = vi.fn(async () => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock,
       bank: bankSource,
@@ -201,6 +204,7 @@ describe('exam lifecycle', () => {
     }));
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -459,6 +463,7 @@ describe('exam lifecycle', () => {
     const repo = new InMemoryExamRepo();
     const clock = new MutableClock(new Date('2026-09-02T00:00:00.000Z'));
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock,
       bank: {
@@ -608,6 +613,7 @@ describe('exam lifecycle', () => {
     const onExamPassed = vi.fn(async (attempt: ExamAttemptRecord) => { evidence.add(attempt.id); });
     const awardXp = vi.fn(async (attempt: ExamAttemptRecord) => { xp.add(`${attempt.userId}:${attempt.courseVersionId}:${attempt.itemId}`); });
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -674,6 +680,7 @@ describe('exam lifecycle', () => {
       listExpiredInProgress: (now) => storage.listExpiredInProgress(now),
     };
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -777,6 +784,7 @@ describe('exam grade aggregation', () => {
       listExpiredInProgress: (now) => storage.listExpiredInProgress(now),
     };
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo: unorderedRepo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -942,6 +950,7 @@ describe('manual grading, sweep, and integrity events', () => {
     const repo = new InMemoryExamRepo();
     const recomputeProgress = vi.fn(async () => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -969,6 +978,7 @@ describe('manual grading, sweep, and integrity events', () => {
     const failure = new Error('progress unavailable');
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -1013,6 +1023,7 @@ describe('manual grading, sweep, and integrity events', () => {
       .mockRejectedValueOnce(failure);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -1060,6 +1071,7 @@ describe('manual grading, sweep, and integrity events', () => {
       .mockRejectedValueOnce(failure);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -1238,6 +1250,7 @@ describe('item-level release authorization', () => {
     const clock = new MutableClock(new Date('2026-09-02T00:00:00.000Z'));
     const recomputeProgress = vi.fn(async () => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock,
       bank: bankSource,
@@ -1267,6 +1280,7 @@ describe('item-level release authorization', () => {
     const repo = new InMemoryExamRepo();
     const recomputeProgress = vi.fn(async () => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -1473,6 +1487,7 @@ describe('item-level release authorization', () => {
     const recomputeProgress = vi.fn().mockRejectedValue(new Error('progress unavailable'));
     const awardXp = vi.fn().mockRejectedValue(new Error('xp unavailable'));
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,
       clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')),
       bank: bankSource,
@@ -1509,6 +1524,7 @@ describe('exam submission post-commit recovery', () => {
     });
     const recomputeProgress = vi.fn(async () => undefined);
     const service = createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo, clock: new MutableClock(new Date('2026-09-02T00:00:00.000Z')), bank: bankSource,
       loadItem: async () => itemContext(allTypesExam), isEnrolled: async () => true, recomputeProgress,
     });
@@ -1523,6 +1539,7 @@ describe('exam submission post-commit recovery', () => {
     vi.spyOn(repo,'upsertGrade').mockRejectedValueOnce(new Error('temporary grade write failure')).mockImplementation(actualUpsert);
     const recomputeProgress=vi.fn(async()=>undefined);
     const service=createExamService({
+    authorizeStaffAttempt: async () => undefined,
       repo,clock:new MutableClock(new Date('2026-09-02T00:00:00.000Z')),bank:bankSource,
       loadItem:async()=>itemContext(allTypesExam),isEnrolled:async()=>true,recomputeProgress,
     });

@@ -18,7 +18,7 @@ function safeFailure(error) {
   const code=error?.code??error?.cause?.code;
   if(allowed.includes(code))result.runtimeCode=code;
   for(const line of String(error?.stderr??'').split('\n')) {
-    try {const parsed=JSON.parse(line);if(/^[0-9A-Z]{5}$/.test(parsed.sqlState??''))result.sqlState=parsed.sqlState;if(allowed.includes(parsed.runtimeCode))result.runtimeCode=parsed.runtimeCode;if(['MIGRATION_FAILED','PROBE_FAILED','AUTHENTICATOR_FAILED','CUTOVER_FAILED','FORWARD_FAILED','FORWARD_53_FAILED','FORWARD_54_FAILED'].includes(parsed.errorCode))result.childErrorCode=parsed.errorCode;if(parsed.errorCode==='MIGRATION_FAILED'&&stage==='apply_schema'){if(allowedSchemaSteps.has(parsed.schemaStep))result.schemaStep=parsed.schemaStep;if(Number.isSafeInteger(parsed.position)&&parsed.position>0)result.position=parsed.position;}}catch{/* Raw stderr and SQL values are never forwarded. */}
+    try {const parsed=JSON.parse(line);if(/^[0-9A-Z]{5}$/.test(parsed.sqlState??''))result.sqlState=parsed.sqlState;if(allowed.includes(parsed.runtimeCode))result.runtimeCode=parsed.runtimeCode;if(['MIGRATION_FAILED','PROBE_FAILED','AUTHENTICATOR_FAILED','CUTOVER_FAILED','FORWARD_FAILED','FORWARD_53_FAILED','FORWARD_54_FAILED','FORWARD_55_FAILED'].includes(parsed.errorCode))result.childErrorCode=parsed.errorCode;if(parsed.errorCode==='MIGRATION_FAILED'&&stage==='apply_schema'){if(allowedSchemaSteps.has(parsed.schemaStep))result.schemaStep=parsed.schemaStep;if(Number.isSafeInteger(parsed.position)&&parsed.position>0)result.position=parsed.position;}}catch{/* Raw stderr and SQL values are never forwarded. */}
     for(const known of allowed)if(line.includes(`code: '${known}'`))result.runtimeCode=known;
   }
   return result;
@@ -57,7 +57,7 @@ async function readSecret(url,token){
 
 (async () => {
   const env=process.env;
-  const lane=env.MIGRATION_ACTION?.startsWith('forward-54-')?'54':'53';
+  const lane=env.MIGRATION_ACTION?.startsWith('forward-55-')?'55':env.MIGRATION_ACTION?.startsWith('forward-54-')?'54':'53';
   mark('validate_config');
   if(!['probe','configure-authenticator','map-identities','final-sync','schema-import',...Object.keys(FORWARD_ACTIONS),...Object.keys(ASSESSMENT_ACTIONS)].includes(env.MIGRATION_ACTION))throw new Error('invalid_migration_action');
   const endpoint=new URL(env.MIGRATION_PACKAGE_URL);

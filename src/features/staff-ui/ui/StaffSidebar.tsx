@@ -25,6 +25,7 @@ import type { StaffWorkspace } from "@/lib/workspaces";
 import type { StaffNavigation } from "../navigation";
 import { GlobalNavigation } from "@/features/canvas/ui/GlobalNavigation";
 import { ACCOUNT_TRAY_ID } from "@/features/canvas/ui/AccountTray";
+import { COURSES_TRAY_ID } from "@/features/canvas/ui/CoursesTray";
 import { WorkspaceScopeSwitcher } from "./WorkspaceScopeSwitcher";
 
 export type StaffSidebarProps = {
@@ -37,6 +38,8 @@ export type StaffSidebarProps = {
   theme: WorkspaceTheme;
   onAccount?: () => void;
   accountOpen?: boolean;
+  onCourses?: () => void;
+  coursesOpen?: boolean;
   onNavigateRequest?: (href: string, closeOverlay?: () => void) => void;
 };
 
@@ -44,7 +47,7 @@ export type StaffSidebarProps = {
  * Contextual navigation content inside the native DrawerLayout.
  * Scope stays at the head; global workspace/account access appears here only when the rail is hidden.
  */
-export function StaffSidebar({ workspace, navigation, entries, scopeOptions, activeScope, onAccount, accountOpen, onNavigateRequest }: StaffSidebarProps) {
+export function StaffSidebar({ workspace, navigation, entries, scopeOptions, activeScope, onAccount, accountOpen, onCourses, coursesOpen, onNavigateRequest }: StaffSidebarProps) {
   const common = useTranslations("common");
   const { isMobile, setOpenMobile, setOpen } = useSidebar();
   const navigate = (event: SyntheticEvent<unknown>, href: string) => {
@@ -77,7 +80,7 @@ export function StaffSidebar({ workspace, navigation, entries, scopeOptions, act
       <SidebarContent>
         {isMobile && <div className="canvas-staff-mobile-global"><GlobalNavigation studio={entries.studio} grading={entries.grading} admin={entries.admin} mobile
           onNavigate={() => setOpenMobile(false)} onNavigateRequest={onNavigateRequest ? navigate : undefined} onAccount={onAccount ? () => { onAccount(); setOpenMobile(false); } : undefined}
-          accountOpen={accountOpen} accountControls={ACCOUNT_TRAY_ID} /></div>}
+          accountOpen={accountOpen} accountControls={ACCOUNT_TRAY_ID} onCourses={onCourses ? () => { onCourses(); setOpenMobile(false); } : undefined} coursesOpen={coursesOpen} coursesControls={COURSES_TRAY_ID} /></div>}
         <nav aria-label={navigation.label}>
           {navigation.groups.map((group) => (
             <SidebarGroup key={group.key}>

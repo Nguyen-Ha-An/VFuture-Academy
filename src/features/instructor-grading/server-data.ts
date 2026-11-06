@@ -7,6 +7,7 @@ import {
   type BranchScopedPermission,
 } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
+import { teachingCourseScope } from '@/features/teaching/assignments';
 import type {
   AssignmentMetadata,
   BranchOption,
@@ -239,27 +240,64 @@ function chunks<T>(values: readonly T[]): T[][] {
 export async function loadInstructorPageData(
   locale: string,
   scope: InstructorBranchScope,
+  actor: Actor,
+  permissions: BranchScopedPermission[],
 ): Promise<{
   branches: BranchOption[];
   metadata: InstructorMetadata;
 }> {
   const database = supabaseService();
-  const [branchRows, enrollmentRows] = await Promise.all([
-    loadPagedRows(() => {
-      let query = database.from('branches').select('id,name');
-      if (!scope.global) query = query.in('id', scope.branchIds);
-      return query.order('name').order('id') as unknown as PagedQuery;
-    }, 'Instructor grading branches could not be loaded'),
-    loadPagedRows(() => {
-      let query = database.from('enrollments')
-        .select('id,course_version_id,branch_id,branch_scope_known')
-        .in('status', ['active', 'completed']);
-      if (!scope.global) {
-        query = query.eq('branch_scope_known', true).in('branch_id', scope.branchIds);
+  // Resolve each operation separately: a grant for one action must not turn an
+  // unrelated global grant into access to every course.
+  const teachingScopes = await Promise.all(permissions.map((permission) => teachingCourseScope(actor, permission)));
+  const all = scope.global && teachingScopes.some((entry) => entry.all);
+  const allowedBranch = (branchId: string) => scope.global || scope.branchIds.includes(branchId);
+  const branchIds = [...new Set(teachingScopes.flatMap((entry) => entry.all && !scope.global ? scope.branchIds : entry.branchIds).filter(allowedBranch))];
+  const assignments = teachingScopes.flatMap((entry) => entry.assignments).filter((entry) => allowedBranch(entry.branchId));
+  const permittedBranchIds = [...new Set([...branchIds, ...assignments.map((entry) => entry.branchId)])];
+  const branchRows = await loadPagedRows(() => {
+    let query = database.from('branches').select('id,name');
+    if (!all) query = query.in('id', permittedBranchIds);
+    return query.order('name').order('id') as unknown as PagedQuery;
+  }, 'Instructor grading branches could not be loaded');
+
+  // Resolve stable course IDs to versions before querying enrollments. Each
+  // query is scoped in the database before pagination, including branch history.
+  const assignedCourseIds = [...new Set(assignments.map((entry) => entry.courseId))];
+  const assignedVersions: unknown[] = [];
+  for (const courseIds of chunks(assignedCourseIds)) {
+    assignedVersions.push(...await loadPagedRows(() => database.from('course_versions')
+      .select('id,course_id,version').in('course_id', courseIds).order('id') as unknown as PagedQuery,
+    'Instructor grading versions could not be loaded'));
+  }
+  const versionsByCourse = new Map<string, string[]>();
+  for (const value of assignedVersions) {
+    const row = record(value);
+    const courseId = stringValue(row?.course_id);
+    const versionId = stringValue(row?.id);
+    if (courseId && versionId) versionsByCourse.set(courseId, [...(versionsByCourse.get(courseId) ?? []), versionId]);
+  }
+  const enrollmentRows: unknown[] = [];
+  const readEnrollments = async (branchId: string | null, versionIds?: string[]) => {
+    for (const versionPage of versionIds ? chunks(versionIds) : [undefined]) {
+      enrollmentRows.push(...await loadPagedRows(() => {
+        let query = database.from('enrollments').select('id,course_version_id,branch_id,branch_scope_known')
+          .in('status', ['active', 'completed']);
+        if (branchId) query = query.eq('branch_scope_known', true).eq('branch_id', branchId);
+        if (versionPage) query = query.in('course_version_id', versionPage);
+        return query.order('course_version_id').order('id') as unknown as PagedQuery;
+      }, 'Instructor grading enrollments could not be loaded'));
+    }
+  };
+  if (all) await readEnrollments(null);
+  else {
+    for (const branchId of branchIds) await readEnrollments(branchId);
+    for (const assignment of assignments) {
+      if (!branchIds.includes(assignment.branchId)) {
+        await readEnrollments(assignment.branchId, versionsByCourse.get(assignment.courseId) ?? []);
       }
-      return query.order('course_version_id').order('id') as unknown as PagedQuery;
-    }, 'Instructor grading enrollments could not be loaded'),
-  ]);
+    }
+  }
   const branches = branchRows.flatMap((value) => {
     const row = record(value);
     const id = stringValue(row?.id);

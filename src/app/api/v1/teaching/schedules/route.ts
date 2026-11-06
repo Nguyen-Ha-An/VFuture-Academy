@@ -8,8 +8,8 @@ const Query = z.object({branchId:z.string().min(1).max(100),courseVersionId:z.st
 export const GET = withHandler(async request => {
   const params=new URL(request.url).searchParams;
   const input=Query.parse({branchId:params.get('branchId'),courseVersionId:params.get('courseVersionId'),locale:params.get('locale') ?? undefined});
-  await requirePermission('teaching.schedule.manage',{branchId:input.branchId});
-  return listSchedules(input.branchId,input.courseVersionId,input.locale);
+  const actor = await requirePermission('teaching.schedule.manage',{branchId:input.branchId});
+  return listSchedules(actor,input.branchId,input.courseVersionId,input.locale);
 });
 export const PUT = withHandler(async request => {
   const input=ScheduleSchema.parse(await readJsonBodyLimited(request));

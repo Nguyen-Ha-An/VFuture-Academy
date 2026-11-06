@@ -39,7 +39,7 @@ describe("application shells", () => {
     render(<Provider><AppShell><p>content</p></AppShell></Provider>);
     expect(screen.getByRole("navigation", { name: "Điều hướng toàn cục" })).toBeDefined();
     expect(screen.getByRole("link", { name: "Tổng quan" }).getAttribute("href")).toBe("/app");
-    expect(screen.getByRole("link", { name: "Khóa học" }).getAttribute("href")).toBe("/app/courses");
+    expect(screen.getByRole("button", { name: "Khóa học" })).toHaveAttribute("aria-haspopup", "dialog");
     expect(screen.getByRole("link", { name: "Khám phá" }).getAttribute("href")).toBe("/app/explore");
     expect(screen.getAllByRole('button', { name: 'Tài khoản' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Tài khoản' }));
@@ -51,7 +51,7 @@ describe("application shells", () => {
   it('uses the real English focus translations for navigation and account destinations', async () => {
     render(<Provider locale="en"><AppShell><p>content</p></AppShell></Provider>);
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
-    expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/app/courses');
+    expect(screen.getByRole('button', { name: 'Courses' })).toHaveAttribute('aria-haspopup', 'dialog');
     fireEvent.click(screen.getByRole('button', { name: 'Account' }));
     const tray = await screen.findByRole('dialog', { name: 'Account' });
     expect(within(tray).getByRole('link', { name: 'Certificates' })).toHaveAttribute('href', '/app/profile#certificates-heading');
@@ -62,7 +62,7 @@ describe("application shells", () => {
 
     const navigation = screen.getByRole('navigation', { name: 'Điều hướng toàn cục' });
     expect(within(navigation).getByRole('link', { name: 'Tổng quan' })).toHaveAttribute('aria-current', 'page');
-    expect(within(navigation).getByRole('link', { name: 'Khóa học' })).not.toHaveAttribute('aria-current');
+    expect(within(navigation).getByRole('button', { name: 'Khóa học' })).not.toHaveAttribute('aria-current');
   });
 
   it("keeps the global rail in focused item workspaces", () => {

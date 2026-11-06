@@ -251,7 +251,10 @@ function toGrade(value: unknown): ExamGradeRecord {
 }
 
 function assertDatabase(result: DatabaseResult, operation: string) {
-  if (result.error) throw new Error(`Unable to ${operation}`);
+  if (result.error) {
+    if (record(result.error)?.code === '42501') throw new ExamError('FORBIDDEN', 'Teaching scope denied.');
+    throw new Error(`Unable to ${operation}`);
+  }
   return result.data;
 }
 
@@ -388,8 +391,10 @@ export class SupabaseExamRepo implements ExamRepo {
     };
   }
 
-  async saveManualDraft(attemptId: string, answer: ExamAnswerRecord) {
+  async saveManualDraft(attemptId: string, answer: ExamAnswerRecord, actorId?: string) {
+    if (!actorId) throw new ExamError('FORBIDDEN', 'Teaching identity is required.');
     const result = await this.database.rpc('exam_save_manual_draft', {
+      p_actor_id: actorId,
       p_attempt_id: attemptId,
       p_answer: answerRpcRows([answer])[0],
     });
@@ -403,8 +408,11 @@ export class SupabaseExamRepo implements ExamRepo {
     patch: Pick<ExamAttemptRecord, 'points' | 'maxPoints' | 'percent' | 'resultAvailableAt'>,
     expectedAnswers: readonly ExamAnswerRecord[],
     resultAnswers: readonly ExamAnswerRecord[],
+    actorId?: string,
   ) {
+    if (!actorId) throw new ExamError('FORBIDDEN', 'Teaching identity is required.');
     const result = await this.database.rpc('exam_complete_manual_grading', {
+      p_actor_id: actorId,
       p_attempt_id: id,
       p_points: patch.points,
       p_max_points: patch.maxPoints,
@@ -427,8 +435,10 @@ export class SupabaseExamRepo implements ExamRepo {
     };
   }
 
-  async releaseAttempt(id: string, releasedAt: Date) {
+  async releaseAttempt(id: string, releasedAt: Date, actorId?: string) {
+    if (!actorId) throw new ExamError('FORBIDDEN', 'Teaching identity is required.');
     const result = await this.database.rpc('exam_release_attempt', {
+      p_actor_id: actorId,
       p_attempt_id: id,
       p_released_at: releasedAt.toISOString(),
     });
