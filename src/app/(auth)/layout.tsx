@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { SITE_NAME } from '@/features/public-site/site-config';
-import { AuthBenchShell } from '@/features/workspace-ui/auth/AuthBenchShell';
-import { authBenchEnabled } from '@/features/workspace-ui/auth/AuthMain';
+import { EntranceShell } from '@/features/workspace-ui/auth/EntranceShell';
 
 export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
@@ -9,6 +8,5 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: '/labs/vfuture-symbol.svg', type: 'image/svg+xml' }] },
 };
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  if (!authBenchEnabled()) return children;
-  return <AuthBenchShell>{children}</AuthBenchShell>;
+  return <EntranceShell>{children}</EntranceShell>;
 }

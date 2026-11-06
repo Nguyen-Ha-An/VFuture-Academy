@@ -175,3 +175,10 @@ export function createForward53Executor({db,target,expectedActivationSha,source,
   }
   return {plan,apply};
 }
+
+/** Inspect the completed frozen predecessor inside a caller-owned transaction. */
+export async function inspectForward53Baseline(db,activationSha){
+  const state=await inspect(db,artifact(),activationSha,{sourceClean:false,sourceCommit:null,sourceTree:null});
+  if(state.action!=='noop'||!/^[a-f0-9]{40}$/.test(state.receiptSourceCommit??'')||!/^[a-f0-9]{40}$/.test(state.receiptSourceTree??''))fail('Completed committed assessment baseline required');
+  return state;
+}

@@ -21,7 +21,7 @@ vi.mock('@/components/WelcomeForm', () => ({
 
 import WelcomePage from '@/app/(auth)/welcome/page';
 
-function profileClient(result: { data: { handle: string | null } | null; error: unknown }) {
+function profileClient(result: { data: { handle: string | null; display_name: string } | null; error: unknown }) {
   return {
     from: vi.fn(() => ({
       select: vi.fn(() => ({
@@ -40,7 +40,7 @@ describe('welcome page routing', () => {
   afterEach(cleanup);
 
   it('returns an already complete profile to the exact validated destination', async () => {
-    mocks.supabaseUser.mockResolvedValue(profileClient({ data: { handle: 'learner' }, error: null }));
+    mocks.supabaseUser.mockResolvedValue(profileClient({ data: { handle: 'STU-learner', display_name: 'Learner' }, error: null }));
 
     await expect(WelcomePage({
       searchParams: Promise.resolve({ next: '/courses/ai-foundations?enroll=1' }),
@@ -50,7 +50,7 @@ describe('welcome page routing', () => {
   });
 
   it('passes an incomplete profile and its destination to the onboarding form', async () => {
-    mocks.supabaseUser.mockResolvedValue(profileClient({ data: { handle: null }, error: null }));
+    mocks.supabaseUser.mockResolvedValue(profileClient({ data: { handle: 'STU-learner', display_name: '' }, error: null }));
 
     render(await WelcomePage({
       searchParams: Promise.resolve({ next: '/app/projects/climate-lab?join=1' }),

@@ -13,7 +13,8 @@ export async function middleware(request: NextRequest) {
   // keep their existing profile/cookie behavior and never accept this query override.
   const privateOrUtility = ['/api', '/auth', '/app', '/account', '/admin', '/studio', '/grading', '/home', '/learn', '/build', '/profile', '/leaderboard', '/login', '/signup', '/forgot-password', '/reset-password', '/welcome', '/invite', '/u', '/verify', '/dev', '/_next', '/studio-workers', '/social', '/opengraph-image']
     .some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
-  const acceptsPublicLocale = !privateOrUtility && pathname !== '/robots.txt' && pathname !== '/sitemap.xml';
+  const authLocalePath = ['/login', '/signup', '/forgot-password', '/reset-password', '/welcome'].includes(pathname);
+  const acceptsPublicLocale = (authLocalePath || !privateOrUtility) && pathname !== '/robots.txt' && pathname !== '/sitemap.xml';
   const requestedLocale = acceptsPublicLocale && (lang === 'vi' || lang === 'en') ? lang : null;
   if (requestedLocale) request.cookies.set('locale', requestedLocale);
 
@@ -25,7 +26,7 @@ export async function middleware(request: NextRequest) {
 
   const response = academyBackend() === 'azure' ? NextResponse.next({ request }) : await updateSession(request);
   response.headers.set('Content-Security-Policy', contentSecurityPolicy);
-  if (['/login', '/signup', '/forgot-password', '/reset-password'].includes(pathname) || pathname.startsWith('/auth/')) {
+  if (['/', '/login', '/signup', '/forgot-password', '/reset-password'].includes(pathname) || pathname.startsWith('/auth/')) {
     response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     response.headers.set('Cache-Control', 'no-store');
   }

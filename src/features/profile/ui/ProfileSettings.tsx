@@ -7,6 +7,7 @@ import type { ProfileSettings as ProfileSettingsValue } from '@/features/profile
 import { useSupportUnsaved } from '@/features/workspace-ui/support/useSupportUnsaved';
 import { Card, Notice } from '@/features/workspace-ui/ui/primitives';
 import { CanvasButton, CanvasTextInput, CanvasCheckbox } from '@/features/canvas/ui';
+import { handlePrefix, handleSuffix } from '@/lib/profile-handle';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -17,8 +18,9 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
  */
 export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) {
   const t = useTranslations('profile.settings');
-  const [handle, setHandle] = useState(initial.handle ?? '');
-  const [savedHandle, setSavedHandle] = useState(initial.handle ?? '');
+  const prefix = handlePrefix(initial.handle);
+  const [handle, setHandle] = useState(handleSuffix(initial.handle));
+  const [savedHandle, setSavedHandle] = useState(handleSuffix(initial.handle));
   const [savedPublic, setSavedPublic] = useState(initial.profilePublic);
   const [profilePublic, setProfilePublic] = useState(initial.profilePublic);
   const [handleState, setHandleState] = useState<SaveState>('idle');
@@ -34,12 +36,12 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
       const response = await fetch('/api/v1/profile/handle', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ handle }),
+        body: JSON.stringify({ handle: prefix + handle }),
       });
       if (response.ok) {
         setSavedHandle(handle);
         setHandleState('saved');
-        window.dispatchEvent(new CustomEvent('profile-handle-saved', { detail: { handle } }));
+        window.dispatchEvent(new CustomEvent('profile-handle-saved', { detail: { handle: prefix + handle } }));
         return;
       }
       setHandleError(response.status === 409 ? 'taken' : response.status === 429 ? 'rateLimited' : 'generic');
@@ -81,6 +83,7 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
       <p className="vf-l-prose vf-l-muted">{t('description')}</p>
       <div className="vf-l-settings-forms">
         <form onSubmit={saveHandle} className="vf-l-settings-form">
+          <p className="vf-meta" id="profile-handle-prefix">{prefix}</p>
           <CanvasTextInput
             label={t('handleLabel')}
             id="profile-handle"
@@ -94,7 +97,7 @@ export function ProfileSettings({ initial }: { initial: ProfileSettingsValue }) 
             minLength={3}
             maxLength={32}
             pattern="[a-z0-9][a-z0-9_-]{2,31}"
-            aria-describedby="profile-handle-hint profile-handle-status"
+            aria-describedby="profile-handle-prefix profile-handle-hint profile-handle-status"
             aria-invalid={handleState === 'error'}
             messages={handleState === 'error' ? [{ type: 'error', text: t('errorLabel') }] : []}
             required

@@ -4,7 +4,7 @@ vi.mock('server-only',()=>({}));
 vi.mock('next/headers',()=>({cookies:mocks.cookies}));
 vi.mock('@/lib/database/azure-client',()=>({createAzureDataClient:()=>({})}));
 vi.mock('@/lib/rate-limit',()=>({enforceRequestRateLimit:mocks.rate}));
-vi.mock('@/lib/identity/store',()=>({storeIdentityTransaction:mocks.save,consumeIdentityTransaction:mocks.consume,resolveIdentityUser:mocks.resolve,createStoredSession:mocks.create}));
+vi.mock('@/lib/identity/store',()=>({storeIdentityTransaction:mocks.save,consumeIdentityTransaction:mocks.consume,resolveIdentityUser:mocks.resolve,initializeIdentityProfile:vi.fn().mockResolvedValue("STU-test"),createStoredSession:mocks.create}));
 vi.mock('@/lib/identity/server',()=>({SESSION_COOKIE:'academy_session',sessionCookieOptions:{httpOnly:true,sameSite:'lax',path:'/'},revokeAzureSession:mocks.revoke}));
 vi.mock('@/lib/identity/native',async original=>({...await original<typeof import('@/lib/identity/native')>(),createNativeClient:()=>({start:mocks.start,advance:mocks.advance})}));
 vi.mock('@/lib/identity/oidc',async original=>({...await original<typeof import('@/lib/identity/oidc')>(),verifyIdToken:mocks.verify,getOidcMetadata:mocks.metadata,getSigningKeys:mocks.keys}));
@@ -73,5 +73,14 @@ describe('same-origin native authentication routes',()=>{
     const b=await nativeAuthentication(request({action:'start',mode:'signup',email:'b@example.com',password:'Password1!'}));
     const one=await a.json(),two=await b.json();expect(one.attemptId).not.toBe(two.attemptId);
     expect(a.cookies.get('academy_native_'+one.attemptId)).toBeDefined();expect(b.cookies.get('academy_native_'+two.attemptId)).toBeDefined();
+  });
+  it('initializes a verified signup from its bound submitted name when provider name is absent',async()=>{
+    const flow={mode:'signup',step:'code',continuation:'private',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000,verifiedEmail:true,displayName:'Đặng Thị Ánh'};
+    mocks.start.mockResolvedValue({step:'complete',flow,tokens:{idToken:'private-id-token',refreshToken:'private-refresh'}});
+    mocks.verify.mockResolvedValue({iss:vars.ENTRA_ISSUER,oid:'33333333-3333-4333-8333-333333333333',sub:'subject',exp:Math.floor(Date.now()/1000)+3600});
+    mocks.resolve.mockResolvedValue({id:'44444444-4444-4444-8444-444444444444'});
+    const result=await nativeAuthentication(request({action:'start',mode:'signup',email:'a@example.com',password:'Password1!',displayName:'Đặng Thị Ánh'}));
+    expect(result.status).toBe(200);
+    expect(mocks.resolve).toHaveBeenCalledWith(expect.objectContaining({name:'Đặng Thị Ánh',email_verified:true}));
   });
 });

@@ -1,14 +1,13 @@
 export type OnboardingState = {
-  values: { handle: string; displayName: string };
+  values: { displayName: string };
   fieldErrors: {
-    handle?: 'invalidHandle' | 'handleTaken';
     displayName?: 'invalidDisplayName';
   };
   error: 'profileLoadError' | 'profileUpdateError' | null;
 };
 
 export const initialOnboardingState: OnboardingState = {
-  values: { handle: '', displayName: '' },
+  values: { displayName: '' },
   fieldErrors: {},
   error: null,
 };

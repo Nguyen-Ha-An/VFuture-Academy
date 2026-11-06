@@ -22,8 +22,8 @@ import { completeOnboarding } from '@/features/auth/onboarding-actions';
 import { initialOnboardingState } from '@/features/auth/onboarding-state';
 
 const userId = 'verified-user';
-const saved = { id: userId, handle: 'learner_1', display_name: 'Learner One' };
-const pending = { ...saved, handle: null };
+const saved = { id: userId, handle: 'STU-learner_1', display_name: 'Learner One' };
+const pending = { ...saved, display_name: '' };
 const next = '/app/courses/intro?mode=review#lesson';
 
 function form(values: Record<string, string> = {}) {
@@ -40,12 +40,12 @@ function client() {
   const select = vi.fn(() => ({ eq: readEq }));
   const updateResult = vi.fn().mockResolvedValue({ data: saved, error: null });
   const updateSelect = vi.fn(() => ({ maybeSingle: updateResult }));
-  const updateIs = vi.fn(() => ({ select: updateSelect }));
-  const updateEq = vi.fn(() => ({ is: updateIs }));
+  const updateNameEq = vi.fn(() => ({ select: updateSelect }));
+  const updateEq = vi.fn(() => ({ eq: updateNameEq }));
   const update = vi.fn(() => ({ eq: updateEq }));
   const getUser = vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null });
   const from = vi.fn(() => ({ select, update }));
-  return { auth: { getUser }, from, select, readEq, readResult, update, updateEq, updateIs, updateSelect, updateResult };
+  return { auth: { getUser }, from, select, readEq, readResult, update, updateEq, updateNameEq, updateSelect, updateResult };
 }
 
 describe('completeOnboarding server action', () => {
@@ -61,7 +61,7 @@ describe('completeOnboarding server action', () => {
   });
 
   it('exports empty serializable form state', () => {
-    expect(initialOnboardingState).toEqual({ values: { handle: '', displayName: '' }, fieldErrors: {}, error: null });
+    expect(initialOnboardingState).toEqual({ values: { displayName: '' }, fieldErrors: {}, error: null });
   });
 
   it('uses verified identity, ignores forged fields, trims values, then invalidates and redirects', async () => {
@@ -73,8 +73,8 @@ describe('completeOnboarding server action', () => {
     expect(mocks.assertActiveAccount).toHaveBeenCalledWith(userId);
     expect(db.readEq).toHaveBeenCalledWith('id', userId);
     expect(db.updateEq).toHaveBeenCalledWith('id', userId);
-    expect(db.updateIs).toHaveBeenCalledWith('handle', null);
-    expect(db.update).toHaveBeenCalledExactlyOnceWith({ handle: saved.handle, display_name: saved.display_name });
+    expect(db.updateNameEq).toHaveBeenCalledWith('display_name', '');
+    expect(db.update).toHaveBeenCalledExactlyOnceWith({ display_name: saved.display_name });
     expect(db.updateSelect).toHaveBeenCalledWith('id, handle, display_name');
     expect(db.auth.getUser.mock.invocationCallOrder[0]).toBeLessThan(db.update.mock.invocationCallOrder[0]);
     expect(mocks.assertActiveAccount.mock.invocationCallOrder[0]).toBeLessThan(db.update.mock.invocationCallOrder[0]);
@@ -83,31 +83,17 @@ describe('completeOnboarding server action', () => {
     expect(mocks.revalidatePath.mock.invocationCallOrder.at(-1)).toBeLessThan(vi.mocked(redirect).mock.invocationCallOrder[0]);
   });
 
-  it.each([
-    ['ab', 'Valid', { handle: 'invalidHandle' }],
-    ['UpperCase', 'Valid', { handle: 'invalidHandle' }],
-    ['a'.repeat(33), 'Valid', { handle: 'invalidHandle' }],
-    ['good', ' ', { displayName: 'invalidDisplayName' }],
-    ['good', 'a'.repeat(121), { displayName: 'invalidDisplayName' }],
-    ['!', '', { handle: 'invalidHandle', displayName: 'invalidDisplayName' }],
-  ])('validates handle %s and display name without writing', async (handle, displayName, fieldErrors) => {
-    expect(await completeOnboarding(initialOnboardingState, form({ handle, displayName }))).toEqual({
-      values: { handle, displayName }, fieldErrors, error: null,
+  it.each([' ', 'a'.repeat(121)])('validates a missing provider name without writing', async displayName => {
+    expect(await completeOnboarding(initialOnboardingState, form({ displayName }))).toEqual({
+      values: { displayName }, fieldErrors: { displayName: 'invalidDisplayName' }, error: null,
     });
     expect(db.update).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it('keeps submitted values on duplicate handle', async () => {
-    db.updateResult.mockResolvedValue({ data: null, error: { code: '23505', message: 'private database detail' } });
-    expect(await completeOnboarding(initialOnboardingState, form({ handle: ' learner_1 ' }))).toEqual({
-      values: { handle: ' learner_1 ', displayName: saved.display_name }, fieldErrors: { handle: 'handleTaken' }, error: null,
-    });
-    expect(redirect).not.toHaveBeenCalled();
-  });
-
   it.each([
     { data: null, error: null },
+    { data: { ...pending, handle: null }, error: null },
     { data: pending, error: { message: 'RLS failure' } },
     { data: { ...pending, id: 'other' }, error: null },
   ])('returns a retryable load error for unavailable or wrong profile %#', async (response) => {
@@ -139,7 +125,7 @@ describe('completeOnboarding server action', () => {
   ])('does not navigate for failed, missing, or mismatched updated rows %#', async (response) => {
     db.updateResult.mockResolvedValue(response);
     expect(await completeOnboarding(initialOnboardingState, form())).toEqual({
-      values: { handle: saved.handle, displayName: saved.display_name }, fieldErrors: {}, error: 'profileUpdateError',
+      values: { displayName: saved.display_name }, fieldErrors: {}, error: 'profileUpdateError',
     });
     expect(redirect).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
@@ -158,7 +144,7 @@ describe('completeOnboarding server action', () => {
     await expect(completeOnboarding(initialOnboardingState, form())).rejects.toThrow('NEXT_REDIRECT');
     expect(db.readResult).toHaveBeenCalledTimes(2);
     expect(db.update).toHaveBeenCalledOnce();
-    expect(db.updateIs).toHaveBeenCalledWith('handle', null);
+    expect(db.updateNameEq).toHaveBeenCalledWith('display_name', '');
     expect(redirect).toHaveBeenCalledWith(next);
   });
 
@@ -177,7 +163,7 @@ describe('completeOnboarding server action', () => {
     const error = new Error('Auth service temporarily unavailable');
     if (kind === 'returned') db.auth.getUser.mockResolvedValue({ data: { user: null }, error });
     else db.auth.getUser.mockRejectedValue(error);
-    const values = { handle: ' learner_1 ', displayName: ' Learner One ' };
+    const values = { displayName: ' Learner One ' };
 
     await expect(completeOnboarding(initialOnboardingState, form(values))).resolves.toEqual({
       values, fieldErrors: {}, error: 'profileLoadError',
@@ -192,7 +178,7 @@ describe('completeOnboarding server action', () => {
 
   it('preserves input on an ordinary account lookup error without profile I/O', async () => {
     mocks.assertActiveAccount.mockRejectedValue(new Error('Unable to verify account status'));
-    const values = { handle: ' learner_1 ', displayName: ' Learner One ' };
+    const values = { displayName: ' Learner One ' };
 
     await expect(completeOnboarding(initialOnboardingState, form(values))).resolves.toEqual({
       values, fieldErrors: {}, error: 'profileLoadError',

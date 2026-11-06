@@ -55,7 +55,7 @@ function authenticatedClient(overrides: Record<string, unknown> = {}) {
       signOut: vi.fn().mockResolvedValue({ error: null }),
     },
     from: vi.fn(() => ({
-      select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: { handle: 'learner' }, error: null }) })) })),
+      select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: { handle: 'STU-learner', display_name: 'Learner' }, error: null }) })) })),
       update: vi.fn(() => ({ eq: vi.fn(() => ({ select: vi.fn(() => ({ single: vi.fn().mockResolvedValue({ data: { id: 'user-1', handle: 'future_builder' }, error: null }) })) })) })),
     })),
     ...overrides,
@@ -199,7 +199,7 @@ describe('authentication and onboarding', () => {
   it('sends incomplete profiles to the one-time welcome screen after PKCE exchange', async () => {
     const client = authenticatedClient({
       from: vi.fn(() => ({
-        select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: { handle: null }, error: null }) })) })),
+        select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: { handle: 'STU-learner', display_name: '' }, error: null }) })) })),
       })),
     });
     mocks.supabaseUser.mockResolvedValue(client);
@@ -223,8 +223,8 @@ describe('authentication and onboarding', () => {
   it('treats missing or failed profile reads as a retryable auth failure rather than onboarding', async () => {
     expect(profileState({ data: null, error: null })).toBe('unavailable');
     expect(profileState({ data: null, error: new Error('RLS') })).toBe('unavailable');
-    expect(profileState({ data: { handle: null }, error: null })).toBe('incomplete');
-    expect(profileState({ data: { handle: 'learner' }, error: null })).toBe('complete');
+    expect(profileState({ data: { handle: 'STU-learner', display_name: '' }, error: null })).toBe('incomplete');
+    expect(profileState({ data: { handle: 'STU-learner', display_name: 'Learner' }, error: null })).toBe('complete');
   });
 
   it('signs out through the cookie-bound client and returns to login', async () => {
@@ -329,10 +329,10 @@ describe('authentication and onboarding', () => {
     { mode: 'signup', bench: false, provider: 'google', label: 'Continue with Google' },
     { mode: 'login', bench: true, provider: 'google', label: 'Continue with Google' },
     { mode: 'signup', bench: true, provider: 'google', label: 'Continue with Google' },
-    { mode: 'login', bench: false, provider: 'azure', label: 'Continue with Microsoft' },
-    { mode: 'signup', bench: false, provider: 'azure', label: 'Continue with Microsoft' },
-    { mode: 'login', bench: true, provider: 'azure', label: 'Continue with Microsoft' },
-    { mode: 'signup', bench: true, provider: 'azure', label: 'Continue with Microsoft' },
+    { mode: 'login', bench: false, provider: 'azure', label: 'Microsoft · approved @vfuturelabs.org staff' },
+    { mode: 'signup', bench: false, provider: 'azure', label: 'Microsoft · approved @vfuturelabs.org staff' },
+    { mode: 'login', bench: true, provider: 'azure', label: 'Microsoft · approved @vfuturelabs.org staff' },
+    { mode: 'signup', bench: true, provider: 'azure', label: 'Microsoft · approved @vfuturelabs.org staff' },
   ] as const)('starts $provider $mode with the PKCE destination (bench: $bench)', async ({ mode, bench, provider, label }) => {
     mocks.searchParams.mockReturnValue(new URLSearchParams('next=%2Fapp%2Fprofile%3Ftab%3Dskills'));
     const client = authenticatedClient();
@@ -359,7 +359,7 @@ describe('authentication and onboarding', () => {
     const user = userEvent.setup();
 
     render(<Provider><AuthForm mode="login" /></Provider>);
-    await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
+    await user.click(screen.getByRole('button', { name: 'Microsoft · approved @vfuturelabs.org staff' }));
 
     expect(new URL(String(vi.mocked(window.open).mock.calls[0][0])).searchParams.get('next')).toBe('/app');
     expect(mocks.navigate).not.toHaveBeenCalled();
@@ -371,10 +371,10 @@ describe('authentication and onboarding', () => {
     mocks.supabaseBrowser.mockReturnValue(authenticatedClient());
     const user = userEvent.setup();
     render(<Provider><AuthForm mode="login" /></Provider>);
-    await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
+    await user.click(screen.getByRole('button', { name: 'Microsoft · approved @vfuturelabs.org staff' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('blocked');
     expect(screen.queryByText(/private-provider-detail/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Microsoft · approved @vfuturelabs.org staff' })).toBeEnabled();
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
@@ -382,15 +382,15 @@ describe('authentication and onboarding', () => {
     mocks.supabaseBrowser.mockReturnValue(authenticatedClient());
     const user = userEvent.setup();
     render(<Provider><AuthForm mode="login" /></Provider>);
-    await user.click(screen.getByRole('button', { name: 'Continue with Microsoft' }));
-    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Microsoft · approved @vfuturelabs.org staff' }));
+    expect(screen.getByRole('button', { name: 'Microsoft · approved @vfuturelabs.org staff' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
     expect(window.open).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'Cancel sign-in' }));
-    expect(screen.getByRole('button', { name: 'Continue with Microsoft' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Microsoft · approved @vfuturelabs.org staff' })).toBeEnabled();
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 

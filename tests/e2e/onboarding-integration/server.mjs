@@ -14,7 +14,7 @@ let profile;
 let writes;
 let exchanges;
 function reset() {
-  profile = { id, handle: null, display_name: 'Google Learner', branch_id: null, locale: 'en', avatar_url: null, profile_public: false };
+  profile = { id, handle: 'STU-google_learner', display_name: '', branch_id: null, locale: 'en', avatar_url: null, profile_public: false };
   writes = 0;
   exchanges = 0;
 }
@@ -54,15 +54,15 @@ const fixture = createServer(async (req, res) => {
   if (url.pathname === '/auth/v1/user') return json(user);
   if (url.pathname === '/rest/v1/profiles') {
     if (req.method === 'PATCH') {
-      if (url.searchParams.get('id') !== `eq.${id}` || url.searchParams.get('handle') !== 'is.null') return json({ message: 'Unscoped profile mutation' }, 400);
-      if (Object.keys(body).some(key => !['handle', 'display_name'].includes(key))) return json({ message: 'Unexpected mutation' }, 400);
-      if (body.handle === 'taken_handle') return json({ code: '23505', message: 'Handle taken' }, 409);
-      if (profile.handle !== null) return json([]);
+      if (url.searchParams.get('id') !== `eq.${id}` || url.searchParams.get('display_name') !== 'eq.') return json({ message: 'Unscoped profile mutation' }, 400);
+      if (Object.keys(body).some(key => key !== 'display_name')) return json({ message: 'Unexpected mutation' }, 400);
+      if (profile.display_name !== '') return json([]);
       profile = { ...profile, ...body }; writes++;
     }
     return json(String(req.headers.accept).includes('application/vnd.pgrst.object+json') ? profile : [profile]);
   }
   if (url.pathname === '/rest/v1/user_accounts') return json([{ user_id: id, status: 'active' }]);
+  if (url.pathname === '/rest/v1/rpc/rate_limit') return json(true);
   if (url.pathname === '/rest/v1/rpc/authorization_actor') return json({ accountStatus: 'active', memberships: [], assignments: [] });
   if (url.pathname === '/rest/v1/rpc/xp_user_total') return json([{ total_points: 0, weekly_points: 0 }]);
   // A fresh learner has no enrollment, rewards or catalogue fixtures.
@@ -79,10 +79,15 @@ await file('next.config.mjs', `import createNextIntlPlugin from 'next-intl/plugi
 await file('app/layout.tsx', `import {NextIntlClientProvider} from 'next-intl';import {getLocale,getMessages} from 'next-intl/server';export default async function Layout({children}:{children:React.ReactNode}){const locale=await getLocale();return <html lang={locale}><body><NextIntlClientProvider locale={locale} messages={await getMessages()}>{children}</NextIntlClientProvider></body></html>}`);
 for (const [target, source] of [
   ['app/login/page.tsx','app/(auth)/login/page'],
+  ['app/auth/popup/page.tsx','app/auth/popup/page'],
   ['app/welcome/page.tsx','app/(auth)/welcome/page'],
   ['app/app/page.tsx','app/app/page'],
   ['app/app/layout.tsx','app/app/layout'],
 ]) await file(target, `export const dynamic='force-dynamic';export {default} from '@/` + source + `';`);
+// Next's temporary-app dev server supplies an internal route host. This local
+// fixture fixes its canonical host while retaining the real popup login handler.
+await file('app/auth/login/route.ts', `import {GET as login} from '@/app/auth/login/route';export function GET(request:Request){const url=new URL(request.url);return login(new Request(${JSON.stringify(appOrigin)}+url.pathname+url.search,{headers:request.headers}));}`);
+await file('app/api/v1/auth/session/route.ts', `export {GET} from '@/app/api/v1/auth/session/route';`);
 await file('app/auth/callback/route.ts', `export {GET} from '@/app/auth/callback/route';`);
 await file('middleware.ts', `export {middleware} from '@/middleware';export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']};`);
 const child = spawn(process.execPath, [resolve('node_modules/next/dist/bin/next'), 'dev', project, '--hostname', '127.0.0.1', '--port', '3191'], {

@@ -3,7 +3,7 @@ import en from '../../../src/messages/en.json';
 import vi from '../../../src/messages/vi.json';
 
 const origin = 'http://127.0.0.1:4184';
-const values = { handle: 'future_builder', displayName: 'Nguyễn An' };
+const values = { displayName: 'Nguyễn An' };
 type Submitted = typeof values & { next: string };
 type Copy = typeof en.auth;
 const pageErrors = new WeakMap<Page, string[]>();
@@ -14,12 +14,10 @@ async function openForm(page: Page, locale: string, copy: Copy, next?: string) {
   await page.goto(`/welcome?${query}`);
   await expect(page.getByRole('heading', { name: copy.welcomeTitle })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', locale);
-  await page.getByLabel(copy.handle, { exact: true }).fill(values.handle);
   await page.getByLabel(copy.displayName, { exact: true }).fill(values.displayName);
 }
 
 async function expectValues(page: Page, copy: Copy) {
-  await expect(page.getByLabel(copy.handle, { exact: true })).toHaveValue(values.handle);
   await expect(page.getByLabel(copy.displayName, { exact: true })).toHaveValue(values.displayName);
 }
 
@@ -66,26 +64,26 @@ for (const [locale, copy] of [['en', en.auth], ['vi', vi.auth]] as const) {
       expect(submitted[0]).toMatchObject(values);
     });
 
-    test('duplicate handle preserves both values and a corrected retry navigates', async ({ page }, testInfo) => {
+    test('invalid name preserves input and a corrected retry navigates', async ({ page }, testInfo) => {
       const submitted: Submitted[] = [];
       await page.route('**/__onboarding/submit', async route => {
         submitted.push(route.request().postDataJSON());
         await route.fulfill({ json: submitted.length === 1
-          ? { outcome: 'recoverable', fieldErrors: { handle: 'handleTaken' } }
+          ? { outcome: 'recoverable', fieldErrors: { displayName: 'invalidDisplayName' } }
           : { outcome: 'success' } });
       });
       await openForm(page, locale, copy);
       await page.getByRole('button', { name: copy.continue, exact: true }).click();
-      await expect(page.getByRole('alert')).toHaveText(copy.handleTaken);
+      await expect(page.getByRole('alert')).toHaveText(copy.invalidDisplayName);
       await expectValues(page, copy);
-      await expect(page.getByLabel(copy.handle, { exact: true })).toHaveAttribute('aria-invalid', 'true');
-      await expect(page.getByLabel(copy.handle, { exact: true })).toBeFocused();
+      await expect(page.getByLabel(copy.displayName, { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(page.getByLabel(copy.displayName, { exact: true })).toBeFocused();
       await expect(page).toHaveURL(/\/welcome\?/);
       await page.screenshot({ path: testInfo.outputPath('duplicate-values-preserved.png'), fullPage: true });
-      await page.getByLabel(copy.handle, { exact: true }).fill('future_builder_2');
+      await page.getByLabel(copy.displayName, { exact: true }).fill('Updated Name');
       await expectDestination(page, () => page.getByRole('button', { name: copy.continue, exact: true }).click(), '/app');
       expect(submitted).toHaveLength(2);
-      expect(submitted[1]).toMatchObject({ ...values, handle: 'future_builder_2' });
+      expect(submitted[1]).toMatchObject({ displayName: 'Updated Name' });
     });
 
     for (const error of ['profileUpdateError', 'profileLoadError'] as const) {
@@ -122,7 +120,6 @@ for (const [locale, copy] of [['en', en.auth], ['vi', vi.auth]] as const) {
       const pendingButton = page.getByRole('button', { name: copy.continuing, exact: true });
       await expect(pendingButton).toBeDisabled();
       await expect(page.locator('form')).toHaveAttribute('aria-busy', 'true');
-      await expect(page.getByLabel(copy.handle, { exact: true })).toBeDisabled();
       await expect(page.getByLabel(copy.displayName, { exact: true })).toBeDisabled();
       await expectValues(page, copy);
       // A real pointer click and Enter while the network response is held open.

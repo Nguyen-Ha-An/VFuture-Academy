@@ -10,7 +10,6 @@ export async function completeOnboarding(
   formData: FormData,
 ): Promise<OnboardingState> {
   const values = {
-    handle: String(formData.get('handle') ?? ''),
     displayName: String(formData.get('displayName') ?? ''),
   };
   const next = String(formData.get('next') ?? '');

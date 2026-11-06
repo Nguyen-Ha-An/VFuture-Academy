@@ -19,7 +19,7 @@ import { ApiError } from '@/lib/api';
 const { GET } = routeModule;
 const URL_BASE = 'https://academy.example/api/v1/auth/profile-state';
 
-type ProfileResult = { data: { handle: string | null } | null; error: unknown };
+type ProfileResult = { data: { handle: string | null; display_name: string } | null; error: unknown };
 
 function profileClient(result: ProfileResult | (() => Promise<ProfileResult>)) {
   const maybeSingle = vi.fn(typeof result === 'function' ? result : async () => result);
@@ -41,7 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getSessionUser.mockResolvedValue({ id: 'user-1', email: 'learner@example.com' });
   mocks.requireApiUser.mockResolvedValue({ id: 'user-1', email: 'learner@example.com' });
-  mocks.supabaseUser.mockResolvedValue(profileClient({ data: { handle: 'learner' }, error: null }).client);
+  mocks.supabaseUser.mockResolvedValue(profileClient({ data: { handle: 'STU-learner', display_name: 'Learner' }, error: null }).client);
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -66,8 +66,8 @@ describe('GET /api/v1/auth/profile-state', () => {
   });
 
   it.each([
-    ['complete', { handle: 'learner' }],
-    ['incomplete', { handle: null }],
+    ['complete', { handle: 'STU-learner', display_name: 'Learner' }],
+    ['incomplete', { handle: 'STU-learner', display_name: '' }],
   ] as const)('reports the caller own %s state and nothing else', async (state, row) => {
     const { client, from, select, eq } = profileClient({ data: row, error: null });
     mocks.supabaseUser.mockResolvedValue(client);
@@ -78,12 +78,12 @@ describe('GET /api/v1/auth/profile-state', () => {
     expect(await body(response)).toEqual({ data: { state } });
     expectPrivateNoStore(response);
     expect(from).toHaveBeenCalledWith('profiles');
-    expect(select).toHaveBeenCalledWith('handle');
+    expect(select).toHaveBeenCalledWith('handle,display_name');
     expect(eq).toHaveBeenCalledWith('id', 'user-1');
   });
 
   it('never leaks the handle or the user identity in the payload', async () => {
-    const { client } = profileClient({ data: { handle: 'private_handle' }, error: null });
+    const { client } = profileClient({ data: { handle: 'STU-private_handle', display_name: 'Private' }, error: null });
     mocks.supabaseUser.mockResolvedValue(client);
 
     const text = await (await GET(new Request(URL_BASE))).text();
@@ -94,7 +94,7 @@ describe('GET /api/v1/auth/profile-state', () => {
   });
 
   it('derives the user from the verified session, never from the query, body, or headers', async () => {
-    const { client, eq } = profileClient({ data: { handle: 'learner' }, error: null });
+    const { client, eq } = profileClient({ data: { handle: 'STU-learner', display_name: 'Learner' }, error: null });
     mocks.supabaseUser.mockResolvedValue(client);
 
     await GET(new Request(`${URL_BASE}?userId=victim&id=victim&user_id=victim`, {

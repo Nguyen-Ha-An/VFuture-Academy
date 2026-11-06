@@ -15,17 +15,17 @@ The real `WelcomeForm`, React 19 form actions, `useActionState`, shared Input/Bu
 Each of the nine scenarios runs in English and Vietnamese on Desktop Chrome (1280×720) and Pixel 5 Chromium emulation (393×851), for 36 cases:
 
 - Successful submit performs a new document request, leaves welcome, and renders destination content.
-- Duplicate handle keeps both entered values, exposes the translated error, focuses the handle, and permits a corrected successful retry.
+- Missing display name exposes the translated error, focuses the name, and permits a corrected successful retry.
 - Profile update and profile load failures each preserve input and permit retry.
-- A held fixture response keeps the translated pending button and both inputs disabled, marks the form busy, and prevents extra submits from pointer/keyboard input. Releasing the response restores retryability.
+- A held fixture response keeps the translated pending button and the name input disabled, marks the form busy, and prevents extra submits from pointer/keyboard input. Releasing the response restores retryability.
 - A safe deep link retains its full path, query, and fragment in submitted form data and the resulting document URL.
 - An absolute external URL, protocol-relative URL, and welcome loop each submit the sanitized `/app` destination and navigate locally.
 
-Unexpected browser exceptions and console errors fail tests. Browser network routing blocks all non-harness origins. Pending and duplicate-error screenshots are captured on both projects/locales even on passing runs.
+Unexpected browser exceptions and console errors fail tests. Browser network routing blocks all non-harness origins. Pending and validation-error screenshots are captured on both projects/locales even on passing runs.
 
 ## Fixture controls and limits
 
-Tests intercept the local `POST /__onboarding/submit` request. Its payload is the real submitted `{handle, displayName, next}`. The replacement action returns recoverable state from the fixture response; success calls `window.location.assign(safeInternalPath(next))` and leaves the action pending until the document unloads. The pending test explicitly holds/releases a request instead of waiting an arbitrary duration.
+Tests intercept the local `POST /__onboarding/submit` request. Its payload is the real submitted `{displayName, next}`. The replacement action returns recoverable state from the fixture response; success calls `window.location.assign(safeInternalPath(next))` and leaves the action pending until the document unloads. The pending test explicitly holds/releases a request instead of waiting an arbitrary duration.
 
 Destination content is deliberately labeled a local fixture. This lane proves browser form state, translations, submitted data, and actual document navigation under the action simulation. It does **not** execute the production server action, Next's redirect protocol or router cache, real destination pages, middleware, Google OAuth, Supabase cookies/session refresh, RLS, persistence, or database concurrency. The fixture's use of the real path helper is not evidence that the server action enforces it; the assertions on submitted `next` additionally verify the real form sanitizes it. Production action checks and the parent's separate Next integration lane cover other boundaries.
 

@@ -211,7 +211,7 @@ function LegacyAuthForm({ mode, bench = false }: AuthFormProps) {
       <p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? t('loginDescription') : t('signupDescription')}</p>
       <div className="mt-6 space-y-3">
         <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('google')} disabled={submitting || popup.busy}>{t('continueGoogle')}</Button>
-        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('azure')} disabled={submitting || popup.busy}>{t('continueMicrosoft')}</Button>
+        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => signInWithProvider('azure')} disabled={submitting || popup.busy}>{locale === 'en' ? 'Microsoft · approved @vfuturelabs.org staff' : 'Microsoft · nhân sự @vfuturelabs.org đã được duyệt'}</Button>
       </div>
       <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border" /><span className="text-xs text-muted-foreground">{t('or')}</span><span className="h-px flex-1 bg-border" /></div>
       {popup.status ? <p role="status" aria-live="polite" className="mt-4 text-sm">{popup.status}</p> : null}
@@ -229,7 +229,7 @@ function LegacyAuthForm({ mode, bench = false }: AuthFormProps) {
       </form>
       {mode === 'login' ? <p className="mt-4 text-center text-sm"><Link href={routes.auth.forgotPassword()} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{t('forgotPassword')}</Link></p> : null}
       <p className="mt-6 text-center text-sm text-muted-foreground">{mode === 'login' ? t('needAccount') : t('haveAccount')} <Link href={alternateHref} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{mode === 'login' ? t('openSignup') : t('openLogin')}</Link></p>
-      {bench ? null : <p className="mt-4 text-center text-xs leading-6 text-muted-foreground"><Link href={locale === 'en' ? '/privacy?lang=en' : '/privacy'} className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{locale === 'en' ? 'Privacy notice' : 'Quyền riêng tư'}</Link><span aria-hidden="true"> · </span><Link href={locale === 'en' ? '/terms?lang=en' : '/terms'} className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{locale === 'en' ? 'Terms of use' : 'Điều khoản sử dụng'}</Link></p>}
+
     </section>
   );
 }

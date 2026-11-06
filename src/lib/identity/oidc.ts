@@ -156,7 +156,11 @@ export async function verifyIdToken(token: string, config: IdentityConfiguration
   const claims = verifySignedJwt(token, keys);
   const now = Math.floor(Date.now() / 1000);
   const audience = Array.isArray(claims.aud) ? claims.aud.includes(config.clientId) && claims.azp === config.clientId : claims.aud === config.clientId;
-  if ((config.provider === 'microsoft' && claims.ver !== '2.0') || claims.iss !== config.issuer || claims.tid !== config.tenantId || !audience || (claims.azp !== undefined && claims.azp !== config.clientId)
+  // Signed optional claims distinguish an internal member from guests and other
+  // workforce namespaces. Apply the same check to callback and refresh tokens.
+  const workforceMember = claims.acct === 0 && typeof claims.upn === 'string'
+    && /^[^@\s]+@vfuturelabs\.org$/i.test(claims.upn);
+  if ((config.provider === 'microsoft' && (claims.ver !== '2.0' || !workforceMember)) || claims.iss !== config.issuer || claims.tid !== config.tenantId || !audience || (claims.azp !== undefined && claims.azp !== config.clientId)
     || typeof claims.sub !== 'string' || !claims.sub || claims.sub.length > 255 || typeof claims.oid !== 'string' || !UUID.test(claims.oid)
     || typeof claims.exp !== 'number' || claims.exp <= now || typeof claims.iat !== 'number' || claims.iat > now + 30
     || (claims.nbf !== undefined && (typeof claims.nbf !== 'number' || claims.nbf > now + 30))

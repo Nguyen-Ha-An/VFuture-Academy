@@ -12,16 +12,13 @@ import { safeInternalPath } from '@/lib/safe-internal-path';
 export function WelcomeForm({ next, bench = false }: { next?: string; bench?: boolean }) {
   const t = useTranslations('auth');
   const tb = useTranslations('bench.auth');
-  const handleRef = useRef<HTMLInputElement>(null);
   const displayNameRef = useRef<HTMLInputElement>(null);
   const [state, formAction, pending] = useActionState(completeOnboarding, initialOnboardingState);
   // Controlled inputs survive React's form reset after a recoverable action error.
-  const [handle, setHandle] = useState(state.values.handle);
   const [displayName, setDisplayName] = useState(state.values.displayName);
 
   useEffect(() => {
-    if (state.fieldErrors.handle) handleRef.current?.focus();
-    else if (state.fieldErrors.displayName) displayNameRef.current?.focus();
+    if (state.fieldErrors.displayName) displayNameRef.current?.focus();
   }, [state]);
 
   return (
@@ -31,15 +28,6 @@ export function WelcomeForm({ next, bench = false }: { next?: string; bench?: bo
       <p className="mt-2 text-sm text-muted-foreground">{t('welcomeDescription')}</p>
       <form action={formAction} noValidate aria-busy={pending} className="mt-6 space-y-4">
         <input type="hidden" name="next" value={safeInternalPath(next)} />
-        <div className="space-y-1.5">
-          <label htmlFor="handle" className="text-sm font-medium">{t('handle')}</label>
-          <Input ref={handleRef} id="handle" name="handle" autoComplete="username" required
-            value={handle} onChange={event => setHandle(event.target.value)} disabled={pending}
-            aria-invalid={Boolean(state.fieldErrors.handle)}
-            aria-describedby={state.fieldErrors.handle ? 'handle-error' : undefined}
-            aria-errormessage={state.fieldErrors.handle ? 'handle-error' : undefined} />
-          {state.fieldErrors.handle ? <p id="handle-error" role="alert" className="text-sm text-destructive">{t(state.fieldErrors.handle)}</p> : null}
-        </div>
         <div className="space-y-1.5">
           <label htmlFor="display-name" className="text-sm font-medium">{t('displayName')}</label>
           <Input ref={displayNameRef} id="display-name" name="displayName" autoComplete="name" required

@@ -10,7 +10,6 @@ import { supabaseUser } from '@/lib/supabase/server';
 import type { OnboardingState } from './onboarding-state';
 
 const profileSchema = z.object({
-  handle: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{2,31}$/),
   displayName: z.string().trim().min(1).max(120),
 });
 
@@ -29,8 +28,7 @@ async function saveProfile(userId: string, values: OnboardingState['values']): P
     const readProfile = () => supabase.from('profiles')
       .select('id, handle, display_name').eq('id', userId).maybeSingle();
     const current = await readProfile();
-    if (current.error || !current.data || current.data.id !== userId
-      || (current.data.handle !== null && typeof current.data.handle !== 'string')) {
+    if (current.error || !current.data || current.data.id !== userId || profileState(current) === 'unavailable') {
       return { ...state, error: 'profileLoadError' };
     }
     if (profileState(current) === 'complete') return null;
@@ -38,7 +36,6 @@ async function saveProfile(userId: string, values: OnboardingState['values']): P
     const parsed = profileSchema.safeParse(values);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
-        if (issue.path[0] === 'handle') state.fieldErrors.handle = 'invalidHandle';
         if (issue.path[0] === 'displayName') state.fieldErrors.displayName = 'invalidDisplayName';
       }
       return state;
@@ -46,19 +43,17 @@ async function saveProfile(userId: string, values: OnboardingState['values']): P
 
     failure = 'profileUpdateError';
     const { data, error } = await supabase.from('profiles').update({
-      handle: parsed.data.handle,
       display_name: parsed.data.displayName,
-    }).eq('id', userId).is('handle', null).select('id, handle, display_name').maybeSingle();
+    }).eq('id', userId).eq('display_name', current.data.display_name).select('id, handle, display_name').maybeSingle();
 
-    if (error?.code === '23505') return { ...state, fieldErrors: { handle: 'handleTaken' } };
     if (error) return { ...state, error: 'profileUpdateError' };
     if (!data) {
       // Another submission may have completed the profile since our first read.
       const latest = await readProfile();
-      if (!latest.error && latest.data?.id === userId && typeof latest.data.handle === 'string') return null;
+      if (!latest.error && latest.data?.id === userId && profileState(latest) === 'complete') return null;
       return { ...state, error: 'profileUpdateError' };
     }
-    if (data.id !== userId || data.handle !== parsed.data.handle || data.display_name !== parsed.data.displayName) {
+    if (data.id !== userId || data.handle !== current.data.handle || data.display_name !== parsed.data.displayName) {
       return { ...state, error: 'profileUpdateError' };
     }
     return null;
@@ -74,7 +69,6 @@ export async function completeOnboarding(
 ): Promise<OnboardingState> {
   const next = safeInternalPath(textField(formData, 'next'));
   const values = {
-    handle: textField(formData, 'handle'),
     displayName: textField(formData, 'displayName'),
   };
   let user;

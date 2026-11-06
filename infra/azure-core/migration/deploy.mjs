@@ -12,6 +12,7 @@ const probe=process.argv.includes('--probe');
 const cutover=process.argv.includes('--map-identities')?'map-identities':process.argv.includes('--final-sync')?'final-sync':null;
 const forward=Object.keys(FORWARD_ACTIONS).find(name=>process.argv.includes(`--${name}`));
 const assessment=Object.keys(ASSESSMENT_ACTIONS).find(name=>process.argv.includes(`--${name}`));
+const lane=assessment?.startsWith('forward-54-')?'54':'53';
 if([probe,configureAuthenticator,process.argv.includes('--map-identities'),process.argv.includes('--final-sync'),...[...Object.keys(FORWARD_ACTIONS),...Object.keys(ASSESSMENT_ACTIONS)].map(name=>process.argv.includes(`--${name}`))].filter(Boolean).length>1)throw new Error('Choose only one job action');
 const requestedAction=assessment??forward??cutover??(probe?'probe':configureAuthenticator?'configure-authenticator':'schema-import');
 if(!['--prepare','--start','--receipt'].includes(action))throw new Error('Usage: node infra/azure-core/migration/deploy.mjs --prepare|--start|--receipt');
@@ -23,14 +24,14 @@ if((['forward-schema','forward-activate'].includes(forward)||assessment)&&['--pr
     if(forwardApplyReceipt.sourceClean!==true||!/^[a-f0-9]{40}$/.test(forwardApplyReceipt.sourceCommit??'')||!/^[a-f0-9]{40}$/.test(forwardApplyReceipt.sourceTree??'')||resolve(git(['rev-parse','--show-toplevel']))!==resolve('.')||git(['status','--porcelain=v1','--untracked-files=all','--ignore-submodules=none'])||git(['rev-parse','--verify','HEAD'])!==forwardApplyReceipt.sourceCommit||git(['rev-parse','--verify','HEAD^{tree}'])!==forwardApplyReceipt.sourceTree)throw new Error();
   }catch{throw new Error('Forward apply requires matching clean committed source provenance');}
   if(assessment){
-    const manifestBytes=readFileSync('build/azure-core/private/forward-53-source-manifest.json');
+    const manifestBytes=readFileSync(`build/azure-core/private/forward-${lane}-source-manifest.json`);
     const manifest=JSON.parse(manifestBytes);
-    if(forwardApplyReceipt.packageType!=='forward-53'||createHash('sha256').update(manifestBytes).digest('hex')!==forwardApplyReceipt.sourceManifestSha256||manifest.contentSha256!==forwardApplyReceipt.packageContentSha256||manifest.source.sourceCommit!==forwardApplyReceipt.sourceCommit||manifest.source.sourceTree!==forwardApplyReceipt.sourceTree||!/^[a-f0-9]{64}$/.test(forwardApplyReceipt.packageContentSha256??''))throw new Error('Assessment package provenance mismatch');
-    if(assessment==='forward-53-apply'){
-      const {createForward53PackageManifest}=await import('../../../scripts/azure-core/forward-53-package.mjs');
-      const plan=readFileSync('build/azure-core/private/forward-53-plan.json');
+    if(forwardApplyReceipt.packageType!==`forward-${lane}`||createHash('sha256').update(manifestBytes).digest('hex')!==forwardApplyReceipt.sourceManifestSha256||manifest.contentSha256!==forwardApplyReceipt.packageContentSha256||manifest.source.sourceCommit!==forwardApplyReceipt.sourceCommit||manifest.source.sourceTree!==forwardApplyReceipt.sourceTree||!/^[a-f0-9]{64}$/.test(forwardApplyReceipt.packageContentSha256??''))throw new Error('Assessment package provenance mismatch');
+    if(assessment===`forward-${lane}-apply`){
+      const createManifest=(await import(`../../../scripts/azure-core/forward-${lane}-package.mjs`))[`createForward${lane}PackageManifest`];
+      const plan=readFileSync(`build/azure-core/private/forward-${lane}-plan.json`);
       if(!forwardApplyReceipt.reviewedPlanSha256||createHash('sha256').update(plan).digest('hex')!==forwardApplyReceipt.reviewedPlanSha256||manifest.reviewedPlanSha256!==forwardApplyReceipt.reviewedPlanSha256)throw new Error('Assessment reviewed plan mismatch');
-      createForward53PackageManifest(JSON.parse(plan),{v1Evidence:JSON.parse(readFileSync('build/azure-core/private/forward-53-v1-evidence.json','utf8'))});
+      createManifest(JSON.parse(plan),{v1Evidence:JSON.parse(readFileSync(`build/azure-core/private/forward-${lane}-v1-evidence.json`,'utf8'))});
     }
   }
 }
@@ -41,7 +42,7 @@ const {vault,storage}=migrationTargetChecks(outputs,{prepare:action==='--prepare
 const postgresHost=outputs.postgresHost?.value;
 if(!/^[a-z0-9][a-z0-9-]{0,62}\.postgres\.database\.azure\.com$/.test(postgresHost??''))throw new Error('Invalid approved PostgreSQL host output');
 const receipt=forwardApplyReceipt??JSON.parse(readFileSync('build/azure-core/migration-package-receipt.json','utf8'));
-if(Boolean(forward)!==(receipt.packageType==='forward')||Boolean(assessment)!==(receipt.packageType==='forward-53'))throw new Error('Forward actions require an explicit matching package and action');
+if(Boolean(forward)!==(receipt.packageType==='forward')||Boolean(assessment)!==(receipt.packageType===`forward-${lane}`))throw new Error('Forward actions require an explicit matching package and action');
 if(cutover&&receipt.packageType!=='cutover')throw new Error('Cutover action requires a cutover package');
 if(!cutover&&receipt.packageType==='cutover')throw new Error('Cutover package requires an explicit cutover action');
 if(!probe&&receipt.packageType==='probe')throw new Error('Diagnostic-only package cannot run schema/import/authenticator actions');
@@ -100,7 +101,7 @@ if(action==='--prepare') {
     if(failure.status!=='failed'||!stages.includes(failure.stage)||failure.errorCode!=='MIGRATION_STAGE_FAILED')throw new Error('Invalid diagnostic failure receipt');
     const safe={status:'failed',stage:failure.stage,errorCode:failure.errorCode};
     if(failure.stage==='forward_action'&&failure.childErrorCode==='FORWARD_FAILED')safe.childErrorCode='FORWARD_FAILED';
-    if(failure.stage==='assessment_action'&&failure.childErrorCode==='FORWARD_53_FAILED')safe.childErrorCode='FORWARD_53_FAILED';
+    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
     if(/^[0-9A-Z]{5}$/.test(failure.sqlState??''))safe.sqlState=failure.sqlState;
     if(Number.isInteger(failure.childExitCode))safe.childExitCode=failure.childExitCode;
     if(Number.isInteger(failure.httpStatus))safe.httpStatus=failure.httpStatus;

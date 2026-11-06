@@ -25,7 +25,7 @@ class Query implements PromiseLike<Result> {
 
   select(_columns: string) { return this; }
   update(value: unknown) { this.updateValue = value as Record<string, unknown>; return this; }
-  eq(column: string, value: unknown) { this.filters.push((row) => row[column] === value); return this; }
+  eq(column: string, value: unknown) { this.filters.push((row) => (column === 'lookup_handle' ? row.lookup_handle ?? row.handle : row[column]) === value); return this; }
   in(column: string, values: unknown[]) { this.filters.push((row) => values.includes(row[column])); return this; }
   order(_column: string, _options?: unknown) { return this; }
   limit(_value: number) { return this; }
@@ -70,22 +70,29 @@ beforeEach(() => {
 });
 
 describe('public profiles', () => {
+  it('resolves an old shared URL to the current canonical handle through the public alias projection', async () => {
+    const database = new ProfileDatabase({
+      public_profile_handles: [{id:'learner-1',lookup_handle:'old-shared-link',handle:'STU-current_name',display_name:'Current Name',avatar_url:null,branch_name:null}],
+    });
+    await expect(getPublicProfile('old-shared-link',{client:database,certificates:async()=>[]}))
+      .resolves.toMatchObject({handle:'STU-current_name',displayName:'Current Name'});
+  });
   it('returns the same absence for a private profile as an unknown handle and only probes the public view', async () => {
     const privateDatabase = new ProfileDatabase({
       profiles: [{ id: 'learner-1', handle: 'private-user', profile_public: false }],
-      public_profiles: [],
+      public_profile_handles: [],
     });
-    const unknownDatabase = new ProfileDatabase({ public_profiles: [] });
+    const unknownDatabase = new ProfileDatabase({ public_profile_handles: [] });
 
     await expect(getPublicProfile('private-user', { client: privateDatabase })).resolves.toBeNull();
     await expect(getPublicProfile('missing-user', { client: unknownDatabase })).resolves.toBeNull();
-    expect(privateDatabase.queried).toEqual(['public_profiles']);
-    expect(unknownDatabase.queried).toEqual(['public_profiles']);
+    expect(privateDatabase.queried).toEqual(['public_profile_handles']);
+    expect(unknownDatabase.queried).toEqual(['public_profile_handles']);
   });
 
   it('assembles branch, completions, skill levels, certificates, and showcased projects', async () => {
     const database = new ProfileDatabase({
-      public_profiles: [{ id: 'learner-1', handle: 'future_builder', display_name: 'Future Builder', avatar_url: null, branch_name: 'VinSMC' }],
+      public_profile_handles: [{ id: 'learner-1', handle: 'future_builder', display_name: 'Future Builder', avatar_url: null, branch_name: 'VinSMC' }],
       branches: [{ id: 'vinsmc', name: 'VinSMC' }],
       course_completions: [{ user_id: 'learner-1', course_id: 'course-1', course_version_id: 'version-1', completed_at: '2026-09-01T00:00:00Z' }],
       courses: [{ id: 'course-1', status: 'published', current_version_id: 'version-1' }],
@@ -114,7 +121,7 @@ describe('public profiles', () => {
 
   it('excludes unapproved and branch-restricted project details from a public profile', async () => {
     const database = new ProfileDatabase({
-      public_profiles: [{ id: 'learner-1', handle: 'future_builder', display_name: 'Future Builder', avatar_url: null, branch_name: null }],
+      public_profile_handles: [{ id: 'learner-1', handle: 'future_builder', display_name: 'Future Builder', avatar_url: null, branch_name: null }],
       course_completions: [], skill_evidence: [], skills: [], project_members: [],
       projects: [
         { id: 'pending', owner_id: 'learner-1', status: 'showcased', approved: false, branch_scope: { scope: 'global' }, 'branch_scope->>scope': 'global', title: 'Pending secret', summary: 'Hidden', output_links: [] },
@@ -127,7 +134,7 @@ describe('public profiles', () => {
 
   it('shows completions only while their current course is published and globally public', async () => {
     const database = new ProfileDatabase({
-      public_profiles: [{ id: 'learner-1', handle: 'future_builder', display_name: 'Future Builder', avatar_url: null, branch_name: null }],
+      public_profile_handles: [{ id: 'learner-1', handle: 'future_builder', display_name: 'Future Builder', avatar_url: null, branch_name: null }],
       course_completions: [
         { user_id: 'learner-1', course_id: 'public-course', course_version_id: 'old-public-version', completed_at: '2026-09-03T00:00:00Z' },
         { user_id: 'learner-1', course_id: 'branch-course', course_version_id: 'old-branch-version', completed_at: '2026-09-02T00:00:00Z' },
@@ -164,7 +171,7 @@ describe('public profiles', () => {
   it('keeps owner evidence available without consulting public profile visibility', async () => {
     const database = new ProfileDatabase({ profiles: [{ id: 'learner-1', profile_public: false }], course_completions: [], skill_evidence: [], skills: [], projects: [], project_members: [] });
     await expect(getOwnerProfileEvidence('learner-1', { client: database })).resolves.toEqual({ completedCourses: [], skills: [], projects: [] });
-    expect(database.queried).not.toContain('public_profiles');
+    expect(database.queried).not.toContain('public_profile_handles');
   });
 
   it('uses pinned owner course titles, omits archived dead links, and includes current-branch project evidence', async () => {
@@ -234,41 +241,41 @@ describe('public profiles', () => {
 describe('profile handles', () => {
   it('maps handle uniqueness violations to a public conflict', async () => {
     const database = new ProfileDatabase({
-      profiles: [{ id: 'learner-1', handle: 'old_handle', profile_public: false }],
+      profiles: [{ id: 'learner-1', handle: 'STU-old_handle', profile_public: false }],
     }, { data: null, error: { code: '23505' } });
 
-    await expect(changeHandle(actor, 'already_used', { client: database, now: () => new Date('2026-09-03T00:00:00Z') }))
+    await expect(changeHandle(actor, 'STU-already_used', { client: database, now: () => new Date('2026-09-03T00:00:00Z') }))
       .rejects.toMatchObject({ status: 409, code: 'HANDLE_TAKEN' });
   });
 
   it('maps the durable three-per-day limiter to HTTP 429', async () => {
     const database = new ProfileDatabase({
-      profiles: [{ id: 'learner-1', handle: 'old_handle', profile_public: false }],
+      profiles: [{ id: 'learner-1', handle: 'STU-old_handle', profile_public: false }],
     }, {
-      data: [{ id: 'learner-1', handle: 'old_handle', profile_public: false, outcome: 'HANDLE_RATE_LIMITED' }],
+      data: [{ id: 'learner-1', handle: 'STU-old_handle', profile_public: false, outcome: 'HANDLE_RATE_LIMITED' }],
       error: null,
     });
 
-    await expect(changeHandle(actor, 'fourth_change', { client: database, now: () => new Date('2026-09-03T00:00:00Z') }))
+    await expect(changeHandle(actor, 'STU-fourth_change', { client: database, now: () => new Date('2026-09-03T00:00:00Z') }))
       .rejects.toMatchObject({ status: 429, code: 'HANDLE_RATE_LIMITED' });
   });
 
   it('audits a handle change with the full actor and a narrow before/after snapshot', async () => {
     const database = new ProfileDatabase({
-      profiles: [{ id: 'learner-1', handle: 'old_handle', profile_public: false }],
+      profiles: [{ id: 'learner-1', handle: 'STU-old_handle', profile_public: false }],
     }, {
-      data: [{ id: 'learner-1', handle: 'new_handle', profile_public: false, outcome: 'CHANGED' }],
+      data: [{ id: 'learner-1', handle: 'STU-new_handle', profile_public: false, outcome: 'CHANGED' }],
       error: null,
     });
 
-    await changeHandle(actor, 'new_handle', { client: database, now: () => new Date('2026-09-03T00:00:00Z') });
+    await changeHandle(actor, 'STU-new_handle', { client: database, now: () => new Date('2026-09-03T00:00:00Z') });
 
     expect(auditMock).toHaveBeenCalledWith(
       actor,
       'profile.handle.updated',
       { type: 'profile', id: 'learner-1' },
-      { handle: 'old_handle' },
-      { handle: 'new_handle' },
+      { handle: 'STU-old_handle' },
+      { handle: 'STU-new_handle' },
     );
   });
 

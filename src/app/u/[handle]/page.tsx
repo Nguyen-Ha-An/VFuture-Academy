@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 
 import type { Locale } from '@/content-engine';
@@ -58,6 +58,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const [{ handle }, locale] = await Promise.all([params, getLocale() as Promise<Locale>]);
   const { profile, rateLimited } = await loadPublicProfile(handle);
   if (rateLimited || !profile) notFound();
+  if (handle !== profile.handle) redirect(`/u/${encodeURIComponent(profile.handle)}`);
 
   return <main id="main-content"><PublicProfileView profile={profile} locale={locale} /></main>;
 }

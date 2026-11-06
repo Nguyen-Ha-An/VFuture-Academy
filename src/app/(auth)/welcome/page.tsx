@@ -19,7 +19,7 @@ export default async function WelcomePage({ searchParams }: { searchParams: Prom
   let state: ReturnType<typeof profileState> = 'unavailable';
   try {
     const supabase = await supabaseUser();
-    const profile = await supabase.from('profiles').select('handle').eq('id', user.id).maybeSingle();
+    const profile = await supabase.from('profiles').select('handle,display_name').eq('id', user.id).maybeSingle();
     state = profileState(profile);
   } catch {
     // Render the same retryable profile state as a failed database response.

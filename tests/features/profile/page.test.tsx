@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   checkPublicRateLimit: vi.fn(),
   headers: vi.fn(),
   notFound: vi.fn(),
+  redirect: vi.fn((path: string) => { throw new Error(`redirect:${path}`); }),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -26,7 +27,7 @@ vi.mock('@/features/profile/service', () => ({ getPublicProfile: mocks.getPublic
 vi.mock('@/features/marketing/public-http', () => ({ checkPublicRateLimit: mocks.checkPublicRateLimit }));
 vi.mock('@/features/profile/ui/PublicProfileView', () => ({ PublicProfileView: () => null }));
 vi.mock('next/headers', () => ({ headers: mocks.headers }));
-vi.mock('next/navigation', () => ({ notFound: mocks.notFound }));
+vi.mock('next/navigation', () => ({ notFound: mocks.notFound, redirect: mocks.redirect }));
 vi.mock('next-intl/server', () => ({
   getLocale: vi.fn().mockResolvedValue('en'),
   getTranslations: vi.fn().mockResolvedValue((key: string) => key),
@@ -73,5 +74,16 @@ describe('public profile page', () => {
     await expect(page.default({ params: Promise.resolve({ handle: 'future_builder' }) }))
       .rejects.toMatchObject({ digest: 'NEXT_NOT_FOUND' });
     expect(mocks.getPublicProfile).not.toHaveBeenCalled();
+  });
+
+  it('redirects a public historical alias and hides private aliases', async () => {
+    mocks.getPublicProfile.mockResolvedValue({ ...profile, handle: 'STU-future_builder' });
+    const page = await import('@/app/u/[handle]/page');
+    await expect(page.default({ params: Promise.resolve({ handle: 'future_builder' }) }))
+      .rejects.toThrow('redirect:/u/STU-future_builder');
+    mocks.getPublicProfile.mockResolvedValue(null);
+    await expect(page.default({ params: Promise.resolve({ handle: 'private_alias' }) }))
+      .rejects.toMatchObject({ digest: 'NEXT_NOT_FOUND' });
+    expect(mocks.redirect).toHaveBeenCalledTimes(1);
   });
 });

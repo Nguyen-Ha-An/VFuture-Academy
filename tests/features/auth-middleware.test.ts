@@ -91,7 +91,14 @@ describe('Supabase session middleware', () => {
     expect(response.cookies.get('locale')?.value).toBe('en');
   });
 
-  it.each(['/api/v1/public/courses', '/auth/callback', '/app/courses', '/account/connected-apps', '/studio', '/admin', '/grading', '/login', '/u/student', '/verify/certificate'])('does not change private or utility locale behavior: %s', async (pathname) => {
+  it.each(['/login', '/signup', '/forgot-password', '/reset-password', '/welcome'])('honors language selection on the auth family: %s', async (pathname) => {
+    mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    const response = await middleware(new NextRequest(`https://academy.example${pathname}?next=%2Fapp&lang=en`));
+    expect(response.cookies.get('locale')?.value).toBe('en');
+  });
+
+  it.each(['/api/v1/public/courses', '/auth/callback', '/app/courses', '/account/connected-apps', '/studio', '/admin', '/grading', '/u/student', '/verify/certificate'])('does not change private or utility locale behavior: %s', async (pathname) => {
     mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     const request = new NextRequest(`https://academy.example${pathname}?lang=en`, { headers: { cookie: 'locale=vi' } });
@@ -154,6 +161,9 @@ describe('Supabase session middleware', () => {
   });
   it('limits popup-compatible COOP to auth pages and preserves notebook isolation', async () => {
     mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });mocks.getUser.mockResolvedValue({data:{user:null},error:null});
+    const entrance = await middleware(new NextRequest('https://academy.example/'));
+    expect(entrance.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
+    expect(entrance.headers.get('Cache-Control')).toBe('no-store');
     expect((await middleware(new NextRequest('https://academy.example/login'))).headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
     expect((await middleware(new NextRequest('https://academy.example/auth/popup'))).headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
     expect((await middleware(new NextRequest('https://academy.example/app'))).headers.get('Cross-Origin-Opener-Policy')).toBeNull();

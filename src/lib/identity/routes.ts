@@ -7,7 +7,7 @@ import { createAzureDataClient } from '@/lib/database/azure-client';
 import { enforceRequestRateLimit } from '@/lib/rate-limit';
 import { routes } from '@/lib/routes';
 import { authorizationRequest, encryptRefreshToken, exchangeTokens, getOidcMetadata, getSigningKeys, hashToken, isIdentityProvider, randomToken, readIdentityConfiguration, readIdentitySessionConfiguration, verifyIdToken } from './oidc';
-import { consumeLoginTransaction, createStoredSession, findMicrosoftStaffUser, resolveIdentityUser, storeLoginTransaction } from './store';
+import { consumeLoginTransaction, createStoredSession, findMicrosoftStaffUser, initializeIdentityProfile, resolveIdentityUser, storeLoginTransaction } from './store';
 import { LOGIN_COOKIE, SESSION_COOKIE, revokeAzureSession, sessionCookieOptions } from './server';
 
 function noStore(response: NextResponse) { response.headers.set('Cache-Control', 'no-store'); response.headers.set('Referrer-Policy', 'no-referrer'); return response; }
@@ -60,6 +60,7 @@ export async function azureCallback(request: Request): Promise<NextResponse> {
     const claims = await verifyIdToken(tokens.idToken, config, await getSigningKeys(metadata), transaction.nonce);
     const user = transaction.provider === 'microsoft' ? await findMicrosoftStaffUser(claims.iss, claims.oid) : await resolveIdentityUser(claims);
     if (!user) return failure();
+    await initializeIdentityProfile(user.id, claims, transaction.provider === 'microsoft');
     const sessionToken = randomToken(); const hash = hashToken(sessionToken);
     const expiresAt = Math.floor(Date.now() / 1000) + config.sessionMaxAge;
     await createStoredSession(hash, { provider: transaction.provider, user, issuer: claims.iss, subject: claims.oid, oidcSubject: claims.sub, expiresAt,
