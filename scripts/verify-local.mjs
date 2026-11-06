@@ -53,6 +53,7 @@ try {
 const browsers = full ? ['chromium', 'firefox', 'webkit'] : ['chromium'];
 run('npx', ['playwright', 'install', ...browsers]);
 run('npx', ['playwright', 'test', '--config', 'tests/e2e/auth-popup.config.ts'], { CI: 'true' });
+run('npx', ['playwright', 'test', '--config', 'tests/e2e/session-guard.config.ts'], { CI: 'true' });
 for (const config of ['studio', 'admin', 'learner', 'student', 'student-runtime', ...(full ? ['student-visual'] : [])]) {
   const projects = config === 'student' || config === 'student-runtime' ? ['--project', ...browsers] : [];
   run('npx', ['playwright', 'test', '--config', `playwright.${config}.config.ts`, ...projects, '--reporter=line', '--trace', 'off'], { CI: 'true', STUDENT_CAPTURE_EVIDENCE: String(full) });

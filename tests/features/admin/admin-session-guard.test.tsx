@@ -181,3 +181,20 @@ it('restores the learner editor focus and cursor after same-actor network recove
  expect(editor).toHaveFocus();
  expect(editor.selectionStart).toBe(3);expect(editor.selectionEnd).toBe(8);expect(editor.selectionDirection).toBe('backward');
 });
+
+it('leaves direct-body learner content interactive after initial validation and retry', async()=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(Response.json({userId:'learner-a'})).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(Response.json({userId:'learner-a'})));
+ function Learner(){const [count,setCount]=useState(0);return <main><input aria-label="Direct learner draft" defaultValue="Unsaved answer"/><button onClick={()=>setCount(value=>value+1)}>Learner action {count}</button></main>;}
+ await act(async()=>{render(createPortal(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="learner-a" destination="/app"><Learner/></AdminSessionGuard></NextIntlClientProvider>,document.body));});
+ const first=screen.getByText('Learner action 0');
+ expect(first.closest('[inert]')).toBeNull();expect(first.closest('[hidden]')).toBeNull();
+ fireEvent.click(first);expect(screen.getByRole('button',{name:'Learner action 1'})).toBeVisible();
+ const editor=screen.getByRole('textbox',{name:'Direct learner draft'}) as HTMLInputElement;editor.focus();editor.setSelectionRange(2,6);
+ await act(async()=>{window.dispatchEvent(new Event('blur'));window.dispatchEvent(new Event('focus'));});
+ expect(editor).not.toBeVisible();
+ await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Try again'}));});
+ expect(screen.getByRole('textbox',{name:'Direct learner draft'})).toBe(editor);expect(editor).toHaveFocus();
+ expect(editor.closest('[inert]')).toBeNull();expect(editor.closest('[hidden]')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Learner action 1'}));expect(screen.getByRole('button',{name:'Learner action 2'})).toBeVisible();
+});

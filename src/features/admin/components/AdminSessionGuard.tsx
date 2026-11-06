@@ -24,9 +24,10 @@ export function AdminSessionGuard({
   const [discardedActor, setDiscardedActor] = useState<string | null>(null);
   const retry = useRef<(() => void) | null>(null);
   const status = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const savedFocus = useRef<{ actorId: string; value: NonNullable<ReturnType<typeof captureSessionFocus>> } | null>(null);
   useLayoutEffect(() => {
-    if (state !== "ready" && status.current) return concealSessionPortals(status.current);
+    if (state !== "ready" && status.current) return concealSessionPortals(status.current, content.current);
     if (state === "ready" && savedFocus.current) {
       const saved = savedFocus.current; savedFocus.current = null;
       if (saved.actorId === actorId) restoreSessionFocus(saved.value);
@@ -148,7 +149,7 @@ export function AdminSessionGuard({
     return () => data.subscription.unsubscribe();
   }, [actorId, destination, router]);
   return <>
-    {discardedActor !== actorId && <div hidden={state !== "ready"} inert={state !== "ready" || undefined} style={{ display: state === "ready" ? "contents" : "none" }}>{children}</div>}
+    {discardedActor !== actorId && <div ref={content} hidden={state !== "ready"} inert={state !== "ready" || undefined} style={{ display: state === "ready" ? "contents" : "none" }}>{children}</div>}
     {state !== "ready" && <div
       ref={status}
       role="status"

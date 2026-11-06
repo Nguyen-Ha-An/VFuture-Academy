@@ -1,12 +1,18 @@
 /** Hide body portals as well as the guard subtree while preserving local drafts. */
-export function concealSessionPortals(status: HTMLElement): () => void {
-  let root = status;
-  while (root.parentElement && root.parentElement !== document.body) root = root.parentElement;
+export function concealSessionPortals(status: HTMLElement, content: HTMLElement | null): () => void {
+  const bodyRoot = (element: HTMLElement) => {
+    let root = element;
+    while (root.parentElement && root.parentElement !== document.body) root = root.parentElement;
+    return root;
+  };
+  // Next can render the guard fragment's content and status as direct body
+  // siblings. React owns content.hidden/inert; never snapshot or restore them.
+  const ownedRoots = new Set([bodyRoot(status), ...(content ? [bodyRoot(content)] : [])]);
   const marker = crypto.randomUUID();
-  const previousMarker = root.getAttribute('data-academy-session-status-root');
-  root.setAttribute('data-academy-session-status-root', marker);
+  const previousMarkers = new Map([...ownedRoots].map(root => [root, root.getAttribute('data-academy-session-owned-root')]));
+  for (const root of ownedRoots) root.setAttribute('data-academy-session-owned-root', marker);
   const style = document.createElement('style');
-  style.textContent = `body > :not([data-academy-session-status-root="${marker}"]) { visibility: hidden !important; pointer-events: none !important; }`;
+  style.textContent = `body > :not([data-academy-session-owned-root="${marker}"]) { visibility: hidden !important; pointer-events: none !important; }`;
   document.head.append(style);
   const hidden = new Map<HTMLElement, { aria: string | null; inert: string | null }>();
   const ancestors = new Map<HTMLElement, string>();
@@ -17,7 +23,7 @@ export function concealSessionPortals(status: HTMLElement): () => void {
   }
   const isolate = () => {
     for (const node of document.body.children) {
-      if (!(node instanceof HTMLElement) || node === root || ['SCRIPT', 'STYLE', 'LINK'].includes(node.tagName)) continue;
+      if (!(node instanceof HTMLElement) || ownedRoots.has(node) || ['SCRIPT', 'STYLE', 'LINK'].includes(node.tagName)) continue;
       if (!hidden.has(node)) hidden.set(node, { aria: node.getAttribute('aria-hidden'), inert: node.getAttribute('inert') });
       node.setAttribute('aria-hidden', 'true');
       node.setAttribute('inert', '');
@@ -28,7 +34,9 @@ export function concealSessionPortals(status: HTMLElement): () => void {
   observer.observe(document.body, { childList: true });
   return () => {
     observer.disconnect(); style.remove();
-    if (previousMarker === null) root.removeAttribute('data-academy-session-status-root'); else root.setAttribute('data-academy-session-status-root', previousMarker);
+    for (const [root, previous] of previousMarkers) {
+      if (previous === null) root.removeAttribute('data-academy-session-owned-root'); else root.setAttribute('data-academy-session-owned-root', previous);
+    }
     for (const [node, before] of hidden) {
       if (before.aria === null) node.removeAttribute('aria-hidden'); else node.setAttribute('aria-hidden', before.aria);
       if (before.inert === null) node.removeAttribute('inert'); else node.setAttribute('inert', before.inert);
