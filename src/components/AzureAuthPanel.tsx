@@ -90,8 +90,10 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
       if(!password||password.length>256||(mode==='signup'&&password.length<8)){setError(errorMessage('password_policy'));passwordRef.current?.focus();return;}
       if(mode==='signup'&&password!==String(data.get('confirmPassword')??'')){setError(t('passwordMismatch'));return;}
     }
+    const displayName=String(data.get('displayName')??'').trim();
+    if(mode==='signup'&&(!displayName||displayName.length>100)){setError(english?'Enter your name (up to 100 characters).':'Nhập tên của bạn (tối đa 100 ký tự).');return;}
     setEmail(normalizedEmail);
-    void send({action:'start',mode:recovery?'reset':mode,email:normalizedEmail,...(!recovery?{password}:{}),next});
+    void send({action:'start',mode:recovery?'reset':mode,email:normalizedEmail,...(!recovery?{password}:{}),...(mode==='signup'?{displayName}:{}),next});
   };
   const startAgain=()=>{serial.current++;setFlow(null);setError(null);setBusy(false);};
   const blocked=busy||popup.busy;
@@ -105,13 +107,15 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
     {!recovery&&!flow&&!done?<>
       <div className="mt-6 space-y-3">
         <Button type="button" className="min-h-11 w-full" disabled={blocked} onClick={()=>popup.open(`/auth/login?${new URLSearchParams({provider:'google',mode,next})}`)}>{t('continueGoogle')}</Button>
-        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" disabled={blocked} onClick={()=>popup.open(`/auth/login?${new URLSearchParams({provider:'microsoft',mode,next})}`)}>{english?'Microsoft (internal staff)':'Microsoft (nhân sự nội bộ)'}</Button>
+        <Button type="button" className="min-h-11 w-full bg-secondary text-secondary-foreground hover:bg-secondary/80" disabled={blocked} onClick={()=>popup.open(`/auth/login?${new URLSearchParams({provider:'microsoft',mode,next})}`)}>{english?'Microsoft · approved @vfuturelabs.org staff':'Microsoft · nhân sự @vfuturelabs.org đã được duyệt'}</Button>
       </div>
       <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border"/><span className="text-xs text-muted-foreground">{t('or')}</span><span className="h-px flex-1 bg-border"/></div>
     </>:null}
-    {popup.phase?<div className="my-3"><p role="status">{popup.status}</p>{popup.error?<p role="alert">{popup.error}</p>:null}<button type="button" className="min-h-11 underline underline-offset-4" onClick={popup.cancel}>{english?'Cancel sign-in':'Hủy đăng nhập'}</button></div>:null}
+    {popup.error?<p role="alert" className="my-3 text-sm text-destructive">{popup.error}</p>:null}
+    {popup.phase?<div className="my-3"><p role="status">{popup.status}</p><button type="button" className="min-h-11 underline underline-offset-4" onClick={popup.cancel}>{english?'Cancel sign-in':'Hủy đăng nhập'}</button></div>:null}
     {flow?.step==='poll'?<p role="status" aria-live="polite" className="mt-5">{english?'Updating your password…':'Đang cập nhật mật khẩu…'}</p>:null}
     {!done&&flow?.step!=='poll'?<form method="post" action="/api/v1/public/auth/native" onSubmit={submit} noValidate className="mt-6 space-y-4" aria-busy={busy} aria-describedby={error?'native-auth-error':undefined}>
+      {!flow&&mode==='signup'?<div className="space-y-1.5"><label htmlFor="auth-name" className="text-sm font-medium">{english?'Name':'Họ và tên'}</label><Input id="auth-name" name="displayName" autoComplete="name" required maxLength={100} disabled={blocked}/></div>:null}
       {!flow?<div className="space-y-1.5"><label htmlFor="auth-email" className="text-sm font-medium">{t('email')}</label><Input ref={emailRef} id="auth-email" name="email" type="email" autoComplete="email" required maxLength={320} value={email} onChange={event=>setEmail(event.target.value)} disabled={blocked}/></div>:null}
       {codeStep?<div className="space-y-1.5"><label htmlFor="auth-code" className="text-sm font-medium">{english?'Verification code':'Mã xác minh'}</label><Input ref={codeRef} id="auth-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" required maxLength={16} disabled={blocked}/></div>:null}
       {passwordStep?<div className="space-y-1.5"><label htmlFor="auth-password" className="text-sm font-medium">{flow?t('newPassword'):t('password')}</label><Input ref={passwordRef} id="auth-password" name="password" type="password" autoComplete={mode==='login'&&!flow?'current-password':'new-password'} required maxLength={256} disabled={blocked}/></div>:null}
@@ -122,6 +126,6 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
     {flow?<button type="button" className="mt-3 min-h-11 underline underline-offset-4" disabled={busy} onClick={startAgain}>{english?'Start again':'Bắt đầu lại'}</button>:null}
     {!flow&&!done&&mode==='login'?<p className="mt-4 text-center text-sm"><Link className="inline-flex min-h-11 items-center text-primary underline underline-offset-4" href="/forgot-password">{t('forgotPassword')}</Link></p>:null}
     <p className="mt-4 text-center text-sm text-muted-foreground">{recovery?<Link className="inline-flex min-h-11 items-center text-primary underline underline-offset-4" href={routes.auth.login({next})}>{t('backToLogin')}</Link>:<>{t(mode==='login'?'needAccount':'haveAccount')} <Link className="inline-flex min-h-11 items-center text-primary underline underline-offset-4" href={mode==='login'?routes.auth.signup({next}):routes.auth.login({next})}>{t(mode==='login'?'openSignup':'openLogin')}</Link></>}</p>
-    {!bench?<p className="mt-4 text-center text-xs leading-6 text-muted-foreground"><Link className="inline-flex min-h-11 items-center underline underline-offset-4" href={english?'/privacy?lang=en':'/privacy'}>{english?'Privacy notice':'Quyền riêng tư'}</Link><span aria-hidden="true"> · </span><Link className="inline-flex min-h-11 items-center underline underline-offset-4" href={english?'/terms?lang=en':'/terms'}>{english?'Terms of use':'Điều khoản sử dụng'}</Link></p>:null}
+
   </section>;
 }

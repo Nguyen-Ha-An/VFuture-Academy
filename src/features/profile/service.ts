@@ -6,6 +6,7 @@ import { ApiError } from '@/lib/api';
 import { audit } from '@/lib/audit';
 import type { Actor } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
+import { PROFILE_HANDLE_PATTERN, PROFILE_LOOKUP_PATTERN } from '@/lib/profile-handle';
 import {
   readPublicCertificates,
   type CertificateDatabase,
@@ -13,7 +14,7 @@ import {
   type PublicCertificateReader,
 } from './certificates';
 
-export const PROFILE_HANDLE_PATTERN = /^[a-z0-9][a-z0-9_-]{2,31}$/;
+export { PROFILE_HANDLE_PATTERN } from '@/lib/profile-handle';
 
 type QueryResult = { data: unknown; error: unknown | null };
 
@@ -314,11 +315,11 @@ export async function getPublicProfile(
   handle: string,
   deps?: ProfileDependencies,
 ): Promise<PublicProfile | null> {
-  if (!PROFILE_HANDLE_PATTERN.test(handle)) return null;
+  if (!PROFILE_LOOKUP_PATTERN.test(handle)) return null;
   const client = database(deps);
-  const profileResult = await client.from('public_profiles')
+  const profileResult = await client.from('public_profile_handles')
     .select('id,handle,display_name,avatar_url,branch_name')
-    .eq('handle', handle)
+    .eq('lookup_handle', handle)
     .maybeSingle();
   if (profileResult.error) databaseFailure('Unable to load public profile');
   const profile = record(profileResult.data);
@@ -401,6 +402,9 @@ export async function changeHandle(
     }
     if (errorHas(result.error, 'PROFILE_NOT_FOUND')) {
       throw new ApiError(404, 'PROFILE_NOT_FOUND', 'Profile not found');
+    }
+    if (errorHas(result.error, 'INVALID_HANDLE')) {
+      throw new ApiError(400, 'INVALID_HANDLE', 'The handle prefix is managed by your account');
     }
     databaseFailure('Unable to update profile handle');
   }

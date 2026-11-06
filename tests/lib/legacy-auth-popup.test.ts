@@ -4,7 +4,7 @@ vi.mock('server-only',()=>({}));
 vi.mock('next/headers',()=>({cookies:async()=>({get:(name:string)=>mocks.jar.has(name)?{value:mocks.jar.get(name)}:undefined,set:(name:string,value:string)=>{mocks.jar.set(name,value);}})}));
 vi.mock('@/lib/env',()=>({env:{NEXT_PUBLIC_APP_URL:'https://academy.example',NEXT_PUBLIC_SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'local-test-signing-secret'}}));
 vi.mock('@/lib/rate-limit',()=>({enforceRequestRateLimit:mocks.rate}));
-vi.mock('@/lib/supabase/server',()=>({supabaseService:()=>({}),supabaseUser:async()=>({auth:{signInWithOAuth:mocks.oauth,exchangeCodeForSession:mocks.exchange,getUser:mocks.getUser},from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{handle:'learner'},error:null})})})})})}));
+vi.mock('@/lib/supabase/server',()=>({supabaseService:()=>({}),supabaseUser:async()=>({auth:{signInWithOAuth:mocks.oauth,exchangeCodeForSession:mocks.exchange,getUser:mocks.getUser},from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{handle:'STU-learner',display_name:'Learner'},error:null})})})})})}));
 import { consumeLegacyPopup, legacyPopupLogin } from '@/lib/identity/legacy-popup';
 import { GET as callback } from '@/app/auth/callback/route';
 const attempt='a'.repeat(48);

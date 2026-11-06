@@ -1,0 +1,9 @@
+.entrance-shell { min-height: 100vh; display: grid; place-items: center; padding: 36px 16px; background-color: #f5f7fa; background-image: linear-gradient(135deg, transparent 49.8%, rgba(26,76,105,.045) 50%, transparent 50.2%), linear-gradient(45deg, transparent 49.8%, rgba(26,76,105,.035) 50%, transparent 50.2%); background-size: 180px 180px; }
+.entrance-content { width: min(100%, 448px); }
+.entrance-brand { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 24px; color: #153d55; font-size: 19px; font-weight: 600; text-decoration: none; }
+.entrance-brand strong { font-weight: 400; }
+.entrance-content main { min-height: 0; padding: 0; display: block; }
+.entrance-content section { max-width: none; border-color: #dce5e9; border-radius: 16px; padding: 28px; background: white; box-shadow: 0 12px 36px rgba(21,61,85,.08); }
+.entrance-footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 20px; margin-top: 16px; color: #516775; font-size: 12px; }
+.entrance-footer a { text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 480px) { .entrance-shell { padding: 24px 16px; } .entrance-content section { padding: 22px; } }

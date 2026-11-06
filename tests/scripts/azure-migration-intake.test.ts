@@ -7,7 +7,7 @@ it.each(['._0001_identity.sql','_0001_identity.sql','.0001_identity.sql','.hidde
 it('accepts only the current numeric owned migration names in deterministic order',()=>{
   const names=readdirSync(new URL('../../supabase/migrations/',import.meta.url));
   const eligible=ownedMigrationNames(names);
-  expect(eligible).toHaveLength(53);
+  expect(eligible).toHaveLength(54);
   expect(ownedMigrationNames([...eligible].reverse())).toEqual(eligible);
   const artifact=buildAzureSchema();
   expect(artifact.receipt.migrations.map(migration=>migration.file)).toEqual(eligible);

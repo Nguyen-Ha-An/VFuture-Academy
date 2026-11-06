@@ -19,7 +19,7 @@ import { profileState } from '@/lib/profile-state';
 function authClient({
   user = { id: 'user-1' } as { id: string } | null,
   exchangeError = null as unknown,
-  profile = { data: { handle: 'learner' }, error: null } as { data: { handle: string | null } | null; error: unknown },
+  profile = { data: { handle: 'STU-learner', display_name: 'Learner' }, error: null } as { data: { handle: string | null; display_name: string } | null; error: unknown },
 } = {}) {
   return {
     auth: {
@@ -64,10 +64,12 @@ describe('server authentication routing', () => {
   });
 
   it('separates profile completeness from navigation', () => {
-    expect(profileState({ data: { handle: 'learner' }, error: null })).toBe('complete');
-    expect(profileState({ data: { handle: null }, error: null })).toBe('incomplete');
+    expect(profileState({ data: { handle: 'STU-learner', display_name: 'Learner' }, error: null })).toBe('complete');
+    expect(profileState({ data: { handle: 'STU-learner', display_name: '' }, error: null })).toBe('incomplete');
     expect(profileState({ data: null, error: new Error('lookup failed') })).toBe('unavailable');
     expect(profileState({ data: null, error: null })).toBe('unavailable');
+    expect(profileState({ data: { handle: null, display_name: 'Known Name' }, error: null })).toBe('unavailable');
+    expect(profileState({ data: { handle: 'STU-learner', display_name: '   ' }, error: null })).toBe('incomplete');
   });
 
   it('returns an existing profile to the exact validated public action page', async () => {
@@ -84,7 +86,7 @@ describe('server authentication routing', () => {
 
   it('carries an incomplete profile destination through onboarding', async () => {
     mocks.supabaseUser.mockResolvedValue(authClient({
-      profile: { data: { handle: null }, error: null },
+      profile: { data: { handle: 'STU-learner', display_name: '' }, error: null },
     }));
 
     const response = await callback(new Request(

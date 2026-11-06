@@ -59,6 +59,11 @@ const nextConfig: NextConfig = {
         destination: '/:path',
         permanent: true,
       },
+      ...['courses', 'resources', 'opportunities', 'projects'].map((section) => ({
+        source: `/${section}/:path*`, destination: `/app/${section}/:path*`, permanent: false,
+      })),
+      { source: '/academy', destination: '/app/explore', permanent: false },
+      { source: '/contact', destination: '/app/explore', permanent: false },
       ...staffLegacyRedirects,
     ];
   },

@@ -7,9 +7,10 @@ import { enforceRequestRateLimit } from '@/lib/rate-limit';
 import { routes } from '@/lib/routes';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { academyBackend } from './provider';
+import { identityDisplayName } from './display-name';
 import { createNativeClient, NativeAuthError, type NativeFlow, type NativeResult } from './native';
 import { decryptRefreshToken, encryptRefreshToken, getOidcMetadata, getSigningKeys, hashToken, randomToken, readIdentityConfiguration, verifyIdToken, NATIVE_REFRESH_PREFIX, type IdentityConfiguration } from './oidc';
-import { consumeIdentityTransaction, createStoredSession, resolveIdentityUser, storeIdentityTransaction } from './store';
+import { consumeIdentityTransaction, createStoredSession, initializeIdentityProfile, resolveIdentityUser, storeIdentityTransaction } from './store';
 import { SESSION_COOKIE, revokeAzureSession, sessionCookieOptions } from './server';
 
 export const NATIVE_COOKIE=process.env.NODE_ENV==='production'?'__Host-academy_native':'academy_native';
@@ -57,8 +58,10 @@ async function complete(result:NativeResult,browser:string,config:IdentityConfig
   if(result.flow.mode==='signup'&&result.flow.verifiedEmail) {
     if(typeof claims.email==='string'&&claims.email.toLowerCase()!==result.flow.email.toLowerCase())throw new NativeAuthError('request_failed');
     claims.email=result.flow.email;claims.email_verified=true;
+    if(!identityDisplayName(claims)&&result.flow.displayName)claims.name=result.flow.displayName;
   }
   const user=await resolveIdentityUser(claims);
+  await initializeIdentityProfile(user.id,claims);
   const session=randomToken(),hash=hashToken(session);
   const expiresAt=Math.floor(Date.now()/1000)+config.sessionMaxAge;
   await createStoredSession(hash,{provider:'external-id',user,issuer:claims.iss,subject:claims.oid,oidcSubject:claims.sub,expiresAt,tokenExpiresAt:claims.exp,refreshCiphertext:result.tokens.refreshToken?encryptRefreshToken(NATIVE_REFRESH_PREFIX+result.tokens.refreshToken,hash,config):null});

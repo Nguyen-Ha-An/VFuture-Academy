@@ -16,7 +16,7 @@ vi.mock('@/features/profile/service', () => ({
   getPublicProfile: mocks.getPublicProfile,
   changeHandle: mocks.changeHandle,
   setProfilePublic: mocks.setProfilePublic,
-  PROFILE_HANDLE_PATTERN: /^[a-z0-9][a-z0-9_-]{2,31}$/,
+  PROFILE_HANDLE_PATTERN: /^(STU|VFU)-[a-z0-9][a-z0-9_-]{2,31}$/,
 }));
 vi.mock('@/lib/auth', () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock('@/lib/supabase/server', () => ({
@@ -65,16 +65,16 @@ describe('profile routes', () => {
 
   it('updates a validated handle for the authenticated learner', async () => {
     const { PATCH } = await import('@/app/api/v1/profile/handle/route');
-    mocks.changeHandle.mockResolvedValue({ handle: 'new_handle' });
+    mocks.changeHandle.mockResolvedValue({ handle: 'STU-new_handle' });
 
     const response = await PATCH(new Request('https://academy.example/api/v1/profile/handle', {
       method: 'PATCH',
-      body: JSON.stringify({ handle: 'new_handle' }),
+      body: JSON.stringify({ handle: 'STU-new_handle' }),
     }));
 
     expect(response.status).toBe(200);
     expect(mocks.supabaseService).toHaveBeenCalledOnce();
-    expect(mocks.changeHandle).toHaveBeenCalledWith(actor, 'new_handle');
+    expect(mocks.changeHandle).toHaveBeenCalledWith(actor, 'STU-new_handle');
   });
 
   it('updates public visibility for the authenticated learner', async () => {
@@ -96,7 +96,7 @@ describe('profile routes', () => {
 
     const response = await PATCH(new Request('https://academy.example/api/v1/profile/handle', {
       method: 'PATCH',
-      body: JSON.stringify({ handle: 'new_handle' }),
+      body: JSON.stringify({ handle: 'STU-new_handle' }),
     }));
 
     expect(response.status).toBe(401);
@@ -127,7 +127,7 @@ describe('profile routes', () => {
 
     const response = await PATCH(new Request('https://academy.example/api/v1/profile/handle', {
       method: 'PATCH',
-      body: JSON.stringify({ handle: 'new_handle' }),
+      body: JSON.stringify({ handle: 'STU-new_handle' }),
     }));
 
     expect(response.status).toBe(429);

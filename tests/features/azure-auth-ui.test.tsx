@@ -38,6 +38,7 @@ describe('inline Azure identity UI',()=>{
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({step:'code',flowId:'a'.repeat(43),attemptId:'b'.repeat(43),codeLength:8})));
     render(<AzureAuthPanel mode="signup"/>);
     expect(screen.getByRole('link',{name:'openLogin'})).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Name'),{target:{value:'Learner Name'}});
     fireEvent.change(screen.getByLabelText('email'),{target:{value:'learner@example.com'}});
     fireEvent.change(screen.getByLabelText('password'),{target:{value:'Password1!'}});
     fireEvent.change(screen.getByLabelText('confirmPassword'),{target:{value:'Password1!'}});

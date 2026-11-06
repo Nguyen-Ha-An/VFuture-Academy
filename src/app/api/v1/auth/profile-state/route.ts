@@ -15,7 +15,7 @@ const readProfileState = withHandler(async () => {
   const user = await requireApiUser();
 
   const supabase = await supabaseUser();
-  const profile = await supabase.from('profiles').select('handle').eq('id', user.id).maybeSingle();
+  const profile = await supabase.from('profiles').select('handle,display_name').eq('id', user.id).maybeSingle();
   return ok({ state: profileState(profile) });
 });
 

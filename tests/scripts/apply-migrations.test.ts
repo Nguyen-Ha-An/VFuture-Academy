@@ -119,6 +119,7 @@ describe('applyMigrations', () => {
       '20261105010000_teaching_announcement_revisions.sql',
       '20261105020000_teaching_permissions_activation.sql',
       '20261105030000_exam_attachment_bindings.sql',
+      '20261106000000_managed_profile_handles.sql',
     ];
     const files = migrationFiles(migrationsDir);
     const prefixes = files.map((filename) => filename.split('_')[0]);

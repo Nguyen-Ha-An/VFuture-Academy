@@ -45,6 +45,7 @@ try {
   run(process.execPath, ['scripts/azure-core/rehearse.mjs'], azureSqlEnvironment);
   run(process.execPath, ['scripts/azure-core/rehearse-forward.mjs']);
   run(process.execPath, ['scripts/azure-core/rehearse-forward-53.mjs']);
+  run(process.execPath, ['scripts/azure-core/rehearse-forward-54.mjs']);
   run('npx', ['vitest', 'run', 'tests/scripts/azure-identity-schema.test.ts', 'tests/scripts/azure-admin-schema.test.ts', 'tests/scripts/azure-media-delete-schema.test.ts', '--maxWorkers=1'], azureSqlEnvironment);
 } finally { rmSync(sqlRuntime, { recursive: true, force: true }); }
 

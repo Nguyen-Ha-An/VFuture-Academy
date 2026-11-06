@@ -65,7 +65,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const profile = await supabase.from('profiles').select('handle').eq('id', userId).maybeSingle();
+    const profile = await supabase.from('profiles').select('handle,display_name').eq('id', userId).maybeSingle();
     const state = profileState(profile);
     if (state === 'unavailable') return callbackFailure(appUrl, 'profile', next, popupAttempt);
 

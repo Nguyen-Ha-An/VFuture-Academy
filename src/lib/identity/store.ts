@@ -2,6 +2,7 @@ import 'server-only';
 import type { User } from '@supabase/supabase-js';
 import { createAzureDataClient } from '@/lib/database/azure-client';
 import type { IdentityClaims, IdentityProvider, LoginTransaction } from './oidc';
+import { identityDisplayName } from './display-name';
 
 type UserRow = { id: string; email?: string; raw_user_meta_data?: Record<string, unknown>; created_at: string };
 function authUser(row: UserRow): User {
@@ -36,8 +37,15 @@ export async function findMicrosoftStaffUser(issuer: string, objectId: string): 
 export async function resolveIdentityUser(claims: IdentityClaims): Promise<User> {
   const email = typeof claims.email === 'string' && claims.email.length <= 320 ? claims.email : null;
   const row = await rpc<UserRow>('academy_identity_resolve_user', { p_issuer: claims.iss, p_subject: claims.oid, p_email: email,
-    p_email_verified: claims.email_verified === true, p_display_name: typeof claims.name === 'string' ? claims.name.slice(0, 160) : '' });
+    p_email_verified: claims.email_verified === true, p_display_name: identityDisplayName(claims) });
   return authUser(row);
+}
+/** Server-only, idempotent initialization preserves existing edited names. */
+export async function initializeIdentityProfile(userId: string, claims: IdentityClaims, workforce = false): Promise<string> {
+  return rpc<string>(workforce ? 'academy_identity_initialize_staff_profile' : 'profile_initialize', {
+    ...(workforce ? { p_issuer: claims.iss, p_subject: claims.oid } : { p_user_id: userId }),
+    p_display_name: identityDisplayName(claims),
+  });
 }
 export type StoredSession = { provider: IdentityProvider; user: User; issuer: string; subject: string; oidcSubject: string; expiresAt: number; tokenExpiresAt: number; refreshCiphertext: string | null; version: number };
 export async function createStoredSession(hash: string, session: Omit<StoredSession, 'version'>) {

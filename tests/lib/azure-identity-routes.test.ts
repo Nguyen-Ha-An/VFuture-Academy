@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ cookies: vi.fn(), consume: vi.fn(), store: vi.fn(), resolve: vi.fn(), staff: vi.fn(), create: vi.fn(), revoke: vi.fn(), metadata: vi.fn(), exchange: vi.fn(), keys: vi.fn(), rateLimit: vi.fn() }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/headers', () => ({ cookies: mocks.cookies }));
-vi.mock('@/lib/identity/store', () => ({ consumeLoginTransaction: mocks.consume, storeLoginTransaction: mocks.store, resolveIdentityUser: mocks.resolve, findMicrosoftStaffUser: mocks.staff, createStoredSession: mocks.create }));
+vi.mock('@/lib/identity/store', () => ({ consumeLoginTransaction: mocks.consume, storeLoginTransaction: mocks.store, resolveIdentityUser: mocks.resolve, initializeIdentityProfile: vi.fn().mockResolvedValue("STU-test"), findMicrosoftStaffUser: mocks.staff, createStoredSession: mocks.create }));
 vi.mock('@/lib/identity/server', () => ({ LOGIN_COOKIE: 'academy_login', SESSION_COOKIE: 'academy_session', sessionCookieOptions: { httpOnly: true, sameSite: 'lax', path: '/' }, revokeAzureSession: mocks.revoke }));
 vi.mock('@/lib/identity/oidc', async (original) => ({ ...await original<typeof import('@/lib/identity/oidc')>(), getOidcMetadata: mocks.metadata, exchangeTokens: mocks.exchange, getSigningKeys: mocks.keys }));
 vi.mock('@/lib/database/azure-client', () => ({ createAzureDataClient: () => ({}) }));
@@ -71,7 +71,7 @@ describe('Microsoft callback provider and staff binding',()=>{
   mocks.cookies.mockResolvedValue({get:()=>({value:'b'.repeat(43)})});
   mocks.consume.mockResolvedValue({provider:'microsoft',state,nonce:'bound-nonce',verifier:'c'.repeat(43),next:'/studio'});
   const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});
-  const body=[{alg:'RS256',kid:'staff-key'},{iss:workforceIssuer,tid:vars.MICROSOFT_ENTRA_TENANT_ID,aud:vars.MICROSOFT_ENTRA_CLIENT_ID,ver:'2.0',sub:'staff-pairwise',oid:'77777777-7777-4777-8777-777777777777',nonce:'bound-nonce',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600}].map(part=>Buffer.from(JSON.stringify(part)).toString('base64url')).join('.');
+  const body=[{alg:'RS256',kid:'staff-key'},{iss:workforceIssuer,tid:vars.MICROSOFT_ENTRA_TENANT_ID,aud:vars.MICROSOFT_ENTRA_CLIENT_ID,ver:'2.0',acct:0,upn:'staff@vfuturelabs.org',sub:'staff-pairwise',oid:'77777777-7777-4777-8777-777777777777',nonce:'bound-nonce',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+3600}].map(part=>Buffer.from(JSON.stringify(part)).toString('base64url')).join('.');
   mocks.keys.mockResolvedValue([{...publicKey.export({format:'jwk'}),kid:'staff-key'}]);mocks.metadata.mockResolvedValue({});
   mocks.exchange.mockResolvedValue({idToken:body+'.'+sign('RSA-SHA256',Buffer.from(body),privateKey).toString('base64url'),refreshToken:'staff-refresh'});
  });

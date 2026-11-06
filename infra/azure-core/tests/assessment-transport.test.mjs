@@ -48,9 +48,9 @@ function bootstrap(root,receipt,action,s){
  assert.equal((result.stdout+result.stderr).includes('NEVER_LOG'),false);return {...result,receiptFile,failureFile};
 }
 test('fixed53 plan/apply receipt policy never widens V1 or exports private rows',()=>{
- assert.deepEqual(Object.keys(ASSESSMENT_ACTIONS),['forward-53-plan','forward-53-apply']);
+ assert.deepEqual(Object.keys(ASSESSMENT_ACTIONS),['forward-54-plan','forward-54-apply','forward-53-plan','forward-53-apply']);
  for(const path of ['build/azure-core/private/forward-53-v1-evidence.json','build/azure-core/private/forward-53-plan.json','build/azure-core/private/forward-53-source-manifest.json'])assert.doesNotThrow(()=>validateArchiveListing(path));
- for(const path of ['build/azure-core/private/forward-53-other.json','scripts/azure-core/forward-54.mjs'])assert.throws(()=>validateArchiveListing(path));
+ for(const path of ['build/azure-core/private/forward-53-other.json','scripts/azure-core/forward-55.mjs'])assert.throws(()=>validateArchiveListing(path));
 });
 test('real clean encrypted53 package relocates, produces reviewed transport plan, repacks and applies idempotently',()=>{
  const root=prepare(),s=support();let relocated,applyFolder;

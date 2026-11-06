@@ -1,31 +1,21 @@
-import type { Metadata } from 'next';
-import { getLocale, getTranslations } from 'next-intl/server';
-import { PATHWAYS, type Locale } from '@/content-engine';
-import { AcademyGateway } from '@/features/public-site/academy/AcademyGateway';
-import { buildPublicMetadata, publicCanonical, WebSiteJsonLd } from '@/features/public-site/metadata';
+import { Suspense } from 'react';
+import { AuthForm } from '@/components/AuthForm';
+import { EntranceShell } from '@/features/workspace-ui/auth/EntranceShell';
+import { redirect } from 'next/navigation';
+import { getActor } from '@/lib/permissions';
+import { safeInternalPath } from '@/lib/safe-internal-path';
+import { workspaceEntries } from '@/lib/workspace-admission';
+import { getSessionUser } from '@/lib/auth';
 
+export const metadata = { title: 'VFuture Academy', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
-
-export async function generateMetadata(): Promise<Metadata> {
-  const [locale, t] = await Promise.all([getLocale() as Promise<Locale>, getTranslations('marketing.metadata')]);
-  const metadata = buildPublicMetadata({ title: t('homeTitle'), description: t('homeDescription'), pathname: '/', locale });
-  // Next 15 drops root query strings from URL metadata. Render canonical and
-  // language URLs explicitly so the English root keeps its own identity.
-  metadata.alternates = undefined;
-  if (metadata.openGraph) metadata.openGraph = { ...metadata.openGraph, url: undefined };
-  return metadata;
-}
-
-export default async function AcademyHomePage() {
-  const locale = await getLocale() === 'en' ? 'en' : 'vi';
-  const canonical = publicCanonical('/', locale);
-  return <>
-    <link rel="canonical" href={canonical} />
-    <link rel="alternate" hrefLang="vi" href={publicCanonical('/', 'vi')} />
-    <link rel="alternate" hrefLang="en" href={publicCanonical('/', 'en')} />
-    <link rel="alternate" hrefLang="x-default" href={publicCanonical('/', 'vi')} />
-    <meta property="og:url" content={canonical} />
-    <WebSiteJsonLd />
-    <main id="main-content"><AcademyGateway fields={PATHWAYS} /></main>
-  </>;
+export default async function AcademyHomePage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
+  const user = await getSessionUser();
+  const actor = user ? await getActor() : null;
+  if (actor) {
+    const { next } = await searchParams;
+    const entries = workspaceEntries(actor);
+    redirect(typeof next === 'string' ? safeInternalPath(next) : entries.studio ?? entries.grading ?? entries.admin ?? '/app');
+  }
+  return <EntranceShell><main><Suspense fallback={null}><AuthForm mode="login" /></Suspense></main></EntranceShell>;
 }

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isPublicPath, publicHref } from '@/features/public-site/public-navigation';
+import { isPublicPath } from '@/features/public-site/public-navigation';
 import { isPermission } from '@/lib/authorization';
 
 const source = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
@@ -29,11 +29,12 @@ describe('standalone Academy ownership', () => {
     expect(isPermission('grading.manage')).toBe(true);
   });
 
-  it('owns the Academy gateway at root and redirects the historical alias with browsing context', () => {
-    expect(source('src/app/(public)/page.tsx')).toContain('AcademyGateway');
-    expect(source('src/app/(public)/page.tsx')).toContain("pathname: '/'");
-    expect(source('src/app/(public)/academy/page.tsx')).toContain("publicHref('/'");
-    expect(publicHref('/', 'en', { pathway: 'research-innovation', lang: 'en' })).toBe('/?pathway=research-innovation&lang=en');
+  it('owns the shared Academy entrance and retires the historical public alias', () => {
+    const root = source('src/app/(public)/page.tsx');
+    expect(root).toContain('EntranceShell');
+    expect(root).toContain('AuthForm');
+    expect(root).not.toContain('AcademyGateway');
+    expect(source('next.config.ts')).toContain("source: '/academy', destination: '/app/explore'");
     expect(isPublicPath('/competition')).toBe(false);
   });
 

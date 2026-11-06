@@ -48,7 +48,7 @@ describe('profile UI', () => {
   it('provides labelled handle and visibility settings', () => {
     render(
       <NextIntlClientProvider locale="en" messages={en}>
-        <ProfileSettings initial={{ handle: 'future_builder', displayName: 'Future Builder', profilePublic: false }} />
+        <ProfileSettings initial={{ handle: 'STU-future_builder', displayName: 'Future Builder', profilePublic: false }} />
       </NextIntlClientProvider>,
     );
 
@@ -60,7 +60,7 @@ describe('profile UI', () => {
   it('keeps one settings card and native validation when rendering InstUI controls', () => {
     const { container } = render(
       <NextIntlClientProvider locale="en" messages={en}>
-        <ProfileSettings initial={{ handle: 'future_builder', displayName: 'Future Builder', profilePublic: true }} />
+        <ProfileSettings initial={{ handle: 'STU-future_builder', displayName: 'Future Builder', profilePublic: true }} />
       </NextIntlClientProvider>,
     );
 
@@ -79,7 +79,7 @@ describe('profile UI', () => {
     const user = userEvent.setup();
     render(
       <NextIntlClientProvider locale="en" messages={en}>
-        <ProfileSettings initial={{ handle: 'future_builder', displayName: 'Future Builder', profilePublic: false }} />
+        <ProfileSettings initial={{ handle: 'STU-future_builder', displayName: 'Future Builder', profilePublic: false }} />
       </NextIntlClientProvider>,
     );
 
@@ -93,6 +93,8 @@ describe('profile UI', () => {
     expect(notice?.parentElement).toHaveAttribute('id', 'profile-handle-status');
     expect(notice?.parentElement).toHaveAttribute('aria-live', 'polite');
     expect(saved).toHaveBeenCalledOnce();
+    expect(saved.mock.calls[0][0].detail).toEqual({ handle: 'STU-future_builder_new' });
+    expect(fetch).toHaveBeenCalledWith('/api/v1/profile/handle', expect.objectContaining({body: JSON.stringify({handle:'STU-future_builder_new'})}));
     window.removeEventListener('profile-handle-saved', saved);
   });
 
@@ -104,7 +106,7 @@ describe('profile UI', () => {
     const user = userEvent.setup();
     render(
       <NextIntlClientProvider locale="en" messages={en}>
-        <ProfileSettings initial={{ handle: 'future_builder', displayName: 'Future Builder', profilePublic: false }} />
+        <ProfileSettings initial={{ handle: 'STU-future_builder', displayName: 'Future Builder', profilePublic: false }} />
       </NextIntlClientProvider>,
     );
 

@@ -68,6 +68,28 @@ returns jsonb language sql stable security definer set search_path = pg_catalog,
       where a.user_id=u.id and public.authorization_has_permission(u.id,p.permission,d.scope_kind,a.branch_id)
     );
 $$;
+-- Called only after signed member/UPN validation and mapped active staff lookup.
+-- Category persists after staff permissions change; it never grants permission.
+create or replace function public.academy_identity_initialize_staff_profile(p_issuer text,p_subject uuid,p_display_name text)
+returns text language plpgsql security definer set search_path=pg_catalog,public as $$
+declare identity_user jsonb; target uuid;
+begin
+  identity_user:=public.academy_identity_find_staff(p_issuer,p_subject);
+  if identity_user is null then raise exception 'Staff identity required'; end if;
+  target:=(identity_user->>'id')::uuid;
+  perform pg_advisory_xact_lock(hashtextextended('profile-handle:'||target::text,0));
+  begin
+    update public.profiles set handle_category='VFU',
+      handle=case when handle is null then null else 'VFU-'||substring(handle from 5) end
+      where id=target and handle_category='STU';
+  exception when unique_violation then
+    update public.profiles set handle_category='VFU',handle=null
+      where id=target and handle_category='STU';
+  end;
+  return public.profile_initialize(target,p_display_name);
+end; $$;
+revoke all on function public.academy_identity_initialize_staff_profile(text,uuid,text) from public,anon,authenticated;
+grant execute on function public.academy_identity_initialize_staff_profile(text,uuid,text) to service_role;
 create or replace function public.academy_identity_resolve_user(p_issuer text,p_subject uuid,p_email text,p_email_verified boolean,p_display_name text)
 returns jsonb language plpgsql security definer set search_path = pg_catalog, academy_identity as $$
 declare result jsonb; new_id uuid; safe_email text;
@@ -75,7 +97,10 @@ begin
   -- Serialize first registration for an object across concurrent callback requests.
   perform pg_advisory_xact_lock(hashtextextended(p_issuer || ':' || p_subject::text,0));
   select public.academy_identity_find_user(p_issuer,p_subject) into result;
-  if result is not null then return result; end if;
+  if result is not null then
+    perform public.profile_initialize((result->>'id')::uuid,p_display_name);
+    return result;
+  end if;
   if exists(select 1 from academy_identity.mappings where issuer=p_issuer and subject=p_subject) then raise exception 'Identity is disabled'; end if;
   safe_email := case when p_email_verified then nullif(lower(trim(p_email)),'') else null end;
   -- Never link by email. A migrated identity must have an operator-reviewed mapping.
@@ -84,7 +109,7 @@ begin
   end if;
   new_id := gen_random_uuid();
   insert into academy_identity.users(id,email,raw_user_meta_data)
-    values(new_id,safe_email,jsonb_build_object('full_name',coalesce(nullif(left(p_display_name,160),''),'Learner')));
+    values(new_id,safe_email,jsonb_build_object('full_name',coalesce(nullif(left(p_display_name,160),''),'')));
   insert into academy_identity.mappings(issuer,subject,user_id) values(p_issuer,p_subject,new_id);
   return public.academy_identity_find_user(p_issuer,p_subject);
 end; $$;
