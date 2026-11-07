@@ -10,6 +10,8 @@ import { safeInternalPath } from "@/lib/safe-internal-path";
 import { routes } from "@/lib/routes";
 import { captureSessionFocus, concealSessionPortals, restoreSessionFocus } from "@/lib/identity/session-concealment";
 
+const SESSION_FRESHNESS_MS = 5 * 60 * 1000;
+
 /** Conceal previously authorized data when another tab changes the signed-in actor. */
 export function AdminSessionGuard({
   actorId,
@@ -49,12 +51,14 @@ export function AdminSessionGuard({
       let checkingGeneration = 0;
       let backgrounded = false;
       let recheck = false;
+      let validatedAt: number | null = null;
       const loginDestination = () => routes.auth.login({ next: safeInternalPath(`${window.location.pathname}${window.location.search}${window.location.hash}`, destination) });
       const check = async (conceal = false) => {
         if (!active) return;
         if (conceal && !actorChanged) { rememberFocus(); setState("checking"); }
         if (checking) { if (checkingGeneration !== generation) recheck = true; return; }
         checking = true;
+        validatedAt = null;
         recheck = false;
         const started = generation;
         checkingGeneration = started;
@@ -80,6 +84,7 @@ export function AdminSessionGuard({
             setDiscardedActor(actorId);
             setState("changed"); router.replace(destination); router.refresh();
           } else {
+            if (!actorChanged) validatedAt = Date.now();
             setState(actorChanged ? "unavailable" : "ready");
           }
         } catch {
@@ -93,15 +98,18 @@ export function AdminSessionGuard({
       };
       retry.current = () => { void check(true); };
       void check(true);
-      const interval = window.setInterval(() => { if (!backgrounded && document.visibilityState === 'visible') void check(); }, 15000);
       const focus = () => {
+        if (document.visibilityState !== 'visible') return;
         if (backgrounded) { generation++; backgrounded = false; }
+        // Reuse only this tab's recent server validation. Identity hints and
+        // failed/in-flight checks invalidate it; returning to a fresh tab is free.
+        const age = validatedAt === null ? null : Date.now() - validatedAt;
+        if (!actorChanged && age !== null && age >= 0 && age < SESSION_FRESHNESS_MS) return;
         void check(true);
       };
       const blur = () => {
         rememberFocus();
         generation++; backgrounded = true;
-        if (!actorChanged) setState("checking");
       };
       const visibility = () => {
         if (document.visibilityState === 'visible') focus(); else blur();
@@ -109,6 +117,7 @@ export function AdminSessionGuard({
       const invalidate = (signedOut: boolean) => {
         rememberFocus();
         generation++;
+        validatedAt = null;
         // A logout hint cannot grant access or let an older successful response
         // uncover the old actor while server-side revocation is completing.
         if (signedOut) { actorChanged = true; savedFocus.current = null; setDiscardedActor(actorId); }
@@ -127,7 +136,7 @@ export function AdminSessionGuard({
       window.addEventListener('storage', storage);
       window.addEventListener(IDENTITY_CHANGED_EVENT, identityChanged);
       return () => {
-        active = false; retry.current = null; window.clearInterval(interval);
+        active = false; retry.current = null;
         window.removeEventListener('focus', focus);
         window.removeEventListener('blur', blur);
         document.removeEventListener('visibilitychange', visibility);
