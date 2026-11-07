@@ -48,6 +48,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => { await new Promise<void>(done => server ? server.close(() => done()) : done()); });
 
 test('keeps direct-body content accessible and clickable after initial validation and outage retry', async ({ page }) => {
+  await page.clock.install();
   let request = 0;
   await page.route('**/api/v1/auth/session', route => {
     request++;
@@ -62,6 +63,7 @@ test('keeps direct-body content accessible and clickable after initial validatio
   const answer = page.getByRole('textbox', { name: 'Answer' });
   await answer.fill('Unsaved lesson answer');
   await answer.evaluate(node => { node.focus(); (node as HTMLInputElement).setSelectionRange(2, 7, 'backward'); (window as unknown as { savedEditor: Element }).savedEditor = node; });
+  await page.clock.fastForward(300_000);
   await page.evaluate(() => { window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('focus')); });
   const retry = page.getByRole('button', { name: 'Try again', exact: true });
   await expect(retry).toBeVisible();
@@ -76,6 +78,34 @@ test('keeps direct-body content accessible and clickable after initial validatio
   await expect(page.getByText('Private portal')).toBeVisible();
   await page.getByRole('button', { name: 'Action 1', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Action 2', exact: true })).toBeVisible();
+});
+
+test('reuses a fresh session across tab switches and checks a stale return without polling', async ({ page }) => {
+  await page.clock.install();
+  let requests = 0;
+  await page.route('**/api/v1/auth/session', route => {
+    requests++;
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ userId: 'original-actor' }) });
+  });
+  await page.goto(`${origin}/app/courses/one`);
+  const answer = page.getByRole('textbox', { name: 'Answer' });
+  await expect(answer).toBeVisible();
+  await answer.fill('Unsaved lesson');
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => { window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
+    await expect(answer).toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(0);
+  }
+  expect(requests).toBe(1);
+  await page.clock.fastForward(600_000);
+  expect(requests).toBe(1);
+  await page.evaluate(() => { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(() => requests).toBe(2);
+  await expect(answer).toBeVisible();
+  await expect(answer).toHaveValue('Unsaved lesson');
+  await page.getByRole('button', { name: 'Action 0', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Action 1', exact: true })).toBeVisible();
+  expect(requests).toBe(2);
 });
 
 test('still conceals old body content and portals after a confirmed actor change', async ({ page }) => {

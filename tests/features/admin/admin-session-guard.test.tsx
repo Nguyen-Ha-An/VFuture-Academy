@@ -4,14 +4,16 @@ import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {useState} from 'react';
 import {createPortal} from 'react-dom';
 import {NextIntlClientProvider} from 'next-intl';
-import {afterEach,describe,it,expect,vi} from 'vitest';
+import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
 import messages from '@/messages/en.json';
 const mocks=vi.hoisted(()=>({listener:null as null|((event:string,session:{user:{id:string}}|null)=>void),replace:vi.fn(),refresh:vi.fn(),unsubscribe:vi.fn()}));
 vi.mock('next/navigation',()=>({useRouter:()=>mocks}));
 vi.mock('@/lib/supabase/client',()=>({supabaseBrowser:()=>({auth:{onAuthStateChange:(listener:typeof mocks.listener)=>{mocks.listener=listener;return{data:{subscription:{unsubscribe:mocks.unsubscribe}}};}}})}));
 import {AdminSessionGuard} from '@/features/admin/components/AdminSessionGuard';
 import {notifyIdentityChanged} from '@/lib/identity/browser-session';
-afterEach(()=>{cleanup();vi.clearAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();});
+beforeEach(()=>{vi.useFakeTimers({toFake:['Date']});});
+afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();vi.clearAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();});
+const expireSessionCheck=()=>vi.setSystemTime(Date.now()+300_000);
 describe('Admin actor changes',()=>{
  it('removes old authorized children immediately when account changes',()=>{
   render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);
@@ -62,11 +64,70 @@ it('coalesces returning-tab checks and conceals old data until the server valida
  vi.stubGlobal('fetch',fetchSession);
  await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
  expect(screen.getByText('Private member data')).toBeInTheDocument();
+ expireSessionCheck();
  act(()=>{document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('focus'));});
  expect(fetchSession).toHaveBeenCalledTimes(2);
  expect(screen.getByText('Private member data')).not.toBeVisible();
  await act(async()=>{finish(Response.json({userId:'a'}));});
  expect(screen.getByText('Private member data')).toBeInTheDocument();
+});
+
+it('keeps a recently validated workspace usable through repeated tab switches without more requests', async()=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ const fetchSession=vi.fn().mockImplementation(async()=>Response.json({userId:'a'}));
+ vi.stubGlobal('fetch',fetchSession);
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><input aria-label="Draft" defaultValue="Unsaved lesson"/></AdminSessionGuard></NextIntlClientProvider>);});
+ const editor=screen.getByRole('textbox',{name:'Draft'});
+ const visibility=vi.spyOn(document,'visibilityState','get');
+ for(let i=0;i<3;i++){
+  act(()=>{visibility.mockReturnValue('hidden');document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('blur'));});
+  expect(editor).toBeVisible();expect(editor.closest('[inert]')).toBeNull();
+  await act(async()=>{visibility.mockReturnValue('visible');document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
+ }
+ expect(fetchSession).toHaveBeenCalledTimes(1);
+ expect(screen.queryByRole('status')).not.toBeInTheDocument();
+ expect(editor).toHaveValue('Unsaved lesson');
+});
+
+it('does not poll an open tab and validates once on returning after the freshness window', async()=>{
+ vi.useFakeTimers();
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ const fetchSession=vi.fn().mockImplementation(async()=>Response.json({userId:'a'}));
+ vi.stubGlobal('fetch',fetchSession);
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ await act(async()=>{await vi.advanceTimersByTimeAsync(600_000);});
+ expect(fetchSession).toHaveBeenCalledTimes(1);
+ await act(async()=>{window.dispatchEvent(new Event('focus'));});
+ expect(fetchSession).toHaveBeenCalledTimes(2);
+ await act(async()=>{document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
+ expect(fetchSession).toHaveBeenCalledTimes(2);
+ expect(screen.getByText('Private member data')).toBeVisible();
+});
+
+it('does not extend freshness on skipped focus events and detects expiry at the boundary', async()=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ const fetchSession=vi.fn().mockResolvedValueOnce(Response.json({userId:'a'})).mockResolvedValue(new Response('{}',{status:401}));
+ vi.stubGlobal('fetch',fetchSession);
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ vi.setSystemTime(Date.now()+299_999);
+ await act(async()=>{window.dispatchEvent(new Event('focus'));});
+ expect(fetchSession).toHaveBeenCalledTimes(1);
+ expect(screen.getByText('Private member data')).toBeVisible();
+ vi.setSystemTime(Date.now()+1);
+ await act(async()=>{window.dispatchEvent(new Event('focus'));});
+ expect(fetchSession).toHaveBeenCalledTimes(2);
+ expect(screen.queryByText('Private member data')).not.toBeInTheDocument();
+ expect(mocks.replace).toHaveBeenCalledWith('/login?next=%2Fadmin');
+});
+
+it('discards a fresh workspace immediately on a logout hint even if the server still returns the old actor', async()=>{
+ vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+ const fetchSession=vi.fn().mockImplementation(async()=>Response.json({userId:'a'}));
+ vi.stubGlobal('fetch',fetchSession);
+ await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ await act(async()=>{window.dispatchEvent(new StorageEvent('storage',{key:'vfuture:auth:signed-out',newValue:'logout'}));});
+ expect(fetchSession).toHaveBeenCalledTimes(2);
+ expect(screen.queryByText('Private member data')).not.toBeInTheDocument();
 });
 
 it('reauthenticates a revoked or expired session with the safe current return URL', async()=>{
@@ -96,6 +157,7 @@ it('invalidates an older actor check when a confirmed login broadcasts an identi
  const fetchSession=vi.fn().mockResolvedValueOnce(Response.json({userId:'a'})).mockImplementation(()=>new Promise<Response>(resolve=>{finishes.push(resolve);}));
  vi.stubGlobal('fetch',fetchSession);
  await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ expireSessionCheck();
  act(()=>{window.dispatchEvent(new Event('focus'));notifyIdentityChanged();});
  expect(screen.getByText('Private member data')).not.toBeVisible();
  await act(async()=>{finishes[0](Response.json({userId:'a'}));});
@@ -123,6 +185,7 @@ it('fences a request started before backgrounding and validates a fresh returnin
  const fetchSession=vi.fn().mockResolvedValueOnce(Response.json({userId:'a'})).mockImplementation(()=>new Promise<Response>(resolve=>finishes.push(resolve)));
  vi.stubGlobal('fetch',fetchSession);
  await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><p>Private member data</p></AdminSessionGuard></NextIntlClientProvider>);});
+ expireSessionCheck();
  act(()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('blur'));window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('focus'));});
  expect(screen.getByText('Private member data')).not.toBeVisible();
  await act(async()=>{finishes[0](Response.json({userId:'a'}));});
@@ -141,6 +204,7 @@ it('conceals privileged body portals during an outage and preserves the same act
  await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="a"><DraftPortal/></AdminSessionGuard></NextIntlClientProvider>);});
  const portalEditor=screen.getByRole('textbox',{name:'Portal draft'}) as HTMLInputElement;
  fireEvent.change(portalEditor,{target:{value:'Unsaved portal lesson'}});portalEditor.focus();portalEditor.setSelectionRange(2,7);
+ expireSessionCheck();
  await act(async()=>{window.dispatchEvent(new Event('focus'));});
  expect(screen.getByText('Privileged portal')).not.toBeVisible();
  expect(screen.getByText('Privileged portal').closest('aside')).toHaveAttribute('inert');
@@ -171,6 +235,7 @@ it('restores the learner editor focus and cursor after same-actor network recove
  await act(async()=>{render(<NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard actorId="learner-a" destination="/app"><Draft/></AdminSessionGuard></NextIntlClientProvider>);});
  const editor=screen.getByRole('textbox',{name:'Learner answer'}) as HTMLInputElement;
  fireEvent.change(editor,{target:{value:'Unsaved learner answer'}});editor.focus();editor.setSelectionRange(3,8,'backward');
+ expireSessionCheck();
  await act(async()=>{window.dispatchEvent(new Event('blur'));window.dispatchEvent(new Event('focus'));});
  expect(editor).not.toBeVisible();
  const retry=screen.getByRole('button',{name:'Try again'});retry.focus();
@@ -191,6 +256,7 @@ it('leaves direct-body learner content interactive after initial validation and 
  expect(first.closest('[inert]')).toBeNull();expect(first.closest('[hidden]')).toBeNull();
  fireEvent.click(first);expect(screen.getByRole('button',{name:'Learner action 1'})).toBeVisible();
  const editor=screen.getByRole('textbox',{name:'Direct learner draft'}) as HTMLInputElement;editor.focus();editor.setSelectionRange(2,6);
+ expireSessionCheck();
  await act(async()=>{window.dispatchEvent(new Event('blur'));window.dispatchEvent(new Event('focus'));});
  expect(editor).not.toBeVisible();
  await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Try again'}));});
