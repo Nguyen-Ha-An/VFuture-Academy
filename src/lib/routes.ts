@@ -151,6 +151,8 @@ export const routes = {
     signup: path('/signup'),
     welcome: path('/welcome'),
     callback: path('/auth/callback'),
+    confirmEmail: path('/auth/confirm-email'),
+    redeemEmail: path('/auth/confirm-email/redeem'),
     signout: path('/auth/signout'),
     forgotPassword: path('/forgot-password'),
     resetPassword: path('/reset-password'),

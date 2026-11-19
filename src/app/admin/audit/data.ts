@@ -38,7 +38,7 @@ export async function auditLogPage(context: AdminContext, input: AuditLogQuery) 
   const rows = await managementRead<AdminAuditEntry[]>(context, "audit", input);
   const memberTargets = [...new Set(rows.filter((row) => row.targetType === "user").map((row) => row.targetId))];
   const [actors, members]: Map<string, ActorDisplay>[] = await Promise.all([
-    actorDisplayNames([...rows.map((row) => row.actorId), input.actor]),
+    actorDisplayNames(rows.map((row) => row.actorId)),
     // Member targets are named too, so a row reads "Role granted · Lê Thu Hà", not a UUID.
     memberTargets.length ? actorDisplayNames(memberTargets) : Promise.resolve(new Map<string, ActorDisplay>()),
   ]);

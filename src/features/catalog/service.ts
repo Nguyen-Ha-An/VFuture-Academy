@@ -16,14 +16,14 @@ import {
   completionRules,
   databaseFailure,
   itemIsComplete,
-  loadBranchId,
+  loadAudienceBranchId,
   loadCompletionRows,
   outlineItems,
   recordOf,
   recordsOf,
   type LearnerDatabase,
 } from '@/features/learning/shared';
-import { assertEnrollmentMembershipAccess } from '@/features/learning/membership-access';
+import { assertEnrollmentMembershipAccess, membershipEligibleEnrollments } from '@/features/learning/membership-access';
 
 export type CatalogFilters = {
   level?: 'foundation' | 'specialization';
@@ -114,7 +114,7 @@ function localizedOutline(value: unknown, locale: Locale, defaultLocale: Locale,
 
 export async function listCatalog(actor: Actor, locale: Locale, filters: CatalogFilters = {}) {
   const database = supabaseService() as unknown as LearnerDatabase;
-  const branchId = await loadBranchId(database, actor.userId);
+  const branchId = await loadAudienceBranchId(database, actor);
   const courseResult = await database.from('courses')
     .select('id,slug,status,current_version_id')
     .eq('status', 'published')
@@ -139,11 +139,13 @@ export async function listCatalog(actor: Actor, locale: Locale, filters: Catalog
   databaseFailure(error, 'Catalog could not be loaded');
 
   const enrollmentResult = await database.from('enrollments')
-    .select('course_id,course_version_id,status')
+    .select('course_id,course_version_id,status,branch_id,branch_scope_known')
     .eq('user_id', actor.userId)
+    .in('status', ['active', 'completed'])
     .in('course_id', courses.map((course) => course.id as string));
   databaseFailure(enrollmentResult.error, 'Catalog enrollments could not be loaded');
-  const enrollmentByCourse = new Map(recordsOf(enrollmentResult.data).flatMap((row) => (
+  const enrollments = await membershipEligibleEnrollments(actor, recordsOf(enrollmentResult.data), database);
+  const enrollmentByCourse = new Map(enrollments.flatMap((row) => (
     typeof row.course_id === 'string'
       && typeof row.course_version_id === 'string'
       && (row.status === 'active' || row.status === 'completed')
@@ -191,7 +193,7 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
     .maybeSingle();
   databaseFailure(enrollmentResult.error, 'Enrollment could not be loaded');
   const enrollmentCandidate = recordOf(enrollmentResult.data);
-  const enrollment = enrollmentCandidate
+  let enrollment = enrollmentCandidate
     && typeof enrollmentCandidate.course_version_id === 'string'
     && ['active', 'completed'].includes(String(enrollmentCandidate.status))
     ? enrollmentCandidate
@@ -202,7 +204,16 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
     || (!enrollment && typeof course.current_version_id !== 'string')) {
     throw new ApiError(404, 'COURSE_NOT_FOUND', 'Course was not found');
   }
-  if(enrollment)await assertEnrollmentMembershipAccess(actor,enrollment,database);
+  if (enrollment) {
+    try {
+      await assertEnrollmentMembershipAccess(actor, enrollment, database);
+    } catch (error) {
+      // A suspended pin can still have an independently visible published outline.
+      if (!(error instanceof ApiError && error.code === 'MEMBERSHIP_SUSPENDED')
+        || course.status !== 'published' || typeof course.current_version_id !== 'string') throw error;
+      enrollment = null;
+    }
+  }
   const versionId = enrollment
     ? enrollment.course_version_id as string
     : course.current_version_id as string;
@@ -217,8 +228,8 @@ export async function getCourse(actor: Actor, courseId: string, locale: Locale) 
   if (!row) {
     throw new ApiError(404, 'COURSE_NOT_FOUND', enrollment ? 'Pinned course version was not found' : 'Course was not found');
   }
-  if (!enrollment) {
-    const branchId = await loadBranchId(database, actor.userId);
+  if (!enrollment && !branchCanAccess(row.access, null)) {
+    const branchId = await loadAudienceBranchId(database, actor);
     if (!branchCanAccess(row.access, branchId)) throw new ApiError(404, 'COURSE_NOT_FOUND', 'Course was not found');
   }
 

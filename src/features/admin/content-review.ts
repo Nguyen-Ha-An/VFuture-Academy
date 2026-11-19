@@ -178,7 +178,20 @@ export function createContentReviewService({ database, actor, scope, notebookDep
         p_actor_user_id: actor.userId,
         ...scopeArgs(scope),
       });
-      return Array.isArray(data) ? data : [];
+      if (!Array.isArray(data)) return [];
+      if (scope.kind === 'central' && can(actor, 'content.review', scope)) return data;
+      return data.map(value => {
+        const row = valueRecord(value);
+        if (!row || (row.content_type !== 'course' && row.content_type !== 'bank_question')) return value;
+        const owner = row.ownership_kind === 'central' ? { kind: 'central' } as const
+          : row.ownership_kind === 'branch' && typeof row.owner_branch_id === 'string'
+            ? { kind: 'branch', branchId: row.owner_branch_id } as const : null;
+        const legacy = row.content_type === 'course' ? 'course.edit' : 'bank.edit';
+        if (owner && [scope, owner].every(target => can(actor, 'content.edit', target) || can(actor, legacy, target))) return row;
+        // The review checksum fingerprints the complete assessment source.
+        const { checksum: _checksum, ...metadata } = row;
+        return metadata;
+      });
     },
 
     async reviewPreview(reviewId: string) {

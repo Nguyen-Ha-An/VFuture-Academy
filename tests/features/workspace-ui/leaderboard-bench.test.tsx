@@ -11,9 +11,9 @@ import { withBenchMessages } from '@/messages/bench';
 import { LeaderboardBenchHead, LeaderboardBoardView } from '@/features/workspace-ui/profile/LeaderboardBench';
 import { LeaderboardBoard } from '@/features/workspace-ui/profile/LeaderboardBoard';
 
-const mocks = vi.hoisted(() => ({ branchIdForUser: vi.fn(), weeklyLeaderboard: vi.fn(), getProfileSettings: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leaderboardSchoolForUser: vi.fn(), weeklyLeaderboard: vi.fn(), getProfileSettings: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock('@/features/me/service', () => ({ branchIdForUser: mocks.branchIdForUser }));
+vi.mock('@/features/me/service', () => ({ leaderboardSchoolForUser: mocks.leaderboardSchoolForUser }));
 vi.mock('@/features/xp/service', () => ({ weeklyLeaderboard: mocks.weeklyLeaderboard }));
 vi.mock('@/features/profile/service', () => ({ getProfileSettings: mocks.getProfileSettings }));
 afterEach(cleanup);
@@ -73,14 +73,14 @@ describe('bench leaderboard', () => {
   });
 
   it('keeps the existing no-branch copy', () => {
-    wrap(<LeaderboardBoardView entries={[]} viewer={{ handle: null, profilePublic: false }} noBranch />);
+    wrap(<LeaderboardBoardView entries={[]} viewer={{ handle: null, profilePublic: false }} unavailableSchool="unassigned" />);
     expect(screen.getByText('Your profile is not assigned to a branch.')).toBeVisible();
   });
 });
 
 describe('bench leaderboard loader', () => {
   it('identifies the viewer by handle and loads the branch board', async () => {
-    mocks.branchIdForUser.mockResolvedValue('hcm');
+    mocks.leaderboardSchoolForUser.mockResolvedValue({ status: 'eligible', branchId: 'hcm' });
     mocks.weeklyLeaderboard.mockResolvedValue(entries.slice(0, 5));
     mocks.getProfileSettings.mockResolvedValue({ handle: 'learner-3', displayName: 'Learner 3', profilePublic: true });
     const { container } = wrap(await LeaderboardBoard({ scope: 'branch', userId: 'user-1' }));
@@ -90,10 +90,17 @@ describe('bench leaderboard loader', () => {
 
   it('falls back to the no-branch state without querying the board', async () => {
     mocks.weeklyLeaderboard.mockClear();
-    mocks.branchIdForUser.mockResolvedValue(null);
+    mocks.leaderboardSchoolForUser.mockResolvedValue({ status: 'unassigned' });
     wrap(await LeaderboardBoard({ scope: 'branch', userId: 'user-1' }));
     expect(mocks.weeklyLeaderboard).not.toHaveBeenCalled();
     expect(screen.getByText('Your profile is not assigned to a branch.')).toBeVisible();
+  });
+  it('explains suspension without reading either week of the school board', async () => {
+    mocks.weeklyLeaderboard.mockClear();
+    mocks.leaderboardSchoolForUser.mockResolvedValue({ status: 'suspended' });
+    wrap(await LeaderboardBoard({ scope: 'branch', userId: 'user-1' }));
+    expect(screen.getByText('Your school leaderboard is unavailable while your membership is suspended.')).toBeVisible();
+    expect(mocks.weeklyLeaderboard).not.toHaveBeenCalled();
   });
   it('adds a rank-change column only when last week loaded', () => {
     const board = [

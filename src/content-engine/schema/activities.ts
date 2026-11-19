@@ -19,6 +19,15 @@ export const QuizSettingsSchema = z.object({
   required: z.boolean().optional(),
 }).strict();
 
+/** Only the feedback timing enum on a quiz block is public presentation data. */
+export function quizFeedbackForSettings(block: Record<string, unknown>, key: string) {
+  if (key !== 'settings' || block.type !== 'quiz' || typeof block.id !== 'string' || !Array.isArray(block.questions)) return;
+  const settings = block.settings;
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return;
+  const result = QuizSettingsSchema.shape.feedback.safeParse((settings as Record<string, unknown>).feedback);
+  return result.data;
+}
+
 export const QuizBlockSchema = z.object({
   id: IdSchema, type: z.literal('quiz'),
   title: L10nStringSchema.optional(), intro: L10nRichContentSchema.optional(),

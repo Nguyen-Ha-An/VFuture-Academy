@@ -1,6 +1,7 @@
 import type { GradingItem, GradingQuestion } from '../../content-engine/compile';
 import type { Locale } from '../../content-engine/schema/common';
 import { seededShuffle } from '../../content-engine/render/shuffle';
+import type { Scope } from '../../lib/authorization';
 import {
   ExamError,
   type BankQuestionSnapshot,
@@ -83,6 +84,7 @@ export async function drawPools(
   sections: ExamSections,
   bankSource: BankSource,
   seed: string,
+  courseOwner: Scope | null,
   excludeIds: readonly string[] = [],
 ): Promise<DrawnPools> {
   const globallyExcluded = new Set(excludeIds.flatMap((id) => [id, rawId(id)]));
@@ -94,8 +96,13 @@ export async function drawPools(
 
   for (const section of sections) {
     for (const pool of section.pools) {
+      if (!courseOwner) {
+        throw new ExamError('INVALID_EXAM_CONFIGURATION', 'The course owner could not be verified for this question pool.', {
+          sectionId: section.id, poolId: pool.id,
+        });
+      }
       const listed = await bankSource.listPublished(
-        pool.from ? { from: pool.from } : { filter: pool.filter! },
+        pool.from ? { courseOwner, from: pool.from } : { courseOwner, filter: pool.filter! },
       );
       const candidates = [...new Map(
         listed

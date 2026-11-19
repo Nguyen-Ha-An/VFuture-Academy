@@ -1,7 +1,9 @@
 import 'server-only';
 
 import type { CompletionFacts, CompletionRule } from '@/content-engine';
+import { eligibleAudienceBranch, type SuspendedSchoolAccess } from '@/features/learning/membership-access';
 import { ApiError } from '@/lib/api';
+import type { Actor } from '@/lib/permissions';
 
 export type QueryResult = { data: unknown; error: unknown | null };
 
@@ -66,14 +68,17 @@ export function branchCanAccess(accessValue: unknown, branchId: string | null): 
     && access.branchIds.includes(branchId);
 }
 
-export async function loadBranchId(database: LearnerDatabase, userId: string): Promise<string | null> {
+export async function loadAudienceBranchId(
+  database: LearnerDatabase,
+  actor: Actor,
+  onSuspension: SuspendedSchoolAccess = 'exclude',
+): Promise<string | null> {
   const { data, error } = await database.from('profiles')
     .select('branch_id')
-    .eq('id', userId)
+    .eq('id', actor.userId)
     .maybeSingle();
   databaseFailure(error, 'Learner profile could not be loaded');
-  const branchId = recordOf(data)?.branch_id;
-  return typeof branchId === 'string' ? branchId : null;
+  return eligibleAudienceBranch(actor, recordOf(data)?.branch_id, database, onSuspension);
 }
 
 export function outlineItems(outlineValue: unknown): OutlineItem[] {

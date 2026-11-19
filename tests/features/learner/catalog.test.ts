@@ -45,15 +45,39 @@ const outlineRow = (overrides: Record<string, unknown> = {}) => ({
 beforeEach(() => mocks.supabaseService.mockReset());
 
 describe('learner catalog service', () => {
-  it('blocks enrolled course detail only at its explicitly suspended trusted branch',async()=>{
+  it('blocks a suspended pin and a current outline restricted to the same school',async()=>{
     const suspended:Actor={userId:'learner-1',roles:[],authorization:{source:'database',accountStatus:'active',memberships:[{branchId:'school-a',status:'suspended'},{branchId:'school-b',status:'active'}],assignments:[]}};
     const client=new SupabaseStub({
       courses:[successful({id:'ai-foundations',status:'published',current_version_id:'version-current'})],
       enrollments:[successful({id:'enrollment-1',course_version_id:'version-1',status:'active',branch_id:'school-a',branch_scope_known:true})],
+      course_version_outline:[successful(outlineRow({version_id:'version-current',access:{scope:'branches',branchIds:['school-a']}}))],
+      profiles:[successful({branch_id:'school-a'})],
     });
     mocks.supabaseService.mockReturnValue(client);
-    await expect(getCourse(suspended,'ai-foundations','en')).rejects.toMatchObject({status:403,code:'MEMBERSHIP_SUSPENDED'});
-    expect(client.queriesFor('course_version_outline')).toHaveLength(0);
+    await expect(getCourse(suspended,'ai-foundations','en')).rejects.toMatchObject({status:404,code:'COURSE_NOT_FOUND'});
+    expect(client.queriesFor('course_version_outline').map((query) => query.operations.filter(([op, key]) => op === 'eq' && key === 'version_id')))
+      .toEqual([[['eq', 'version_id', 'version-current']]]);
+    expect(client.queriesFor('lesson_progress')).toHaveLength(0);
+  });
+
+  it.each([
+    ['global', { scope: 'global' }],
+    ['new school', { scope: 'branches', branchIds: ['school-b'] }],
+  ])('previews the independently visible %s outline when the historical pin is suspended', async (_label, currentAccess) => {
+    const suspended: Actor = { ...actor, authorization: { source: 'database', accountStatus: 'active', assignments: [],
+      memberships: [{ branchId: 'school-a', status: 'suspended' }, { branchId: 'school-b', status: 'active' }] } };
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'current' })],
+      enrollments: [successful({ course_version_id: 'historical', status: 'completed', branch_id: 'school-a', branch_scope_known: true })],
+      course_version_outline: [successful(outlineRow({ version_id: 'current', access: currentAccess }))],
+      profiles: [successful({ branch_id: 'school-b' })],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    await expect(getCourse(suspended, 'ai-foundations', 'en')).resolves.toMatchObject({ versionId: 'current', enrollment: null,
+      outline: { modules: [{ items: [{ id: 'lesson-1', title: 'Lesson' }] }] } });
+    expect(client.queriesFor('course_version_outline')).toHaveLength(1);
+    expect(client.queriesFor('course_version_outline')[0].operations).toContainEqual(['eq', 'version_id', 'current']);
+    expect(client.queriesFor('course_version_item_renders')).toHaveLength(0);
   });
   it('filters published accessible courses by every catalog filter and localizes metadata', async () => {
     const wrongBranch = outlineRow({
@@ -123,6 +147,49 @@ describe('learner catalog service', () => {
 
     expect(course.enrollment).toBeNull();
     expect(course.versionId).toBe('version-1');
+  });
+
+  it('shows global discovery without treating a suspended school as an audience or enrollment grant', async () => {
+    const suspended: Actor = { ...actor, authorization: { source: 'database', accountStatus: 'active', assignments: [],
+      memberships: [{ branchId: 'school-a', status: 'suspended' }] } };
+    const client = new SupabaseStub({
+      profiles: [successful({ branch_id: 'school-a' })],
+      courses: [successful([
+        { id: 'ai-foundations', status: 'published', current_version_id: 'version-1' },
+        { id: 'school-course', status: 'published', current_version_id: 'version-2' },
+      ])],
+      course_version_outline: [successful([
+        outlineRow(), outlineRow({ course_id: 'school-course', version_id: 'version-2', access: { scope: 'branches', branchIds: ['school-a'] } }),
+      ])],
+      enrollments: [successful([{ course_id: 'ai-foundations', course_version_id: 'prior-pin', status: 'active',
+        branch_scope_known: true, branch_id: 'school-a' }])],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+
+    await expect(listCatalog(suspended, 'en')).resolves.toMatchObject([{ id: 'ai-foundations', enrollment: null }]);
+    expect(client.queriesFor('course_version_outline')[0].operations).toContainEqual(['eq', 'access->>scope', 'global']);
+  });
+
+  it.each([
+    ['active membership', { status: 'active' }, true],
+    ['legacy membership', null, true],
+    ['suspended membership', { status: 'suspended' }, false],
+  ] as const)('checks %s before previewing a school outline without enrollment', async (_label, membership, allowed) => {
+    const client = new SupabaseStub({
+      courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-1' })],
+      enrollments: [successful(null)],
+      profiles: [successful({ branch_id: 'school-a' })],
+      branch_memberships: [successful(membership)],
+      course_version_outline: [successful(outlineRow({ access: { scope: 'branches', branchIds: ['school-a'] } }))],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    const preview = getCourse(actor, 'ai-foundations', 'en');
+    if (allowed) {
+      await expect(preview).resolves.toMatchObject({ enrollment: null, outline: { modules: [{ items: [{ id: 'lesson-1', title: 'Lesson' }] }] } });
+    } else {
+      await expect(preview).rejects.toMatchObject({ status: 404, code: 'COURSE_NOT_FOUND' });
+    }
+    expect(client.queriesFor('course_version_item_renders')).toHaveLength(0);
   });
 
   describe('internal fixture guard', () => {

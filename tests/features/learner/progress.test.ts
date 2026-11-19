@@ -313,10 +313,16 @@ describe('learner progress service', () => {
     expect(client.queriesFor('course_version_item_renders')).toHaveLength(0);
   });
 
-  it('loads a current item for a non-enrolled learner whose branch can access the course', async () => {
+  it.each([
+    ['an open course', null, { enrollment: 'open' }],
+    ['an invite-only course', null, { enrollment: 'invite' }],
+    ['a course with prerequisites', null, { enrollment: 'open', prerequisites: [{ type: 'course_completion', courseId: 'intro' }] }],
+    ['a dropped enrollment', { ...activeEnrollment, status: 'dropped' }, { enrollment: 'open' }],
+  ])('requires enrollment before reading a full item from %s', async (_label, enrollment, manifest) => {
     const client = new SupabaseStub({
-      enrollments: [successful(null)],
+      enrollments: [successful(enrollment)],
       courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
+      course_versions: [successful({ id: 'version-current', manifest })],
       profiles: [successful({ branch_id: 'branch-1' })],
       course_version_outline: [successful({
         access: { scope: 'branches', branchIds: ['branch-1'] },
@@ -327,27 +333,31 @@ describe('learner progress service', () => {
     });
     mocks.supabaseService.mockReturnValue(client);
 
-    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).resolves.toMatchObject({
-      courseVersionId: 'version-current', item: { id: 'lesson-1' }, activityState: {},
+    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).rejects.toMatchObject({
+      status: 403, code: 'FORBIDDEN',
     });
+    expect(client.queries.map(({ table }) => table)).toEqual(['enrollments']);
   });
 
-  it('returns not found for a non-enrolled learner outside a branch-scoped course', async () => {
+  it('keeps completed learners on their membership-eligible pin after a course update', async () => {
     const client = new SupabaseStub({
-      enrollments: [successful(null)],
+      enrollments: [successful({ ...activeEnrollment, status: 'completed', branch_scope_known: true, branch_id: 'former-school' })],
+      branch_memberships: [successful({ status: 'active' })],
       courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
-      profiles: [successful({ branch_id: 'branch-1' })],
       course_version_outline: [successful({
-        access: { scope: 'branches', branchIds: ['branch-2'] },
+        access: { scope: 'branches', branchIds: ['former-school'] },
         outline: { modules: [{ id: 'module-1', items: [{ id: 'lesson-1', type: 'lesson', required: true }] }] },
       })],
+      course_version_item_renders: [successful([{ locale: 'en', payload: { id: 'lesson-1', kind: 'lesson' } }])],
     });
     mocks.supabaseService.mockReturnValue(client);
 
-    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).rejects.toMatchObject({
-      status: 404, code: 'COURSE_NOT_FOUND',
+    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).resolves.toMatchObject({
+      courseVersionId: 'version-1', item: { id: 'lesson-1' },
     });
-    expect(client.queriesFor('course_version_item_renders')).toHaveLength(0);
+    expect(client.queriesFor('course_version_item_renders')[0].operations).toContainEqual(['eq', 'version_id', 'version-1']);
+    expect(client.queriesFor('courses')).toHaveLength(0);
+    expect(client.queriesFor('profiles')).toHaveLength(0);
   });
 
   it('does not downgrade an already completed lesson when marking it viewed', async () => {

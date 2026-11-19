@@ -4,7 +4,7 @@ vi.mock('server-only', () => ({}));
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
   getMe: vi.fn(),
-  branchIdForUser: vi.fn(),
+  leaderboardSchoolForUser: vi.fn(),
   downloadCertificate: vi.fn(),
   listCertificates: vi.fn(),
   xpSummary: vi.fn(),
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/auth', () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock('@/features/me/service', () => ({
   getMe: mocks.getMe,
-  branchIdForUser: mocks.branchIdForUser,
+  leaderboardSchoolForUser: mocks.leaderboardSchoolForUser,
 }));
 vi.mock('@/features/certificates/service', () => ({
   downloadCertificate: mocks.downloadCertificate,
@@ -59,13 +59,27 @@ describe('completion API routes', () => {
   });
 
   it('uses the signed-in learner branch for branch scope', async () => {
-    mocks.branchIdForUser.mockResolvedValue('branch-1');
+    mocks.leaderboardSchoolForUser.mockResolvedValue({ status: 'eligible', branchId: 'branch-1' });
     mocks.weeklyLeaderboard.mockResolvedValue([{ rank: 1, handle: 'learner-one', displayName: 'Learner One', points: 40 }]);
 
     const response = await getLeaderboardRoute(new Request('https://academy.example/api/v1/leaderboard?scope=branch'));
 
     expect(response.status).toBe(200);
     expect(mocks.weeklyLeaderboard).toHaveBeenCalledWith('branch', 'branch-1');
+  });
+
+  it('denies the suspended school board and keeps the global board accessible', async () => {
+    mocks.leaderboardSchoolForUser.mockResolvedValue({ status: 'suspended' });
+    const scoped = await getLeaderboardRoute(new Request('https://academy.example/api/v1/leaderboard?scope=branch'));
+    expect(scoped.status).toBe(403);
+    await expect(scoped.json()).resolves.toMatchObject({ error: { code: 'MEMBERSHIP_SUSPENDED' } });
+    expect(mocks.weeklyLeaderboard).not.toHaveBeenCalled();
+
+    mocks.weeklyLeaderboard.mockResolvedValue([]);
+    const global = await getLeaderboardRoute(new Request('https://academy.example/api/v1/leaderboard?scope=global'));
+    expect(global.status).toBe(200);
+    expect(mocks.weeklyLeaderboard).toHaveBeenCalledWith('global', undefined);
+    expect(mocks.leaderboardSchoolForUser).toHaveBeenCalledTimes(1);
   });
 
   it('redirects only the signed-in owner to a short-lived certificate download', async () => {

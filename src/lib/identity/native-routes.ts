@@ -2,6 +2,8 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ApiError } from '@/lib/api-error';
+import { readJsonBodyLimited } from '@/lib/body-limit';
 import { createAzureDataClient } from '@/lib/database/azure-client';
 import { enforceRequestRateLimit } from '@/lib/rate-limit';
 import { routes } from '@/lib/routes';
@@ -12,6 +14,7 @@ import { decryptRefreshToken, encryptRefreshToken, getOidcMetadata, getSigningKe
 import { consumeIdentityTransaction, createStoredSession, initializeIdentityProfile, resolveIdentityUser, storeIdentityTransaction } from './store';
 import { SESSION_COOKIE, revokeAzureSession, sessionCookieOptions } from './server';
 
+const MAX_NATIVE_BODY_BYTES = 16 * 1024;
 export const NATIVE_COOKIE=process.env.NODE_ENV==='production'?'__Host-academy_native':'academy_native';
 const handlePattern=/^[A-Za-z0-9_-]{43}$/;
 const password=z.string().min(1).max(256);
@@ -82,9 +85,12 @@ export async function nativeAuthentication(request:Request):Promise<NextResponse
     const origin=new URL(request.url).origin;
     if(origin!==config.appOrigin||request.headers.get('origin')!==origin||request.headers.get('sec-fetch-site')==='cross-site')return response({error:'origin_denied'},403);
     if(!request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return response({error:'invalid_input'},415);
-    if(Number(request.headers.get('content-length')??0)>16384)return response({error:'invalid_input'},413);
-    const text=await request.text();if(Buffer.byteLength(text)>16384)return response({error:'invalid_input'},413);
-    let body:unknown;try{body=JSON.parse(text);}catch{return response({error:'invalid_input'},400);}
+    let body: unknown;
+    try { body = await readJsonBodyLimited(request, MAX_NATIVE_BODY_BYTES); }
+    catch (error) {
+      if (error instanceof ApiError) return response({error:'invalid_input'}, error.status);
+      throw error;
+    }
     const parsed=inputSchema.safeParse(body);if(!parsed.success)return response({error:'invalid_input'},400);
     const input=parsed.data;
     if(input.action==='start'&&input.mode!=='reset'&&(!input.password||(input.mode==='signup'&&input.password.length<8)))return response({error:'invalid_input'},400);

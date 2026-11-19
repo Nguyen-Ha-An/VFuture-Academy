@@ -158,7 +158,7 @@ export const GET = withHandler(async (request, context) => {
             // it through the scope of a project that uses it.
             || await canReviewProjectCover(actor, assetId)
             || await isEnrolledForAsset(database, actor.userId, assetId, actor)
-            || await isEligibleResourceAsset(database, actor.userId, assetId)
+            || await isEligibleResourceAsset(database, actor, assetId)
           );
     if (!canRead) throw new ApiError(404, 'NOT_FOUND', 'Media not found');
 

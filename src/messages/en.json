@@ -378,6 +378,21 @@
     "invalidCredentials": "The email or password is incorrect.",
     "providerCancelled": "Sign-in was cancelled. You can try again.",
     "confirmationExpired": "This confirmation link has expired. Request a new link and try again.",
+    "emailLink": {
+      "title": "Confirm email sign-in",
+      "recoveryTitle": "Confirm password recovery",
+      "signIn": "Enter the email address of the Academy account you want to sign in to.",
+      "signup": "Enter the email address you used to create your Academy account to confirm it and sign in.",
+      "invite": "Enter the email address that received your Academy invitation to accept it and sign in.",
+      "recovery": "Enter the email address of the Academy account whose password you want to reset.",
+      "emailChange": "Enter the new email address you want to use for your Academy account.",
+      "switchNotice": "Continuing signs this browser in to that account and replaces any current sign-in.",
+      "confirm": "Confirm and sign in",
+      "confirmRecovery": "Confirm and choose a new password",
+      "cancel": "Cancel",
+      "accountMismatch": "This link could not be confirmed for the email address you entered. Request a new link for your account.",
+      "checkBoth": "Check both your old and new inboxes for any remaining confirmation link."
+    },
     "providerError": "Sign-in could not be completed. Please try again.",
     "profileLoadError": "Your profile could not be loaded. Please try again.",
     "sessionError": "Your sign-in session could not be verified. Please sign in again.",
@@ -1965,7 +1980,8 @@
     "learner": "Learner",
     "points": "XP",
     "anonymous": "Learner",
-    "noBranch": "Your profile is not assigned to a branch."
+    "noBranch": "Your profile is not assigned to a branch.",
+    "schoolSuspended": "Your school leaderboard is unavailable while your membership is suspended."
   },
   "publicDiscovery": {
     "unavailableTitle": "Public content is temporarily unavailable",
@@ -2043,7 +2059,7 @@
     "unsaved": "Unsaved changes",
     "conflict": "Draft has changed",
     "conflictDescription": "Someone else saved this draft. Download your changes to keep them, or load the server version.",
-    "readOnly": "Read only",
+    "readOnly": "Read only. This workspace and its course exports hide answer keys and sample solutions.",
     "more": "More actions",
     "contents": "Course contents",
     "contentsDescription": "Select an item to edit or preview.",

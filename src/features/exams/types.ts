@@ -8,7 +8,7 @@ import type {
 import type { ScoringPolicy } from '../../content-engine/grading';
 import type { QuestionResult } from '../../content-engine/grading/types';
 import type { Locale } from '../../content-engine/schema/common';
-import type { Actor, Permission } from '../../lib/permissions';
+import type { Actor, Permission, Scope } from '../../lib/permissions';
 
 export type AttemptStatus =
   | 'in_progress'
@@ -240,9 +240,10 @@ export interface BankQuestionSnapshot {
   renders: Record<Locale, unknown>;
 }
 
-export type BankListQuery =
+export type BankListQuery = { courseOwner: Scope } & (
   | { from: string[] }
-  | { filter: NonNullable<PoolSpec['filter']> };
+  | { filter: NonNullable<PoolSpec['filter']> }
+);
 
 export interface BankSource {
   listPublished(query: BankListQuery): Promise<BankQuestionSnapshot[]>;
@@ -250,6 +251,7 @@ export interface BankSource {
 
 export interface ExamItemContext {
   courseVersionId: string;
+  courseOwner: Scope | null;
   item: CompiledItem;
   enrolled: boolean;
   defaultLocale: Locale;

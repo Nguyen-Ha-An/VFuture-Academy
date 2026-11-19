@@ -49,15 +49,13 @@ export default async function LearnerItemPage({ params }: { params: Promise<{ co
   let payload: Awaited<ReturnType<typeof getItemPayload>>;
   let course: Awaited<ReturnType<typeof getCourse>>;
   try {
-    [payload, course] = await Promise.all([
-      getItemPayload(actor, courseId, itemId, locale),
-      getCourse(actor, courseId, locale),
-    ]);
+    course = await getCourse(actor, courseId, locale);
+    if (!course.enrollment) redirect(routes.learner.course(courseId));
+    payload = await getItemPayload(actor, courseId, itemId, locale);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
   }
-  if (!course.enrollment) redirect(routes.learner.course(courseId));
   const item = payload.item as LearnerItem;
   const assignmentTargets: AssignmentTarget[] = item.kind === 'assignment'
     ? [{ blockId: null }]

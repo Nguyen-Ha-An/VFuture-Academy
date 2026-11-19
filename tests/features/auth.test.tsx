@@ -30,7 +30,7 @@ vi.mock('@/lib/post-auth-navigation', () => ({ navigateAfterAuth: mocks.navigate
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/server', () => ({ supabaseUser: mocks.supabaseUser }));
 vi.mock('@/lib/supabase/client', () => ({ supabaseBrowser: mocks.supabaseBrowser }));
-vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://academy.example' } }));
+vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://academy.example', SUPABASE_SERVICE_ROLE_KEY: 'local-test-key' } }));
 
 import { getSessionUser, requireApiUser, requireUser } from '@/lib/auth';
 import { AuthForm, LOGIN_COOLDOWN_MS, PROFILE_STATE_TIMEOUT_MS } from '@/components/AuthForm';
@@ -155,15 +155,15 @@ describe('authentication and onboarding', () => {
     expect(response.headers.get('location')).toBe('https://academy.example/app');
   });
 
-  it('verifies server-readable magic-link token hashes from email templates', async () => {
+  it('opens a clean confirmation page for an email sign-in link before exchanging credentials', async () => {
     const client = authenticatedClient();
     mocks.supabaseUser.mockResolvedValue(client);
 
     const response = await callback(new Request('https://academy.example/auth/callback?token_hash=hashed-token&type=magiclink'));
 
-    expect(client.auth.verifyOtp).toHaveBeenCalledWith({ token_hash: 'hashed-token', type: 'magiclink' });
+    expect(client.auth.verifyOtp).not.toHaveBeenCalled();
     expect(client.auth.exchangeCodeForSession).not.toHaveBeenCalled();
-    expect(response.headers.get('location')).toBe('https://academy.example/app');
+    expect(response.headers.get('location')).toBe('https://academy.example/auth/confirm-email');
   });
 
   it('keeps the callback on the origin that received the host-bound session cookies', async () => {

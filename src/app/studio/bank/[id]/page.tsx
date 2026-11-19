@@ -46,7 +46,7 @@ export default async function BankQuestionPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const context = await typedContentPageContext('content.edit', 'bank.edit');
   const actor = context.actor;
-  await assertContentAccess(supabaseService() as unknown as ContentReviewDatabase, actor, 'bank_question', id, 'content.read');
+  await assertContentAccess(supabaseService() as unknown as ContentReviewDatabase, actor, 'bank_question', id, 'content.edit');
   const service = createBankService({
     database: supabaseService() as unknown as BankDatabase,
     requirePermission: actorPermissionCheck(actor, context.scope),

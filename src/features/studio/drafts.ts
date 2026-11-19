@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import JSZip from 'jszip';
 import { z } from 'zod';
 
-import { compileCourse, type CompiledCourse, type CompiledItem } from '@/content-engine/compile';
+import { checksumOf, compileCourse, type CompiledCourse, type CompiledItem, type CompileResult } from '@/content-engine/compile';
 import { emptySummary, makeDiagnostic, type ValidationReport } from '@/content-engine/diagnostics';
 import { CourseDocumentSchema } from '@/content-engine/schema/course';
 import { IdSchema, type Locale } from '@/content-engine/schema/common';
@@ -42,6 +42,8 @@ import { PUBLISH_CHECKLIST_KEYS, type PublishChecklistKey } from './publish-chec
 import { CourseCreationInputSchema, type CourseCreationInput } from './course-creation';
 import { decodeAnyImport } from './content-transfer';
 import { readBoundedZipEntry } from './bounded-zip';
+import { readerValidationReport, readerWorkspace } from './reader-source';
+import { redactItemDocument } from '@/features/studio-mcp/data/redact';
 
 type DatabaseError = { message?: string; code?: string; schema?: string; table?: string; constraint?: string } | null;
 type QueryResult = { data: unknown; error: DatabaseError };
@@ -112,6 +114,12 @@ export const DocumentRefSchema = z.union([
   z.object({ kind: z.literal('course') }).strict(),
   z.object({ kind: z.literal('item'), id: IdSchema }).strict(),
 ]);
+
+const StoredPreviewSchema = z.strictObject({
+  stored: z.literal(true),
+  selectedRef: DocumentRefSchema,
+  locale: z.enum(['vi', 'en']),
+});
 
 /**
  * `selectedRef` is authoritative. The legacy `selectedDocId` cannot express the
@@ -1089,27 +1097,42 @@ export type WorkspacePreview = {
   report: ValidationReport;
 };
 
-function learnerSafeItem(item: CompiledItem): CompiledItem {
-  return {
-    ...item,
-    grading: { questions: {}, quizzes: {}, rubrics: {}, activities: [] },
-  };
+async function learnerSafeCourse(course: CompiledCourse): Promise<CompiledCourse> {
+  const entries = await Promise.all(Object.entries(course.items).map(async ([id, item]) => {
+    // Legacy matching and ordering questions can encode the key in a rendered array.
+    const renders = redactItemDocument(item.renders).document as CompiledItem['renders'];
+    const projected: CompiledItem = {
+      ...item, renders, checksum: await checksumOf(renders),
+      grading: { questions: {}, quizzes: {}, rubrics: {}, activities: [] },
+    };
+    return [id, projected] as const;
+  }));
+  const checksum = await checksumOf({ ...course, checksum: '', items: entries.map(([id, item]) => [id, item.checksum]) });
+  return { ...course, checksum, items: Object.fromEntries(entries) };
 }
 
-function learnerSafeCourse(course: CompiledCourse): CompiledCourse {
-  return {
-    ...course,
-    items: Object.fromEntries(Object.entries(course.items).map(([id, item]) => [id, learnerSafeItem(item)])),
-  };
+async function previewResult(result: CompileResult, selected: DocumentRef, includeGrading: boolean, revision?: string): Promise<WorkspacePreview> {
+  const report = includeGrading ? { ...result.report, revision } : readerValidationReport(result.report);
+  if (!result.compiled) return { item: null, course: null, report };
+  const course = includeGrading ? result.compiled : await learnerSafeCourse(result.compiled);
+  const item = selected.kind === 'item' && Object.hasOwn(course.items, selected.id) ? course.items[selected.id] : null;
+  return { item, course, report };
 }
 
-/** Compiles an unsaved workspace without persistence, returning diagnostics instead of failing semantic previews. */
+/** Previews unsaved editor input or a stored, answer-safe selection without persistence. */
 export async function previewWorkspace(
   courseId: string,
   input: unknown,
   includeGrading: boolean,
   deps?: StudioDependencies,
 ): Promise<WorkspacePreview> {
+  if (object(input)?.stored === true) {
+    const selection = StoredPreviewSchema.parse(input);
+    const client = database(deps);
+    const draft = await getDraft(courseId, { ...deps, client });
+    const result = await compileCourse(workspaceOf(draft), resolverFor(client, deps, courseId), { locales: [selection.locale] });
+    return previewResult(result, selection.selectedRef, false);
+  }
   const inputResult = WorkspacePreviewInputSchema.safeParse(input);
   if (!inputResult.success) {
     throw new ApiError(422, 'INVALID_WORKSPACE', 'Workspace cannot be previewed', issuesFromZod(inputResult.error));
@@ -1125,12 +1148,8 @@ export async function previewWorkspace(
   const result = await compileCourse(workspace, resolverFor(client, deps, courseId), { locales: [request.locale] });
   // Keyed by the revision the caller sent: the editor drops a preview whose revision
   // no longer matches the text on screen instead of showing stale content.
-  const report: ValidationReport = { ...result.report, revision };
-  if (!result.compiled) return { item: null, course: null, report };
-  const course = includeGrading ? result.compiled : learnerSafeCourse(result.compiled);
   const selected: DocumentRef = request.selectedRef ?? refFromDocId(request.selectedDocId!);
-  if (selected.kind === 'course') return { item: null, course, report };
-  return { item: Object.hasOwn(course.items, selected.id) ? course.items[selected.id] : null, course, report };
+  return previewResult(result, selected, includeGrading, revision);
 }
 
 type VersionSnapshot = {
@@ -1292,9 +1311,10 @@ export async function publish(courseId: string, input: unknown, actor: Actor, de
 }
 
 /** Lists version metadata without loading large immutable item payloads. */
-export async function listVersions(courseId: string, deps?: StudioDependencies): Promise<unknown[]> {
+export async function listVersions(courseId: string, deps?: StudioDependencies & { readerView?: boolean }): Promise<unknown[]> {
+  const metadata = 'id,course_id,version,summary,published_by,published_at,notes';
   const { data, error } = await database(deps).from('course_versions')
-    .select('id,course_id,version,checksum,summary,published_by,published_at,notes')
+    .select(deps?.readerView ? metadata : `${metadata},checksum`)
     .eq('course_id', courseId)
     .order('version', { ascending: false });
   if (error) databaseFailure('Unable to list course versions');
@@ -1326,22 +1346,24 @@ export type VersionExport = {
   format: ExportFormat;
   filename: string;
   contentType: 'application/zip' | 'application/json; charset=utf-8';
-  checksum: string;
+  checksum?: string;
   body: Uint8Array | string;
 };
 
 /** Exports immutable source documents either as the bundle layout or one inline course document. */
-export async function exportVersion(courseId: string, version: number, format: ExportFormat, deps?: StudioDependencies): Promise<VersionExport> {
+export async function exportVersion(courseId: string, version: number, format: ExportFormat, deps?: StudioDependencies & { readerView?: boolean }): Promise<VersionExport> {
   const snapshot = await loadVersion(courseId, version, deps);
-  const parsed = parseWorkspace({ manifest: snapshot.manifest, items: snapshot.items }).parsed;
+  const source = deps?.readerView ? readerWorkspace({ ...snapshot, baseVersionId: snapshot.id }) : snapshot;
+  const parsed = parseWorkspace(source).parsed;
   if (!parsed) throw new ApiError(500, 'VERSION_INVALID', 'Stored course version is structurally invalid');
   const safeCourseId = courseId.replace(/[^A-Za-z0-9._-]/g, '') || 'course';
+  const filename = `${safeCourseId}-v${snapshot.version}${deps?.readerView ? '-reader' : ''}`;
   if (format === 'single') {
     return {
       format,
-      filename: `${safeCourseId}-v${snapshot.version}.json`,
+      filename: `${filename}.json`,
       contentType: 'application/json; charset=utf-8',
-      checksum: snapshot.checksum,
+      ...(deps?.readerView ? {} : { checksum: snapshot.checksum }),
       body: JSON.stringify(inlineWorkspace(parsed), null, 2),
     };
   }
@@ -1351,9 +1373,9 @@ export async function exportVersion(courseId: string, version: number, format: E
   for (const [itemId, item] of Object.entries(parsed.items)) zip.file(`items/${itemId}.json`, JSON.stringify(item, null, 2));
   return {
     format,
-    filename: `${safeCourseId}-v${snapshot.version}.zip`,
+    filename: `${filename}.zip`,
     contentType: 'application/zip',
-    checksum: snapshot.checksum,
+    ...(deps?.readerView ? {} : { checksum: snapshot.checksum }),
     body: await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }),
   };
 }

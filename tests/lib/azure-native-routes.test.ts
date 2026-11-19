@@ -23,6 +23,32 @@ describe('same-origin native authentication routes',()=>{
     expect(result.status).toBe(403);expect(result.headers.get('cache-control')).toBe('no-store');
     expect(mocks.start).not.toHaveBeenCalled();
   });
+  it.each([undefined,'10'])('stops reading an oversized native body with content-length %s',async declaredLength=>{
+    const chunks=[new Uint8Array(16384),new Uint8Array(1),new Uint8Array(128)];
+    const cancel=vi.fn();
+    const stream=new ReadableStream<Uint8Array>({pull(controller){
+      const chunk=chunks.shift();
+      if(chunk)controller.enqueue(chunk);else controller.close();
+    },cancel},{highWaterMark:0});
+    const headers=new Headers({origin:'https://academy.example','content-type':'application/json'});
+    if(declaredLength)headers.set('content-length',declaredLength);
+    const req=new Request('https://academy.example/api/v1/public/auth/native',{method:'POST',headers,body:stream,duplex:'half'} as RequestInit & {duplex:'half'});
+    const result=await nativePost(req);
+    expect(result.status).toBe(413);
+    expect(await result.json()).toEqual({error:'invalid_input'});
+    expect(result.headers.get('cache-control')).toBe('no-store');
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(chunks).toHaveLength(1);
+    expect(mocks.rate).not.toHaveBeenCalled();expect(mocks.start).not.toHaveBeenCalled();
+  });
+  it('accepts a valid request exactly at the native byte limit',async()=>{
+    const flow={mode:'reset',step:'code',continuation:'code',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000};
+    mocks.start.mockResolvedValue({step:'code',flow});
+    const req=request({action:'start',mode:'reset',email:flow.email});
+    const body=(await req.text()).padEnd(16384,' ');
+    const result=await nativePost(new Request(req.url,{method:'POST',headers:req.headers,body}));
+    expect(result.status).toBe(200);expect(mocks.start).toHaveBeenCalledOnce();
+  });
   it('does not accept a browser-provided provider token as a login',async()=>{
     const result=await nativeAuthentication(request({action:'start',mode:'login',email:'a@example.com',password:'Password1!',idToken:'stolen'}));
     expect(result.status).toBe(400);expect(mocks.create).not.toHaveBeenCalled();

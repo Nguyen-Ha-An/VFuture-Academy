@@ -45,7 +45,7 @@ describe('audit page scope and filters',()=>{
   ]);
   mocks.actors.mockResolvedValue(new Map([[ACTOR,{name:'Nguyễn Minh Anh',avatarUrl:null,initials:'MA'}]]));
   const markup=html(await AuditPage({searchParams:Promise.resolve({action:'user.'})}));
-  expect(mocks.actors).toHaveBeenCalledWith([ACTOR,null,undefined]);
+  expect(mocks.actors).toHaveBeenCalledWith([ACTOR,null]);
   expect(markup).toContain('Nguyễn Minh Anh');
   expect(markup).toContain(`href="/admin/audit?actor=${ACTOR}&amp;action=user."`);
   expect(markup).toContain('>system<');
@@ -55,6 +55,14 @@ describe('audit page scope and filters',()=>{
   mocks.read.mockResolvedValue([{id:'1',action:'user.role',actorId:ACTOR,targetType:'user',targetId:'member-1',at:'2026-09-06T00:00:00.000Z'}]);
   const markup=html(await AuditPage());
   expect(markup).toContain(`>${ACTOR}<`);
+ });
+ it('resolves filter names only from authorized audit rows', async () => {
+  mocks.actors.mockImplementation(async (ids: Array<string | null>) => new Map(ids.includes(ACTOR)
+    ? [[ACTOR, { name: 'Private account', avatarUrl: null, initials: 'PA' }]] : []));
+  const markup = html(await AuditPage({ searchParams: Promise.resolve({ actor: ACTOR }) }));
+  expect(mocks.actors).not.toHaveBeenCalledWith(expect.arrayContaining([ACTOR]));
+  expect(markup).not.toContain('Private account');
+  expect(markup).toContain(ACTOR);
  });
  it('offers an action-family select that keeps the current filter and an empty state when nothing matches',async()=>{
   const markup=html(await AuditPage({searchParams:Promise.resolve({action:'role'})}));

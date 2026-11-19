@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { GradingQuestion } from '@/content-engine/compile';
 import type { Locale } from '@/content-engine/schema/common';
+import { canUseBankQuestion } from '@/features/bank/ownership';
 import { supabaseService } from '@/lib/supabase/server';
 import type { BankListQuery, BankQuestionSnapshot, BankSource } from './types';
 
@@ -10,6 +11,8 @@ type DatabaseResult = { data: unknown; error: unknown | null };
 export interface BankQuery extends PromiseLike<DatabaseResult> {
   select(columns: string): this;
   eq(column: string, value: unknown): this;
+  is(column: string, value: null): this;
+  or(filters: string): this;
   in(column: string, values: unknown[]): this;
   overlaps(column: string, values: string[]): this;
 }
@@ -49,8 +52,16 @@ export class SupabaseBankSource implements BankSource {
 
   async listPublished(query: BankListQuery): Promise<BankQuestionSnapshot[]> {
     let metadataQuery = this.database.from('bank_questions')
-      .select('id,current_version_id')
+      .select('id,current_version_id,ownership_kind,owner_branch_id')
       .eq('status', 'published');
+    if (query.courseOwner.kind === 'central') {
+      metadataQuery = metadataQuery.eq('ownership_kind', 'central').is('owner_branch_id', null);
+    } else {
+      metadataQuery = metadataQuery.or([
+        'and(ownership_kind.eq.central,owner_branch_id.is.null)',
+        `and(ownership_kind.eq.branch,owner_branch_id.eq.${JSON.stringify(query.courseOwner.branchId)})`,
+      ].join(','));
+    }
     if ('from' in query) {
       metadataQuery = metadataQuery.in('id', [...new Set(query.from.map(sourceId))]);
     } else {
@@ -60,6 +71,7 @@ export class SupabaseBankSource implements BankSource {
     }
 
     const metadata = rows(assertDatabase(await metadataQuery, 'list published bank questions'))
+      .filter((row) => canUseBankQuestion(query.courseOwner, row))
       .flatMap((row) => typeof row.id === 'string' && typeof row.current_version_id === 'string'
         ? [{ id: row.id, versionId: row.current_version_id }]
         : []);

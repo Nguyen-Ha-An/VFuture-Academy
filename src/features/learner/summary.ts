@@ -2,8 +2,8 @@ import 'server-only';
 
 import { resolveL10nString, type L10nString, type Locale } from '@/content-engine';
 import { listCertificateRecords, type CertificateDatabase } from '@/features/certificates/service';
-import { loadBranchId } from '@/features/learning/shared';
-import { assertEnrollmentMembershipAccess } from '@/features/learning/membership-access';
+import { loadAudienceBranchId } from '@/features/learning/shared';
+import { membershipEligibleEnrollments } from '@/features/learning/membership-access';
 import {
   createOpportunityService,
   type LocalizedOpportunity,
@@ -212,13 +212,14 @@ export async function readLearnerHome(
       .eq('user_id', actor.userId)
       .in('status', ['active', 'completed'])
       .order('enrolled_at', { ascending: false }),
-    loadBranchId(database, actor.userId),
+    loadAudienceBranchId(database, actor),
   ]);
-  const enrollments = enrollmentResult.error ? [] : recordsOf(enrollmentResult.data).filter((row) => (
+  const candidates = enrollmentResult.error ? [] : recordsOf(enrollmentResult.data).filter((row) => (
     typeof row.course_id === 'string'
       && typeof row.course_version_id === 'string'
       && (row.status === 'active' || row.status === 'completed')
   ));
+  const enrollments = await membershipEligibleEnrollments(actor, candidates, database);
   const versionIds = [...new Set(enrollments.map((row) => row.course_version_id as string))];
   if (versionIds.length === 0) {
     const recommended = await dependencies.recommended({ userId: actor.userId, branchId, locale, now });
@@ -241,7 +242,7 @@ export async function readLearnerHome(
     .map((outline) => [outline.versionId, outline] as const));
   const outlines = enrollments.flatMap((enrollment) => {
     const outline = outlinesByVersion.get(enrollment.course_version_id as string);
-    return outline ? [{ ...outline, enrollmentStatus: enrollment.status }] : [];
+    return outline && outline.courseId === enrollment.course_id ? [{ ...outline, enrollmentStatus: enrollment.status }] : [];
   });
   const allTargets = outlines.flatMap((outline) => outline.items.map((item): LearningTarget & { versionId: string; required: boolean; enrollmentStatus: unknown } => ({
     courseId: outline.courseId,
@@ -319,15 +320,6 @@ export async function readLearnerHome(
     const target = targets.find((candidate) => candidate.kind === 'exam'
       && candidate.versionId === attempt.course_version_id && candidate.itemId === attempt.item_id);
     if (!target) continue;
-    const enrollment = enrollments.find((candidate) => candidate.status === 'active'
-      && candidate.course_id === target.courseId && candidate.course_version_id === target.versionId);
-    if (!enrollment) continue;
-    try {
-      await assertEnrollmentMembershipAccess(actor, enrollment, database);
-    } catch {
-      // Suspension or an unavailable membership read cannot authorize a new resume target.
-      continue;
-    }
     activeExamResume = { ...strip(target), attemptId: attempt.id as string,
       courseVersionId: target.versionId, startedAt: attempt.started_at as string };
     break;

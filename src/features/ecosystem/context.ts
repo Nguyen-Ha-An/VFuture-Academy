@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { Locale } from '@/content-engine/schema/common';
+import { eligibleAudienceBranch, type MembershipAccessDatabase } from '@/features/learning/membership-access';
 import { ApiError } from '@/lib/api';
 import { supabaseService } from '@/lib/supabase/server';
 
@@ -20,7 +21,8 @@ export async function requestLocale(request: Request): Promise<Locale> {
 }
 
 export async function learnerContext(userId: string, locale: Locale) {
-  const { data, error } = await supabaseService()
+  const database = supabaseService();
+  const { data, error } = await database
     .from('profiles')
     .select('branch_id')
     .eq('id', userId)
@@ -30,7 +32,7 @@ export async function learnerContext(userId: string, locale: Locale) {
   if (!profile) throw new ApiError(409, 'PROFILE_INCOMPLETE', 'Complete your profile before continuing');
   return {
     userId,
-    branchId: typeof profile.branch_id === 'string' ? profile.branch_id : null,
+    branchId: await eligibleAudienceBranch({ userId }, profile.branch_id, database as unknown as MembershipAccessDatabase),
     locale,
   };
 }

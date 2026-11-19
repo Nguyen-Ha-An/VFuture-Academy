@@ -61,8 +61,10 @@ describe('course reader data', () => {
     });
     expect(JSON.stringify(reader)).not.toContain('correctAnswer');
     expect(JSON.stringify(reader)).not.toContain('itemHash');
+    expect(reader.draft).not.toHaveProperty('revision');
 
     const editor = await outlineFromDraft(draft, true);
+    expect(editor.draft.revision).toBe(draft.revision);
     expect(editor.modules[0].items[0].itemHash).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(ownerScopeKey({ ownership_kind: 'branch', owner_branch_id: 'branch-b' })).toBe('branch:branch-b');
   });

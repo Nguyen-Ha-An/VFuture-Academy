@@ -20,6 +20,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => {
 
 import { notebookHandler, NOTEBOOK_ACTION_RATE_LIMITS } from '@/features/notebooks/handlers';
 import { RATE_LIMITS } from '@/lib/rate-limit';
+import { successful, SupabaseStub } from '../learner/test-kit';
 
 const url = 'http://localhost/api/v1/notebooks/upload?courseId=course-1&itemId=assignment-1';
 const actorHeaders = { 'content-type': 'application/json', 'X-Notebook-Actor': '11111111-1111-4111-8111-111111111111' };
@@ -57,6 +58,40 @@ describe('notebook route factory', () => {
     expect(mocks.enforceRateLimit).toHaveBeenNthCalledWith(
       2, expect.anything(), expect.stringContaining('notebooks:upload'), NOTEBOOK_ACTION_RATE_LIMITS.upload, expect.any(String),
     );
+  });
+
+  it.each(['session', 'upload', 'finalize', 'draft'] as const)('requires enrollment before learner notebook %s', async (action) => {
+    const database = new SupabaseStub({ enrollments: [successful(null)] });
+    mocks.supabaseService.mockReturnValue(database);
+    const access = await vi.importActual<typeof import('@/features/notebooks/access')>('@/features/notebooks/access');
+    mocks.loadNotebookContext.mockImplementationOnce(access.loadNotebookContext);
+
+    const response = await notebookHandler(action)(new Request(
+      url.replace('/upload?', `/${action}?`),
+      action === 'session' ? undefined : { method: 'POST', headers: actorHeaders, body: '{}' },
+    ));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'FORBIDDEN' } });
+    expect(database.queries.map(({ table }) => table)).toEqual(['enrollments']);
+    expect(database.rpcCalls).toEqual([]);
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('resolves the notebook configuration from the enrolled version for an eligible learner', async () => {
+    const notebook = { runtimeMode: 'jupyterlite', templateAssetId: 'template-1', templateChecksum: 'a'.repeat(64),
+      runtimeProfileId: 'python-data-v1', runtimeProfileVersion: '1', datasets: [] };
+    const database = new SupabaseStub({
+      enrollments: [successful({ status: 'active', course_version_id: 'pinned-version' })],
+      course_version_outline: [successful({ outline: { modules: [{ items: [{ id: 'assignment-1', type: 'assignment' }] }] } })],
+      course_version_item_renders: [successful([{ locale: 'vi', payload: { id: 'assignment-1', kind: 'assignment', notebook } }])],
+    });
+    mocks.supabaseService.mockReturnValue(database);
+    const access = await vi.importActual<typeof import('@/features/notebooks/access')>('@/features/notebooks/access');
+    const locator = { courseId: 'course-1', itemId: 'assignment-1', blockId: null };
+    await expect(access.loadNotebookContext(await mocks.getActor(), locator)).resolves
+      .toMatchObject({ ...locator, courseVersionId: 'pinned-version', notebook, studio: false });
+    expect(database.queriesFor('course_version_item_renders')[0].operations).toContainEqual(['eq', 'version_id', 'pinned-version']);
   });
 
   it('rejects malformed locators before loading content or consuming mutation limits', async () => {

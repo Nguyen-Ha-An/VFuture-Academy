@@ -232,6 +232,17 @@ describe('learner summary readers', () => {
     expect(result.recommendedOpportunity).toMatchObject({ id: 'branch-internship' });
   });
 
+  it('limits opportunity recommendations to global audiences when the primary school is suspended', async () => {
+    const recommended = vi.fn().mockResolvedValue(undefined);
+    const database = new SupabaseStub({
+      profiles: [successful({ display_name: 'Avery' }), successful({ branch_id: 'branch-1' })],
+      branch_memberships: [successful({ status: 'suspended' })], enrollments: [successful([])],
+    });
+    await readLearnerHome({ userId: 'user-1', roles: [] }, 'en', database, new Date(),
+      { recommended, listSubmissions: vi.fn() });
+    expect(recommended).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1', branchId: null }));
+  });
+
   it('shows only released assignment feedback from the pinned course version', async () => {
     const listSubmissions = vi.fn().mockResolvedValue([
       {

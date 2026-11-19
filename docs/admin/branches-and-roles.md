@@ -44,6 +44,6 @@ During release, pause Admin/Studio mutations, apply the checked-in migrations in
 
 Notebook migration `20260906065957_notebook_foundation.sql` belongs to the separate notebook implementation and follows these migrations when the two features are integrated.
 
-For operator bootstrap, `npm run grant-role -- <email> central_admin` targets the new role assignment table. School roles require a school ID. The original service-key bootstrap email-confirmation behavior is preserved. Routine grants/revocations belong in Admin so they are scoped and audited. The legacy `user_roles` table is read-only after migration.
+For Supabase operator bootstrap, have the selected person verify their email through Auth. Independently confirm the intended Auth user ID and email, then run `npm run grant-role -- <verified-user-id> <email> central_admin`. School roles also require a school ID. Routine grants and revocations belong in Admin so they are scoped and audited. The legacy `user_roles` table is read-only after migration.
 
 Do not roll the application back to a publisher that bypasses Central review. If a rollout must pause, disable writes while keeping the migrated schema and immutable publication history.
