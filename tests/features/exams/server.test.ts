@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   teaching: vi.fn(),
   supabaseService: vi.fn(),
   repo: {
+    listAttempts: vi.fn(),
+    insertAttempt: vi.fn(),
     listStudioAttempts: vi.fn(),
     listAnswers: vi.fn(),
     countUnassignedStudioAttempts: vi.fn(),
@@ -12,10 +14,13 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@/features/teaching/assignments', () => ({ assertCourseTeaching: mocks.teaching }));
 vi.mock('server-only', () => ({}));
+vi.mock('@/lib/analytics', () => ({ track: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: mocks.supabaseService }));
 vi.mock('@/features/progress/service', () => ({ recompute: mocks.recompute }));
 vi.mock('@/features/exams/supabase-repo', () => ({
   SupabaseExamRepo: class {
+    listAttempts = mocks.repo.listAttempts;
+    insertAttempt = mocks.repo.insertAttempt;
     listStudioAttempts = mocks.repo.listStudioAttempts;
     listAnswers = mocks.repo.listAnswers;
     countUnassignedStudioAttempts = mocks.repo.countUnassignedStudioAttempts;
@@ -26,10 +31,13 @@ import {
   assertExamTeaching,
   createExamEnrollmentChecker,
   createExamProgressHook,
+  createServerExamService,
   listStudioExamAttempts,
   studioExamActor,
 } from '@/features/exams/server';
 import type { Actor } from '@/lib/permissions';
+import type { ExamAttemptRecord } from '@/features/exams/types';
+import { bankSource, compileExamFixtures } from './test-kit';
 
 class EnrollmentQuery {
   readonly calls: Array<[string, ...unknown[]]> = [];
@@ -37,7 +45,10 @@ class EnrollmentQuery {
   select(columns: string) { this.calls.push(['select', columns]); return this; }
   eq(column: string, value: unknown) { this.calls.push(['eq', column, value]); return this; }
   in(column: string, values: unknown[]) { this.calls.push(['in', column, values]); return this; }
+  overlaps(column: string, values: string[]) { this.calls.push(['overlaps', column, values]); return this; }
+  or(filters: string) { this.calls.push(['or', filters]); return this; }
   maybeSingle() { return Promise.resolve({ data: this.data, error: this.error }); }
+  then<T>(resolve: (value: { data: unknown; error: unknown }) => T) { return this.maybeSingle().then(resolve); }
 }
 
 describe('exam server composition', () => {
@@ -78,6 +89,15 @@ describe('exam server composition', () => {
     const checker=createExamEnrollmentChecker({from} as never);
     await expect(checker('learner-1','version-1')).rejects.toMatchObject({status:503,code:'MEMBERSHIP_ACCESS_UNAVAILABLE'});
     expect(from).toHaveBeenCalledWith('branch_memberships');
+  });
+
+  it('checks a known original attempt school when it differs from the current enrollment', async () => {
+    const enrollment = new EnrollmentQuery({ course_version_id: 'version-1', branch_id: null, branch_scope_known: false });
+    const original = new EnrollmentQuery({ status: 'suspended' });
+    const from = vi.fn((table: string) => table === 'enrollments' ? enrollment : original);
+    await expect(createExamEnrollmentChecker({ from } as never)('learner-1', 'version-1', 'old-school'))
+      .rejects.toMatchObject({ code: 'MEMBERSHIP_SUSPENDED' });
+    expect(original.calls).toContainEqual(['eq', 'branch_id', 'old-school']);
   });
 
   it('grants a studio actor only the verified permission and marks only global admins global', () => {
@@ -165,5 +185,67 @@ describe('exam pinned version teaching resolution', () => {
       'exam', 'school', 'version')).rejects.toMatchObject({ status: 403 });
     expect(mocks.repo.listStudioAttempts).not.toHaveBeenCalled(); expect(mocks.repo.listAnswers).not.toHaveBeenCalled();
     expect(mocks.repo.countUnassignedStudioAttempts).not.toHaveBeenCalled();
+  });
+});
+
+describe('exam start bank ownership', () => {
+  const learner = { id: 'learner', locale: 'en', branchId: 'learner-school' } as const;
+
+  it.each(['filtered', 'explicit'])('draws %s questions from Central and the pinned course school', async (selection) => {
+    const { ai: item } = await compileExamFixtures();
+    const ids = ['ai-basics-003', 'ai-basics-004', 'ai-basics-005'];
+    const refs = ids.map((id) => `bank:${id}`);
+    const questions = await bankSource.listPublished({ courseOwner: { kind: 'central' }, from: refs });
+    const pool = item.grading.exam!.sections[1].pools[0];
+    if (selection === 'explicit') {
+      pool.from = refs;
+      delete pool.filter;
+    }
+    const owners = [null, 'course-school', 'learner-school'];
+    const rows: Record<string, EnrollmentQuery> = {
+      enrollments: new EnrollmentQuery({
+        course_version_id: 'pinned-version', branch_id: 'learner-school', branch_scope_known: true,
+        pinned_version: { course_id: 'enrolled-course', course: { ownership_kind: 'branch', owner_branch_id: 'course-school' } },
+      }),
+      branch_memberships: new EnrollmentQuery({ status: 'active' }),
+      course_version_items: new EnrollmentQuery({ item_id: item.id, kind: item.kind, grading: item.grading }),
+      course_version_item_renders: new EnrollmentQuery(Object.entries(item.renders).map(([locale, payload]) => ({ locale, payload }))),
+      course_version_outline: new EnrollmentQuery({ default_language: 'en' }),
+      bank_questions: new EnrollmentQuery(questions.map((question, index) => ({
+        id: question.id, current_version_id: question.versionId,
+        ownership_kind: owners[index] === null ? 'central' : 'branch', owner_branch_id: owners[index],
+      }))),
+      bank_question_versions: new EnrollmentQuery(questions.map((question) => ({
+        id: question.versionId, question_id: question.id, grading: question.grading, renders: question.renders,
+      }))),
+    };
+    mocks.supabaseService.mockReturnValue({ from: (table: string) => rows[table] });
+    mocks.repo.listAttempts.mockResolvedValue([]);
+    mocks.repo.insertAttempt.mockImplementation(async (attempt: ExamAttemptRecord) => attempt);
+    mocks.repo.listAnswers.mockResolvedValue([]);
+
+    await createServerExamService().start(learner, 'enrolled-course', item.id);
+
+    expect(rows.enrollments.calls).toContainEqual(['eq', 'course_id', 'enrolled-course']);
+    expect(rows.enrollments.calls).toContainEqual(['select', expect.stringContaining('pinned_version:course_versions(course_id,course:courses!course_versions_course_id_fkey(ownership_kind,owner_branch_id))')]);
+    expect(rows.course_version_items.calls).toContainEqual(['eq', 'version_id', 'pinned-version']);
+    expect(rows.bank_question_versions.calls).toContainEqual(['in', 'id', questions.slice(0, 2).map((question) => question.versionId)]);
+    const [attempt] = mocks.repo.insertAttempt.mock.lastCall as [ExamAttemptRecord, number];
+    expect(attempt.branchId).toBe('learner-school');
+    expect(attempt.questionSet.sections[1].questionIds).toEqual(expect.arrayContaining(['s2/ai-basics-003', 's2/ai-basics-004']));
+    expect(attempt.questionSet.sections[1].questionIds).not.toContain('s2/ai-basics-005');
+    expect(attempt.gradingSnapshot.questions['s2/ai-basics-005']).toBeUndefined();
+  });
+
+  it('denies a pinned version belonging to a different course before any bank lookup', async () => {
+    const from = vi.fn(() => new EnrollmentQuery({
+      course_version_id: 'different-version',
+      pinned_version: { course_id: 'different-course', course: { ownership_kind: 'central', owner_branch_id: null } },
+    }));
+    mocks.supabaseService.mockReturnValue({ from });
+
+    await expect(createServerExamService().start(learner, 'enrolled-course', 'exam'))
+      .rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(from.mock.calls).toEqual([['enrollments']]);
   });
 });

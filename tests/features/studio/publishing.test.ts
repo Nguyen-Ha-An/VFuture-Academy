@@ -256,6 +256,14 @@ describe('studio publishing and versions', () => {
     expect(client.queries[0].operations).toContainEqual(['order', 'version', { ascending: false }]);
   });
 
+  it('keeps version counts and release notes available without reading source checksums for readers', async () => {
+    const client = new SupabaseStub({ course_versions: [successful([])] });
+    await listVersions('ai-foundations', { client, readerView: true });
+    const columns = String(client.queries[0].operations.find(([operation]) => operation === 'select')?.[1]).split(',');
+    expect(columns).toEqual(expect.arrayContaining(['version', 'summary', 'published_at', 'notes']));
+    expect(columns).not.toContain('checksum');
+  });
+
   it('restores a version manifest and source items as a new active draft', async () => {
     const client = useClient(new SupabaseStub({
       course_versions: [successful(versionRow('version-checksum'))],
@@ -335,6 +343,26 @@ describe('studio publishing and versions', () => {
 
     expect(exported).toMatchObject({ format: 'single', contentType: 'application/json; charset=utf-8', filename: 'ai-foundations-v1.json' });
     expect(whatIsAi).toMatchObject({ type: 'lesson', id: 'what-is-ai', blocks: expect.any(Array) });
+  });
+
+  it.each(['single', 'bundle'] as const)('exports only answer-safe documents in a reader %s download', async format => {
+    const client = new SupabaseStub({
+      course_versions: [successful(versionRow('original-source-checksum'))],
+      course_version_items: [successful(versionItemRows())],
+    });
+    const exported = await exportVersion('ai-foundations', 1, format, { client, readerView: true });
+    expect(exported.filename).toContain('-reader.');
+    expect(exported).not.toHaveProperty('checksum');
+    let documents: string[];
+    if (typeof exported.body === 'string') {
+      documents = [exported.body];
+    } else {
+      const zip = await JSZip.loadAsync(exported.body);
+      documents = await Promise.all(Object.values(zip.files).filter(entry => !entry.dir).map(entry => entry.async('string')));
+    }
+    expect(JSON.stringify(versionItemRows())).toContain('correctAnswer');
+    expect(documents.join('')).toContain('exam-m1');
+    expect(documents.join('')).not.toMatch(/"(correctAnswer|sampleAnswer|sampleSolution|explanation|optionFeedback|sourceRef)"/);
   });
 
   it('strips unsafe characters from exported attachment filenames', async () => {

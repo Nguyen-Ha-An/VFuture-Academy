@@ -2,12 +2,15 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 vi.mock('@uiw/react-codemirror', () => ({ default: () => <textarea aria-label="code" /> }));
+vi.mock('server-only', () => ({}));
 import { registerAll } from '@/content-engine/render';
 import { LessonRenderer } from '@/content-engine/render/LessonRenderer';
 import { AssignmentBlockRenderer, AssignmentRenderer } from '@/content-engine/render/AssignmentRenderer';
 import { ExamPreviewRenderer } from '@/content-engine/render/ExamPreviewRenderer';
 import { createPreviewRuntime } from '@/content-engine/render/preview-runtime';
-import { compileCourse, type CompiledItem } from '@/content-engine/compile';
+import { compileCourse, type CompiledItem, type LearnerItem } from '@/content-engine/compile';
+import { learnerItemProjection } from '@/features/learning/item-projection';
+import { redactItemDocument } from '@/features/studio-mcp/data/redact';
 import { InMemoryResolver } from '@/content-engine/validate';
 import { seededShuffle } from '@/content-engine/render/shuffle';
 
@@ -89,6 +92,20 @@ describe('QuizRenderer', () => {
     await userEvent.click(screen.getByRole('button', { name: /check answer/i }));
     expect(await screen.findByText(/^correct/i, { selector: '[data-tone]' })).toBeInTheDocument();
     expect(screen.getByText('why p1')).toBeInTheDocument();
+  });
+
+  it.each(['none', 'after_submit', 'per_question'])('keeps practice controls consistent with %s in learner and Studio reader views', async feedback => {
+    const practice = { ...items.l1.blocks[1], settings: { mode: 'practice', feedback } };
+    const compiled = await compileCourse({ manifest, items: { ...items, l1: { ...items.l1, blocks: [practice] } } }, resolver);
+    const item = compiled.compiled!.items.l1;
+    const learner = learnerItemProjection({ id: item.id, type: item.kind }, item.renders.en);
+    const studio = redactItemDocument(item.renders.en).document;
+    for (const visible of [learner, studio]) {
+      const view = render(<LessonRenderer item={visible as LearnerItem} runtime={createPreviewRuntime(item, 'en')} />);
+      expect(Boolean(screen.queryByRole('button', { name: 'Check answer' }))).toBe(feedback === 'per_question');
+      expect(screen.getByRole('button', { name: feedback === 'per_question' ? 'Finish practice' : 'Submit' })).toBeInTheDocument();
+      view.unmount();
+    }
   });
   it('keeps the selected answer and provides a retry when per-question checking fails', async () => {
     const r = await compileCourse({ manifest, items }, resolver);

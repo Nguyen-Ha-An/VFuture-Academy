@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   typedContentPageContext: vi.fn(),
 }));
 
+vi.mock('server-only', () => ({}));
+
 vi.mock('@/features/studio/drafts', () => ({ getDraft: vi.fn() }));
 vi.mock('@/features/studio/ui/Workspace', () => ({ Workspace: vi.fn(() => null) }));
 vi.mock('@/features/studio/workspace-serialization', () => ({ serializableWorkspaceDraft: vi.fn((draft) => draft) }));

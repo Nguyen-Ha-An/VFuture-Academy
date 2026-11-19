@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { discoverStudioPostgresBinaries, createStudioFixtureClient } from '../lib/studio-postgres-fixture.mjs';
 import { buildAzureSchema } from './schema.mjs';
 import { createForwardExecutor } from './forward.mjs';
@@ -14,28 +15,47 @@ import {teacherCutoverInventory} from './forward-55-inventory.mjs';
 import { FORWARD55_FILES } from './forward-55-artifact.mjs';
 import { createForward54Executor } from './forward-54.mjs';
 
-const explicit=process.env.STUDIO_POSTGRES_BIN;
-if(!explicit || !['initdb','pg_ctl','postgres'].every(name=>existsSync(join(explicit,name))))throw new Error('An existing explicit local PostgreSQL binary directory is required');
-const found=discoverStudioPostgresBinaries();
-if(found.temporaryRuntime || realpathSync(found.bin)!==realpathSync(explicit))throw new Error('Automatic runtime installation is forbidden');
 const target={AZURE_TARGET_HOST:'fixture.postgres.database.azure.com',AZURE_DATABASE_URL:'postgres://academy_admin:fixture@fixture.postgres.database.azure.com/academy?sslmode=verify-full'};
-const imported='273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149';
-const sha='a'.repeat(40),source={sourceClean:true,sourceCommit:'b'.repeat(40),sourceTree:'c'.repeat(40)};
-const v1=buildAzureSchema({through:'20261105020000_teaching_permissions_activation.sql'});
-const baseline=v1.steps.filter(step=>!/^supabase\/migrations\/20261105/.test(step.id));
-const root=mkdtempSync('/tmp/academy-forward55-pg.'),data=join(root,'data'),socket=join(root,'socket');
-mkdirSync(socket,{mode:0o700});
-const env={PATH:process.env.PATH,LC_ALL:'C',LANG:'C',DYLD_LIBRARY_PATH:resolve(explicit,'../lib')};
-const run=(name,args)=>execFileSync(join(found.bin,name),args,{env,stdio:'pipe'});
-let started=false;const clients=[];
-try{
-  run('initdb',['-D',data,'-A','trust','-U','postgres','--no-locale','-E','UTF8']);
-  run('pg_ctl',['-D',data,'-l',join(root,'postgres.log'),'-o',`-F -c listen_addresses='' -k ${socket}`,'-w','start']);started=true;
-  const control=createStudioFixtureClient({host:socket,user:'postgres',database:'postgres'});await control.connect();clients.push(control);
-  await control.query('create role academy_admin login superuser');await control.query('create database academy owner academy_admin');
-  const db=createStudioFixtureClient({host:socket,user:'academy_admin',database:'academy'});await db.connect();clients.push(db);
-  const environment=(await db.query("select current_database() as database,inet_server_addr() is null as socket_only,current_setting('listen_addresses') as listeners,current_setting('server_version_num') as version")).rows[0];
-  assert.equal(environment.database,'academy');assert.equal(environment.socket_only,true);assert.equal(environment.listeners,'');assert.match(environment.version,/^17\d{4}$/);
+
+export async function withLocalAcademyDatabase(check) {
+  const explicit=process.env.STUDIO_POSTGRES_BIN;
+  if(!explicit || !['initdb','pg_ctl','postgres'].every(name=>existsSync(join(explicit,name))))throw new Error('An existing explicit local PostgreSQL binary directory is required');
+  const found=discoverStudioPostgresBinaries();
+  if(found.temporaryRuntime || realpathSync(found.bin)!==realpathSync(explicit))throw new Error('Automatic runtime installation is forbidden');
+  const root=mkdtempSync('/tmp/academy-forward-pg.'),data=join(root,'data'),socket=join(root,'socket');
+  mkdirSync(socket,{mode:0o700});
+  const env={PATH:process.env.PATH,LC_ALL:'C',LANG:'C',DYLD_LIBRARY_PATH:resolve(explicit,'../lib')};
+  const run=(name,args)=>execFileSync(join(found.bin,name),args,{env,stdio:'pipe'});
+  const clients=[];
+  async function connect(user='academy_admin',database='academy') {
+    const client=createStudioFixtureClient({host:socket,user,database});
+    await client.connect();
+    clients.push(client);
+    return client;
+  }
+  let started=false;
+  try {
+    run('initdb',['-D',data,'-A','trust','-U','postgres','--no-locale','-E','UTF8']);
+    run('pg_ctl',['-D',data,'-l',join(root,'postgres.log'),'-o',`-F -c listen_addresses='' -k ${socket}`,'-w','start']);started=true;
+    const control=await connect('postgres','postgres');
+    await control.query('create role academy_admin login superuser');
+    await control.query('create database academy owner academy_admin');
+    const db=await connect();
+    const environment=(await db.query("select current_database() as database,inet_server_addr() is null as socket_only,current_setting('listen_addresses') as listeners,current_setting('server_version_num') as version")).rows[0];
+    assert.equal(environment.database,'academy');assert.equal(environment.socket_only,true);assert.equal(environment.listeners,'');assert.match(environment.version,/^17\d{4}$/);
+    return await check({db,connect});
+  } finally {
+    await Promise.all(clients.map(client=>client.end().catch(()=>undefined)));
+    if(started)run('pg_ctl',['-D',data,'-m','fast','-w','stop']);
+    rmSync(root,{recursive:true,force:true});
+  }
+}
+export function rehearseForward55(checkSuccessor, log=console.log) {
+ return withLocalAcademyDatabase(async ({db,connect})=>{
+  const imported='273796447b61aead3444fc90e9150c2cfb56c8cf2bb8300d06fede1a70661149';
+  const sha='a'.repeat(40),source={sourceClean:true,sourceCommit:'b'.repeat(40),sourceTree:'c'.repeat(40)};
+  const v1=buildAzureSchema({through:'20261105020000_teaching_permissions_activation.sql'});
+  const baseline=v1.steps.filter(step=>!/^supabase\/migrations\/20261105/.test(step.id));
   await db.query(baseline.map(step=>step.sql).join('\n\n'));
   await db.query("update academy_private.migration_state set state='imported',schema_sha256=$1,imported_at=now() where singleton",[imported]);
   const initial=createForwardExecutor({db,target});
@@ -65,7 +85,7 @@ try{
   assert.equal((await db.query('select user_id from public.profile_handle_aliases where handle=$1',['retained-old-link'])).rows[0].user_id,user);
   assert.deepEqual((await db.query('select * from academy_private.assessment_forward_receipt')).rows,prior);
   assert.deepEqual((await db.query('select id,permissions from public.role_definitions order by id')).rows,roles);
-  const rival=createStudioFixtureClient({host:socket,user:'academy_admin',database:'academy'});await rival.connect();clients.push(rival);
+  const rival=await connect();
   const change='select * from public.profile_change_handle($1,$2,now())';
   const raced=await Promise.all([db.query(change,[user,'STU-race-target']),rival.query(change,[noHandle,'STU-race-target'])]);
   assert.deepEqual(raced.map(result=>result.rows[0].outcome).sort(),['CHANGED','HANDLE_TAKEN']);
@@ -170,9 +190,9 @@ try{
   await assert.rejects(teaching.plan());
   await db.query("alter table public.course_teaching_assignments enable row level security");
   assert.equal((await teaching.plan()).action,'noop');
-  console.log('LOCAL ONLY: PostgreSQL17 exact post54 -> explicit five-file teacher release, last-step atomic rollback, empty initial assignments, stale source/plan rejection, unchanged predecessor receipts/old role permissions, exact grants,30-day session SQL/existing-session preservation, schema drift rejection and noop passed. Mock clean-source metadata is rehearsal only; hosted state unverified.');
-}finally{
-  await Promise.all(clients.map(client=>client.end().catch(()=>undefined)));
-  if(started)run('pg_ctl',['-D',data,'-m','fast','-w','stop']);
-  rmSync(root,{recursive:true,force:true});
+  const result=await checkSuccessor?.({db,target,source,activationSha:sha,predecessor});
+  log('LOCAL ONLY: PostgreSQL17 exact post54 -> explicit five-file teacher release, last-step atomic rollback, empty initial assignments, stale source/plan rejection, unchanged predecessor receipts/old role permissions, exact grants,30-day session SQL/existing-session preservation, schema drift rejection and noop passed. Mock clean-source metadata is rehearsal only; hosted state unverified.');
+  return result;
+ });
 }
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await rehearseForward55();

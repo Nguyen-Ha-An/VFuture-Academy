@@ -110,6 +110,14 @@ describe('notebook upload authorization', () => {
     expect(database.storageCalls).toEqual([]);
   });
 
+  it('reports the owner limit before asking Storage to issue a URL', async () => {
+    const database = new FakeDatabase({ notebook_artifacts: [{ data: null, error: { message: 'UPLOAD_OWNER_CAPACITY' } }] });
+    await expect(beginNotebookUpload(actor, context, {
+      purpose: 'draft', filename: 'work.ipynb', sizeBytes: 100, checksum: 'a'.repeat(64),
+    }, database as never)).rejects.toMatchObject({ status: 429, code: 'UPLOAD_OWNER_CAPACITY' });
+    expect(database.storageCalls).toEqual([]);
+  });
+
   it('denies finalization for another actor or assignment target before downloading bytes', async () => {
     const database = new FakeDatabase({ notebook_artifacts: [ok(artifact({ owner_id: '44444444-4444-4444-8444-444444444444' }))] });
     await expect(finalizeNotebookUpload(actor, context, artifact().id, database as never))
@@ -265,10 +273,11 @@ describe('gateway notebook grants', () => {
     vi.stubEnv('SUPABASE_TRANSFER_GRANT_KEY', 'transfer-test-secret-'.repeat(3));
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://storage.example');
     const original = database.storage.from;
+    const token = `e30.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 7200 })).toString('base64url')}.signature`;
     database.storage.from = (bucket: string) => ({
       ...original(bucket),
       createSignedUrl: async (path: string) => ok({ signedUrl: `https://storage.example/storage/v1/object/sign/${bucket}/${path}?token=signed` }),
-      createSignedUploadUrl: async (path: string) => ok({ signedUrl: `https://storage.example/storage/v1/object/upload/sign/${bucket}/${path}?token=signed` }),
+      createSignedUploadUrl: async (path: string) => ok({ signedUrl: `https://storage.example/storage/v1/object/upload/sign/${bucket}/${path}?token=${token}` }),
     });
   }
   function claims(url: string) {
@@ -287,6 +296,15 @@ describe('gateway notebook grants', () => {
     const database = new FakeDatabase(); enableGateway(database);
     const result = await beginNotebookUpload(actor, context, { purpose: 'draft', filename: 'work.ipynb', sizeBytes: 1234, checksum: 'a'.repeat(64) }, database as never);
     expect(claims(result.url)).toMatchObject({ sub: actor.userId, maxBytes: 1234, method: 'PUT', path: expect.stringMatching(/^\/storage\/v1\/object\/upload\/sign\/notebooks\/pending\//) });
+    const confirmation = database.rpcCalls.find(([name]) => name === 'confirm_notebook_upload_expiry');
+    expect(confirmation?.[1]).toMatchObject({ p_owner: actor.userId, p_path: `pending/${actor.userId}/${result.id}/work.ipynb` });
+    expect(Date.parse(String(confirmation?.[1].p_expires_at))).toBeGreaterThan(Date.now() + 119 * 60000);
+  });
+  it('withholds a notebook URL when its expiry cannot be retained', async () => {
+    const database = new FakeDatabase({ 'rpc:confirm_notebook_upload_expiry': [{ data: null, error: { message: 'unavailable' } }] });
+    enableGateway(database);
+    await expect(beginNotebookUpload(actor, context, { purpose: 'draft', filename: 'work.ipynb', sizeBytes: 1234, checksum: 'a'.repeat(64) }, database as never))
+      .rejects.toMatchObject({ status: 503, code: 'UPLOAD_UNAVAILABLE' });
   });
   it('charges an authorized grader rather than the submission owner', async () => {
     const row = artifact({ purpose: 'submission' });

@@ -30,6 +30,7 @@ vi.mock('@/lib/permissions', () => ({
   can: vi.fn(() => true),
 }));
 vi.mock('@/features/admin/content-review-production', () => ({
+  canUseTypedContentPermission: () => true,
   scopedContentContext: async () => ({ context: { actor: { userId: 'user-1', roles: [] }, scope: { kind: 'central' } }, service: {} }),
   typedContentContext: async () => ({ context: { actor: { userId: 'user-1', roles: [] }, scope: { kind: 'central' } }, service: { assignOwnership: vi.fn() } }),
 }));

@@ -17,11 +17,11 @@ function serviceFor(actor: Actor, scope?: Scope) {
 }
 
 export const GET = withHandler(async (_request, context) => {
-  const { context: admin } = await typedContentContext(_request, 'content.read', 'bank.edit');
+  const { context: admin } = await typedContentContext(_request, 'content.edit', 'bank.edit');
   const actor = admin.actor;
   const { questionId } = await (context as RouteContext).params;
   if (!questionId) return fail(400, 'QUESTION_ID_REQUIRED', 'Question id is required');
-  await assertContentAccess(supabaseService() as unknown as ContentReviewDatabase, actor, 'bank_question', questionId, 'content.read');
+  await assertContentAccess(supabaseService() as unknown as ContentReviewDatabase, actor, 'bank_question', questionId, 'content.edit');
   return ok(await serviceFor(actor, admin.scope).get(questionId));
 });
 

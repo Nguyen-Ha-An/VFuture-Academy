@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/lib/api';
+import { emptySummary, itemRef, makeDiagnostic } from '@/content-engine/diagnostics';
+import { FIXTURES } from '@/content-engine/fixtures';
 
 const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
   hasPermission: vi.fn(),
+  ownerAccess: vi.fn(),
   createCourse: vi.fn(),
   deleteItem: vi.fn(),
   exportVersion: vi.fn(),
@@ -29,7 +33,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/permissions', () => ({ requirePermission: mocks.requirePermission, hasPermission: mocks.hasPermission, can: mocks.hasPermission }));
 vi.mock('@/features/admin/context', () => ({ assertAdminPermission: vi.fn() }));
+vi.mock('@/features/admin/content-review', () => ({ assertContentAccess: mocks.ownerAccess }));
 vi.mock('@/features/admin/content-review-production', () => ({
+  canUseTypedContentPermission: (actor: unknown, scope: unknown, permission: string, legacy: string) =>
+    mocks.hasPermission(actor, permission, scope) || mocks.hasPermission(actor, legacy, scope),
   contentReviewContext: async (_request: Request, permission: string) => {
     const legacy = permission === 'content.create' ? 'course.create' : permission === 'content.read' ? 'course.read' : permission;
     const resolved = await mocks.requirePermission(legacy);
@@ -37,6 +44,7 @@ vi.mock('@/features/admin/content-review-production', () => ({
   },
   scopedContentContext: async (_request: Request, _type: string, _id: string, _workflow: string, legacy: string) => {
     const resolved = await mocks.requirePermission(legacy);
+    await mocks.ownerAccess({}, resolved, _type, _id, _workflow);
     return { context: { actor: resolved, scope: { kind: 'central' } }, service: {} };
   },
   typedContentContext: async (_request: Request, _workflow: string, legacy: string) => {
@@ -150,6 +158,8 @@ beforeEach(() => {
     if (mock !== mocks.requirePermission) mock.mockResolvedValue({});
   }
   mocks.hasPermission.mockReturnValue(false);
+  mocks.getVersionWorkspace.mockResolvedValue({ manifest: {}, items: {}, baseVersionId: null });
+  mocks.validateDraft.mockResolvedValue({ ok: true, errors: [], warnings: [], summary: emptySummary() });
   mocks.exportVersion.mockResolvedValue({
     body: '{}',
     checksum: 'checksum',
@@ -377,12 +387,13 @@ describe('simplified Studio route wiring', () => {
     expect(mocks.importNewCourse).toHaveBeenCalledWith('{}', actor);
   });
 
-  it('returns one immutable source workspace under course.read permission', async () => {
-    await versionWorkspaceRoute(request('http://localhost/version', 'GET'), {
+  it('returns a reader projection of one immutable workspace under course.read permission', async () => {
+    const response = await versionWorkspaceRoute(request('http://localhost/version', 'GET'), {
       params: { courseId: 'course-1', v: '2' },
     });
     expect(mocks.requirePermission).toHaveBeenCalledWith('course.read');
     expect(mocks.getVersionWorkspace).toHaveBeenCalledWith('course-1', 2);
+    expect(response.status).toBe(200);
   });
 
   it('passes the required publish revision to the guarded publisher', async () => {
@@ -401,6 +412,73 @@ describe('simplified Studio route wiring', () => {
     expect(response.status).toBe(428);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'PRECONDITION_REQUIRED' } });
     expect(mocks.publish).not.toHaveBeenCalled();
+  });
+});
+
+describe('Studio course source visibility', () => {
+  const item = {
+    schemaVersion: 1, kind: 'lesson', id: 'lesson-one', title: 'Intro',
+    blocks: [{ id: 'quiz', type: 'quiz', questions: [{
+      id: 'q', type: 'short_answer', content: { blocks: [{ type: 'paragraph', content: [{ text: 'Read this question' }] }] },
+      correctAnswer: ['private-answer'],
+    }] }],
+  };
+  const draft = {
+    id: 'draft-1', courseId: 'course-1', manifest: FIXTURES.minimal.manifest,
+    items: { 'lesson-one': item }, baseVersionId: null, checklist: {}, updatedAt: null, revision: 'source-fingerprint',
+  };
+  const course = { params: { courseId: 'course-1', v: '1' } };
+
+  it.each(['reader', 'editor in a different owner scope', 'owner editor'])('selects the correct source for a %s', async role => {
+    mocks.getDraft.mockResolvedValue(draft);
+    mocks.getVersionWorkspace.mockResolvedValue({ manifest: draft.manifest, items: draft.items, baseVersionId: 'version-1' });
+    mocks.hasPermission.mockImplementation((_actor, permission) => role !== 'reader' && permission === 'content.edit');
+    if (role === 'editor in a different owner scope') mocks.ownerAccess.mockImplementation((_db, _actor, _type, _id, permission) => {
+      if (permission === 'content.edit') throw new ApiError(403, 'FORBIDDEN', 'Permission denied');
+    });
+    const canEdit = role === 'owner editor';
+    for (const [handler, url] of [
+      [getDraftRoute, 'http://localhost/draft'],
+      [versionWorkspaceRoute, 'http://localhost/version'],
+      [promptPackRoute, 'http://localhost/prompt-pack?courseId=course-1&kind=translate&itemId=lesson-one&locale=en'],
+    ] as const) {
+      const response = await handler(request(url, 'GET'), course);
+      expect(response.status).toBe(200);
+      const data = await response.text();
+      expect(data).toContain('Read this question');
+      expect(data.includes('private-answer')).toBe(canEdit);
+      if (!canEdit) expect(data).not.toContain('source-fingerprint');
+    }
+    await versionsRoute(request('http://localhost/versions', 'GET'), course);
+    expect(mocks.listVersions).toHaveBeenCalledWith('course-1', { readerView: !canEdit });
+    for (const format of ['single', 'bundle']) {
+      const response = await exportRoute(request(`http://localhost/export?version=1&format=${format}`, 'GET'), course);
+      expect(response.status).toBe(200);
+      expect(mocks.exportVersion).toHaveBeenCalledWith('course-1', 1, format, { readerView: !canEdit });
+    }
+    const input = { manifest: {}, items: {}, selectedRef: { kind: 'course' }, locale: 'en' };
+    await previewWorkspaceRoute(request('http://localhost/preview', 'POST', JSON.stringify(input)), course);
+    expect(mocks.previewWorkspace).toHaveBeenCalledWith('course-1', input, canEdit);
+  });
+
+  it('checks read access to the specific course before building a prompt', async () => {
+    mocks.ownerAccess.mockRejectedValue(new ApiError(403, 'FORBIDDEN', 'Permission denied'));
+    const response = await promptPackRoute(request('http://localhost/prompt-pack?courseId=course-1&kind=outline', 'GET'));
+    expect(response.status).toBe(403);
+    expect(mocks.ownerAccess).toHaveBeenCalledWith({}, actor, 'course', 'course-1', 'content.read');
+    expect(mocks.getDraft).not.toHaveBeenCalled();
+  });
+
+  it('keeps source values and fingerprints out of stored validation reports for readers', async () => {
+    mocks.validateDraft.mockResolvedValue({ ok: false, summary: emptySummary(), revision: 'source-fingerprint', warnings: [], errors: [
+      makeDiagnostic('E_ANSWER_REF_UNKNOWN', { ref: itemRef('lesson-one'), path: '/correctAnswer/private-answer', meta: { id: 'private-answer' }, revision: 'source-fingerprint' }),
+    ] });
+    const response = await validateRoute(request('http://localhost/validate', 'POST', '{}'), course);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain('E_ANSWER_REF_UNKNOWN');
+    expect(body).not.toContain('private-answer');
+    expect(body).not.toContain('source-fingerprint');
   });
 });
 

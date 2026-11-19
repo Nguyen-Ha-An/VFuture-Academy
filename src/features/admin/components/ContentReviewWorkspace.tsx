@@ -54,7 +54,7 @@ export type ReviewRow = {
   decision_note: string | null;
   self_review: boolean;
   revision_key: string;
-  checksum: string;
+  checksum?: string;
   dependencies: unknown[];
   /** Returned by cms_list_reviews; resolved to a name through the optional `submitters` map. */
   submitted_by?: string | null;

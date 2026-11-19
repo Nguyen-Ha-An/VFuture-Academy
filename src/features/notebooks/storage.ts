@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { supabaseService } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api";
+import { signedUploadExpiry } from "@/lib/storage/signed-upload-expiry";
 import type { Actor } from "@/lib/permissions";
 import {
   sanitizeNotebookTemplate,
@@ -114,12 +115,23 @@ export async function beginNotebookUpload(
     status: "pending",
   };
   const insert = await db.from("notebook_artifacts").insert(row);
+  if (insert.error?.message.includes("UPLOAD_OWNER_CAPACITY"))
+    throw new ApiError(429, "UPLOAD_OWNER_CAPACITY", "Your recent uploads have reached the limit. Try again after their reservations expire.");
+  if (insert.error?.message.includes("UPLOAD_CAPACITY"))
+    throw new ApiError(507, "UPLOAD_CAPACITY", "Upload storage is full");
   if (insert.error) throw new Error("Unable to reserve notebook upload");
   const signed = await db.storage
     .from(NOTEBOOK_BUCKET)
     .createSignedUploadUrl(path, { upsert: false });
   if (signed.error || !signed.data?.signedUrl)
     throw new Error("Unable to sign notebook upload");
+  const expiresAt = signedUploadExpiry(signed.data.signedUrl);
+  if (!expiresAt) throw new ApiError(503, "UPLOAD_UNAVAILABLE", "Upload signing returned an invalid expiry");
+  const confirmation = await db.rpc("confirm_notebook_upload_expiry", {
+    p_owner: actor.userId, p_path: path, p_expires_at: expiresAt,
+  });
+  if (confirmation.error)
+    throw new ApiError(503, "UPLOAD_UNAVAILABLE", "Upload retention could not be confirmed");
   return {
     id,
     url: grantStorageTransferUrl(signed.data.signedUrl, {

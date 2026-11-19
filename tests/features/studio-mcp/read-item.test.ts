@@ -38,6 +38,7 @@ describe('get_item data path', () => {
     const result = await mcpGetItem(db, actor, 'course-a', 'lesson-a');
     expect(result.redacted).toBe(true);
     expect(result).not.toHaveProperty('itemHash');
+    expect(result).not.toHaveProperty('revision');
     expect(JSON.stringify(result.document)).not.toContain('secret');
   });
 
@@ -45,6 +46,7 @@ describe('get_item data path', () => {
     vi.mocked(readCourseState).mockResolvedValue(state(true));
     const result = await mcpGetItem(db, actor, 'course-a', 'lesson-a');
     expect(result.itemHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(result.revision).toBe('revision-a');
     expect(result.document).toEqual(original);
   });
 

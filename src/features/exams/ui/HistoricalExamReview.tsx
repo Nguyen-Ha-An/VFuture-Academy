@@ -10,7 +10,7 @@ import { ExamReview } from './ExamReview';
 import { examSections } from './types';
 
 /** Historical projections can render authorized media but cannot start or mutate an activity. */
-export function createHistoricalReviewRuntime(locale: Locale, context: HistoricalExamMediaContext): LessonRuntime {
+export function createHistoricalReviewRuntime(locale: Locale, context: HistoricalExamMediaContext, mediaLocale = locale): LessonRuntime {
   const unavailable = async (): Promise<never> => { throw new Error('Historical exam reviews are read-only.'); };
   return {
     mode: 'learner', locale,
@@ -25,7 +25,7 @@ export function createHistoricalReviewRuntime(locale: Locale, context: Historica
     uploadFile: unavailable,
     resolveMedia: ref => {
       if (!('assetId' in ref)) return ref.url;
-      const params = new URLSearchParams({ historicalExamAttemptId: context.attemptId, courseId: context.courseId, itemId: context.itemId });
+      const params = new URLSearchParams({ historicalExamAttemptId: context.attemptId, courseId: context.courseId, itemId: context.itemId, locale: mediaLocale });
       return `/api/v1/media/${encodeURIComponent(ref.assetId)}?${params}`;
     },
     hrefFor: () => { throw new Error('Historical exam reviews do not provide activity navigation.'); },
@@ -36,7 +36,7 @@ export function createHistoricalReviewRuntime(locale: Locale, context: Historica
 
 export function HistoricalExamReview({ learner, review, locale, context }: { learner: LearnerItem; review: ExamReviewResult; locale: Locale; context: HistoricalExamMediaContext }) {
   const {attemptId,courseId,itemId}=context;
-  const runtime = useMemo(() => createHistoricalReviewRuntime(locale, {attemptId,courseId,itemId}), [locale,attemptId,courseId,itemId]);
+  const runtime = useMemo(() => createHistoricalReviewRuntime(locale, {attemptId,courseId,itemId}, review.locale), [locale,attemptId,courseId,itemId,review.locale]);
   if (learner.kind !== 'exam') throw new TypeError('Historical exam review requires an exam projection.');
   const exam = { title: learner.title, sections: examSections(learner) };
   return <ExamReview exam={exam} review={review} runtime={runtime} hideTitle headingLevel={2} />;

@@ -102,6 +102,15 @@ describe('unsaved preview', () => {
 });
 
 describe('document identity on the wire', () => {
+  it('previews the stored selection for a reader without resubmitting redacted source', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn().mockResolvedValue(response('one', 'Stored lesson'));
+    vi.stubGlobal('fetch', fetcher);
+    render(<NextIntlClientProvider locale="en" messages={messages}><PreviewPane courseId="course" selectedRef={itemRef('one')} payload={null} sourceRevision="1" languages={['en']} defaultLanguage="en" onReport={onReport} readOnly /></NextIntlClientProvider>);
+    await act(() => vi.advanceTimersByTimeAsync(400));
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({ stored: true, selectedRef: itemRef('one'), locale: 'en' });
+    expect(screen.getByText('Stored lesson')).toBeDefined();
+  });
   it('sends the authoritative reference so an item named `manifest` is not read as the course', async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn().mockResolvedValue(response('manifest', 'Item called manifest'));

@@ -232,7 +232,7 @@ Discretionary-stop preserves:
 - Auth `POST /token?grant_type=refresh_token`, `GET /user`, and `POST /logout`.
 - Trusted, bounded REST GET/HEAD reads, covering account suspension, enrollment,
   membership, actor/profile lookup, current attempt and answers.
-- Trusted POST RPCs `exam_save_active_answers`, `exam_finalize_attempt`,
+- Trusted POST RPCs `exam_save_active_answers`, `exam_advance_sequential_page`, `exam_sequential_answered_before`, `exam_finalize_attempt`,
   `exam_append_attempt_events`, `rate_limit`, `authorization_actor`,
   `xp_update_streak` and `learner_complete_course`.
 - Trusted POST writes to `exam_grades`, `skill_evidence`, `xp_events` and

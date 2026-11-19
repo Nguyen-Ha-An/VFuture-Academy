@@ -101,7 +101,7 @@ if (process.argv[1]?.endsWith('verify-media-upload-reservations.mjs') && !proces
 }
 
 /** Real overlapping PostgreSQL transactions; no hosted connection or TCP listener. */
-export async function verifyMediaReservationConcurrency() {
+export async function verifyMediaReservationConcurrency({ ownerOnly = false } = {}) {
   const { execFileSync } = await import('node:child_process');
   const { mkdtempSync, mkdirSync } = await import('node:fs');
   const { discoverStudioPostgresBinaries, createStudioFixtureClient } = await import('./lib/studio-postgres-fixture.mjs');
@@ -113,8 +113,9 @@ export async function verifyMediaReservationConcurrency() {
   try {
     run('initdb',['-D',data,'-A','trust','-U','postgres','--no-locale']);
     run('pg_ctl',['-D',data,'-l',join(root,'postgres.log'),'-o',`-F -c listen_addresses='' -k ${socket}`,'-w','start']);started=true;
-    for(let i=0;i<13;i++){const client=createStudioFixtureClient({host:socket,user:'postgres',database:'postgres'});await client.connect();clients.push(client);}
+    for(let i=0;i<(ownerOnly ? 3 : 13);i++){const client=createStudioFixtureClient({host:socket,user:'postgres',database:'postgres'});await client.connect();clients.push(client);}
     const db=clients[0];await db.query(fixture);await db.query(readFileSync(migration,'utf8'));
+    if (ownerOnly) { await verifyMixedOwnerTransactions(db, clients[1], clients[2]); return; }
     const owner=randomUUID();
     const reserve=(client,who=owner,key=randomUUID())=>client.query(reservationSql,[who,key,`asset_${key.replaceAll('-','')}`,metadata]);
     const first=await Promise.allSettled(clients.slice(1).map(c=>reserve(c)));
@@ -153,6 +154,7 @@ export async function verifyMediaReservationConcurrency() {
     assert.equal(new Date(tombstone.retain_until).toISOString(),new Date(admitted.retain_until).toISOString());
     await assert.rejects(reserve(db,randomUUID()),/UPLOAD_CAPACITY/,'native expired-slot race retains the old quota allocation');
     console.log('Native upload races passed: 12 competing owner reservations, capacity contenders, 12 finalize claims, 11 idempotent completions, proven blocking/rollback, and 12 expired-slot replacements with retained quota.');
+    await verifyMixedOwnerTransactions(db, clients[1], clients[2]);
   } finally {
     await Promise.all(clients.map(c=>c.end().catch(()=>undefined)));
     if(started)run('pg_ctl',['-D',data,'-m','immediate','-w','stop']);
@@ -160,7 +162,44 @@ export async function verifyMediaReservationConcurrency() {
   }
 }
 
-if (process.argv[1]?.endsWith('verify-media-upload-reservations.mjs') && process.argv.includes('--native')) await verifyMediaReservationConcurrency();
+async function verifyMixedOwnerTransactions(control, notebookClient, mediaClient) {
+  await control.query(`create table public.notebook_artifacts(id uuid primary key, owner_id uuid not null,
+    filename text not null, storage_path text not null unique, status text default 'pending',
+    created_at timestamptz default now());`);
+  await control.query(readFileSync(join(repositoryRoot, 'supabase/migrations/20261120000400_limit_owner_reservations.sql'), 'utf8'));
+  await control.query('update public.media_upload_limits set capacity_bytes=10737418240, owner_capacity_bytes=104857600');
+  for (const commit of [true, false]) {
+    const owner = randomUUID(), book = randomUUID(), media = randomUUID();
+    await notebookClient.query('begin');
+    let waiting;
+    try {
+      await notebookClient.query(`insert into public.notebook_artifacts(id,owner_id,filename,storage_path)
+        values($1,$2,'sheet.csv',$3)`, [book, owner, `pending/${owner}/${book}/sheet.csv`]);
+      waiting = mediaClient.query(reservationSql, [owner, media, `asset_${media.replaceAll('-', '')}`, metadata])
+        .then(result => ({ row: result.rows[0].r }), error => ({ error }));
+      let blocked = false;
+      for (let attempt = 0; attempt < 100 && !blocked; attempt++) {
+        const result = await control.query('select $1::int = any(pg_blocking_pids($2::int)) as blocked',
+          [notebookClient.processID, mediaClient.processID]);
+        blocked = result.rows[0].blocked;
+        if (!blocked) await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      assert.ok(blocked, 'the media request waits for this notebook reservation transaction');
+      await notebookClient.query(commit ? 'commit' : 'rollback');
+    } catch (error) {
+      await notebookClient.query('rollback');
+      throw error;
+    }
+    const result = await waiting;
+    if (commit) assert.match(result.error?.message ?? '', /UPLOAD_OWNER_CAPACITY/);
+    else assert.equal(result.row?.owner_id, owner, 'a rolled-back notebook leaves room for the pending media admission');
+  }
+  console.log('Native owner quota passed for overlapping notebook and media transactions, with commit and rollback.');
+}
+
+if (process.argv[1]?.endsWith('verify-media-upload-reservations.mjs') && process.argv.includes('--native')) {
+  await verifyMediaReservationConcurrency({ ownerOnly: process.argv.includes('--owner-only') });
+}
 
 /** Lifecycle recovery against the complete real migration chain, not replacement tables. */
 export async function verifyMediaUploadLifecycle(db) {

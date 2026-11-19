@@ -92,6 +92,20 @@ describe('learner enrollment service', () => {
     expect(client.queriesFor('enrollments')).toHaveLength(3);
   });
 
+  it.each(['active', 'dropped'])('rechecks the school of a concurrent %s enrollment before returning or reactivating it', async (status) => {
+    const client = new SupabaseStub({
+      ...baseResults({ enrollment: 'open' }),
+      enrollments: [successful(null), { data: null, error: { code: '23505' } }, successful({
+        id: 'concurrent', user_id: actor.userId, course_id: course.id, course_version_id: 'version-2',
+        status, branch_scope_known: true, branch_id: 'school-a',
+      })],
+      branch_memberships: [successful({ status: 'suspended' })],
+    });
+    mocks.supabaseService.mockReturnValue(client);
+    await expect(enroll(actor, course.id)).rejects.toMatchObject({ status: 403, code: 'MEMBERSHIP_SUSPENDED' });
+    expect(client.queriesFor('enrollments').flatMap((query) => query.operations).some(([op]) => op === 'update')).toBe(false);
+  });
+
   it('refuses invite-only self-enrollment without a pre-existing enrollment row', async () => {
     const client = new SupabaseStub(baseResults({ enrollment: 'invite', prerequisites: [] }));
     mocks.supabaseService.mockReturnValue(client);

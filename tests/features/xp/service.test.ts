@@ -55,7 +55,6 @@ describe('XP awards', () => {
 
   it.each([
     ['lesson_completed', 10],
-    ['quiz_submitted', 20],
     ['exam_passed', 50],
     ['assignment_approved', 30],
     ['course_completed', 100],
@@ -72,7 +71,34 @@ describe('XP awards', () => {
     expect(database.queriesFor('xp_events')[0].operations).toContainEqual([
       'insert', expect.objectContaining({ points: expectedPoints }),
     ]);
-    expect(expectedPoints).toBe(kind === 'quiz_submitted' ? 20 : XP_POINTS[kind]);
+    expect(expectedPoints).toBe(XP_POINTS[kind]);
+  });
+
+  it.each([
+    { eventId: 'event-quiz', points: 2, awarded: true },
+    { eventId: null, points: 0, awarded: false },
+  ])('uses the saved quiz receipt and returns a $points point improvement', async ({ eventId, points, awarded }) => {
+    const database = new SupabaseStub({}, {
+      xp_record_quiz_submission: [successful([{
+        event_id: eventId, points, current_streak: 2, longest_streak: 3, last_active_date: '2026-09-04',
+      }])],
+    });
+    const service = createXpService({ database });
+    await expect(service.award('learner-1', 'quiz_submitted', 'quiz_attempt', 'attempt-1', 999_999))
+      .resolves.toEqual({ eventId, points, awarded, streak: { current: 2, longest: 3, lastActiveDate: '2026-09-04' } });
+    expect(database.rpcCalls).toEqual([{
+      name: 'xp_record_quiz_submission', args: { p_user_id: 'learner-1', p_attempt_id: 'attempt-1' },
+    }]);
+    expect(database.queriesFor('xp_events')).toHaveLength(0);
+  });
+
+  it('keeps quiz rewards on the bounded database path if the migration is unavailable', async () => {
+    const database = new SupabaseStub({}, {
+      xp_record_quiz_submission: [{ data: null, error: { code: 'PGRST202' } }],
+    });
+    await expect(createXpService({ database }).award('learner-1', 'quiz_submitted', 'quiz_attempt', 'attempt-1'))
+      .rejects.toMatchObject({ code: 'XP_DATABASE_ERROR' });
+    expect(database.queriesFor('xp_events')).toHaveLength(0);
   });
 
   it('rolls the activity date at midnight in Asia/Ho_Chi_Minh', () => {

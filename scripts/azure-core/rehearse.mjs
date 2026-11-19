@@ -59,18 +59,21 @@ try {
   await db.query('select public.academy_storage_observe($1,$2,null)',[reservation.bucket,reservation.pending_path]);
   assert.ok((await transition('release',cleanup.lease_token)).released_at);
   await db.query("insert into public.courses(id,owner_id,status) values('notebook-fixture',$1,'draft')",[user]);
-  await db.query("insert into public.notebook_artifacts(id,owner_id,course_id,item_id,purpose,checksum,runtime_profile_id,runtime_profile_version,size_bytes,mime,filename,storage_path) values('44444444-4444-4444-8444-444444444444',$1,'notebook-fixture','item_fixture','dataset',$2,'python-data-v1','1',1,'text/csv','file.csv','pending/fixture/file.csv')",[user,'a'.repeat(64)]);
+  const reserveNotebook = () => db.query("insert into public.notebook_artifacts(id,owner_id,course_id,item_id,purpose,checksum,runtime_profile_id,runtime_profile_version,size_bytes,mime,filename,storage_path) values('44444444-4444-4444-8444-444444444444',$1,'notebook-fixture','item_fixture','dataset',$2,'python-data-v1','1',1,'text/csv','file.csv','pending/fixture/file.csv')",[user,'a'.repeat(64)]);
   await db.query('update public.media_upload_limits set capacity_bytes=$1',[2*10485760-1]);
-  await assert.rejects(db.query("select public.academy_storage_reserve_signed('notebooks','pending/fixture/file.csv')"),/UPLOAD_CAPACITY/);
+  await assert.rejects(reserveNotebook(),/UPLOAD_CAPACITY/);
   await db.query('update public.media_upload_limits set capacity_bytes=10737418240');
+  await reserveNotebook();
   await db.query("select public.academy_storage_reserve_signed('notebooks','pending/fixture/file.csv')");
-  let notebookHold=(await db.query("select metadata,observed_at::text observed_at from academy_private.storage_objects where bucket_id='notebooks'")).rows[0];
-  assert.equal(notebookHold.metadata.size,2*10485760,'a declared one-byte file reserves the verified native cap');
+  const notebookHolds=(await db.query("select name,metadata,observed_at::text observed_at from academy_private.storage_objects where bucket_id='notebooks' order by name")).rows;
+  assert.equal(notebookHolds.length,2);
+  assert.ok(notebookHolds.every(hold=>hold.metadata.size===10485760),'a declared one-byte file reserves the verified cap for each copy');
   await db.query("select public.academy_storage_observe('notebooks','pending/fixture/file.csv',null)");
-  assert.equal((await db.query("select count(*)::int n from academy_private.storage_objects where bucket_id='notebooks'")).rows[0].n,1,'pending delete retains quota while its signed token is live');
-  assert.equal((await db.query("select public.academy_storage_reconcile_hold('notebooks','pending/fixture/file.csv',$1,null) ok",[notebookHold.observed_at])).rows[0].ok,false);
+  assert.equal((await db.query("select count(*)::int n from academy_private.storage_objects where bucket_id='notebooks'")).rows[0].n,2,'pending delete retains quota while its signed token is live');
+  assert.equal((await db.query("select public.academy_storage_reconcile_hold('notebooks','pending/fixture/file.csv',$1,null) ok",[notebookHolds[0].observed_at])).rows[0].ok,false);
   await db.query("update academy_private.storage_objects set retain_until=now()-interval '1 minute' where bucket_id='notebooks'");
-  assert.equal((await db.query("select public.academy_storage_reconcile_hold('notebooks','pending/fixture/file.csv',$1,null) ok",[notebookHold.observed_at])).rows[0].ok,true);
+  for (const hold of notebookHolds)
+    assert.equal((await db.query("select public.academy_storage_reconcile_hold('notebooks',$1,$2,null) ok",[hold.name,hold.observed_at])).rows[0].ok,true);
   assert.equal((await db.query("select count(*)::int n from academy_private.storage_objects where bucket_id='notebooks'")).rows[0].n,0);
   const {tables,primaryKeys}=await databaseCatalog(db);
   const catalogs = (await db.query("select count(*)::int as n from pg_proc p join pg_namespace s on s.oid=p.pronamespace where s.nspname='public' and p.prosecdef")).rows[0].n;

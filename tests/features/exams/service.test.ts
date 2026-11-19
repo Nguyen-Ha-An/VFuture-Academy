@@ -653,6 +653,8 @@ describe('exam lifecycle', () => {
     const readGate = new Promise<void>((resolve) => { releaseRead = resolve; });
     const readCaptured = new Promise<void>((resolve) => { notifyRead = resolve; });
     const repo: ExamRepo = {
+      advanceSequentialPage: (...args) => storage.advanceSequentialPage(...args),
+      sequentialAnsweredBefore: (...args) => storage.sequentialAnsweredBefore(...args),
       getAttempt: (id) => storage.getAttempt(id),
       listAttempts: (...args) => storage.listAttempts(...args),
       insertAttempt: (attempt, attemptsAllowed) => storage.insertAttempt(attempt, attemptsAllowed),
@@ -765,6 +767,8 @@ describe('exam grade aggregation', () => {
     const item = withExamSettings(allTypesExam, { attemptsAllowed: 2, scoringPolicy: 'latest' });
     const storage = new InMemoryExamRepo();
     const unorderedRepo: ExamRepo = {
+      advanceSequentialPage: (...args) => storage.advanceSequentialPage(...args),
+      sequentialAnsweredBefore: (...args) => storage.sequentialAnsweredBefore(...args),
       getAttempt: (id) => storage.getAttempt(id),
       listAttempts: async (...args) => (await storage.listAttempts(...args)).reverse(),
       insertAttempt: (attempt, attemptsAllowed) => storage.insertAttempt(attempt, attemptsAllowed),

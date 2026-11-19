@@ -2,6 +2,8 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { ApiError } from '@/lib/api-error';
+import { readJsonBodyLimited } from '@/lib/body-limit';
 import { createAzureDataClient } from '@/lib/database/azure-client';
 import { enforceRequestRateLimit } from '@/lib/rate-limit';
 import { routes } from '@/lib/routes';
@@ -9,11 +11,12 @@ import { safeInternalPath } from '@/lib/safe-internal-path';
 import { academyBackend } from './provider';
 import { createNativeClient, NativeAuthError, type NativeFlow, type NativeResult } from './native';
 import { decryptRefreshToken, encryptRefreshToken, getOidcMetadata, getSigningKeys, hashToken, randomToken, readIdentityConfiguration, verifyIdToken, NATIVE_REFRESH_PREFIX, type IdentityConfiguration } from './oidc';
-import { consumeIdentityTransaction, createStoredSession, initializeIdentityProfile, resolveIdentityUser, storeIdentityTransaction } from './store';
+import { consumeIdentityTransaction, createStoredSession, initializeIdentityProfile, resolveIdentityUser, revokeRecoveredAccountSessions, storeIdentityTransaction } from './store';
 import { SESSION_COOKIE, revokeAzureSession, sessionCookieOptions } from './server';
 
 export const NATIVE_COOKIE=process.env.NODE_ENV==='production'?'__Host-academy_native':'academy_native';
 const handlePattern=/^[A-Za-z0-9_-]{43}$/;
+const MAX_NATIVE_BODY_BYTES = 16 * 1024;
 const password=z.string().min(1).max(256);
 const inputSchema=z.discriminatedUnion('action',[
   z.object({action:z.literal('start'),mode:z.enum(['login','signup','reset']),email:z.string().trim().email().max(320),password:password.optional(),displayName:z.string().trim().max(160).optional(),next:z.string().max(2048).optional()}).strict(),
@@ -27,28 +30,65 @@ const proofCookie=(attempt:string)=>`${NATIVE_COOKIE}_${attempt}`;
 async function saveFlow(flow:NativeFlow,browser:string,config:IdentityConfiguration,attemptId:string,error?:string,setProofCookie=false) {
   if(flow.expiresAt<=Date.now())return response({error:'expired'},409);
   const handle=randomToken();
-  await storeIdentityTransaction(hashToken(handle),hashToken(browser),{kind:'native',attemptId,ciphertext:encryptRefreshToken(JSON.stringify(flow),binding(handle,browser,attemptId),config)});
+  // Earlier workers interpret a completed MFA exchange as a new login.
+  const kind=flow.mode==='reset'?'native-recovery-v2':'native';
+  await storeIdentityTransaction(hashToken(handle),hashToken(browser),{kind,attemptId,ciphertext:encryptRefreshToken(JSON.stringify(flow),binding(handle,browser,attemptId),config)});
   const retryAfterSeconds=flow.step==='poll'?Math.max(1,Math.ceil(((flow.pollNotBefore??Date.now())-Date.now())/1000)):undefined;
-  const r=response({step:flow.step,flowId:handle,attemptId,codeLength:flow.mode==='reset'?8:flow.codeLength??8,...(flow.target&&flow.mode!=='reset'?{target:flow.target}:{}),...(retryAfterSeconds?{retryAfterSeconds}:{}),...(error?{error}:{})});
+  const recoveryMfa=flow.mode==='reset' && flow.verifiedEmail===true && flow.step==='mfa-code' && flow.recoveryProof?.stage==='mfa';
+  const showChallenge=flow.mode!=='reset' || recoveryMfa;
+  const maskedTarget=/^[^@\s]*[*•][^@\s]*@[^@\s]+$/u.test(flow.target??'');
+  const target=showChallenge && (!recoveryMfa || maskedTarget) ? flow.target : undefined;
+  const r=response({step:flow.step,flowId:handle,attemptId,codeLength:showChallenge?flow.codeLength??8:8,...(target?{target}:{}),...(retryAfterSeconds?{retryAfterSeconds}:{}),...(error?{error}:{})});
   // A continuation response must not overwrite a later attempt's shared cookie.
   if(setProofCookie)r.cookies.set(proofCookie(attemptId),browser,{...sessionCookieOptions,sameSite:'strict',maxAge:600});return r;
 }
 function validFlow(value:unknown):value is NativeFlow {
   if(!value||typeof value!=='object')return false;
   const f=value as NativeFlow;
+  const proof=f.recoveryProof;
+  if (proof !== undefined) {
+    if (!proof || f.mode!=='reset' || f.verifiedEmail!==true) return false;
+    if (proof.stage==='mfa') {
+      if (f.step!=='mfa-code') return false;
+    } else {
+      if (f.step!=='poll') return false;
+      if (proof.stage==='challenge') {
+        if (typeof proof.methodId!=='string' || !proof.methodId || proof.methodId.length>256) return false;
+      } else if (proof.stage==='verify') {
+        if (typeof proof.idToken!=='string' || !proof.idToken || proof.idToken.length>32768) return false;
+      } else if (proof.stage!=='exchange' && proof.stage!=='methods') return false;
+    }
+  }
   return ['login','signup','reset'].includes(f.mode)&&['code','mfa-code','new-password','poll'].includes(f.step)
     &&typeof f.continuation==='string'&&f.continuation.length>0&&f.continuation.length<=65536
     &&typeof f.email==='string'&&f.email.length<=320&&typeof f.next==='string'&&f.next===safeInternalPath(f.next)
     &&Number.isSafeInteger(f.expiresAt)&&f.expiresAt>Date.now()&&f.expiresAt<=Date.now()+600000;
 }
+async function finishRecovery(result: Extract<NativeResult,{step:'reset-complete'}>,config:IdentityConfiguration,attemptId:string) {
+  if (result.flow.mode !== 'reset' || result.flow.verifiedEmail !== true || result.flow.decoy
+    || !['poll','mfa-code'].includes(result.flow.step)) throw new NativeAuthError('expired');
+  const retry = () => new NativeAuthError('wait',{
+    ...result.flow, step:'poll', pollNotBefore:Date.now()+5000, recoveryProof:{stage:'verify', idToken:result.idToken},
+  });
+  let keys: Awaited<ReturnType<typeof getSigningKeys>>;
+  try { keys = await getSigningKeys(await getOidcMetadata(config)); }
+  catch { throw retry(); }
+  let claims: Awaited<ReturnType<typeof verifyIdToken>>;
+  try { claims = await verifyIdToken(result.idToken, config, keys); }
+  catch { throw new NativeAuthError('request_failed'); }
+  try {
+    await revokeRecoveredAccountSessions(claims.iss, claims.oid, hashToken(attemptId));
+  } catch { throw retry(); }
+  const r = response({step:'reset-complete'});
+  r.cookies.set(proofCookie(attemptId),'',{...sessionCookieOptions,sameSite:'strict',maxAge:0});
+  return r;
+}
 async function complete(result:NativeResult,browser:string,config:IdentityConfiguration,attemptId:string,setProofCookie=false) {
+  if (result.step === 'reset-complete') return finishRecovery(result,config,attemptId);
   if(result.step!=='complete') {
-    if(result.step==='reset-complete') {
-      await revokeAzureSession();
-      const r=response({step:'reset-complete'});r.cookies.set(SESSION_COOKIE,'',{...sessionCookieOptions,maxAge:0});r.cookies.set(proofCookie(attemptId),'',{...sessionCookieOptions,sameSite:'strict',maxAge:0});return r;
-    }
     return saveFlow(result.flow,browser,config,attemptId,undefined,setProofCookie);
   }
+  if (result.flow.mode === 'reset') throw new NativeAuthError('request_failed');
   const metadata=await getOidcMetadata(config);
   const claims=await verifyIdToken(result.tokens.idToken,config,await getSigningKeys(metadata));
   // The server observed a successful signup OTP exchange in this exact,
@@ -82,9 +122,12 @@ export async function nativeAuthentication(request:Request):Promise<NextResponse
     const origin=new URL(request.url).origin;
     if(origin!==config.appOrigin||request.headers.get('origin')!==origin||request.headers.get('sec-fetch-site')==='cross-site')return response({error:'origin_denied'},403);
     if(!request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))return response({error:'invalid_input'},415);
-    if(Number(request.headers.get('content-length')??0)>16384)return response({error:'invalid_input'},413);
-    const text=await request.text();if(Buffer.byteLength(text)>16384)return response({error:'invalid_input'},413);
-    let body:unknown;try{body=JSON.parse(text);}catch{return response({error:'invalid_input'},400);}
+    let body: unknown;
+    try { body = await readJsonBodyLimited(request, MAX_NATIVE_BODY_BYTES); }
+    catch (error) {
+      if (error instanceof ApiError) return response({error:'invalid_input'}, error.status);
+      throw error;
+    }
     const parsed=inputSchema.safeParse(body);if(!parsed.success)return response({error:'invalid_input'},400);
     const input=parsed.data;
     if(input.action==='start'&&input.mode!=='reset'&&(!input.password||(input.mode==='signup'&&input.password.length<8)))return response({error:'invalid_input'},400);
@@ -100,10 +143,10 @@ export async function nativeAuthentication(request:Request):Promise<NextResponse
     attemptId=input.attemptId;browser=(await cookies()).get(proofCookie(attemptId))?.value;
     if(!browser||!handlePattern.test(browser))return response({error:'expired'},409);
     const stored=await consumeIdentityTransaction(hashToken(input.flowId),hashToken(browser));
-    if(stored?.kind!=='native'||stored.attemptId!==attemptId||typeof stored.ciphertext!=='string')return response({error:'expired'},409);
+    if((stored?.kind!=='native'&&stored?.kind!=='native-recovery-v2')||stored.attemptId!==attemptId||typeof stored.ciphertext!=='string')return response({error:'expired'},409);
     let flow:unknown;
     try{flow=JSON.parse(decryptRefreshToken(stored.ciphertext,binding(input.flowId,browser,attemptId),config));}catch{return response({error:'expired'},409);}
-    if(!validFlow(flow))return response({error:'expired'},409);
+    if(!validFlow(flow)||(stored.kind==='native-recovery-v2'&&flow.mode!=='reset'))return response({error:'expired'},409);
     if((flow.step==='code'||flow.step==='mfa-code')&&!input.code)return saveFlow(flow,browser,config,attemptId,'invalid_code');
     if(flow.step==='new-password'&&(!input.password||input.password.length<8))return saveFlow(flow,browser,config,attemptId,'password_policy');
     stage='provider';const result=await client.advance(flow,{code:input.code,password:input.password});
@@ -112,7 +155,7 @@ export async function nativeAuthentication(request:Request):Promise<NextResponse
     if(error instanceof NativeAuthError) {
       if(error.code==='unavailable')console.error('academy_native_unavailable',{stage});
       if(error.flow&&browser&&config&&attemptId)return saveFlow(error.flow,browser,config,attemptId,error.code==='wait'?undefined:error.code,isStart);
-      const status=error.code==='expired'?409:error.code==='rate_limited'?429:error.code==='unavailable'?503:400;
+      const status=error.code==='expired'||error.code==='restart_required'?409:error.code==='rate_limited'?429:error.code==='unavailable'?503:400;
       return response({error:error.code},status);
     }
     const status=typeof error==='object'&&error!==null&&'status'in error&&error.status===429?429:503;

@@ -107,7 +107,7 @@ async function postconditions(db){
  ) as teaching_postconditions`,[serviceFunctions,privateFunctions])).rows[0];
  if(found?.teaching_postconditions!==true)fail('Teacher assignment postcondition failed');
 }
-async function inspect(db,data,evidence,source){
+async function inspect(db,data,evidence,source,includeCutoverInventory=true){
  const priorReceiptDigest=await predecessor(db,data,evidence);
  const state=(await db.query(`select
   exists(select 1 from public.permission_registry where permission in ('teaching.assignment.manage','teaching.scope.all')) or exists(select 1 from unnest($2::text[]) signature where to_regprocedure(signature) is not null) or exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname=any(array['studio_learning_report','admin_management_read','admin_analytics']) and (position('teaching_has_course_permission' in p.prosrc)>0 or position('teaching_report_scope' in p.prosrc)>0)) as partial_suffix,
@@ -135,12 +135,19 @@ async function inspect(db,data,evidence,source){
   if((await db.query("select exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.academy_identity_create_session(text,uuid,text,uuid,text,timestamptz,timestamptz,text,text)') and position('24 hours 1 minute' in p.prosrc)>0 and position('30 days 1 minute' in p.prosrc)=0) as frozen_identity")).rows[0]?.frozen_identity!==true)fail('Post54 identity boundary mismatch');
  }
  return {action:receipt?'noop':'apply',filename:FORWARD55_FILE,sourceSha256:data.entry.sourceSha256,azureSha256:data.entry.azureSha256,identitySha256:data.identitySha256,migrations:data.migrations,
-  baseline:BASELINE,activationSha:evidence.activationSha,predecessor:evidence.predecessor,priorReceiptDigest,teacherCutoverInventory:await teacherCutoverInventory(db),roleCount:roleState.roleCount,roleDigest:roleState.roleDigest,source,
+  baseline:BASELINE,activationSha:evidence.activationSha,predecessor:evidence.predecessor,priorReceiptDigest,...(includeCutoverInventory?{teacherCutoverInventory:await teacherCutoverInventory(db)}:{}),roleCount:roleState.roleCount,roleDigest:roleState.roleDigest,source,
   ...(receipt?{receiptSourceCommit:receipt.source_commit,receiptSourceTree:receipt.source_tree}:{})};
 }
 function safe(error){
  const result=new Error('Azure teacher assignment migration failed');
  if(/^[0-9A-Z]{5}$/.test(error?.code??''))result.code=error.code;
+ return result;
+}
+// Successors inspect the committed predecessor in their own transaction.
+// This never starts another transaction or replays the teacher cutover.
+export async function inspectAppliedForward55(db, evidence, source){
+ const result=await inspect(db,artifact(),forward55Evidence(evidence),clean(source),false);
+ if(result.action!=='noop')fail('A completed teacher release is required');
  return result;
 }
 export function createForward55Executor({db,target,expectedActivationSha,expectedPredecessor,source,verifySource}){

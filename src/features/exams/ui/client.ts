@@ -13,6 +13,7 @@ import type {
 export interface ExamClient {
   session(options?: {bind?:boolean}): Promise<ExamSessionResult>;
   start(): Promise<ExamStartResult>;
+  advance(fromStep: number): Promise<ExamStartResult>;
   save(answers: Record<string, unknown>): Promise<ExamAnswerAck[]>;
   submit(): Promise<ExamSubmitResult>;
   review(): Promise<ExamReviewResult>;
@@ -398,6 +399,19 @@ export function createHttpExamClient(options: HttpExamClientOptions): ExamClient
         body: JSON.stringify({ answers: canonical }),
       }, IDEMPOTENT_WRITE);
       return compactAnswers(response,canonical);
+    },
+    async advance(fromStep) {
+      const id = activeAttemptId();
+      const result = startResult(await request(attemptUrl('advance', id), {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fromStep }),
+      }, IDEMPOTENT_WRITE));
+      if (result.attemptId !== id || result.status !== 'in_progress' || !result.page
+        || !Number.isSafeInteger(result.page.index) || result.page.index <= fromStep
+        || result.page.index >= result.page.count) {
+        throw new ExamRequestError(200, 'INVALID_RESPONSE', 'The exam page was not confirmed.', { ambiguous: true });
+      }
+      return result;
     },
     async submit() {
       const id = activeAttemptId();

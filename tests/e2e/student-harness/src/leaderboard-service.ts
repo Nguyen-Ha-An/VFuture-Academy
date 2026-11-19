@@ -5,6 +5,10 @@ export async function branchIdForUser(_userId: string) {
  if (supportState() === 'error') throw new Error('Synthetic support fixture: branch unavailable');
  return supportState() === 'no-branch' ? null : 'fixture-branch';
 }
+export async function leaderboardSchoolForUser(userId: string) {
+ const branchId = await branchIdForUser(userId);
+ return branchId ? { status: 'eligible', branchId } : { status: 'unassigned' };
+}
 export async function weeklyLeaderboard(scope: 'global' | 'branch', branchId?: string, options?: { weeksAgo?: number }) {
  if (supportState() === 'error') throw new Error('Synthetic support fixture: leaderboard unavailable');
  if (scope === 'branch' && branchId !== 'fixture-branch') throw new Error('Unconfigured leaderboard branch');

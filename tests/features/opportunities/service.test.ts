@@ -360,6 +360,44 @@ describe('opportunity service', () => {
     expect(database.queries.flatMap(({ query }) => query.calls).some(([method]) => method === 'upsert')).toBe(false);
   });
 
+  it.each([
+    { kind: 'central' as const },
+    { kind: 'branch' as const, branchId: 'school-a' },
+  ])('creates and recovers only the same creator’s draft in the $kind workspace', async (scope) => {
+    const document = opportunity();
+    const saved = { id: document.id, status: 'draft', updated_at: '2026-11-20T00:00:00.000Z' };
+    const database = new DatabaseStub({ opportunities: [
+      { data: null, error: null }, { data: saved, error: null },
+    ] });
+    const options = { createOnly: true };
+    await expect(createOpportunityService({ database, requirePermission, scope }).saveDraft(document, options)).resolves.toEqual(saved);
+    const insert = database.queries[1].query.calls.find(([method]) => method === 'insert')?.[1] as Record<string, unknown>;
+    expect(insert).toMatchObject({
+      status: 'draft', created_by: actor.userId, ownership_kind: scope.kind,
+      owner_branch_id: scope.kind === 'branch' ? scope.branchId : null,
+    });
+
+    const stored = { ...insert, open_at: '2026-01-01T00:00:00+00:00' };
+    for (const concurrent of [false, true]) {
+      for (const [row, matches] of [
+        [stored, true],
+        [{ ...stored, owner_branch_id: 'school-b', ownership_kind: 'branch' }, false],
+        [{ ...stored, created_by: 'another-editor' }, false],
+        [{ ...stored, close_at: '2026-12-31T00:00:00.000001Z' }, false],
+      ] as const) {
+        const replay = new DatabaseStub({ opportunities: [
+          ...(concurrent ? [{ data: null, error: null }, { data: null, error: { code: '23505' } }] : []),
+          { data: row, error: null },
+        ] });
+        const result = createOpportunityService({ database: replay, requirePermission, scope }).saveDraft(document, options);
+        if (matches) await expect(result).resolves.toEqual(row);
+        else await expect(result).rejects.toMatchObject({ status: 409, code: 'OPPORTUNITY_DRAFT_CONFLICT' });
+        expect(replay.queries.flatMap(({ query }) => query.calls)
+          .filter(([method]) => method === 'update' || method === 'upsert')).toEqual([]);
+      }
+    }
+  });
+
   it('refuses guarded publication when the opportunity changed after the seed state check', async () => {
     const expected = opportunity();
     const changed = opportunity({ title: { vi: 'Da sua', en: 'Edited' } });

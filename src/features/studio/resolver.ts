@@ -3,6 +3,8 @@ import 'server-only';
 import { z } from 'zod';
 import { DIFFICULTIES, QUESTION_TYPES } from '@/content-engine/schema/questions';
 import { ResolverUnavailableError, type BankQuestionSnapshot, type ReferenceResolver } from '@/content-engine/validate/semantic/refs';
+import { canUseBankQuestion, contentOwnerScope } from '@/features/bank/ownership';
+import type { Scope } from '@/lib/authorization';
 
 type QueryResult<T> = { data: T; error: unknown | null };
 
@@ -60,7 +62,7 @@ export class SupabaseResolver implements ReferenceResolver {
     return supabaseService() as unknown as SupabaseQueryClient;
   }
 
-  private bankOwner?: Promise<{ kind: 'central' | 'branch'; branchId?: string } | null>;
+  private bankOwner?: Promise<Scope | null>;
 
   private async bankScope() {
     this.bankOwner ??= (async () => {
@@ -71,18 +73,9 @@ export class SupabaseResolver implements ReferenceResolver {
       if (error) throw new ResolverUnavailableError('bankCourseOwnership', { cause: error });
       // New-course imports have no persisted owner yet and may only reuse central banks.
       if (!data) return { kind: 'central' as const };
-      const row = object(data);
-      if (row?.ownership_kind === 'central' && row.owner_branch_id === null) return { kind: 'central' as const };
-      const branchId = string(row?.owner_branch_id);
-      return row?.ownership_kind === 'branch' && branchId ? { kind: 'branch' as const, branchId } : null;
+      return contentOwnerScope(object(data));
     })();
     return this.bankOwner;
-  }
-
-  private bankAllowed(row: Record<string, unknown> | null, scope: Awaited<ReturnType<SupabaseResolver['bankScope']>>): boolean {
-    if (!scope || !row) return false;
-    if (row.ownership_kind === 'central' && row.owner_branch_id === null) return true;
-    return scope.kind === 'branch' && row.ownership_kind === 'branch' && row.owner_branch_id === scope.branchId;
   }
 
   async bankQuestion(id: string): Promise<BankQuestionSnapshot | null> {
@@ -97,7 +90,7 @@ export class SupabaseResolver implements ReferenceResolver {
     if (!data) return null;
 
     const question = object(data);
-    if (!this.bankAllowed(question, scope)) return null;
+    if (!canUseBankQuestion(scope, question)) return null;
     const questionId = string(question?.id);
     const versionId = string(question?.current_version_id);
     const type = string(question?.type);
@@ -141,7 +134,7 @@ export class SupabaseResolver implements ReferenceResolver {
     if (error) throw new ResolverUnavailableError('bankCandidates', { cause: error });
     if (!Array.isArray(data)) return [];
     return data.flatMap((row) => {
-      if (!this.bankAllowed(object(row), scope)) return [];
+      if (!canUseBankQuestion(scope, object(row))) return [];
       const id = string(object(row)?.id);
       return id ? [id] : [];
     });

@@ -9,6 +9,8 @@ import { RENDERABLE_BLOCK_TYPES } from '@/content-engine/manifest/blocks';
 import { authoringSchemaSlice } from '../data/schema-slice';
 import { findDraftItem } from '../data/courses';
 import { mcpGetDraft } from '../db/read-only-database';
+import { canMcpEditCourse } from '../authz/course-access';
+import { readerWorkspace } from '@/features/studio/reader-source';
 import { StudioMcpError } from '../errors';
 import { defineStudioTool, type StudioToolContext } from './define-tool';
 import { commonOutput } from './output-common';
@@ -48,7 +50,7 @@ export function registerGetAuthoringSchemaTool(server: McpServer, context: Studi
     courseId: ({ courseId }) => courseId,
     nextStep: 'Fetch omittedDefs with def:<name> parts, merge their $defs into the document slice, then call validate_item on your proposal.',
     textOnlyFields: ['schema'],
-    handler: async ({ kind, courseId, itemId, languageMode, part, questionTypes, blockTypes }, { db }) => {
+    handler: async ({ kind, courseId, itemId, languageMode, part, questionTypes, blockTypes }, { db, actor }) => {
       if (courseId && languageMode || itemId && !courseId) throw new StudioMcpError('INVALID_INPUT');
       let contextForSchema;
       if (courseId) {
@@ -57,7 +59,8 @@ export function registerGetAuthoringSchemaTool(server: McpServer, context: Studi
           const item = findDraftItem(draft, itemId);
           if (!item || item.kind !== kind) throw new StudioMcpError('ITEM_NOT_FOUND');
         }
-        contextForSchema = profileContextFromDraft(draft, itemId ? { target: { id: itemId, kind } } : {});
+        const visible = await canMcpEditCourse(db, actor, courseId) ? draft : readerWorkspace(draft);
+        contextForSchema = profileContextFromDraft(visible, itemId ? { target: { id: itemId, kind } } : {});
       } else contextForSchema = staticProfileContext(languageMode ?? 'mono');
       return authoringSchemaSlice({
         kind, context: contextForSchema,

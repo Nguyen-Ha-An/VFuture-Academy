@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { academyBackend } from '../src/lib/identity/provider';
 import { createServiceClient } from '../src/lib/supabase/service-client';
 import { loadEnvironment } from './load-env';
 
@@ -14,23 +15,26 @@ function definitionFor(role: z.infer<typeof roleSchema>, branchId?: string): str
   return mapped;
 }
 const branchSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/);
+const grantSchema = z.object({
+  userId: z.string().uuid().toLowerCase(),
+  email: z.string().email(),
+  role: roleSchema,
+  branchId: branchSchema.optional(),
+});
 const serviceEnvironmentSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 });
 
 export function parseGrantRoleArguments(args: string[]) {
-  const [email, rawRole, branchId] = args;
-  const parsed = z.object({
-    email: z.string().email(),
-    role: roleSchema,
-    branchId: branchSchema.optional(),
-  }).safeParse({ email, role: rawRole, branchId });
-  if (!parsed.success) throw new Error('Usage: npm run grant-role -- <email> <role> [branchId]');
+  const [userId, email, role, branchId] = args;
+  const parsed = grantSchema.safeParse({ userId, email, role, branchId });
+  if (args.length > 4 || !parsed.success) throw new Error('Usage: npm run grant-role -- <verified-user-id> <email> <role> [branchId]');
   return parsed.data;
 }
 
 function serviceFromEnvironment() {
+  if (academyBackend() !== 'supabase') throw new Error('This operator command requires the Supabase identity backend.');
   const environment = serviceEnvironmentSchema.safeParse({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -39,40 +43,29 @@ function serviceFromEnvironment() {
   return createServiceClient(environment.data.NEXT_PUBLIC_SUPABASE_URL, environment.data.SUPABASE_SERVICE_ROLE_KEY);
 }
 
-export async function grantRoleByEmail(email: string, role: z.infer<typeof roleSchema>, branchId?: string, service = serviceFromEnvironment()) {
+export async function grantRole({ userId, email, role, branchId }: z.infer<typeof grantSchema>, service = serviceFromEnvironment()) {
   const roleDefinitionId = definitionFor(role, branchId);
-  const perPage = 1_000;
-  let page = 1;
-
-  while (true) {
-    const { data, error } = await service.auth.admin.listUsers({ page, perPage });
-    if (error) throw new Error('Unable to look up the requested account.', { cause: error });
-    const user = data.users.find((candidate) => candidate.email?.toLowerCase() === email.toLowerCase());
-    if (user) {
-      const { error: confirmationError } = await service.auth.admin.updateUserById(user.id, { email_confirm: true });
-      if (confirmationError) throw new Error('Unable to verify the requested account email.', { cause: confirmationError });
-      if (branchId) {
-        const { error: membershipError } = await service.from('branch_memberships')
-          .upsert({ user_id: user.id, branch_id: branchId, status: 'active' }, { onConflict: 'user_id,branch_id' });
-        if (membershipError) throw new Error('Unable to create the requested school membership.', { cause: membershipError });
-      }
-      const { error: roleError } = await service
-        .from('role_assignments')
-        .upsert({ user_id: user.id, role_definition_id: roleDefinitionId, branch_id: branchId ?? null }, { onConflict: 'user_id,role_definition_id,branch_id' });
-      if (roleError) throw new Error('Unable to grant the requested role.', { cause: roleError });
-      return;
-    }
-    if (data.users.length < perPage) break;
-    page += 1;
+  const { data, error } = await service.auth.admin.getUserById(userId);
+  if (error) throw new Error('Unable to look up the requested account.', { cause: error });
+  const user = data.user;
+  if (!user || user.id !== userId || user.email?.toLowerCase() !== email.toLowerCase()
+    || !user.email_confirmed_at || !Number.isFinite(Date.parse(user.email_confirmed_at))) {
+    throw new Error('The user ID and verified email must match the approved account.');
   }
-
-  throw new Error('No account exists for the requested email address.');
+  if (branchId) {
+    const { error: membershipError } = await service.from('branch_memberships')
+      .upsert({ user_id: userId, branch_id: branchId, status: 'active' }, { onConflict: 'user_id,branch_id', ignoreDuplicates: true });
+    if (membershipError) throw new Error('Unable to create the requested school membership.', { cause: membershipError });
+  }
+  const { error: roleError } = await service.from('role_assignments')
+    .upsert({ user_id: userId, role_definition_id: roleDefinitionId, branch_id: branchId ?? null }, { onConflict: 'user_id,role_definition_id,branch_id' });
+  if (roleError) throw new Error('Unable to grant the requested role.', { cause: roleError });
 }
 
 async function main(args: string[]) {
-  const { email, role, branchId } = parseGrantRoleArguments(args);
+  const grant = parseGrantRoleArguments(args);
   loadEnvironment();
-  await grantRoleByEmail(email, role, branchId);
+  await grantRole(grant);
   console.log('Role granted.');
 }
 

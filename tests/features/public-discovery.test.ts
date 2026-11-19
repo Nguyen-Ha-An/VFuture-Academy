@@ -5,7 +5,6 @@ vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn() }));
 
 import { createPublicDiscoveryService, type PublicDiscoveryDatabase } from '@/features/marketing/public-discovery';
-import { isPublicProjectionAsset, type PublicMediaDatabase } from '@/features/media/public-access';
 import { invalidatePublicCache } from '@/features/marketing/public-cache';
 
 type Result = { data: unknown; error: unknown | null; count?: number | null };
@@ -193,74 +192,6 @@ describe('public catalog out-of-range pagination', () => {
     ]);
     await expect(service.listResources('en', { page: 2 })).rejects.toMatchObject({ status: 503, code: 'PUBLIC_READ_UNAVAILABLE' });
     expect(requests).toHaveLength(3);
-  });
-});
-
-describe('anonymous public media access', () => {
-  it('allows resource body and attachment assets but never unrelated lesson assets', async () => {
-    const tables: Record<string, ReturnType<typeof query>> = {
-      courses: query({ data: [{ current_version_id: 'v1', status: 'published' }], error: null }),
-      course_version_outline: query({ data: [{ version_id: 'v1', access: { scope: 'global' }, meta: { cover: { assetId: 'asset_cover' } } }], error: null }),
-      resources: query({ data: [{ document: resourceDocument(), status: 'published', branch_scope: { scope: 'global' } }], error: null }),
-      projects: query({ data: [], error: null }),
-    };
-    const database = { from: vi.fn((table: string) => tables[table]) } as unknown as PublicMediaDatabase;
-    await expect(isPublicProjectionAsset(database, 'asset_body')).resolves.toBe(true);
-    await expect(isPublicProjectionAsset(database, 'asset_attachment')).resolves.toBe(true);
-    await expect(isPublicProjectionAsset(database, 'asset_lesson_draft')).resolves.toBe(false);
-    expect(tables.resources.eq).toHaveBeenCalledWith('status', 'published');
-    expect(tables.resources.eq).toHaveBeenCalledWith('branch_scope->>scope', 'global');
-  });
-
-  it('requires approved global project covers and a current published global course cover', async () => {
-    const tables: Record<string, ReturnType<typeof query>> = {
-      courses: query({ data: [{ current_version_id: 'current', status: 'published' }], error: null }),
-      course_version_outline: query({ data: [{ version_id: 'old', access: { scope: 'global' }, meta: { cover: { assetId: 'asset_old' } } }], error: null }),
-      resources: query({ data: [], error: null }),
-      projects: query({ data: [], error: null }),
-    };
-    const database = { from: vi.fn((table: string) => tables[table]) } as unknown as PublicMediaDatabase;
-    await expect(isPublicProjectionAsset(database, 'asset_old')).resolves.toBe(false);
-    expect(tables.projects.eq).toHaveBeenCalledWith('approved', true);
-    expect(tables.projects.eq).toHaveBeenCalledWith('branch_scope->>scope', 'global');
-    expect(tables.course_version_outline.eq).toHaveBeenCalledWith('access->>scope', 'global');
-    expect(tables.courses.eq).toHaveBeenCalledWith('status', 'published');
-  });
-
-  it('rejects an asset that is referenced only by a draft resource', async () => {
-    const tables: Record<string, ReturnType<typeof query>> = {
-      courses: query({ data: [], error: null }),
-      course_version_outline: query({ data: [], error: null }),
-      resources: query({ data: [{ document: resourceDocument(), status: 'draft', branch_scope: { scope: 'global' } }], error: null }),
-      projects: query({ data: [], error: null }),
-    };
-    const database = { from: vi.fn((table: string) => tables[table]) } as unknown as PublicMediaDatabase;
-    await expect(isPublicProjectionAsset(database, 'asset_body')).resolves.toBe(false);
-  });
-
-  it('does not turn a public media authorization outage into a missing asset', async () => {
-    const tables: Record<string, ReturnType<typeof query>> = {
-      courses: query({ data: null, error: { message: 'offline' } }),
-      resources: query({ data: [], error: null }),
-      projects: query({ data: [], error: null }),
-    };
-    const database = { from: vi.fn((table: string) => tables[table]) } as unknown as PublicMediaDatabase;
-    await expect(isPublicProjectionAsset(database, 'asset_cover')).rejects.toMatchObject({ status: 503, code: 'PUBLIC_MEDIA_UNAVAILABLE' });
-  });
-
-  it('finds an eligible public asset after the first scan page', async () => {
-    const filler = Array.from({ length: 200 }, (_, index) => ({
-      document: { ...resourceDocument(), id: `guide-${index}`, body: { blocks: [{ type: 'paragraph', content: [{ text: 'Public' }] }] }, attachments: [] }, status: 'published', branch_scope: { scope: 'global' },
-    }));
-    const tables: Record<string, ReturnType<typeof query>> = {
-      courses: query({ data: [], error: null }),
-      course_version_outline: query({ data: [], error: null }),
-      resources: query({ data: [...filler, { document: resourceDocument(), status: 'published', branch_scope: { scope: 'global' } }], error: null }),
-      projects: query({ data: [], error: null }),
-    };
-    const database = { from: vi.fn((table: string) => tables[table]) } as unknown as PublicMediaDatabase;
-    await expect(isPublicProjectionAsset(database, 'asset_body')).resolves.toBe(true);
-    expect(tables.resources.range).toHaveBeenNthCalledWith(2, 200, 399);
   });
 });
 

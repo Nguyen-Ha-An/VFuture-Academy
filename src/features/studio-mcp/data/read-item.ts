@@ -29,7 +29,7 @@ export async function mcpGetItem(
   pointer: string;
   itemHash?: string;
   draftUpdatedAt: string | null;
-  revision: string;
+  revision?: string;
   bytes: number;
   redacted: boolean;
   redactedPaths: string[];
@@ -92,8 +92,9 @@ export async function mcpGetItem(
     kind: item.kind, moduleId: item.moduleId, document, pointer: selectedPointer,
     ...(itemHash ? { itemHash } : {}),
     draftUpdatedAt: course.draft.updatedAt,
-    revision: course.draft.revision ?? '',
+    ...(course.canEdit ? { revision: course.draft.revision ?? '' } : {}),
     bytes, redacted: !course.canEdit, redactedPaths, canEdit: course.canEdit,
-    courseLanguages: languages, defaultLanguage, legacyPaths,
+    courseLanguages: languages, defaultLanguage,
+    legacyPaths: legacyPaths.filter(path => !pointsIntoRedaction(path, redactedPaths)),
   };
 }

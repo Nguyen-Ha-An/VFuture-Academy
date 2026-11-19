@@ -47,6 +47,16 @@ describe('exam attachment reservation admission', () => {
   it('derives course and item from the owned active pinned attempt', async () => {
     await expect(authorizeExamUpload('learner', input)).resolves.toEqual({ courseId: 'course', itemId: 'exam' });
   });
+  it('allows grouped uploads only while their pinned page is current', async () => {
+    const current = state.attempt as ExamAttemptRecord;
+    current.gradingSnapshot = { exam: { navigation: 'sequential', layout: 'one_per_page' } } as ExamAttemptRecord['gradingSnapshot'];
+    current.questionSet = structuredClone(current.questionSet);
+    current.questionSet.sections[0].questionIds.unshift('earlier');
+    current.sequentialStep = 0;
+    await expect(authorizeExamUpload('learner', input)).rejects.toMatchObject({ code: 'EXAM_PAGE_CHANGED' });
+    current.sequentialStep = 1;
+    await expect(authorizeExamUpload('learner', input)).resolves.toEqual({ courseId: 'course', itemId: 'exam' });
+  });
   it('rejects foreign owners, questions and suspended enrollment membership', async () => {
     await expect(authorizeExamUpload('other', input)).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(authorizeExamUpload('learner', { ...input, questionId: 'foreign' })).rejects.toMatchObject({ code: 'FORBIDDEN' });

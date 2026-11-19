@@ -6,8 +6,14 @@ describe('historical exam review runtime', () => {
   it('preserves authorized asset resolution and authored URL media', () => {
     const runtime = createHistoricalReviewRuntime('vi',context);
     expect(runtime.locale).toBe('vi');
-    expect(runtime.resolveMedia({ assetId: 'asset/with spaces' })).toBe('/api/v1/media/asset%2Fwith%20spaces?historicalExamAttemptId=00000000-0000-4000-8000-000000000003&courseId=course-one&itemId=exam-one');
+    expect(runtime.resolveMedia({ assetId: 'asset/with spaces' })).toBe('/api/v1/media/asset%2Fwith%20spaces?historicalExamAttemptId=00000000-0000-4000-8000-000000000003&courseId=course-one&itemId=exam-one&locale=vi');
     expect(runtime.resolveMedia({ url: 'https://example.com/diagram.png' })).toBe('https://example.com/diagram.png');
+  });
+
+  it('uses the language of released feedback when the interface language differs', () => {
+    const runtime = createHistoricalReviewRuntime('vi', context, 'en');
+    expect(new URL(runtime.resolveMedia({ assetId: 'explanation-en' }), 'https://example.test').searchParams.get('locale')).toBe('en');
+    expect(runtime.locale).toBe('vi');
   });
 
   it('cannot create answers, submissions or uploaded assets', async () => {

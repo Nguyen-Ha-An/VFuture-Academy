@@ -6,7 +6,7 @@ import { supabaseService } from '@/lib/supabase/server';
 import {
   branchCanAccess,
   databaseFailure,
-  loadBranchId,
+  loadAudienceBranchId,
   recordOf,
   recordsOf,
   type LearnerDatabase,
@@ -44,7 +44,9 @@ async function findEnrollment(database: LearnerDatabase, actor: Actor, courseId:
     .eq('course_id', courseId)
     .maybeSingle();
   databaseFailure(result.error, 'Enrollment could not be loaded');
-  return recordOf(result.data);
+  const enrollment = recordOf(result.data);
+  if (enrollment) await assertEnrollmentMembershipAccess(actor, enrollment, database);
+  return enrollment;
 }
 
 async function requireVersionEligibility(
@@ -154,12 +156,10 @@ export async function enroll(actor: Actor, courseId: string) {
   const versionId = course.current_version_id;
 
   const existing = await findEnrollment(database, actor, courseId);
-  if(existing)await assertEnrollmentMembershipAccess(actor,existing,database);
   if (existing && isEnrolled(existing)) return enrollmentResult(existing);
   if (existing && existing.status !== 'dropped') enrollmentConflict();
 
-  const branchId = await loadBranchId(database, actor.userId);
-  await assertEnrollmentMembershipAccess(actor,{branch_scope_known:branchId!==null,branch_id:branchId},database);
+  const branchId = await loadAudienceBranchId(database, actor, 'deny');
   await requireVersionEligibility(database, actor, courseId, versionId, branchId, false);
 
   const reactivate = async (dropped: Record<string, unknown>) => {

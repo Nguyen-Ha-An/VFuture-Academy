@@ -7,6 +7,23 @@ import { createMeService } from '@/features/me/service';
 import { SupabaseStub, successful } from '../learner/test-kit';
 
 describe('learner profile summary', () => {
+  it.each([
+    ['suspended', { status: 'suspended' }, { status: 'suspended' }],
+    ['active', { status: 'active' }, { status: 'eligible', branchId: 'branch-1' }],
+    ['legacy', null, { status: 'eligible', branchId: 'branch-1' }],
+  ] as const)('keeps the primary school identity and resolves %s leaderboard membership independently', async (_label, membership, board) => {
+    const database = new SupabaseStub({
+      profiles: [successful({ branch_id: 'branch-1' }), successful({ branch_id: 'branch-1' })],
+      branch_memberships: [successful(membership)],
+    });
+    const service = createMeService({ database });
+    await expect(service.branchIdForUser('learner-1')).resolves.toBe('branch-1');
+    await expect(service.leaderboardSchoolForUser('learner-1')).resolves.toEqual(board);
+    expect(database.queriesFor('branch_memberships')[0].operations).toEqual(expect.arrayContaining([
+      ['eq', 'user_id', 'learner-1'], ['eq', 'branch_id', 'branch-1'],
+    ]));
+  });
+
   it('returns the profile and completion counts without exposing role rows', async () => {
     const database = new SupabaseStub({
       profiles: [successful({

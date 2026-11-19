@@ -5,7 +5,7 @@ it('preserves the exact combined SQL and digest with ordered owned-file steps',(
   const artifact=buildAzureSchema();
   expect(artifact.steps[0].id).toBe('bootstrap.sql');
   expect(artifact.steps.slice(1,1+artifact.receipt.migrations.length).map(step=>step.id)).toEqual(artifact.receipt.migrations.map(migration=>`supabase/migrations/${migration.file}`));
-  expect(artifact.steps.slice(-5).map(step=>step.id)).toEqual(['storage.sql','src/lib/identity/schema.sql','src/lib/identity/admin-schema.sql','media-delete.sql','account-access.sql']);
+  expect(artifact.steps.slice(-7).map(step=>step.id)).toEqual(['storage.sql','src/lib/identity/schema.sql','src/lib/identity/admin-schema.sql','media-delete.sql','account-access.sql','src/lib/identity/recovery-sessions.sql','owner-reservations.sql']);
   expect(artifact.steps.map(step=>step.sql).join('\n\n')).toBe(artifact.sql);
   expect(createHash('sha256').update(artifact.sql).digest('hex')).toBe(artifact.receipt.schemaSha256);
 });

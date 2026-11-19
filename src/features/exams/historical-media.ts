@@ -1,15 +1,11 @@
 import type { ExamService } from './service';
+import { referencesAsset } from '@/features/media/references';
 import type { ExamActor } from './types';
 
 export type HistoricalExamMediaContext={attemptId:string;courseId:string;itemId:string};
 type Asset={ownerId:string;bucket:string};
 function record(value:unknown):Record<string,unknown>|null {
   return typeof value==='object' && value!==null && !Array.isArray(value) ? value as Record<string,unknown> : null;
-}
-function learnerReferences(value:unknown,assetId:string):boolean {
-  if(Array.isArray(value)) return value.some(entry=>learnerReferences(entry,assetId));
-  const row=record(value);
-  return row!==null && (row.assetId===assetId || Object.values(row).some(entry=>learnerReferences(entry,assetId)));
 }
 function submittedAttachment(value:unknown,assetId:string):boolean {
   if(Array.isArray(value)) return value.some(entry=>submittedAttachment(entry,assetId));
@@ -24,6 +20,6 @@ export async function canReadHistoricalExamMedia(
   service:Pick<ExamService,'historicalReview'>,actor:ExamActor,context:HistoricalExamMediaContext,assetId:string,asset:Asset,
 ):Promise<boolean> {
   const historical=await service.historicalReview(actor,context.attemptId,context.courseId,context.itemId);
-  if(asset.bucket==='media') return learnerReferences(historical.learner,assetId);
+  if(asset.bucket==='media') return referencesAsset(historical.learner,assetId) || referencesAsset(historical.review.revealed,assetId);
   return asset.bucket==='submissions' && asset.ownerId===actor.id && submittedAttachment(historical.review.answers,assetId);
 }

@@ -180,14 +180,23 @@ describe('content review service', () => {
 
   it('loads exact reviewed and published snapshots only for a Central reviewer', async () => {
     const reviewId = '00000000-0000-4000-8000-000000000010';
-    const db = database({ review: { id: reviewId }, reviewed: { title: 'Draft' }, published: { title: 'Live' } });
+    const db = database({ review: { id: reviewId }, reviewed_source: { title: 'Draft', correctAnswer: 'reviewed-key' }, published_snapshot: { source: { title: 'Live', correctAnswer: 'published-key' } } });
     const service = createContentReviewService({ database: db, actor: centralActor, scope: { kind: 'central' } });
 
-    await expect(service.reviewPreview(reviewId)).resolves.toMatchObject({ reviewed: { title: 'Draft' }, published: { title: 'Live' } });
+    await expect(service.reviewPreview(reviewId)).resolves.toMatchObject({ reviewed_source: { correctAnswer: 'reviewed-key' }, published_snapshot: { source: { correctAnswer: 'published-key' } } });
     expect(db.calls[0]).toEqual(['cms_get_review_preview', { p_actor_user_id: centralActor.userId, p_review_id: reviewId }]);
 
     const branchService = createContentReviewService({ database: db, actor: schoolActor, scope: { kind: 'branch', branchId: 'ans' } });
     await expect(branchService.reviewPreview(reviewId)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('lists assessment reviews without exposing source fingerprints to readers', async () => {
+    const row = { id: reviewId, content_type: 'course', ownership_kind: 'branch', owner_branch_id: 'ans', checksum: 'source-fingerprint', status: 'pending' };
+    const db = database([row]);
+    const reader = createContentReviewService({ database: db, actor: schoolActor, scope: { kind: 'branch', branchId: 'ans' } });
+    expect(await reader.listReviews()).toEqual([{ id: reviewId, content_type: 'course', ownership_kind: 'branch', owner_branch_id: 'ans', status: 'pending' }]);
+    const reviewer = createContentReviewService({ database: db, actor: centralActor, scope: { kind: 'central' } });
+    expect(await reviewer.listReviews()).toEqual([row]);
   });
 
   it('loads one content workflow through the server-owned workflow projection', async () => {

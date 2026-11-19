@@ -1,11 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { compileBankQuestion, compileCourse, type GradingItem } from '@/content-engine/compile';
 import { FIXTURES, fixtureResolver } from '@/content-engine/fixtures';
 import type { Locale } from '@/content-engine/schema/common';
+import { contentOwnerScope } from '@/features/bank/ownership';
 import type { BankListQuery, BankSource } from '@/features/exams/types';
 import { drawPools } from '@/features/exams/pools';
 
 const locales: Locale[] = ['vi', 'en'];
+const courseOwner = { kind: 'central' } as const;
 
 const bank: BankSource = {
   async listPublished(query: BankListQuery) {
@@ -32,8 +34,8 @@ beforeAll(async () => {
 
 describe('drawPools', () => {
   it('is deterministic, creates section-composite ids, and excludes inline question ids', async () => {
-    const first = await drawPools(sections, bank, 'attempt-42', ['s2/ai-basics-003']);
-    const again = await drawPools(sections, bank, 'attempt-42', ['s2/ai-basics-003']);
+    const first = await drawPools(sections, bank, 'attempt-42', courseOwner, ['s2/ai-basics-003']);
+    const again = await drawPools(sections, bank, 'attempt-42', courseOwner, ['s2/ai-basics-003']);
 
     expect(first).toEqual(again);
     expect(first.s2).toHaveLength(2);
@@ -44,13 +46,13 @@ describe('drawPools', () => {
   });
 
   it('throws the typed pool error when exclusions leave too few published candidates', async () => {
-    await expect(drawPools(sections, bank, 'attempt-42', [
+    await expect(drawPools(sections, bank, 'attempt-42', courseOwner, [
       'ai-basics-003', 'ai-basics-004', 'ai-basics-005',
     ])).rejects.toMatchObject({ code: 'POOL_UNSATISFIABLE' });
   });
 
   it('never draws the same bank question into two sections of one attempt', async () => {
-    const [candidate] = await bank.listPublished({ from: ['bank:ai-basics-003'] });
+    const [candidate] = await bank.listPublished({ courseOwner, from: ['bank:ai-basics-003'] });
     const filter = structuredClone(sections.find((section) => section.pools.length)?.pools[0]?.filter);
     expect(candidate).toBeDefined();
     expect(filter).toBeDefined();
@@ -72,7 +74,26 @@ describe('drawPools', () => {
       },
     };
 
-    await expect(drawPools(sharedSections, oneQuestionBank, 'attempt-shared-filter'))
+    await expect(drawPools(sharedSections, oneQuestionBank, 'attempt-shared-filter', courseOwner))
       .rejects.toMatchObject({ code: 'POOL_UNSATISFIABLE', details: { sectionId: 'second', available: 0 } });
+  });
+
+  it.each([
+    null,
+    { ownership_kind: 'branch', owner_branch_id: null },
+    { ownership_kind: 'branch', owner_branch_id: ' ' },
+    { ownership_kind: 'central', owner_branch_id: 'school-a' },
+  ])('rejects an unknown or inconsistent course owner before a pool reads the bank: %j', async (row) => {
+    const source = { listPublished: vi.fn() };
+    await expect(drawPools(sections, source, 'attempt-unknown', contentOwnerScope(row)))
+      .rejects.toMatchObject({ code: 'INVALID_EXAM_CONFIGURATION' });
+    expect(source.listPublished).not.toHaveBeenCalled();
+  });
+
+  it('needs no bank access for an inline-only exam', async () => {
+    const source = { listPublished: vi.fn() };
+    const inlineSections = sections.map((section) => ({ ...section, pools: [] }));
+    await expect(drawPools(inlineSections, source, 'attempt-inline', null)).resolves.toEqual({ s1: [], s2: [] });
+    expect(source.listPublished).not.toHaveBeenCalled();
   });
 });

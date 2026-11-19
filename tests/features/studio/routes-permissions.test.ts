@@ -201,7 +201,7 @@ describe('Studio route authorization boundary', () => {
       ...source.matchAll(/assertAdminPermission\s*\(\s*[^,]+,\s*['"]([^'"]+)['"]\s*\)/g),
       ...source.matchAll(/scopedContentContext\s*\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*['"]([^'"]+)['"]/g),
       ...source.matchAll(/typedContentContext\s*\(\s*[^,]+,\s*[^,]+,\s*['"]([^'"]+)['"]/g),
-    ].map((match) => match[1]);
+    ].sort((left, right) => left.index - right.index).map((match) => match[1]);
     expect(permissions).toEqual(expectedPermissions);
   });
 

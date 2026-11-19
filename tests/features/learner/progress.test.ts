@@ -143,13 +143,18 @@ describe('learner progress service', () => {
     const client = new SupabaseStub({
       enrollments: [successful(activeEnrollment), successful(activeEnrollment)],
       course_version_outline: [successful({ outline: { modules: [{ items: [{ id: 'lesson-1', type: 'lesson' }] }] } }), successful({ outline: { modules: [{ items: [{ id: 'lesson-1', type: 'lesson' }] }] } })],
-      course_version_item_renders: [successful([{ locale: 'en', payload: { id: 'lesson-1', kind: 'lesson', blocks: [{ type: 'quiz', id: 'assessment', settings: { feedback } }] } }])],
+      course_version_item_renders: [successful([{ locale: 'en', payload: { id: 'lesson-1', kind: 'lesson', blocks: [{
+        type: 'quiz', id: 'assessment', settings: { feedback },
+        questions: [{ id: 'q1', options: [{ id: 'a', feedback: 'private option feedback' }], optionFeedback: { a: 'private grader feedback' } }],
+      }] } }])],
       course_version_items: [successful({ grading: { activities: [{ id: 'assessment', type: 'quiz' }], quizzes: { assessment: { feedback } } } })],
       quiz_attempts: [successful([])],
       activity_state: [successful([{ block_id: 'assessment', state, completed: false }, { block_id: 'reflection', state: { parts: { draft: 'keep' }, last: { results: ['draft'] } }, completed: false }]), successful({ block_id: 'assessment', state, completed: false })],
     });
     mocks.supabaseService.mockReturnValue(client);
     const read = await getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en');
+    expect(read.item).toMatchObject({ blocks: [{ settings: { feedback }, questions: [{ id: 'q1', options: [{ id: 'a' }] }] }] });
+    expect(JSON.stringify(read.item)).not.toMatch(/private option feedback|private grader feedback/);
     expect(read.activityState.reflection).toMatchObject({ parts: { draft: 'keep' }, last: { results: ['draft'] } });
     const written = await putBlockState(actor, 'ai-foundations', 'lesson-1', 'assessment', state, false);
     const insert = client.queriesFor('activity_state')[1].operations.find(([op]) => op === 'upsert')?.[1] as { state: unknown };
@@ -313,10 +318,16 @@ describe('learner progress service', () => {
     expect(client.queriesFor('course_version_item_renders')).toHaveLength(0);
   });
 
-  it('loads a current item for a non-enrolled learner whose branch can access the course', async () => {
+  it.each([
+    ['an open course', null, { enrollment: 'open' }],
+    ['an invite-only course', null, { enrollment: 'invite' }],
+    ['a course with prerequisites', null, { enrollment: 'open', prerequisites: [{ type: 'course_completion', courseId: 'intro' }] }],
+    ['a dropped enrollment', { ...activeEnrollment, status: 'dropped' }, { enrollment: 'open' }],
+  ])('requires enrollment before reading a full item from %s', async (_label, enrollment, manifest) => {
     const client = new SupabaseStub({
-      enrollments: [successful(null)],
+      enrollments: [successful(enrollment)],
       courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
+      course_versions: [successful({ id: 'version-current', manifest })],
       profiles: [successful({ branch_id: 'branch-1' })],
       course_version_outline: [successful({
         access: { scope: 'branches', branchIds: ['branch-1'] },
@@ -327,27 +338,31 @@ describe('learner progress service', () => {
     });
     mocks.supabaseService.mockReturnValue(client);
 
-    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).resolves.toMatchObject({
-      courseVersionId: 'version-current', item: { id: 'lesson-1' }, activityState: {},
+    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).rejects.toMatchObject({
+      status: 403, code: 'FORBIDDEN',
     });
+    expect(client.queries.map(({ table }) => table)).toEqual(['enrollments']);
   });
 
-  it('returns not found for a non-enrolled learner outside a branch-scoped course', async () => {
+  it('keeps completed learners on their membership-eligible pin after a course update', async () => {
     const client = new SupabaseStub({
-      enrollments: [successful(null)],
+      enrollments: [successful({ ...activeEnrollment, status: 'completed', branch_scope_known: true, branch_id: 'former-school' })],
+      branch_memberships: [successful({ status: 'active' })],
       courses: [successful({ id: 'ai-foundations', status: 'published', current_version_id: 'version-current' })],
-      profiles: [successful({ branch_id: 'branch-1' })],
       course_version_outline: [successful({
-        access: { scope: 'branches', branchIds: ['branch-2'] },
+        access: { scope: 'branches', branchIds: ['former-school'] },
         outline: { modules: [{ id: 'module-1', items: [{ id: 'lesson-1', type: 'lesson', required: true }] }] },
       })],
+      course_version_item_renders: [successful([{ locale: 'en', payload: { id: 'lesson-1', kind: 'lesson' } }])],
     });
     mocks.supabaseService.mockReturnValue(client);
 
-    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).rejects.toMatchObject({
-      status: 404, code: 'COURSE_NOT_FOUND',
+    await expect(getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en')).resolves.toMatchObject({
+      courseVersionId: 'version-1', item: { id: 'lesson-1' },
     });
-    expect(client.queriesFor('course_version_item_renders')).toHaveLength(0);
+    expect(client.queriesFor('course_version_item_renders')[0].operations).toContainEqual(['eq', 'version_id', 'version-1']);
+    expect(client.queriesFor('courses')).toHaveLength(0);
+    expect(client.queriesFor('profiles')).toHaveLength(0);
   });
 
   it('does not downgrade an already completed lesson when marking it viewed', async () => {

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { compileCourse } from '../../../src/content-engine/compile';
-import { fixtureResolver } from '../../../src/content-engine/fixtures';
+import { FIXTURES, fixtureResolver } from '../../../src/content-engine/fixtures';
 import minimalManifest from '../../../src/content-engine/fixtures/minimal/course.json';
 
 type Snapshot = { manifest: unknown; items: Record<string, unknown>; baseVersionId?: string | null };
@@ -27,8 +27,10 @@ async function mockStudioApi(page: Page) {
     } }) });
   });
   await page.route('**/api/v1/studio/courses/minimal/draft/preview', async route => {
-    const body = route.request().postDataJSON() as Snapshot & { selectedDocId: string; locale: 'vi' | 'en' };
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: await preview(body, body.selectedDocId, body.locale) }) });
+    const body = route.request().postDataJSON() as Snapshot & { stored?: boolean; selectedRef: { kind: string; id?: string }; selectedDocId: string; locale: 'vi' | 'en' };
+    const source = body.stored ? (latest ?? FIXTURES.minimal) : body;
+    const selectedDocId = body.selectedRef.kind === 'course' ? 'manifest' : body.selectedRef.id!;
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: await preview(source, selectedDocId, body.locale) }) });
   });
   await page.route('**/api/v1/studio/courses/minimal/draft/workspace', async route => {
     saves += 1;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -19,7 +19,7 @@ import type { ExamClient } from './client';
 import { ExamPalette, hasAnswer } from './ExamPalette';
 import { createPendingExamDraftStore } from './pending-draft';
 import type { PendingExamDraftStore } from './pending-draft';
-import type { LearnerExam } from './types';
+import { examSections, type LearnerExam } from './types';
 import { useAutosave, type TerminalResolution } from './useAutosave';
 import { useExamTimer } from './useExamTimer';
 import { useIntegrityLog } from './useIntegrityLog';
@@ -29,6 +29,7 @@ import { differingOwnAnswers, isTerminalExamStatus, type ExamAnswerRecovery } fr
 import { canonicalAnswers } from '@/features/learning/answer-canonical';
 import { OwnAnswerDownload } from './ExamAnswerRecoveryNotice';
 import { examUploadRuntime } from './exam-upload-runtime';
+import { attemptMediaRuntime } from './attempt-media-runtime';
 
 registerAll();
 
@@ -48,10 +49,11 @@ export interface ExamPlayerProps {
 
 export function ExamPlayer(props: ExamPlayerProps) {
   const t = useTranslations('exam.player');
-  if (props.exam.sections.length === 0) {
+  const missingPage = props.exam.settings.navigation === 'sequential' && props.exam.settings.layout !== 'single_page' && !props.attempt.page;
+  if (props.exam.sections.length === 0 || missingPage) {
     return (
       <div className="mx-auto max-w-xl rounded-md border border-destructive bg-card p-6 text-center">
-        <p role="alert">{t('emptyExam')}</p>
+        <p role="alert">{t(missingPage ? 'reloadPage' : 'emptyExam')}</p>
       </div>
     );
   }
@@ -68,7 +70,7 @@ function formatDuration(totalSeconds: number): string {
     : `${two(minutes)}:${two(seconds)}`;
 }
 
-function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerminal, onRecoverySnapshot, hasUnavailableRecovery = false, draftStore: providedDraftStore, headingLevel = 1, hideTitle = false }: ExamPlayerProps) {
+function ExamPlayerContent({ exam: initialExam, attempt: initialAttempt, client, runtime: baseRuntime, onSubmitted, onTerminal, onRecoverySnapshot, hasUnavailableRecovery = false, draftStore: providedDraftStore, headingLevel = 1, hideTitle = false }: ExamPlayerProps) {
   const t = useTranslations('exam.player');
   const flow = useTranslations('exam.flow');
   const recoveryCopy = useTranslations('exam.recovery');
@@ -78,17 +80,33 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   const SectionTitle = headingLevel === 1 ? 'h2' : 'h3';
   const sectionLevel = headingLevel === 1 ? 2 : 3;
   const QuestionTitle = headingLevel === 1 ? 'h3' : 'h4';
+  const [advancedPage, setAdvancedPage] = useState<{ attempt: ExamStartResult; sections: LearnerExam['sections'] } | null>(null);
+  const attempt = advancedPage?.attempt ?? initialAttempt;
+  const exam = advancedPage ? { ...initialExam, sections: advancedPage.sections } : initialExam;
+  const runtime = useMemo(() => attemptMediaRuntime(baseRuntime, attempt.attemptId, exam.sections),
+    [baseRuntime, attempt.attemptId, exam.sections]);
+  const page = attempt.page;
+  const offset = page?.questionOffset ?? 0;
   const entries = exam.sections.flatMap((section, sectionIndex) =>
     section.questions.map((question) => ({ question, sectionIndex })),
   );
   const questions = entries.map((entry) => entry.question);
-  const [answerGroups] = useState(() => Object.fromEntries(exam.sections.flatMap((section) => (
+  const answerGroups = useMemo(() => Object.fromEntries(exam.sections.flatMap((section) => (
     section.questions.map((question) => [question.id, section.id])
-  ))));
-  const [draftStore] = useState(() => providedDraftStore ?? createPendingExamDraftStore(attempt.attemptId));
-  const [pendingDraft] = useState(() => draftStore.read());
+  ))), [exam.sections]);
+  const [journal] = useState(() => providedDraftStore ?? createPendingExamDraftStore(attempt.attemptId));
+  const [pendingDraft] = useState(() => journal.read());
   const questionIds = new Set(questions.map(({ id }) => id));
   const restoredDraft = Object.fromEntries(Object.entries(pendingDraft ?? {}).filter(([id]) => questionIds.has(id)));
+  const [initialHeld] = useState(() => page ? Object.fromEntries(
+    Object.entries(differingOwnAnswers(pendingDraft ?? {}, attempt.answers)).filter(([id]) => !questionIds.has(id))
+  ) : {});
+  const heldDraft = useRef(initialHeld);
+  const [draftStore] = useState<PendingExamDraftStore>(() => page ? {
+    ...journal,
+    write: answers => journal.write({ ...heldDraft.current, ...answers }),
+    clear: () => { journal.write(heldDraft.current); },
+  } : journal);
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => ({
     ...structuredClone(attempt.answers),
     ...restoredDraft,
@@ -121,6 +139,9 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   }, []);
   const [sectionSubmitPending, setSectionSubmitPending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
+  const [pageError, setPageError] = useState(false);
+  const [pageUncertain, setPageUncertain] = useState(false);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const submittingRef = useRef(false);
@@ -131,7 +152,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   const palettePanelRef = useRef<HTMLDivElement>(null);
   const paletteToggleRef = useRef<HTMLButtonElement>(null);
   const focusTargetRef = useRef<'question' | 'section' | null>(null);
-  const [flagged, setFlagged] = useState<Set<string>>(() => new Set());
+  const [flagged, setFlagged] = useState<Set<number>>(() => new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
   const current = entries[currentIndex];
   const currentSectionIndex = current?.sectionIndex ?? 0;
@@ -142,7 +163,9 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
     : exam.settings.layout === 'section_per_page'
       ? entries.filter((entry) => entry.sectionIndex === currentSectionIndex)
       : current ? [current] : [];
-  const unansweredCount = questions.filter((question) => !hasAnswer(answers[question.id])).length;
+  const questionCount = page?.questionCount ?? questions.length;
+  const answeredCount = (page?.answeredBefore.length ?? 0) + questions.filter(q => hasAnswer(answers[q.id])).length;
+  const unansweredCount = questionCount - answeredCount;
   const {
     flushBeforeSubmit,
     fullscreenRetry,
@@ -174,12 +197,12 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
         resumeIntegrity();
         return { confirmed: false };
       }
-      const own = differingOwnAnswers(answersRef.current, observed.answers);
+      const own = differingOwnAnswers({ ...heldDraft.current, ...answersRef.current }, observed.answers);
       const preserveRecovery = Object.keys(own).length > 0;
       if (preserveRecovery) {
-        const retained = draftStore.write(own);
+        const retained = journal.write(own);
         onRecoverySnapshot?.({ attemptId: attempt.attemptId, attemptNo: attempt.attemptNo, answers: own, verified: true, storageUnavailable: !retained });
-      } else draftStore.clear();
+      } else journal.clear();
       terminalTransitionRef.current = true;
       unknownOutcomeRef.current = false;
       setSubmitOutcomeUnknown(false);
@@ -198,9 +221,11 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
       resumeIntegrity();
       return { confirmed: false };
     } finally { if (activePlayerRef.current) setCheckingTerminal(false); }
-  }, [attempt.attemptId, attempt.attemptNo, client, draftStore, onRecoverySnapshot, onTerminal, resumeIntegrity]);
+  }, [attempt.attemptId, attempt.attemptNo, client, journal, onRecoverySnapshot, onTerminal, resumeIntegrity]);
   const {
     closedGroups,
+    adoptAcceptedAnswers,
+    pendingDraft: unacknowledgedAnswers,
     markDirty,
     markSubmitted,
     lastSaveErrorCode,
@@ -221,13 +246,15 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   });
 
   const answerTooLarge = lastSaveErrorCode() === 'ANSWER_TOO_LARGE';
+  const pageChanged = lastSaveErrorCode() === 'EXAM_PAGE_CHANGED';
+  const pageLocked = advancing || pageUncertain || pageChanged;
   const oversizedIndex = entries.findIndex(entry => entry.question.id === oversizedQuestionId);
-  const sizeError = oversizedIndex >= 0 ? t('answerTooLarge', { number: oversizedIndex + 1 }) : t('answerTooLargeGeneric');
+  const sizeError = oversizedIndex >= 0 ? t('answerTooLarge', { number: offset + oversizedIndex + 1 }) : t('answerTooLargeGeneric');
   const oversizedGroup = oversizedIndex >= 0 && entries[oversizedIndex].question.type === 'question_group';
   const recoveryAtRisk = recoveryUnavailable || hasUnavailableRecovery;
   const ownRecoveryCopy = useCallback((): ExamAnswerRecovery => ({
     attemptId: attempt.attemptId, attemptNo: attempt.attemptNo,
-    answers: canonicalAnswers(answersRef.current), verified: false, storageUnavailable: true,
+    answers: canonicalAnswers({ ...heldDraft.current, ...answersRef.current }), verified: false, storageUnavailable: true,
   }), [attempt.attemptId, attempt.attemptNo]);
   useEffect(() => { unavailableRecoveryRef.current = recoveryAtRisk; }, [recoveryAtRisk]);
   useEffect(() => {
@@ -299,7 +326,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
       setSubmitOutcomeUnknown(false);
       setTerminalUnconfirmed(false);
       if (incompleteSubmissionRef.current) {
-        onRecoverySnapshot?.({ attemptId: attempt.attemptId, attemptNo: attempt.attemptNo, answers: canonicalAnswers(answersRef.current), verified: false, storageUnavailable: recoveryUnavailable });
+        onRecoverySnapshot?.({ attemptId: attempt.attemptId, attemptNo: attempt.attemptNo, answers: canonicalAnswers({ ...heldDraft.current, ...answersRef.current }), verified: false, storageUnavailable: recoveryUnavailable });
       }
       markSubmitted({ preserveRecovery: incompleteSubmissionRef.current });
       confirmedResultRef.current = result;
@@ -393,11 +420,11 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
     };
   }, []);
 
-  const toggleFlag = (questionId: string) => {
+  const toggleFlag = (number: number) => {
     setFlagged((previous) => {
       const next = new Set(previous);
-      if (next.has(questionId)) next.delete(questionId);
-      else next.add(questionId);
+      if (next.has(number)) next.delete(number);
+      else next.add(number);
       return next;
     });
   };
@@ -408,8 +435,8 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
     entries.findIndex((entry) => entry.sectionIndex === sectionIndex);
   const isSinglePage = exam.settings.layout === 'single_page';
   const isSectionPage = exam.settings.layout === 'section_per_page';
-  const atStart = isSectionPage ? currentSectionIndex === 0 : currentIndex === 0;
-  const atEnd = isSectionPage
+  const atStart = page ? page.index === 0 : isSectionPage ? currentSectionIndex === 0 : currentIndex === 0;
+  const atEnd = page ? page.index === page.count - 1 : isSectionPage
     ? currentSectionIndex === exam.sections.length - 1
     : currentIndex === entries.length - 1;
   const navigateTo = (index: number) => {
@@ -427,7 +454,68 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
     focusTargetRef.current = focusTarget;
     setCurrentIndex(bounded);
   };
+  const advancePage = async (useSaved = false) => {
+    if (!page || submittingRef.current || pendingUploadsRef.current > 0) return;
+    submittingRef.current = true;
+    setAdvancing(true);
+    setPageError(false);
+    try {
+      if (!pageUncertain && !pageChanged && !useSaved && !(await persistAnswers())) {
+        const code = lastSaveErrorCode();
+        if (code !== 'EXAM_PAGE_CHANGED') {
+          if (code !== 'ATTEMPT_NOT_ACTIVE' && code !== 'DEADLINE_PASSED') setPageError(true);
+          return;
+        }
+      }
+      const next = await client.advance(page.index);
+      if (!activePlayerRef.current) return;
+      if (next.attemptId !== attempt.attemptId || next.status !== 'in_progress' || !next.page || next.page.index <= page.index) {
+        throw new Error('The next exam page is unavailable.');
+      }
+      const sections = examSections(next.learner);
+      const nextIds = new Set(sections.flatMap(section => section.questions.map(question => question.id)));
+      const pending = differingOwnAnswers({ ...heldDraft.current, ...unacknowledgedAnswers() }, next.answers);
+      const editable = Object.fromEntries(Object.entries(pending).filter(([id]) => nextIds.has(id)));
+      heldDraft.current = Object.fromEntries(Object.entries(pending).filter(([id]) => !nextIds.has(id)));
+      if (Object.keys(heldDraft.current).length) {
+        const retained = journal.write(pending);
+        onRecoverySnapshot?.({ attemptId: attempt.attemptId, attemptNo: attempt.attemptNo,
+          answers: heldDraft.current, verified: false, storageUnavailable: !retained });
+      }
+      answersRef.current = { ...next.answers, ...editable };
+      adoptAcceptedAnswers(next.answers);
+      setAnswers(answersRef.current);
+      setAnswerRevision(Object.keys(editable).length ? 1 : 0);
+      setPageUncertain(false);
+      setCurrentIndex(0);
+      setPaletteOpen(false);
+      focusTargetRef.current = sections[0]?.id === currentSectionId ? 'question' : 'section';
+      setAdvancedPage({ attempt: next, sections });
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
+      if (code === 'ATTEMPT_NOT_ACTIVE' || code === 'DEADLINE_PASSED') {
+        await handleAutosaveTerminal();
+      } else {
+        // A response can be lost after the row has advanced. Repeat the same
+        // compare-and-advance without accepting edits to the potentially closed page.
+        setPageUncertain(true);
+        setPageError(true);
+      }
+    } finally {
+      if (activePlayerRef.current) {
+        setAdvancing(false);
+        if (!terminalTransitionRef.current) {
+          submittingRef.current = false;
+          if (deadlineExpiredRef.current && !terminalUnconfirmed) void submitAttempt(true);
+        }
+      }
+    }
+  };
   const move = (direction: -1 | 1) => {
+    if (page) {
+      if (direction === 1) void advancePage();
+      return;
+    }
     if (isSectionPage) {
       const index = firstQuestionInSection(currentSectionIndex + direction);
       if (index >= 0) navigateTo(index);
@@ -437,7 +525,8 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
   };
 
   const renderQuestion = (entry: (typeof entries)[number]) => {
-    const index = entries.indexOf(entry);
+    const localIndex = entries.indexOf(entry);
+    const index = offset + localIndex;
     const { question } = entry;
     const sectionClosed = closedGroups.has(answerGroups[question.id]);
     return (
@@ -459,18 +548,18 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           onChange={(value) => {
             // The rendered inputs enforce the deadline. A server-accepted upload may still
             // resolve during reconciliation; ignore it only after confirmed terminal state.
-            if (!activePlayerRef.current || terminalTransitionRef.current || unknownOutcomeRef.current || (submittingRef.current && !deadlineExpiredRef.current)) return;
+            if (!activePlayerRef.current || pageLocked || terminalTransitionRef.current || unknownOutcomeRef.current || (submittingRef.current && !deadlineExpiredRef.current)) return;
             approvedDocument.current = null;
             if (!deadlineExpiredRef.current) setTerminalUnconfirmed(false);
             setSectionSubmitPending(false);
-            setCurrentIndex(index);
+            setCurrentIndex(localIndex);
             const next = { ...answersRef.current, [question.id]: value };
             answersRef.current = next;
             setAnswers(next);
             markDirty();
             setAnswerRevision((revision) => revision + 1);
           }}
-          disabled={submitting || submitOutcomeUnknown || timeExpired || sectionClosed}
+          disabled={submitting || pageLocked || submitOutcomeUnknown || timeExpired || sectionClosed}
           runtime={examUploadRuntime(runtime, { attemptId: attempt.attemptId, rootQuestionId: question.id, onPendingChange: onUploadPendingChange })}
           // The question sits inside the exam card, so its frame renders flat (cards do not nest).
           depth={1}
@@ -479,10 +568,10 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           type="button"
           className="vf-btn vf-btn-lg w-full min-[760px]:w-auto"
           // The label names the action (Flag / Remove flag), so no aria-pressed to contradict it.
-          disabled={submitting || submitOutcomeUnknown || timeExpired || sectionClosed}
-          onClick={() => toggleFlag(question.id)}
+          disabled={submitting || pageLocked || submitOutcomeUnknown || timeExpired || sectionClosed}
+          onClick={() => toggleFlag(index)}
         >
-          {flagged.has(question.id)
+          {flagged.has(index)
             ? t('unflagQuestion', { number: index + 1 })
             : t('flagQuestion', { number: index + 1 })}
         </button>
@@ -528,6 +617,11 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
         {closedGroups.size > 0 ? (
           <div className="mb-5 rounded-md border border-warning-border bg-warning p-3 text-sm text-warning-foreground" role="alert">
             <p>{t('sectionClosed')}</p>
+            {page && !atEnd ? (
+              <button type="button" className="vf-btn vf-btn-lg mt-3" disabled={advancing || submitting || timeExpired || pendingUploads > 0} onClick={() => void advancePage(true)}>
+                {t('continueSaved')}
+              </button>
+            ) : null}
             {sectionSubmitPending ? (
               <button type="button" className="vf-btn vf-btn-lg mt-3 w-full min-[760px]:w-auto" disabled={submitting} onClick={() => void submitAttempt(false, true)}>
                 {t('submitSaved')}
@@ -600,8 +694,8 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           <footer className="mt-6 flex flex-col gap-3 border-t border-border pt-4 min-[760px]:flex-row min-[760px]:items-center min-[760px]:justify-between">
             <span className="text-sm text-muted-foreground">
               {isSectionPage
-                ? t('sectionProgress', { current: currentSectionIndex + 1, total: exam.sections.length })
-                : t('questionProgress', { current: currentIndex + 1, total: questions.length })}
+                ? t('sectionProgress', { current: (page?.index ?? currentSectionIndex) + 1, total: page?.count ?? exam.sections.length })
+                : t('questionProgress', { current: offset + currentIndex + 1, total: questionCount })}
             </span>
             <div className="flex gap-2">
               <button
@@ -612,12 +706,13 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
               >
                 {t('previous')}
               </button>
-              <button type="button" className="vf-btn vf-btn-lg min-w-0 flex-1 min-[760px]:flex-none" disabled={submitting || submitOutcomeUnknown || timeExpired || atEnd} onClick={() => move(1)}>
+              <button type="button" className="vf-btn vf-btn-lg min-w-0 flex-1 min-[760px]:flex-none" disabled={advancing || submitting || submitOutcomeUnknown || timeExpired || atEnd || Boolean(page && pendingUploads > 0)} onClick={() => move(1)}>
                 {t('next')}
               </button>
             </div>
           </footer>
         ) : null}
+        {pageError || (page && pageChanged) ? <p role="alert" className="mt-4 text-sm text-destructive">{t('pageError')}</p> : null}
         {submitError && !submitDialogOpen && !answerTooLarge ? <p className="mt-4 text-sm text-destructive" role="alert">{t('submitError')}</p> : null}
         {reviewTransitionError ? <div className="mt-4 grid justify-items-start gap-3">
           <p className="text-sm text-destructive" role="alert">{flow('reviewError')}</p>
@@ -652,7 +747,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">{t('palette')}</h3>
             <span className="text-xs tabular-nums text-muted-foreground">
-              {t('answeredProgress', { answered: questions.length - unansweredCount, total: questions.length })}
+              {t('answeredProgress', { answered: answeredCount, total: questionCount })}
             </span>
           </div>
           <ExamPalette
@@ -661,6 +756,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             currentSectionIndex={currentSectionIndex}
             entries={entries}
             flagged={flagged}
+            page={page}
             labels={{
               navigation: t('palette'),
               answered: t('answered'),
@@ -676,7 +772,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             layout={exam.settings.layout}
             navigation={exam.settings.navigation}
             onNavigate={navigateTo}
-            submitting={submitting || submitOutcomeUnknown || timeExpired}
+            submitting={submitting || pageLocked || submitOutcomeUnknown || timeExpired}
           />
         </div>
         <div role="group" aria-label={t('actions')} className="space-y-2">
@@ -698,7 +794,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
             </p>
           </div>
           {saveStatus === 'failed' && !timeExpired && closedGroups.size === 0 ? (
-            <button type="button" className="vf-btn vf-btn-lg w-full" disabled={submitting || submitOutcomeUnknown || answerTooLarge} onClick={() => void retryNow()}>
+            <button type="button" className="vf-btn vf-btn-lg w-full" disabled={submitting || pageLocked || submitOutcomeUnknown || answerTooLarge} onClick={() => void retryNow()}>
               {t('retrySave')}
             </button>
           ) : null}
@@ -723,7 +819,7 @@ function ExamPlayerContent({ exam, attempt, client, runtime, onSubmitted, onTerm
               if (!submittingRef.current && !unknownOutcomeRef.current) setSubmitDialogOpen(open);
             }}>
               <DialogTrigger asChild>
-                <button type="button" className="vf-btn vf-btn-primary vf-btn-lg min-w-0 flex-1 min-[1100px]:w-full" disabled={submitting || timeExpired || pendingUploads > 0 || answerTooLarge}>{t('submit')}</button>
+                <button type="button" className="vf-btn vf-btn-primary vf-btn-lg min-w-0 flex-1 min-[1100px]:w-full" disabled={submitting || pageLocked || timeExpired || pendingUploads > 0 || answerTooLarge}>{t('submit')}</button>
               </DialogTrigger>
               <DialogPortal container={containerRef.current}>
                 <DialogOverlay className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm" />

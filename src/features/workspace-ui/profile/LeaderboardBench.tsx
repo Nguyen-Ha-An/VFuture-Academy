@@ -26,8 +26,8 @@ export function LeaderboardBenchHead({ scope, week }: { scope: LeaderboardScopeV
 export type LeaderboardBoardViewProps = {
   entries: readonly LeaderboardEntry[];
   viewer: LeaderboardViewer;
-  /** Branch scope requested, but the learner has no branch. */
-  noBranch?: boolean;
+  /** The learner requested a school board that they cannot open. */
+  unavailableSchool?: 'unassigned' | 'suspended';
   /** Last week's rank by handle; when present a rank-change column renders. */
   previousRanks?: Readonly<Record<string, number>>;
 };
@@ -36,12 +36,12 @@ export type LeaderboardBoardViewProps = {
  * The weekly board as a spec table, with week-over-week rank change when last week's board loaded.
  * No per-row sparkline: the leaderboard RPC returns one weekly total per learner, not daily points.
  */
-export function LeaderboardBoardView({ entries, viewer, noBranch, previousRanks }: LeaderboardBoardViewProps) {
+export function LeaderboardBoardView({ entries, viewer, unavailableSchool, previousRanks }: LeaderboardBoardViewProps) {
   const t = useTranslations('leaderboard');
   const b = useTranslations('bench.profile.leaderboard');
   const certificatesT = useTranslations('bench.profile.certificates');
   const locale = useLocale();
-  if (noBranch) return <div className="canvas-panel canvas-empty vf-block"><EmptyBench title={t('noBranch')} /></div>;
+  if (unavailableSchool) return <div className="canvas-panel canvas-empty vf-block"><EmptyBench title={t(unavailableSchool === 'suspended' ? 'schoolSuspended' : 'noBranch')} /></div>;
   const slice = leaderboardRows(entries, viewer);
   if (slice.empty) return <div className="canvas-panel canvas-empty vf-block"><EmptyBench title={b('emptyTitle')} description={b('emptyBody')} action={<Link className="vf-btn" href={routes.learner.courses()}>{certificatesT('browse')} <span aria-hidden="true">→</span></Link>} /></div>;
   const number = new Intl.NumberFormat(intlLocale(locale));

@@ -5,19 +5,18 @@ import { azureBrowserIdentityEnabled } from '@/lib/identity/provider';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { isAuthSessionMissingError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { Button, Input } from '@/components/ui/classic';
 import { PendingSubmit } from '@/features/workspace-ui/auth/PendingSubmit';
 import { Kicker } from '@/features/workspace-ui/ui/primitives';
 import { navigateAfterAuth } from '@/lib/post-auth-navigation';
 import { routes } from '@/lib/routes';
-import { supabaseBrowser } from '@/lib/supabase/client';
 
 const passwordSchema = z.object({ password: z.string().min(8) });
 
 /** `bench` renders the Calibration Bench visuals (spec 4.1); without it the legacy markup is unchanged. */
-function LegacyResetPasswordForm({ bench = false }: { bench?: boolean } = {}) {
+type ResetPasswordProps = { bench?: boolean; recoveryAttempt?: string };
+function LegacyResetPasswordForm({ bench = false, recoveryAttempt }: ResetPasswordProps) {
   const t = useTranslations('auth');
   const tb = useTranslations('bench.auth');
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -48,10 +47,13 @@ function LegacyResetPasswordForm({ bench = false }: { bench?: boolean } = {}) {
 
     setSubmitting(true);
     try {
-      const { error } = await supabaseBrowser().auth.updateUser({ password: parsed.data.password });
-      if (error) {
-        // A missing session means the one-time recovery grant was consumed or expired.
-        if (isAuthSessionMissingError(error)) setLinkInvalid(true);
+      if (!recoveryAttempt) { setLinkInvalid(true); return; }
+      const response = await fetch(routes.auth.recovery(), {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attempt: recoveryAttempt, password: parsed.data.password }),
+      });
+      if (!response.ok) {
+        if (response.status === 410) setLinkInvalid(true);
         else setServerError(t('passwordUpdateError'));
         return;
       }
@@ -82,6 +84,6 @@ function LegacyResetPasswordForm({ bench = false }: { bench?: boolean } = {}) {
   );
 }
 
-export function ResetPasswordForm(props: { bench?: boolean } = {}) {
+export function ResetPasswordForm(props: ResetPasswordProps = {}) {
   return azureBrowserIdentityEnabled() ? <AzureAuthPanel mode="recovery" bench={props.bench} /> : <LegacyResetPasswordForm {...props} />;
 }

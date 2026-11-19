@@ -1,5 +1,6 @@
 import { IdSchema } from '@/content-engine/schema/common';
 import { listVersions } from '@/features/studio/drafts';
+import { canEditStudioCourse } from '@/features/studio/source-access';
 import { withHandler } from '@/lib/api';
 import { scopedContentContext } from '@/features/admin/content-review-production';
 
@@ -10,6 +11,6 @@ async function courseIdOf(context: unknown) {
 
 export const GET = withHandler(async (_request, context) => {
   const courseId = await courseIdOf(context);
-  await scopedContentContext(_request, 'course', courseId, 'content.read', 'course.read');
-  return listVersions(courseId);
+  const { context: admin } = await scopedContentContext(_request, 'course', courseId, 'content.read', 'course.read');
+  return listVersions(courseId, { readerView: !await canEditStudioCourse(admin, courseId) });
 });

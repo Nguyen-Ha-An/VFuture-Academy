@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => {
   };
   return {
     requirePermission: vi.fn(),
+    checkOwner: vi.fn(),
     actorPermissionCheck: vi.fn((actor) => async () => actor),
     createBankService: vi.fn(() => service),
     service,
@@ -30,7 +31,7 @@ vi.mock('@/lib/rate-limit', () => ({
 }));
 vi.mock('@/lib/audit', () => ({ audit: vi.fn() }));
 vi.mock('@/features/admin/context', () => ({ assertAdminPermission: vi.fn() }));
-vi.mock('@/features/admin/content-review', () => ({ assertContentAccess: vi.fn() }));
+vi.mock('@/features/admin/content-review', () => ({ assertContentAccess: mocks.checkOwner }));
 vi.mock('@/features/admin/content-review-production', () => ({
   typedContentContext: async (_request: Request, _permission: string, legacy: string) => {
     const actor = await mocks.requirePermission(legacy);
@@ -89,6 +90,16 @@ describe('question bank routes', () => {
     expect(mocks.requirePermission).toHaveBeenCalledWith('bank.edit');
     expect(mocks.actorPermissionCheck).toHaveBeenCalledWith(actor, { kind: 'central' });
     expect(mocks.service.usages).toHaveBeenCalledWith('bank-question');
+  });
+
+  it('requires edit on the question owner before returning payload, renders or grading', async () => {
+    const actor = { userId: 'editor-1', roles: [] };
+    mocks.requirePermission.mockResolvedValueOnce(actor);
+    mocks.checkOwner.mockRejectedValueOnce(new ApiError(403, 'FORBIDDEN', 'Permission denied'));
+    const response = await getQuestion(new Request('http://localhost/api/v1/studio/bank/bank-question'), context);
+    expect(response.status).toBe(403);
+    expect(mocks.checkOwner).toHaveBeenCalledWith({}, actor, 'bank_question', 'bank-question', 'content.edit');
+    expect(mocks.service.get).not.toHaveBeenCalled();
   });
 
   it.each([

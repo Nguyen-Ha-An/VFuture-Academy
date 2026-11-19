@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FIXTURES, fixtureResolver } from '@/content-engine/fixtures';
+import { itemRef } from '@/content-engine/diagnostics';
 import { CourseDocumentSchema } from '@/content-engine/schema/course';
 import { InMemoryResolver, inlineWorkspace, parseWorkspace } from '@/content-engine/validate';
 import { encodeWorkspaceEnvelope } from '@/features/studio/content-transfer';
@@ -416,6 +417,20 @@ describe('studio draft services', () => {
     expect(preview.item).toMatchObject({ id: 'what-is-ai', renders: { en: expect.any(Object) } });
     expect(preview.item?.grading).toEqual({ questions: {}, quizzes: {}, rubrics: {}, activities: [] });
     expect(JSON.stringify(preview)).not.toContain('correctAnswer');
+  });
+
+  it('compiles the stored draft for reader previews without exposing the source or its checksums', async () => {
+    const client = new SupabaseStub({}, { studio_get_draft_snapshot: [successful(draftSnapshot())] });
+    const selection = { selectedRef: itemRef('exam-m1'), locale: 'en' };
+    const reader = await previewWorkspace('ai-foundations', { stored: true, ...selection }, false, engineDeps(client));
+    const editor = await previewWorkspace('ai-foundations', { ...FIXTURES['ai-foundations'], ...selection }, true, engineDeps(client));
+    expect(reader.report.ok).toBe(true);
+    expect(reader.item?.renders.en.title).toBe(editor.item?.renders.en.title);
+    expect(reader.item?.grading.questions).toEqual({});
+    expect(JSON.stringify(reader)).not.toContain('correctAnswer');
+    expect(reader.item?.checksum).not.toBe(editor.item?.checksum);
+    expect(reader.course?.checksum).not.toBe(editor.course?.checksum);
+    expect(JSON.stringify(editor.item?.grading)).toContain('correctAnswer');
   });
 
   describe('preview selects a document by reference, not by label', () => {

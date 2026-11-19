@@ -18,7 +18,7 @@ School Admin does not include grading or publishing. Assign Teacher separately w
 
 Central defines custom roles using the fixed permission registry. School roles cannot contain Central-only permissions. Central also chooses which school roles are delegable. School administrators cannot grant Central Admin, School Admin or elevate themselves. Limited Central role managers cannot create or grant capabilities beyond their own authority. Built-ins are protected and the final active Central Admin cannot be removed or suspended.
 
-Legacy role tuples are migrated to protected compatibility definitions without broadening functional scope. Existing branch-lead delegation is limited to the Teacher replacement. New assignments should use built-in or explicit custom definitions; compatibility definitions are not grantable.
+Legacy role tuples are migrated to protected compatibility definitions without broadening functional scope. A branch lead whose delegation comes solely from a legacy role can grant Teacher directly or by invitation and can invite a member without a role. Use built-in or explicit custom definitions for new assignments. Compatibility definitions are reserved for migrated assignments.
 
 ## Members and invitations
 
@@ -26,7 +26,7 @@ Legacy role tuples are migrated to protected compatibility definitions without b
 
 Invitations use a private one-time link bound to an email, school and optional role. They expire after seven days. The recipient must authenticate with the invited email and explicitly accept. Acceptance rechecks the inviter's current authority, the role version, revocation and expiry; a changed role requires a new invitation. Invitations never silently transfer an existing learner between schools. Creating an invitation does not send email automatically.
 
-Only Central can change shared identity, transfer the primary school or suspend the account globally. School administrators can suspend/restore their own memberships. Suspended membership and global account state remain distinct.
+Only Central can change shared identity, transfer the primary school or suspend the account globally. School administrators can suspend or restore memberships in their school. A suspended member must have that membership explicitly restored before accepting an invitation to the school. Retained school roles stay inactive during suspension.
 
 ## Historical school ownership
 
@@ -44,6 +44,6 @@ During release, pause Admin/Studio mutations, apply the checked-in migrations in
 
 Notebook migration `20260906065957_notebook_foundation.sql` belongs to the separate notebook implementation and follows these migrations when the two features are integrated.
 
-For operator bootstrap, `npm run grant-role -- <email> central_admin` targets the new role assignment table. School roles require a school ID. The original service-key bootstrap email-confirmation behavior is preserved. Routine grants/revocations belong in Admin so they are scoped and audited. The legacy `user_roles` table is read-only after migration.
+For Supabase operator bootstrap, have the selected person verify their email through Auth. Independently confirm the intended Auth user ID and email, then run `npm run grant-role -- <verified-user-id> <email> central_admin`. School roles also require a school ID. Routine grants and revocations belong in Admin so they are scoped and audited. The legacy `user_roles` table is read-only after migration.
 
 Do not roll the application back to a publisher that bypasses Central review. If a rollout must pause, disable writes while keeping the migrated schema and immutable publication history.

@@ -121,7 +121,7 @@ export async function outlineFromDraft(draft: CourseDraft, canEdit: boolean, sel
   title: unknown;
   languages: ('vi' | 'en')[];
   defaultLanguage: 'vi' | 'en';
-  draft: { updatedAt: string | null; revision: string };
+  draft: { updatedAt: string | null; revision?: string };
   moduleTotal: number;
   nextModuleOffset: number | null;
   detailsOmitted: boolean;
@@ -189,7 +189,7 @@ export async function outlineFromDraft(draft: CourseDraft, canEdit: boolean, sel
   return {
     title: manifest?.title,
     ...courseLanguages(draft.manifest),
-    draft: { updatedAt: draft.updatedAt, revision: draft.revision ?? '' },
+    draft: { updatedAt: draft.updatedAt, ...(canEdit ? { revision: draft.revision ?? '' } : {}) },
     moduleTotal: allModules.length,
     nextModuleOffset: selection.itemId || selection.moduleId || offset + limit >= allModules.length ? null : offset + limit,
     detailsOmitted,

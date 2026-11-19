@@ -215,6 +215,25 @@ describe('SupabaseExamRepo', () => {
     })]]);
   });
 
+  it('reads only the durable cursor from a page advance and reports a concurrently closed page', async () => {
+    const row = attemptRow(1);
+    const database = new DatabaseStub({
+      'rpc:exam_advance_sequential_page': [{ data: 2, error: null }],
+      'rpc:exam_sequential_answered_before': [{ data: [0], error: null }],
+      'rpc:exam_save_active_answers': [{ data: null, error: { code: 'P3004' } }],
+    });
+    const repo = new SupabaseExamRepo(database);
+    await expect(repo.advanceSequentialPage(row.id, row.user_id, 1)).resolves.toBe(2);
+    expect(database.rpcCalls[0]).toEqual(['exam_advance_sequential_page', {
+      p_attempt_id: row.id, p_user_id: row.user_id, p_from_step: 1,
+    }]);
+    await expect(repo.sequentialAnsweredBefore(row.id, row.user_id, 2)).resolves.toEqual([0]);
+    expect(database.rpcCalls[1]).toEqual(['exam_sequential_answered_before', {
+      p_attempt_id: row.id, p_user_id: row.user_id, p_step: 2,
+    }]);
+    await expect(repo.saveActiveAnswers(row.id, row.user_id, [])).rejects.toMatchObject({ code: 'EXAM_PAGE_CHANGED' });
+  });
+
   it('finalizes attempt results through one transactional compare-and-set call', async () => {
     const row = attemptRow(1);
     const database = new DatabaseStub({
@@ -322,6 +341,7 @@ describe('SupabaseExamRepo', () => {
       status: 'in_progress',
       late: false,
       questionSet: row.question_set as ExamAttemptRecord['questionSet'],
+      sequentialStep: 0,
       gradingSnapshot: row.grading_snapshot as never,
       startedAt: new Date(row.started_at),
       deadlineAt: null,

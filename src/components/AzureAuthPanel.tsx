@@ -9,7 +9,7 @@ import { useAuthPopup } from '@/lib/identity/use-auth-popup';
 import { navigateAfterAuth } from '@/lib/post-auth-navigation';
 import { safeInternalPath } from '@/lib/safe-internal-path';
 import { routes } from '@/lib/routes';
-import { notifyIdentityChanged, notifyIdentitySignedOut } from '@/lib/identity/browser-session';
+import { notifyIdentityChanged } from '@/lib/identity/browser-session';
 
 type FlowView={step:'code'|'mfa-code'|'new-password'|'poll';flowId:string;attemptId:string;codeLength?:number;target?:string;retryAfterSeconds?:number};
 const handle=/^[A-Za-z0-9_-]{43}$/;
@@ -31,6 +31,7 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
     if(code==='password_policy')return english?'Use a stronger password with at least 8 characters.':'Dùng mật khẩu mạnh hơn, có ít nhất 8 ký tự.';
     if(code==='invalid_code')return english?'That verification code is incorrect. Please try again.':'Mã xác minh không đúng. Vui lòng thử lại.';
     if(code==='expired')return english?'This verification has expired. Please start again.':'Phiên xác minh đã hết hạn. Vui lòng bắt đầu lại.';
+    if(code==='restart_required')return english?'The provider could not confirm this step. Please start recovery again.':'Nhà cung cấp chưa xác nhận được bước này. Vui lòng bắt đầu lại quá trình khôi phục.';
     if(code==='rate_limited')return english?'Too many attempts. Please wait a minute and try again.':'Bạn đã thử quá nhiều lần. Vui lòng chờ một phút rồi thử lại.';
     if(code==='unsupported_method')return english?'This account requires a verification method that is not available on this form.':'Tài khoản yêu cầu phương thức xác minh chưa được hỗ trợ trên biểu mẫu này.';
     return t('genericError');
@@ -44,7 +45,7 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
       const hasFlow=typeof data.flowId==='string'&&handle.test(data.flowId)&&typeof data.attemptId==='string'&&handle.test(data.attemptId)&&['code','mfa-code','new-password','poll'].includes(String(data.step));
       if(hasFlow)setFlow({step:data.step as FlowView['step'],flowId:data.flowId as string,attemptId:data.attemptId as string,codeLength:typeof data.codeLength==='number'?data.codeLength:8,target:typeof data.target==='string'?data.target:undefined,retryAfterSeconds:typeof data.retryAfterSeconds==='number'?data.retryAfterSeconds:5});
       if(!response.ok||data.error) {
-        if(data.error==='expired')setFlow(null);
+        if(data.error==='expired'||data.error==='restart_required')setFlow(null);
         setError(errorMessage(data.error));return;
       }
       if(data.step==='complete'&&typeof data.next==='string') {
@@ -54,7 +55,7 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
         notifyIdentityChanged();
         navigateAfterAuth(target);return;
       }
-      if(data.step==='reset-complete'){notifyIdentitySignedOut();setFlow(null);setDone(true);return;}
+      if(data.step==='reset-complete'){notifyIdentityChanged();setFlow(null);setDone(true);return;}
       if(!hasFlow)throw new Error('Invalid authentication response');
     } catch {
       if(current===serial.current)setError(t('genericError'));
@@ -100,12 +101,13 @@ export function AzureAuthPanel({mode,bench=false}:{mode:'login'|'signup'|'recove
   const startAgain=()=>{serial.current++;setFlow(null);setError(null);setBusy(false);};
   const blocked=busy||popup.busy;
   const codeStep=flow?.step==='code'||flow?.step==='mfa-code';
+  const codeDestination=flow?.target || (flow?.step==='mfa-code' ? (english?'your registered verification email':'địa chỉ email xác minh đã đăng ký của bạn') : email);
   const passwordStep=flow?.step==='new-password'||(!flow&&!recovery&&!done);
   const title=done?(english?'Password updated':'Đã cập nhật mật khẩu'):codeStep?(english?'Verify your email':'Xác minh email'):flow?.step==='new-password'?t('newPasswordTitle'):t(recovery?'resetTitle':mode==='signup'?'signupTitle':'loginTitle');
   const submitLabel=busy?(english?'Please wait…':'Vui lòng chờ…'):flow?.step==='new-password'?t('updatePassword'):codeStep?(english?'Verify code':'Xác minh mã'):recovery?(english?'Send verification code':'Gửi mã xác minh'):t(mode==='signup'?'createAccount':'signIn');
   return <section aria-labelledby="azure-auth-title" className={bench?'vf-auth-form':'mx-auto w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm'}>
     <h1 id="azure-auth-title" className={bench?'vf-title-sm':'text-2xl font-semibold'}>{title}</h1>
-    <p className="mt-2 text-sm text-muted-foreground">{done?(english?'Your password has been updated. You can now sign in.':'Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay.'):codeStep?(english?`Enter the code sent to ${flow?.target||email}.`:`Nhập mã được gửi tới ${flow?.target||email}.`):recovery?(english?'Enter your email to verify it and choose a new password here.':'Nhập email để xác minh và đặt mật khẩu mới tại đây.'):t(mode==='signup'?'signupDescription':'loginDescription')}</p>
+    <p className="mt-2 text-sm text-muted-foreground">{done?(english?'Your password has been updated. You can now sign in.':'Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay.'):codeStep?(english?`Enter the code sent to ${codeDestination}.`:`Nhập mã được gửi tới ${codeDestination}.`):recovery?(english?'Enter your email to verify it and choose a new password here.':'Nhập email để xác minh và đặt mật khẩu mới tại đây.'):t(mode==='signup'?'signupDescription':'loginDescription')}</p>
     {!recovery&&!flow&&!done?<>
       <div className="mt-6 space-y-3">
         <Button type="button" className="min-h-11 w-full" disabled={blocked} onClick={()=>popup.open(`/auth/login?${new URLSearchParams({provider:'google',mode,next})}`)}>{t('continueGoogle')}</Button>

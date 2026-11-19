@@ -5,7 +5,7 @@ import { unstable_cache } from 'next/cache';
 import { resolveL10nString, type Locale, type MediaRef } from '@/content-engine';
 import { ResourceDocumentSchema, type ResourceDocument } from '@/content-engine/schema/bundle';
 import type { RichContent } from '@/content-engine/schema/types';
-import { OPPORTUNITY_TYPES, safeApplicationUrl, type OpportunityForm } from '@/features/opportunities/schema';
+import { OPPORTUNITY_TYPES, publicOpportunityDescription, safeApplicationUrl, type OpportunityForm } from '@/features/opportunities/schema';
 import type { ProjectStatus } from '@/features/projects/service';
 import { ApiError } from '@/lib/api';
 import { excludeInternalContent, internalContentFingerprint, isInternalContentId, withoutInternalContent } from '@/lib/internal-content';
@@ -93,11 +93,6 @@ function localized(value: unknown, locale: Locale) {
   const fallback: Locale = typeof map.vi === 'string' ? 'vi' : 'en';
   return resolveL10nString(map as { vi?: string; en?: string }, locale, fallback);
 }
-function localizedRich(value: unknown, locale: Locale): RichContent | null {
-  const map = record(value);
-  const candidate = Array.isArray(map?.blocks) ? map : record(map?.[locale] ?? map?.vi ?? map?.en);
-  return candidate && Array.isArray(candidate.blocks) ? candidate as unknown as RichContent : null;
-}
 function isGlobalScope(value: unknown) { return record(value)?.scope === 'global'; }
 function resourceOf(value: unknown, locale: Locale): PublicResourceDetail | null {
   const row = record(value);
@@ -119,7 +114,7 @@ function resourceOf(value: unknown, locale: Locale): PublicResourceDetail | null
 }
 function opportunityOf(value: unknown, locale: Locale): PublicOpportunity | null {
   const row = record(value);
-  const description = localizedRich(row?.description, locale);
+  const description = publicOpportunityDescription(row?.description, locale);
   if (!row || row.status !== 'published' || !isGlobalScope(row.branch_scope) || typeof row.id !== 'string' || typeof row.organization !== 'string' || !description) return null;
   return {
     id: row.id, title: localized(row.title, locale), organization: row.organization,

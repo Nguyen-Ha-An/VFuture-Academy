@@ -48,7 +48,7 @@ describe('server-side Entra native protocol',()=>{
     }
   });
   it('keeps password reset code, new password and completion on the native protocol',async()=>{
-    const {client,requests}=provider([{continuation_token:'reset'},{continuation_token:'code',challenge_type:'oob'},{continuation_token:'verified'},{continuation_token:'pending',poll_interval:2},{status:'succeeded',continuation_token:'done'}]);
+    const {client,requests}=provider([{continuation_token:'reset'},{continuation_token:'code',challenge_type:'oob'},{continuation_token:'verified'},{continuation_token:'pending',poll_interval:2},{status:'succeeded',continuation_token:'done'},{id_token:'reset-proof'}]);
     const start=await client.start('reset',{email:'learner@example.com',next:'/app'});
     if(start.step!=='code')throw new Error('Expected code');
     const verified=await client.advance(start.flow,{code:'12345678'});
@@ -56,8 +56,9 @@ describe('server-side Entra native protocol',()=>{
     const submitted=await client.advance(verified.flow,{password:'NewPassword1!'});
     expect(submitted.step).toBe('poll');
     const finished=await client.advance({...submitted.flow,pollNotBefore:0},{});
-    expect(finished.step).toBe('reset-complete');
-    expect(requests.map(r=>r.path.split('/').pop())).toEqual(['start','challenge','continue','submit','poll_completion']);
+    expect(finished).toMatchObject({step:'reset-complete',idToken:'reset-proof'});
+    expect(requests.map(r=>r.path.split('/').pop())).toEqual(['start','challenge','continue','submit','poll_completion','token']);
+    expect(Object.fromEntries(requests[5].body)).toMatchObject({grant_type:'continuation_token',continuation_token:'done',scope:'openid profile'});
   });
   it('does not silently turn a native credentials request into a Microsoft popup',async()=>{
     const {client}=provider([{challenge_type:'redirect',redirect_uri:'https://example.ciamlogin.com/login'}]);
@@ -89,7 +90,33 @@ describe('server-side Entra native protocol',()=>{
   });
   it('keeps a reset continuation when password processing has not started yet',async()=>{
     const {client}=provider([{status:'not_started',continuation_token:'waiting'}]);
-    const result=await client.advance({mode:'reset',step:'poll',continuation:'private',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000,pollNotBefore:0},{});
+    const result=await client.advance({mode:'reset',step:'poll',continuation:'private',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000,pollNotBefore:0,verifiedEmail:true},{});
     expect(result.step).toBe('poll');expect(result.flow.continuation).toBe('waiting');
+  });
+  it('rejects a reset poll without its verified code or its successful successor grant',async()=>{
+    const {client,requests}=provider([{status:'succeeded'}]);
+    const flow={mode:'reset',step:'poll',continuation:'pending',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000} as const;
+    await expect(client.advance(flow,{})).rejects.toMatchObject({code:'expired'});
+    expect(requests).toHaveLength(0);
+    await expect(client.advance({...flow,verifiedEmail:true},{})).rejects.toMatchObject({code:'unavailable'});
+    expect(requests).toHaveLength(1);
+  });
+  it('requires a new recovery after an ambiguous password submission',async()=>{
+    const transport=vi.fn(async()=>new Response(null,{status:503}));
+    const client=createNativeClient(config(),transport);
+    const flow={mode:'reset',step:'new-password',continuation:'verified',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000,verifiedEmail:true} as const;
+    await expect(client.advance(flow,{password:'NewPassword1!'})).rejects.toMatchObject({code:'restart_required',flow:undefined});
+    expect(transport).toHaveBeenCalledOnce();
+  });
+  it('retains password recovery through a required MFA challenge before returning its proof',async()=>{
+    const {client,requests}=provider([{status:'succeeded',continuation_token:'reset-grant'},
+      {error:'invalid_grant',suberror:'mfa_required',continuation_token:'mfa'},{continuation_token:'methods',methods:[{id:'email',challenge_type:'oob',challenge_channel:'email'}]},
+      {challenge_type:'oob',continuation_token:'challenge'},{id_token:'reset-proof',refresh_token:'unused'}]);
+    const pending=await client.advance({mode:'reset',step:'poll',verifiedEmail:true,continuation:'pending',email:'a@example.com',next:'/app',expiresAt:Date.now()+600000},{});
+    expect(pending.step).toBe('mfa-code');
+    const done=await client.advance(pending.flow,{code:'12345678'});
+    expect(done).toMatchObject({step:'reset-complete',idToken:'reset-proof'});
+    expect(done).not.toHaveProperty('tokens');
+    expect(requests.at(-1)?.body.get('grant_type')).toBe('mfa_oob');
   });
 });

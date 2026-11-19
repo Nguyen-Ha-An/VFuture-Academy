@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import type { LessonRuntime } from '@/content-engine/render/runtime';
 import type { ExamReviewResult, ExamStartResult } from '../service';
@@ -12,6 +12,7 @@ import { ExamReview } from './ExamReview';
 import { examSections, type LearnerExam } from './types';
 import { differingOwnAnswers, isTerminalExamStatus, type ExamAnswerRecovery } from './answer-recovery';
 import { ExamAnswerRecoveryNotice } from './ExamAnswerRecoveryNotice';
+import { attemptMediaRuntime } from './attempt-media-runtime';
 
 type Phase = 'restoring' | 'restore_error' | 'intro' | 'player' | 'reviewing' | 'review' | 'review_error';
 
@@ -35,6 +36,9 @@ export function ExamFlow({ exam, attemptsUsed: initialAttemptsUsed, client, runt
   const [attempt, setAttempt] = useState<ExamStartResult | null>(null);
   const [activeExam, setActiveExam] = useState(exam);
   const [review, setReview] = useState<ExamReviewResult | null>(null);
+  const reviewRuntime = useMemo(() => review
+    ? attemptMediaRuntime(runtime, review.attemptId, [activeExam.sections, review.revealed], review.locale)
+    : runtime, [activeExam.sections, review, runtime]);
   const [availabilityNow, setAvailabilityNow] = useState<Date | null>(null);
   const restoringRef = useRef(false);
   const reviewingRef = useRef<string | null>(null);
@@ -54,8 +58,8 @@ export function ExamFlow({ exam, attemptsUsed: initialAttemptsUsed, client, runt
     const candidate = recoveryAttempts.current.get(terminal.attemptId);
     if (candidate?.verified) return;
     const store = createPendingExamDraftStore(terminal.attemptId);
-    const pending = candidate?.answers ?? store.read();
-    const answers = pending ? differingOwnAnswers(pending, terminal.answers) : {};
+    const pending = { ...store.read(), ...candidate?.answers };
+    const answers = differingOwnAnswers(pending, terminal.answers);
     if (Object.keys(answers).length > 0) {
       rememberRecovery({ attemptId: terminal.attemptId, attemptNo: terminal.attemptNo, answers, verified: true, storageUnavailable: candidate?.storageUnavailable });
     } else {
@@ -89,6 +93,10 @@ export function ExamFlow({ exam, attemptsUsed: initialAttemptsUsed, client, runt
       if (boundAttempt.current?.attemptId !== requestedAttempt) return;
       const active = boundAttempt.current;
       if (!active || result.attemptId !== active.attemptId || !isTerminalExamStatus(result.status)) throw new TypeError('The review does not match a terminal bound attempt.');
+      if (result.learner) {
+        const sections = examSections(result.learner);
+        setActiveExam(previous => ({ ...previous, sections }));
+      }
       retainTerminalRecovery({ attemptId: result.attemptId, attemptNo: active.attemptNo, answers: result.answers });
       const now = await client.serverNow();
       if (boundAttempt.current?.attemptId !== requestedAttempt) return;
@@ -191,7 +199,7 @@ export function ExamFlow({ exam, attemptsUsed: initialAttemptsUsed, client, runt
       <ExamReview
         exam={activeExam}
         review={review}
-        runtime={runtime}
+        runtime={reviewRuntime}
         onStartNext={canStartNext ? start : undefined}
         startingNext={starting}
         headingLevel={headingLevel}

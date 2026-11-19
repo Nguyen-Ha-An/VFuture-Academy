@@ -21,9 +21,10 @@ export type WorkspacePreview = { item: CompiledItem | null; course: CompiledCour
 function title(value: unknown, locale: Locale): string {
   return typeof value === 'string' ? value : String(record(value)?.[locale] ?? Object.values(record(value) ?? {})[0] ?? '');
 }
-export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, validating = false, languages, defaultLanguage, onReport, expanded = false, onExpandedChange }: {
+export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, readOnly = false, validating = false, languages, defaultLanguage, onReport, expanded = false, onExpandedChange }: {
   courseId: string; selectedRef: DocumentRef; payload: WorkspaceSnapshot | null; sourceRevision: string;
   validating?: boolean;
+  readOnly?: boolean;
   languages: Locale[]; defaultLanguage: Locale;
   /** The revision the report was computed for; the caller drops anything stale. */
   onReport: (report: ValidationReport, revision: string) => void;
@@ -47,12 +48,12 @@ export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, va
   // already-validated snapshot is never re-parsed on the way out.
   const serializedManifest = useMemo(() => measureStudioOperation(
     'studio.workspace.preview.prepare',
-    () => payload ? JSON.stringify(payload.manifest) : null,
-  ), [payload]);
+    () => !readOnly && payload ? JSON.stringify(payload.manifest) : null,
+  ), [payload, readOnly]);
   const serializedItems = useMemo(() => measureStudioOperation(
     'studio.workspace.preview.prepare',
-    () => payload ? JSON.stringify(payload.items) : null,
-  ), [payload]);
+    () => !readOnly && payload ? JSON.stringify(payload.items) : null,
+  ), [payload, readOnly]);
   const serializedPayload = serializedManifest === null || serializedItems === null ? null : `${serializedManifest}${serializedItems}`;
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, va
     previousKey.current = key;
     const cached = cache.current.get(key);
     setDisplay(cached ? { key, ...cached } : null);
-    if (!serializedPayload) { setRequestState({ key, revision: sourceRevision, state: validating ? 'loading' : 'error' }); return () => controller.abort(); }
+    if (!readOnly && !serializedPayload) { setRequestState({ key, revision: sourceRevision, state: validating ? 'loading' : 'error' }); return () => controller.abort(); }
     if (cached?.revision === sourceRevision) {
       setRequestState({ key, revision: sourceRevision, state: 'ready' });
       return () => controller.abort();
@@ -76,7 +77,9 @@ export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, va
             // `selectedRef` is authoritative: an item legitimately named `manifest`
             // is indistinguishable from the course manifest in the legacy
             // `selectedDocId` string, which is kept only for compatibility.
-            body: `{"manifest":${serializedManifest},"items":${serializedItems},"selectedRef":${JSON.stringify(selectedRef)},"selectedDocId":${JSON.stringify(selectedDocId)},"locale":${JSON.stringify(locale)}}`,
+            body: readOnly
+              ? JSON.stringify({ stored: true, selectedRef, locale })
+              : `{"manifest":${serializedManifest},"items":${serializedItems},"selectedRef":${JSON.stringify(selectedRef)},"selectedDocId":${JSON.stringify(selectedDocId)},"locale":${JSON.stringify(locale)}}`,
             signal: controller.signal,
           }).finally(finishRequestTiming));
           if (controller.signal.aborted) return;
@@ -96,13 +99,13 @@ export function PreviewPane({ courseId, selectedRef, payload, sourceRevision, va
       })();
     }, switchedDocument ? 0 : 400);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [courseId, key, locale, selectedDocId, selectedRef, serializedItems, serializedManifest, serializedPayload, sourceRevision, validating]);
+  }, [courseId, key, locale, readOnly, selectedDocId, selectedRef, serializedItems, serializedManifest, serializedPayload, sourceRevision, validating]);
 
   const visible = display?.key === key ? display : null;
   const item = visible?.result.item ?? null;
   const course = visible?.result.course ?? null;
   const stale = Boolean(visible && visible.revision !== sourceRevision);
-  const failed = (!payload && !validating) || (requestState?.key === key && requestState.revision === sourceRevision && requestState.state === 'error');
+  const failed = (!readOnly && !payload && !validating) || (requestState?.key === key && requestState.revision === sourceRevision && requestState.state === 'error');
   const runtime = useMemo(() => item ? { ...createPreviewRuntime(item, locale), resolveMedia: (ref: MediaRef) => previewMediaHref(ref) } : null, [item, locale]);
   const render = item?.renders[locale] as LearnerItem | undefined;
 

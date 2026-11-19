@@ -42,6 +42,7 @@ export function createMemoryExamClient(
       return result;
     },
     save: (answers): Promise<ExamAnswerRecord[]> => service.save(actor, activeAttemptId(), answers),
+    advance: (fromStep) => service.advance(actor, activeAttemptId(), fromStep),
     submit: (): Promise<ExamSubmitResult> => service.submit(actor, activeAttemptId()),
     review: (): Promise<ExamReviewResult> => service.review(actor, activeAttemptId()),
     events: (events: readonly ExamEventInput[]) => service.events(actor, activeAttemptId(), events),

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn().mockResolvedValue({ userId: 'editor-1', roles: [{ role: 'editor', branchId: null }] }),
   getActor: vi.fn().mockResolvedValue({ userId: 'editor-1', roles: [{ role: 'editor', branchId: null }] }),
   hasPermission: vi.fn().mockReturnValue(false),
+  assertContentAccess: vi.fn(),
 }));
 
 const bankRouter = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
@@ -29,7 +30,7 @@ vi.mock('@/lib/permissions', () => ({ getActor: mocks.getActor, can: mocks.hasPe
 vi.mock('@/features/admin/context', () => ({
   adminPageContext: async () => ({ actor: await mocks.requirePermission('bank.edit'), scope: { kind: 'central' } }),
 }));
-vi.mock('@/features/admin/content-review', () => ({ assertContentAccess: vi.fn() }));
+vi.mock('@/features/admin/content-review', () => ({ assertContentAccess: mocks.assertContentAccess }));
 vi.mock('@/features/admin/content-review-production', () => ({
   typedContentPageContext: async () => ({ actor: await mocks.requirePermission('bank.edit'), scope: { kind: 'central' } }),
 }));
@@ -38,6 +39,13 @@ vi.mock('@/lib/supabase/server', () => ({ supabaseService: vi.fn(() => ({})) }))
 import BankQuestionPage from '@/app/studio/bank/[id]/page';
 
 describe('Studio bank detail page', () => {
+  it('checks editing permission on the question owner before sending source and grading to the editor', async () => {
+    mocks.assertContentAccess.mockRejectedValueOnce(new Error('owner denied'));
+    await expect(BankQuestionPage({ params: Promise.resolve({ id: 'question-one' }) })).rejects.toThrow('owner denied');
+    expect(mocks.assertContentAccess).toHaveBeenCalledWith({}, expect.anything(), 'bank_question', 'question-one', 'content.edit');
+    expect(mocks.service.get).not.toHaveBeenCalledWith('question-one');
+    mocks.requirePermission.mockClear();
+  });
   it('renders an empty state when a question has no versions', async () => {
     mocks.hasPermission.mockReturnValue(false);
     mocks.createBankService.mockReturnValue(mocks.service);

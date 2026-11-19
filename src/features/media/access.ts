@@ -2,8 +2,11 @@ import 'server-only';
 
 import { ApiError } from '@/lib/api';
 import type { Actor } from '@/lib/permissions';
-import { assertEnrollmentMembershipAccess, type MembershipAccessDatabase } from '@/features/learning/membership-access';
+import { assertEnrollmentMembershipAccess, eligibleAudienceBranch, type MembershipAccessDatabase } from '@/features/learning/membership-access';
 import { ResourceDocumentSchema } from '@/content-engine/schema/bundle';
+import { learnerItemProjection } from '@/features/learning/item-projection';
+import { outlineItems, type OutlineItem } from '@/features/learning/shared';
+import { referencesAsset } from './references';
 import type { supabaseService } from '@/lib/supabase/server';
 
 type MediaAccessDatabase = Pick<ReturnType<typeof supabaseService>, 'from'>;
@@ -25,14 +28,6 @@ function rows(value: unknown): Record<string, unknown>[] {
     : [];
 }
 
-function referencesAsset(value: unknown, assetId: string): boolean {
-  if (Array.isArray(value)) return value.some((entry) => referencesAsset(entry, assetId));
-  const object = record(value);
-  if (!object) return false;
-  if (object.assetId === assetId) return true;
-  return Object.values(object).some((entry) => referencesAsset(entry, assetId));
-}
-
 function resourceVisibleToBranch(scopeValue: unknown, branchId: string | null): boolean {
   const scope = record(scopeValue);
   if (scope?.scope === 'global') return true;
@@ -47,19 +42,19 @@ function eligibleResourceReferencesAsset(row: Record<string, unknown>, branchId:
   return referencesAsset([document.data.body, document.data.attachments], assetId);
 }
 
-async function enrolledVersionIds(database: MediaAccessDatabase, actor: Actor): Promise<string[]> {
+async function enrolledVersionIds(database: MediaAccessDatabase, actor: Actor, versionId?: string): Promise<string[]> {
   const found = new Set<string>();
   for (let start = 0; ; start += PAGE_SIZE) {
-    const result = await database.from('enrollments')
+    let query = database.from('enrollments')
       .select('course_version_id,branch_id,branch_scope_known')
       .eq('user_id', actor.userId)
-      .in('status', ['active', 'completed'])
-      .order('course_version_id')
-      .range(start, start + PAGE_SIZE - 1);
+      .in('status', ['active', 'completed']);
+    if (versionId) query = query.eq('course_version_id', versionId);
+    const result = await query.order('course_version_id').range(start, start + PAGE_SIZE - 1);
     if (result.error) throw new Error('Media enrollment lookup failed');
     const page = rows(result.data);
     for (const row of page) {
-      if (typeof row.course_version_id !== 'string') continue;
+      if (typeof row.course_version_id !== 'string' || (versionId && row.course_version_id !== versionId)) continue;
       try {
         await assertEnrollmentMembershipAccess(actor, row, database as unknown as MembershipAccessDatabase);
         found.add(row.course_version_id);
@@ -72,29 +67,43 @@ async function enrolledVersionIds(database: MediaAccessDatabase, actor: Actor): 
   }
 }
 
-async function referencesPublishedAsset(
+export async function hasMediaEnrollment(database: MediaAccessDatabase, actor: Actor, versionId: string): Promise<boolean> {
+  return (await enrolledVersionIds(database, actor, versionId)).includes(versionId);
+}
+
+async function referencesEnrolledItem(
   database: MediaAccessDatabase,
-  table: 'course_version_items' | 'course_version_item_renders',
-  documentColumn: 'source' | 'payload',
   versionIds: string[],
   assetId: string,
 ): Promise<boolean> {
   for (let chunkStart = 0; chunkStart < versionIds.length; chunkStart += VERSION_CHUNK_SIZE) {
     const versionChunk = versionIds.slice(chunkStart, chunkStart + VERSION_CHUNK_SIZE);
-    const allowedVersions = new Set(versionChunk);
+    const outlines = await database.from('course_version_outline').select('version_id,meta,outline')
+      .in('version_id', versionChunk);
+    if (outlines.error) throw new Error('Course media outline lookup failed');
+    const itemsByVersion = new Map<string, Map<string, OutlineItem>>();
+    for (const outline of rows(outlines.data)) {
+      if (typeof outline.version_id !== 'string' || !versionChunk.includes(outline.version_id)) continue;
+      if (referencesAsset(record(outline.meta)?.cover, assetId)) return true;
+      itemsByVersion.set(outline.version_id, new Map(outlineItems(outline.outline).map((item) => [item.id, item])));
+    }
+    if (!itemsByVersion.size) continue;
     for (let start = 0; ; start += PAGE_SIZE) {
-      const result = await database.from(table)
-        .select(`version_id,${documentColumn}`)
+      const result = await database.from('course_version_item_renders')
+        .select('version_id,item_id,payload')
         .in('version_id', versionChunk)
         .order('version_id')
         .order('item_id')
+        .order('locale')
         .range(start, start + PAGE_SIZE - 1);
       if (result.error) throw new Error('Published media reference lookup failed');
       const page = rows(result.data);
-      if (page.some((row) => typeof row.version_id === 'string'
-        && allowedVersions.has(row.version_id)
-        && referencesAsset(row[documentColumn], assetId))) {
-        return true;
+      for (const row of page) {
+        if (typeof row.version_id !== 'string' || typeof row.item_id !== 'string') continue;
+        const item = itemsByVersion.get(row.version_id)?.get(row.item_id);
+        const payload = record(row.payload);
+        if (item && payload?.id === item.id && payload.kind === item.type
+          && referencesAsset(learnerItemProjection(item, payload), assetId)) return true;
       }
       if (page.length < PAGE_SIZE) break;
     }
@@ -111,24 +120,24 @@ export async function isEnrolledForAsset(
 ): Promise<boolean> {
   const versionIds = await enrolledVersionIds(database, actor);
   if (versionIds.length === 0) return false;
-  return await referencesPublishedAsset(database, 'course_version_items', 'source', versionIds, assetId)
-    || referencesPublishedAsset(database, 'course_version_item_renders', 'payload', versionIds, assetId);
+  return referencesEnrolledItem(database, versionIds, assetId);
 }
 
-/** Checks published resource references against the signed-in user's exact profile branch. */
+/** Checks published resource references against the signed-in learner's eligible school audience. */
 export async function isEligibleResourceAsset(
   database: MediaAccessDatabase,
-  userId: string,
+  viewer: Actor | string,
   assetId: string,
 ): Promise<boolean> {
+  const actor = typeof viewer === 'string' ? { userId: viewer } : viewer;
   const profileResult = await database.from('profiles')
     .select('branch_id')
-    .eq('id', userId)
+    .eq('id', actor.userId)
     .maybeSingle();
   if (profileResult.error) throw new Error('Media resource profile lookup failed');
   const profile = record(profileResult.data);
   if (!profile || !('branch_id' in profile)) return false;
-  const branchId = typeof profile.branch_id === 'string' ? profile.branch_id : null;
+  const branchId = await eligibleAudienceBranch(actor, profile.branch_id, database as unknown as MembershipAccessDatabase);
 
   for (let start = 0; ; start += PAGE_SIZE) {
     const result = await database.from('resources')

@@ -6,7 +6,6 @@ import { normalizeQuizSettings } from '@/content-engine/compile/normalize';
 import {
   evaluateCompletion,
   evaluateLessonCompletion,
-  LEARNER_FORBIDDEN_KEYS,
   type GradingItem,
   type Locale,
 } from '@/content-engine';
@@ -14,6 +13,8 @@ import { ApiError } from '@/lib/api';
 import type { Actor } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 import { assertEnrollmentMembershipAccess } from '@/features/learning/membership-access';
+import { learnerItemProjection, sanitizedLearnerValue } from '@/features/learning/item-projection';
+import { restoreQuizMedia } from '@/features/quizzes/media';
 import { onCourseCompleted as recordCourseCompletionSkills } from '@/features/skills/service';
 import {
   handleCourseCompleted,
@@ -22,10 +23,8 @@ import {
   type LessonCompletionEffect,
 } from '@/features/completion/effects';
 import {
-  branchCanAccess,
   completionRules,
   databaseFailure,
-  loadBranchId,
   loadCompletionRows,
   oneRecord,
   outlineItems,
@@ -33,8 +32,6 @@ import {
   recordsOf,
   type LearnerDatabase,
 } from '@/features/learning/shared';
-
-const LEARNER_FORBIDDEN_KEY_SET = new Set<string>(LEARNER_FORBIDDEN_KEYS);
 
 type CompletionTransition = CourseCompletionTransition;
 
@@ -176,16 +173,7 @@ async function processCompletionEffects(
   }
 }
 
-function sanitizedLearnerValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizedLearnerValue);
-  const object = recordOf(value);
-  if (!object) return value;
-  return Object.fromEntries(Object.entries(object).flatMap(([key, nested]) => (
-    LEARNER_FORBIDDEN_KEY_SET.has(key) ? [] : [[key, sanitizedLearnerValue(nested)]]
-  )));
-}
-
-async function loadActiveEnrollment(database: LearnerDatabase, actor: Actor, courseId: string) {
+async function requireActiveEnrollment(database: LearnerDatabase, actor: Actor, courseId: string) {
   const { data, error } = await database.from('enrollments')
     .select('id,user_id,course_id,course_version_id,status,enrolled_at,completed_at,branch_id,branch_scope_known')
     .eq('user_id', actor.userId)
@@ -197,13 +185,7 @@ async function loadActiveEnrollment(database: LearnerDatabase, actor: Actor, cou
     !enrollment
     || typeof enrollment.course_version_id !== 'string'
     || !['active', 'completed'].includes(String(enrollment.status))
-  ) return null;
-  return enrollment;
-}
-
-async function requireActiveEnrollment(database: LearnerDatabase, actor: Actor, courseId: string) {
-  const enrollment = await loadActiveEnrollment(database, actor, courseId);
-  if (!enrollment) throw new ApiError(403, 'FORBIDDEN', 'An active course enrollment is required');
+  ) throw new ApiError(403, 'FORBIDDEN', 'An active course enrollment is required');
   return enrollment;
 }
 
@@ -214,7 +196,7 @@ async function pinnedOutlineItem(
   itemId: string,
 ) {
   const outlineResult = await database.from('course_version_outline')
-    .select('outline,access,default_language')
+    .select('outline,default_language')
     .eq('version_id', versionId)
     .eq('course_id', courseId)
     .maybeSingle();
@@ -223,34 +205,7 @@ async function pinnedOutlineItem(
   if (!item) throw new ApiError(404, 'ITEM_NOT_FOUND', 'Course item was not found');
   const outline = recordOf(outlineResult.data);
   const defaultLocale: Locale = outline?.default_language === 'en' ? 'en' : 'vi';
-  return { item, access: outline?.access, defaultLocale };
-}
-
-async function itemAccess(database: LearnerDatabase, actor: Actor, courseId: string, itemId: string) {
-  const enrollment = await loadActiveEnrollment(database, actor, courseId);
-  if (enrollment) {
-    await assertEnrollmentMembershipAccess(actor,enrollment,database);
-    const versionId = enrollment.course_version_id as string;
-    const { item, defaultLocale } = await pinnedOutlineItem(database, courseId, versionId, itemId);
-    return { item, versionId, defaultLocale };
-  }
-
-  const courseResult = await database.from('courses')
-    .select('id,status,current_version_id')
-    .eq('id', courseId)
-    .maybeSingle();
-  databaseFailure(courseResult.error, 'Course could not be loaded');
-  const course = recordOf(courseResult.data);
-  if (!course || course.status !== 'published' || typeof course.current_version_id !== 'string') {
-    throw new ApiError(404, 'COURSE_NOT_FOUND', 'Course was not found');
-  }
-  const versionId = course.current_version_id;
-  const branchId = await loadBranchId(database, actor.userId);
-  const pinned = await pinnedOutlineItem(database, courseId, versionId, itemId);
-  if (!branchCanAccess(pinned.access, branchId)) {
-    throw new ApiError(404, 'COURSE_NOT_FOUND', 'Course was not found');
-  }
-  return { item: pinned.item, versionId, defaultLocale: pinned.defaultLocale };
+  return { item, defaultLocale };
 }
 
 function quizFeedbackPolicies(value: unknown, policies = new Map<string, string>()): Map<string, string> {
@@ -284,7 +239,10 @@ function blockState(row: Record<string, unknown>): unknown {
 
 export async function getItemPayload(actor: Actor, courseId: string, itemId: string, locale: Locale) {
   const database = supabaseService() as unknown as LearnerDatabase;
-  const { item: outlineItem, versionId, defaultLocale } = await itemAccess(database, actor, courseId, itemId);
+  const enrollment = await requireActiveEnrollment(database, actor, courseId);
+  await assertEnrollmentMembershipAccess(actor, enrollment, database);
+  const versionId = enrollment.course_version_id as string;
+  const { item: outlineItem, defaultLocale } = await pinnedOutlineItem(database, courseId, versionId, itemId);
   const renderLocales = [...new Set<Locale>([locale, defaultLocale])];
   const renderResult = await database.from('course_version_item_renders')
     .select('locale,payload')
@@ -309,7 +267,7 @@ export async function getItemPayload(actor: Actor, courseId: string, itemId: str
     if (typeof row.block_id !== 'string') return [];
     const state = blockState(row);
     return [[row.block_id, quizPolicies.has(row.block_id)
-      ? learnerQuizState(state, quizAnswersVisible(quizPolicies.get(row.block_id)))
+      ? restoreQuizMedia(learnerQuizState(state, quizAnswersVisible(quizPolicies.get(row.block_id))))
       : state]];
   }));
 
@@ -318,16 +276,7 @@ export async function getItemPayload(actor: Actor, courseId: string, itemId: str
     courseVersionId: versionId,
     itemId,
     locale: render.locale as Locale,
-    item: outlineItem.type === 'exam'
-      ? sanitizedLearnerValue({
-        id: itemId,
-        kind: 'exam',
-        title: recordOf(render.payload)?.title,
-        description: recordOf(render.payload)?.description,
-        settings: recordOf(render.payload)?.settings,
-        sections: [],
-      })
-      : sanitizedLearnerValue(render.payload),
+    item: learnerItemProjection(outlineItem, render.payload),
     activityState,
   };
 }
