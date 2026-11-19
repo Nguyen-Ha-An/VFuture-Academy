@@ -2,7 +2,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
-import { AuthSessionMissingError } from '@supabase/supabase-js';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '@/messages/en.json';
@@ -19,13 +18,16 @@ vi.mock('@/lib/post-auth-navigation', () => ({ navigateAfterAuth: mocks.navigate
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/server', () => ({ supabaseUser: mocks.supabaseUser }));
 vi.mock('@/lib/supabase/client', () => ({ supabaseBrowser: mocks.supabaseBrowser }));
-vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://academy.example' } }));
+vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://academy.example', SUPABASE_SERVICE_ROLE_KEY: 'local-test-key' } }));
 
 import { AuthForm } from '@/components/AuthForm';
 import { ForgotPasswordForm, RESET_REQUEST_COOLDOWN_MS } from '@/components/ForgotPasswordForm';
 import { ResetPasswordForm } from '@/components/ResetPasswordForm';
 import { GET as recovery } from '@/app/auth/recovery/route';
 import { routes } from '@/lib/routes';
+import { recoveryCookieName } from '@/lib/identity/recovery-receipt';
+
+const recoveryAttempt = 'a'.repeat(32);
 
 function Provider({ children }: { children: React.ReactNode }) {
   return <NextIntlClientProvider locale="en" messages={en}>{children}</NextIntlClientProvider>;
@@ -36,7 +38,9 @@ function recoveryClient(overrides: Record<string, unknown> = {}) {
     auth: {
       resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
       updateUser: vi.fn().mockResolvedValue({ error: null }),
-      exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+      exchangeCodeForSession: vi.fn().mockResolvedValue({
+        data: { redirectType: 'PASSWORD_RECOVERY', session: { user: { id: 'local-learner' }, access_token: 'local-recovery-token' } }, error: null,
+      }),
       verifyOtp: vi.fn().mockResolvedValue({ error: null }),
       ...(overrides.auth as Record<string, unknown> | undefined),
     },
@@ -50,6 +54,7 @@ describe('password recovery', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
     cleanup();
@@ -146,18 +151,20 @@ describe('password recovery', () => {
 
     expect(client.auth.exchangeCodeForSession).toHaveBeenCalledWith('pkce');
     expect(response.status).toBe(303);
-    expect(response.headers.get('location')).toBe('https://vfuture-demo.an.net.vn/reset-password');
+    const destination = new URL(response.headers.get('location')!);
+    expect(destination.origin + destination.pathname).toBe('https://vfuture-demo.an.net.vn/reset-password');
+    expect(response.cookies.get(recoveryCookieName(destination.searchParams.get('recovery')!))?.httpOnly).toBe(true);
   });
 
-  it('verifies a server-readable recovery token hash from the email template', async () => {
+  it('opens a clean recovery confirmation page before exchanging credentials', async () => {
     const client = recoveryClient();
     mocks.supabaseUser.mockResolvedValue(client);
 
     const response = await recovery(new Request('https://academy.example/auth/recovery?token_hash=hashed-token&type=recovery'));
 
-    expect(client.auth.verifyOtp).toHaveBeenCalledWith({ token_hash: 'hashed-token', type: 'recovery' });
+    expect(client.auth.verifyOtp).not.toHaveBeenCalled();
     expect(client.auth.exchangeCodeForSession).not.toHaveBeenCalled();
-    expect(response.headers.get('location')).toBe('https://academy.example/reset-password');
+    expect(response.headers.get('location')).toBe('https://academy.example/auth/confirm-email?recovery=1');
   });
 
   it.each([
@@ -173,11 +180,11 @@ describe('password recovery', () => {
   });
 
   it('rejects a short or mismatched new password before calling Supabase', async () => {
-    const client = recoveryClient();
-    mocks.supabaseBrowser.mockReturnValue(client);
+    const submit = vi.fn();
+    vi.stubGlobal('fetch', submit);
     const user = userEvent.setup();
 
-    render(<Provider><ResetPasswordForm /></Provider>);
+    render(<Provider><ResetPasswordForm recoveryAttempt={recoveryAttempt} /></Provider>);
     await user.type(screen.getByLabelText('New password'), 'short');
     await user.type(screen.getByLabelText('Confirm new password'), 'short');
     await user.click(screen.getByRole('button', { name: 'Update password' }));
@@ -190,29 +197,30 @@ describe('password recovery', () => {
     await user.click(screen.getByRole('button', { name: 'Update password' }));
     expect(await screen.findByText('Passwords do not match.')).toBeInTheDocument();
 
-    expect(client.auth.updateUser).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it('updates the password and continues into the learner app', async () => {
-    const client = recoveryClient();
-    mocks.supabaseBrowser.mockReturnValue(client);
+    const submit = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', submit);
     const user = userEvent.setup();
 
-    render(<Provider><ResetPasswordForm /></Provider>);
+    render(<Provider><ResetPasswordForm recoveryAttempt={recoveryAttempt} /></Provider>);
     await user.type(screen.getByLabelText('New password'), 'correct horse battery staple');
     await user.type(screen.getByLabelText('Confirm new password'), 'correct horse battery staple');
     await user.click(screen.getByRole('button', { name: 'Update password' }));
 
-    expect(client.auth.updateUser).toHaveBeenCalledWith({ password: 'correct horse battery staple' });
+    expect(submit).toHaveBeenCalledWith('/auth/recovery', expect.objectContaining({
+      method: 'POST', credentials: 'same-origin', body: JSON.stringify({ attempt: recoveryAttempt, password: 'correct horse battery staple' }),
+    }));
     expect(mocks.navigate).toHaveBeenCalledWith('/app');
   });
 
   it('distinguishes a consumed recovery session from a retryable update failure', async () => {
-    const client = recoveryClient({ auth: { updateUser: vi.fn().mockResolvedValue({ error: new AuthSessionMissingError() }) } });
-    mocks.supabaseBrowser.mockReturnValue(client);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 410 })));
     const user = userEvent.setup();
 
-    render(<Provider><ResetPasswordForm /></Provider>);
+    render(<Provider><ResetPasswordForm recoveryAttempt={recoveryAttempt} /></Provider>);
     await user.type(screen.getByLabelText('New password'), 'correct horse battery staple');
     await user.type(screen.getByLabelText('Confirm new password'), 'correct horse battery staple');
     await user.click(screen.getByRole('button', { name: 'Update password' }));
@@ -223,11 +231,10 @@ describe('password recovery', () => {
   });
 
   it('keeps a failed password update retryable', async () => {
-    const client = recoveryClient({ auth: { updateUser: vi.fn().mockResolvedValue({ error: new Error('weak password') }) } });
-    mocks.supabaseBrowser.mockReturnValue(client);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 422 })));
     const user = userEvent.setup();
 
-    render(<Provider><ResetPasswordForm /></Provider>);
+    render(<Provider><ResetPasswordForm recoveryAttempt={recoveryAttempt} /></Provider>);
     await user.type(screen.getByLabelText('New password'), 'correct horse battery staple');
     await user.type(screen.getByLabelText('Confirm new password'), 'correct horse battery staple');
     await user.click(screen.getByRole('button', { name: 'Update password' }));

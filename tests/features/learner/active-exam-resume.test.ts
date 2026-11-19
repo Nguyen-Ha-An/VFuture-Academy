@@ -89,6 +89,10 @@ describe('owned active exam resume priority', () => {
       ] } };
       const result = await readLearnerHome(suspendedActor, 'en', db, now, dependencies());
       expect(result.continueLearning && 'attemptId' in result.continueLearning).not.toBe(true);
+      if (enrollment.status === 'active') {
+        expect(result).toMatchObject({ continueLearning: null, nextRequired: null, upcomingExam: null });
+        expect(db.queriesFor('course_version_item_renders')).toHaveLength(0);
+      }
     }
   });
 });

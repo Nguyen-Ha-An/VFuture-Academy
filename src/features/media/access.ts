@@ -2,7 +2,7 @@ import 'server-only';
 
 import { ApiError } from '@/lib/api';
 import type { Actor } from '@/lib/permissions';
-import { assertEnrollmentMembershipAccess, type MembershipAccessDatabase } from '@/features/learning/membership-access';
+import { assertEnrollmentMembershipAccess, eligibleAudienceBranch, type MembershipAccessDatabase } from '@/features/learning/membership-access';
 import { ResourceDocumentSchema } from '@/content-engine/schema/bundle';
 import type { supabaseService } from '@/lib/supabase/server';
 
@@ -115,20 +115,21 @@ export async function isEnrolledForAsset(
     || referencesPublishedAsset(database, 'course_version_item_renders', 'payload', versionIds, assetId);
 }
 
-/** Checks published resource references against the signed-in user's exact profile branch. */
+/** Checks published resource references against the signed-in learner's eligible school audience. */
 export async function isEligibleResourceAsset(
   database: MediaAccessDatabase,
-  userId: string,
+  viewer: Actor | string,
   assetId: string,
 ): Promise<boolean> {
+  const actor = typeof viewer === 'string' ? { userId: viewer } : viewer;
   const profileResult = await database.from('profiles')
     .select('branch_id')
-    .eq('id', userId)
+    .eq('id', actor.userId)
     .maybeSingle();
   if (profileResult.error) throw new Error('Media resource profile lookup failed');
   const profile = record(profileResult.data);
   if (!profile || !('branch_id' in profile)) return false;
-  const branchId = typeof profile.branch_id === 'string' ? profile.branch_id : null;
+  const branchId = await eligibleAudienceBranch(actor, profile.branch_id, database as unknown as MembershipAccessDatabase);
 
   for (let start = 0; ; start += PAGE_SIZE) {
     const result = await database.from('resources')

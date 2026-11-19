@@ -3,6 +3,25 @@ import { describe, expect, it } from 'vitest';
 import { pointsIntoRedaction, redactItemDocument } from '@/features/studio-mcp/data/redact';
 
 describe('MCP reader document', () => {
+  it.each(['none', 'after_submit', 'per_question'])('keeps only the quiz settings feedback policy %s', feedback => {
+    const quiz = {
+      type: 'quiz', id: 'practice', settings: { feedback }, questions: [
+        { type: 'single_choice', settings: { feedback }, options: [{ id: 'a', feedback }] },
+      ],
+    };
+    const expected = { ...quiz, questions: [{ type: 'single_choice', settings: {}, options: [{ id: 'a' }] }] };
+    const result = redactItemDocument(quiz);
+    expect(result.document).toEqual(expected);
+    expect(pointsIntoRedaction('/settings/feedback', result.redactedPaths)).toBe(false);
+    expect(pointsIntoRedaction('/questions/0/options/0/feedback', result.redactedPaths)).toBe(true);
+    for (const invalid of ['private feedback', { correctAnswer: 'hidden' }]) {
+      const rejected = redactItemDocument({ ...quiz, settings: { feedback: invalid } });
+      expect(rejected.document).toMatchObject({ settings: {} });
+      expect(pointsIntoRedaction('/settings/feedback', rejected.redactedPaths)).toBe(true);
+      expect(JSON.stringify(rejected.document)).not.toMatch(/private feedback|hidden/);
+    }
+  });
+
   it('removes nested answer material before pointer access and obscures position answers', () => {
     const source = {
       id: 'lesson-a',
@@ -13,6 +32,7 @@ describe('MCP reader document', () => {
             items: [{ id: 'first' }, { id: 'second' }],
             correctAnswer: ['first', 'second'],
             settings: { feedback: { correctAnswer: 'hidden' } },
+            grading: { optionFeedback: { a: 'hidden grader feedback' }, arbitrary: 'hidden grader data' },
           },
           {
             id: 'match-a', type: 'matching',

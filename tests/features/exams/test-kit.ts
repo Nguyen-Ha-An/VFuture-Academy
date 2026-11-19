@@ -67,6 +67,7 @@ export async function compileExamFixtures() {
 export function itemContext(item: CompiledItem): ExamItemContext {
   return {
     courseVersionId: `version-${item.id}`,
+    courseOwner: { kind: 'central' },
     item,
     enrolled: true,
     defaultLocale: item.renders.en ? 'en' : 'vi',

@@ -224,6 +224,34 @@ describe('public profiles', () => {
     });
   });
 
+  it.each([
+    ['active', 'active', true],
+    ['suspended', 'suspended', false],
+  ] as const)('uses the learner’s %s school membership for showcases and current links while preserving their completion', async (_label, status, visible) => {
+    const userId = 'learner-1';
+    const project = { status: 'showcased', approved: true, title: 'Project', summary: 'Summary',
+      branch_scope: { scope: 'branches', branchIds: ['school-a'] }, output_links: [{ url: 'https://school.example/work' }] };
+    const client = new ProfileDatabase({
+      profiles: [{ id: userId, branch_id: 'school-a' }],
+      branch_memberships: [{ user_id: userId, branch_id: 'school-a', status }],
+      project_members: [{ user_id: userId, project_id: 'member' }],
+      projects: [
+        { ...project, id: 'owned', owner_id: userId }, { ...project, id: 'member', owner_id: 'other' },
+        { ...project, id: 'global', owner_id: userId, branch_scope: { scope: 'global' }, output_links: [{ url: 'https://public.example/work' }] },
+      ],
+      course_completions: [{ user_id: userId, course_id: 'course', course_version_id: 'earned', completed_at: '2026-09-03T00:00:00Z' }],
+      course_versions: [{ id: 'earned', course_id: 'course', manifest: { title: 'Historical course title' } }],
+      courses: [{ id: 'course', status: 'published', current_version_id: 'current' }],
+      course_version_outline: [{ version_id: 'current', access: project.branch_scope }],
+    });
+    const evidence = await getOwnerProfileEvidence(userId, { client });
+    expect(evidence.completedCourses).toEqual([{ id: 'course', title: 'Historical course title', completedAt: '2026-09-03T00:00:00Z',
+      currentDestinationAvailable: visible }]);
+    expect(evidence.projects.map(({ id }) => id)).toEqual(visible ? ['global', 'member', 'owned'] : ['global']);
+    expect(evidence.projects.flatMap(({ outputLinks }) => outputLinks.map(({ url }) => url)))
+      .toEqual(visible ? ['https://public.example/work', 'https://school.example/work', 'https://school.example/work'] : ['https://public.example/work']);
+  });
+
   it('lists public certificates only while their course remains published and global', async () => {
     const database = new ProfileDatabase({
       certificates: [

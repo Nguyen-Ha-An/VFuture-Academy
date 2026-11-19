@@ -91,7 +91,7 @@ describe('Supabase session middleware', () => {
     expect(response.cookies.get('locale')?.value).toBe('en');
   });
 
-  it.each(['/login', '/signup', '/forgot-password', '/reset-password', '/welcome'])('honors language selection on the auth family: %s', async (pathname) => {
+  it.each(['/login', '/signup', '/forgot-password', '/reset-password', '/welcome', '/auth/confirm-email'])('honors language selection on the auth family: %s', async (pathname) => {
     mocks.createServerClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     const response = await middleware(new NextRequest(`https://academy.example${pathname}?next=%2Fapp&lang=en`));

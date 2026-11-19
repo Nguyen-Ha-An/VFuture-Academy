@@ -30,8 +30,15 @@ for (const readOnly of [false, true]) test(`published versions ${readOnly ? 'rem
   } } }));
   await page.route('**/api/v1/studio/courses/minimal/draft/preview', async route => {
     const body = route.request().postDataJSON();
-    const result = await compileCourse({ manifest: body.manifest, items: body.items }, fixtureResolver, { locales: [body.locale] });
-    await route.fulfill({ json: { data: { course: result.compiled, item: null, report: result.report } } });
+    if (readOnly) {
+      expect(body).toEqual({ stored: true, selectedRef: { kind: 'course' }, locale: expect.stringMatching(/^(vi|en)$/) });
+    }
+    const source = readOnly ? { manifest, items: { intro: lesson } } : body;
+    const { compiled, report } = await compileCourse(source, fixtureResolver, { locales: [body.locale] });
+    expect(compiled).toBeDefined();
+    // The selected course overview uses only its metadata and outline. Keep the stored grading out of the reader response.
+    const course = readOnly ? { meta: compiled!.meta, outline: compiled!.outline } : compiled;
+    await route.fulfill({ json: { data: { course, item: null, report } } });
   });
   await page.route('**/api/v1/studio/courses/minimal/draft/workspace', async route => {
     saved = route.request().postDataJSON();
@@ -43,7 +50,9 @@ for (const readOnly of [false, true]) test(`published versions ${readOnly ? 'rem
     return route.fulfill({ json: { data: restored } });
   });
   await page.goto(`/studio/courses/minimal?uiv2=1&lang=en${readOnly ? '&readonly=1' : ''}`);
-  if (!readOnly) {
+  if (readOnly) {
+    await expect(page.locator('#studio-preview').getByRole('heading', { name: manifest.title, exact: true })).toBeVisible();
+  } else {
     // The manifest also contains module titles; identify the actual course field by its source value.
     const courseTitle = page.getByRole('textbox', { name: 'Title (VI)', exact: true }).and(page.locator('input[value="Khóa học tối giản"]'));
     await expect(courseTitle).toHaveCount(1);

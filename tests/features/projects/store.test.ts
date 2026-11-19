@@ -109,6 +109,32 @@ describe('Supabase project store', () => {
     expect(database.queries.find(({ table }) => table === 'projects')?.query.calls[0][1]).toContain('branch_scope');
   });
 
+  it('limits discovery, detail, interest and covers to global projects during school suspension', async () => {
+    const school = row.branch_scope.scope === 'branches' ? row.branch_scope.branchIds[0] : null;
+    const global = { ...row, id: 'global-lab', branch_scope: { scope: 'global' } };
+    const database = new Database({
+      profiles: Array.from({ length: 5 }, () => ({ data: { branch_id: school }, error: null })),
+      branch_memberships: Array.from({ length: 5 }, () => ({ data: { status: 'suspended' }, error: null })),
+      projects: [
+        { data: [row, global], error: null }, { data: row, error: null },
+        { data: row, error: null }, { data: [row], error: null }, { data: null, error: null },
+      ],
+    });
+    const service = createProjectService({
+      store: createSupabaseProjectStore(database),
+      authorize: async () => ({ userId: project.ownerId, roles: [] }),
+    });
+
+    await expect(service.list(project.ownerId, {})).resolves.toMatchObject([{ id: global.id }]);
+    await expect(service.get(project.ownerId, row.id)).rejects.toMatchObject({ status: 404 });
+    await expect(service.setInterest(project.ownerId, row.id, true)).rejects.toMatchObject({ status: 404 });
+    await expect(service.canViewCover(project.ownerId, row.cover_asset_id!)).resolves.toBe(false);
+    await expect(service.propose(project.ownerId, { id: 'new-lab', title: 'New lab', summary: 'New project' }))
+      .rejects.toMatchObject({ status: 403, code: 'MEMBERSHIP_SUSPENDED' });
+    expect(database.rpcCalls).toHaveLength(0);
+    expect(database.queries.some(({ table }) => table === 'project_interest')).toBe(false);
+  });
+
   it('drops malformed project branch scopes instead of treating them as global', async () => {
     const database = new Database({
       projects: [{ data: [{ ...row, branch_scope: { scope: 'branches' } }], error: null }],

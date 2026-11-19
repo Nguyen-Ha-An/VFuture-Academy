@@ -704,7 +704,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     }
 
     const id = newId();
-    const drawn = await drawPools(exam.sections, bank, id, exam.sections.flatMap((section) => section.questionIds));
+    const drawn = await drawPools(exam.sections, bank, id, context.courseOwner);
     const selectedLocale = context.item.renders[actor.locale] ? actor.locale : context.defaultLocale;
     const learnerRender = localeRender(
       context.item.renders,

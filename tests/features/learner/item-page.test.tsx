@@ -50,6 +50,16 @@ afterEach(() => {
 });
 
 describe('learner item page', () => {
+  it('returns an unenrolled learner to the course overview before reading an item', async () => {
+    mocks.requireUser.mockResolvedValue({ id: 'user-1' });
+    mocks.getCourse.mockResolvedValue({ enrollment: null });
+
+    await expect(LearnerItemPage({ params: Promise.resolve({ courseId: 'ai-foundations', itemId: 'lesson-1' }) }))
+      .rejects.toThrow('redirect:/app/courses/ai-foundations');
+    expect(mocks.getItemPayload).not.toHaveBeenCalled();
+    expect(mocks.readItemActivitySummary).not.toHaveBeenCalled();
+  });
+
   it('renders the localized item title as the page heading', async () => {
     mocks.requireUser.mockResolvedValue({ id: 'user-1' });
     mocks.getItemPayload.mockResolvedValue({

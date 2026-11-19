@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api';
 import { audit } from '@/lib/audit';
 import { internalContentPolicy, isInternalContentId } from '@/lib/internal-content';
 import { isoRevisionTimestamp } from '@/features/content-review/revision';
+import { eligibleAudienceBranch, type SuspendedSchoolAccess } from '@/features/learning/membership-access';
 import { can, hasPermission, type Actor, type Scope } from '@/lib/permissions';
 import { RESERVED_PROJECT_IDS } from '@/features/projects/ids';
 import { actorScopes } from '@/lib/workspace-admission';
@@ -151,7 +152,7 @@ export interface ProjectStore {
   updateProject(actorId: string, project: ProjectRecord, members: ProjectMember[], expectedRevision: string): Promise<ProjectRecord | null>;
   saveReviewDraft(actorId: string, project: ProjectRecord, members: ProjectMember[], expectedRevision: string): Promise<ProjectRecord>;
   deleteProject(actorId: string, id: string, expectedRevision: string): Promise<boolean>;
-  findViewerBranch(userId: string): Promise<string | null>;
+  findViewerBranch(userId: string, onSuspension?: SuspendedSchoolAccess): Promise<string | null>;
   listViewerMemberships(userId: string): Promise<Array<{ projectId: string; role: ProjectMemberRole }>>;
   listMembers(projectId: string): Promise<ProjectMember[]>;
   listCourses(courseIds: string[], viewerBranchId?: string | null): Promise<ProjectCourse[]>;
@@ -347,7 +348,7 @@ export function createProjectService({
       }
       const [existing, branchId] = await Promise.all([
         store.findProject(parsed.id),
-        store.findViewerBranch(ownerId),
+        store.findViewerBranch(ownerId, 'deny'),
       ]);
       if (existing) {
         throw new ApiError(409, 'PROJECT_EXISTS', 'A project with this id already exists');
@@ -794,11 +795,10 @@ export function createSupabaseProjectStore(database: ProjectDatabase): ProjectSt
       return data === true;
     },
 
-    async findViewerBranch(userId) {
+    async findViewerBranch(userId, onSuspension) {
       const { data, error } = await database.from('profiles').select('branch_id').eq('id', userId).maybeSingle();
       if (error) databaseError('Viewer branch could not be loaded');
-      const branchId = record(data)?.branch_id;
-      return typeof branchId === 'string' ? branchId : null;
+      return eligibleAudienceBranch({ userId }, record(data)?.branch_id, database, onSuspension);
     },
 
     async listViewerMemberships(userId) {

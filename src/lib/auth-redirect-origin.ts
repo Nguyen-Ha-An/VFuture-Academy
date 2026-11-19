@@ -25,3 +25,9 @@ export function authRedirectOrigin(request: Request): URL {
   const allowed = configuredRedirectOrigins(canonicalOrigin);
   return new URL(allowed.has(requestOrigin) ? requestOrigin : canonicalOrigin);
 }
+
+export function sameOriginAuthRequest(request: Request, appUrl: URL): boolean {
+  const site = request.headers.get('sec-fetch-site');
+  return new URL(request.url).origin === appUrl.origin && request.headers.get('origin') === appUrl.origin
+    && (site === null || site === 'same-origin');
+}

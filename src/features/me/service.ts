@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { eligibleAudienceBranch } from '@/features/learning/membership-access';
 import { ApiError } from '@/lib/api';
 
 type QueryResult = { data: unknown; error: unknown | null };
@@ -71,7 +72,14 @@ export function createMeService({ database }: { database: MeDatabase }) {
     return typeof branchId === 'string' ? branchId : null;
   }
 
-  return { getMe, branchIdForUser };
+  async function leaderboardSchoolForUser(userId: string) {
+    const primaryBranch = await branchIdForUser(userId);
+    if (!primaryBranch) return { status: 'unassigned' as const };
+    const branchId = await eligibleAudienceBranch({ userId }, primaryBranch, database);
+    return branchId ? { status: 'eligible' as const, branchId } : { status: 'suspended' as const };
+  }
+
+  return { getMe, branchIdForUser, leaderboardSchoolForUser };
 }
 
 async function productionService() {
@@ -85,4 +93,8 @@ export async function getMe(userId: string) {
 
 export async function branchIdForUser(userId: string) {
   return (await productionService()).branchIdForUser(userId);
+}
+
+export async function leaderboardSchoolForUser(userId: string) {
+  return (await productionService()).leaderboardSchoolForUser(userId);
 }

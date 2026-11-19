@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { IdSchema } from '@/content-engine/schema/common';
 import { validateDraft } from '@/features/studio/drafts';
+import { readerValidationReport } from '@/features/studio/reader-source';
+import { canEditStudioCourse } from '@/features/studio/source-access';
 import { withHandler } from '@/lib/api';
 import { readStrictJsonBodyLimited } from '@/lib/body-limit';
 import { scopedContentContext } from '@/features/admin/content-review-production';
@@ -28,5 +30,7 @@ export const POST = withHandler(async (request, context) => {
   // rest of the pipeline rejects. Every Studio content route now shares one strict
   // reader.
   const raw = await readStrictJsonBodyLimited(request, { emptyAsObject: true });
-  return validateDraft(courseId, ValidateBody.parse(raw));
+  const canEdit = await canEditStudioCourse(admin, courseId);
+  const report = await validateDraft(courseId, ValidateBody.parse(raw));
+  return canEdit ? report : readerValidationReport(report);
 });

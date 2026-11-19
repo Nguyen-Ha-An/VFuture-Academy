@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { IdSchema } from '@/content-engine/schema/common';
 import { exportVersion } from '@/features/studio/drafts';
+import { canEditStudioCourse } from '@/features/studio/source-access';
 import { withHandler } from '@/lib/api';
 import { scopedContentContext } from '@/features/admin/content-review-production';
 
@@ -15,12 +16,13 @@ async function courseIdOf(context: unknown) {
 
 export const GET = withHandler(async (request, context) => {
   const courseId = await courseIdOf(context);
-  await scopedContentContext(request, 'course', courseId, 'content.read', 'course.read');
+  const { context: admin } = await scopedContentContext(request, 'course', courseId, 'content.read', 'course.read');
   const query = new URL(request.url).searchParams;
   const exported = await exportVersion(
     courseId,
     VersionSchema.parse(query.get('version')),
     FormatSchema.parse(query.get('format') ?? undefined),
+    { readerView: !await canEditStudioCourse(admin, courseId) },
   );
   const body = typeof exported.body === 'string'
     ? exported.body
@@ -29,7 +31,8 @@ export const GET = withHandler(async (request, context) => {
     headers: {
       'content-type': exported.contentType,
       'content-disposition': `attachment; filename="${exported.filename}"`,
-      'x-content-checksum': exported.checksum,
+      ...(exported.checksum ? { 'x-content-checksum': exported.checksum } : {}),
+      'cache-control': 'private, no-store',
     },
   });
 });

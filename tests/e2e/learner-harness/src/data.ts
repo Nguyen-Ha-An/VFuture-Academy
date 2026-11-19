@@ -80,6 +80,7 @@ export async function session(_actor: unknown, locator: AssignmentLocator) {
 export const SKILL_LEVELS = ['exposed', 'applied', 'demonstrated'] as const;
 export async function passport() { return []; }
 export async function branchIdForUser() { return null; }
+export async function leaderboardSchoolForUser() { return { status: 'unassigned' }; }
 export async function weeklyLeaderboard() { return []; }
 export async function learnerActivitySeries() { return { days: [], events: [], values: [], week: { current: 0, previous: 0 } }; }
 

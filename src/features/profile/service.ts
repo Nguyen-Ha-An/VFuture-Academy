@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { L10nString } from '@/content-engine';
+import { eligibleAudienceBranch } from '@/features/learning/membership-access';
 import { passport, type PassportSkill, type SkillsDatabase } from '@/features/skills/service';
 import { ApiError } from '@/lib/api';
 import { audit } from '@/lib/audit';
@@ -296,8 +297,7 @@ export async function getOwnerProfileEvidence(userId: string, deps?: ProfileDepe
   const client = database(deps);
   const profileResult = await client.from('profiles').select('branch_id').eq('id', userId).maybeSingle();
   if (profileResult.error) databaseFailure('Unable to load owner profile evidence');
-  const branchValue = record(profileResult.data)?.branch_id;
-  const branchId = typeof branchValue === 'string' ? branchValue : null;
+  const branchId = await eligibleAudienceBranch({ userId }, record(profileResult.data)?.branch_id, client);
   const [courses, skills, projects] = await Promise.all([
     ownerCompletedCourses(userId, branchId, client),
     passport(userId, { client: client as unknown as SkillsDatabase }),

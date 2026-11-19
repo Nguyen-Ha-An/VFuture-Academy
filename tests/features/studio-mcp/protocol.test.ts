@@ -36,6 +36,42 @@ async function listedToolNames(principal: Actor): Promise<string[]> {
 }
 
 describe('Studio MCP registration over the SDK protocol', () => {
+  it.each([false, true])('builds course schema metadata from the permitted source (can edit: %s)', async canEdit => {
+    const principal = actor(canEdit ? ['course.read', 'course.edit'] : ['course.read']);
+    let privateAsset = 'teacher-example-one';
+    const db = { rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'authorization_actor') return { data: principal.authorization, error: null };
+      if (name === 'cms_assert_content_access' && args.p_permission === 'content.edit' && !canEdit) return { data: null, error: { code: '42501' } };
+      if (name === 'studio_get_draft_snapshot') return { data: {
+        id: 'draft-one', course_id: 'course-one', manifest: { languages: ['en'], defaultLanguage: 'en' },
+        items: { intro: { explanation: { blocks: [{ type: 'image', src: { assetId: privateAsset } }] } } },
+      }, error: null };
+      return { data: true, error: null };
+    } };
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createStudioServer({
+      db: db as never, userId, clientId: 'client-1', correlationId: 'correlation-1',
+      registeredToolNames: [], resourceOrigin: 'https://academy.example',
+    }, principal);
+    const client = new Client({ name: 'test-client', version: '1.0.0' });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const input = { name: 'get_authoring_schema', arguments: { kind: 'lesson', part: 'block:image', courseId: 'course-one' } };
+      const first = await client.callTool(input);
+      expect(first.isError).not.toBe(true);
+      expect(JSON.stringify(first.content).includes(privateAsset)).toBe(canEdit);
+      privateAsset = 'teacher-example-two';
+      const second = await client.callTool(input);
+      expect(second.isError).not.toBe(true);
+      const firstHash = (first.structuredContent as { contextHash: string }).contextHash;
+      const secondHash = (second.structuredContent as { contextHash: string }).contextHash;
+      expect(firstHash).toEqual(expect.any(String));
+      expect(secondHash === firstHash).toBe(!canEdit);
+    } finally {
+      await Promise.all([client.close(), server.close()]);
+    }
+  });
+
   it('lists all nine tools for an editor', async () => {
     expect(await listedToolNames(actor(['course.read', 'course.edit']))).toEqual([
       'whoami', 'list_courses', 'get_course_outline', 'get_item', 'get_authoring_schema',

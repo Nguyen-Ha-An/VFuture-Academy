@@ -1,8 +1,7 @@
 import 'server-only';
 import { resolveL10nString, type L10nString, type Locale } from '@/content-engine';
-import { assertEnrollmentMembershipAccess } from '@/features/learning/membership-access';
+import { membershipEligibleEnrollments } from '@/features/learning/membership-access';
 import { databaseFailure, recordOf, recordsOf, type LearnerDatabase } from '@/features/learning/shared';
-import { ApiError } from '@/lib/api';
 import type { Actor } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 
@@ -11,10 +10,7 @@ export async function listEnrolledCourses(actor: Actor, locale: Locale, database
   const result = await database.from('enrollments').select('course_id,course_version_id,status,branch_id,branch_scope_known').eq('user_id', actor.userId).in('status', ['active', 'completed']).order('enrolled_at', { ascending: false });
   databaseFailure(result.error, 'Course enrollments could not be loaded');
   const rows = recordsOf(result.data).filter(row => typeof row.course_id === 'string' && typeof row.course_version_id === 'string' && (row.status === 'active' || row.status === 'completed'));
-  const accessible = (await Promise.all(rows.map(async row => {
-    try { await assertEnrollmentMembershipAccess(actor, row, database); return row; }
-    catch (error) { if (error instanceof ApiError && error.code === 'MEMBERSHIP_SUSPENDED') return null; throw error; }
-  }))).filter((row): row is Record<string, unknown> => row !== null);
+  const accessible = await membershipEligibleEnrollments(actor, rows, database);
   if (!accessible.length) return { courses: [] };
   const outlines = await database.from('course_version_outline').select('version_id,course_id,meta,default_language').in('version_id', [...new Set(accessible.map(row => row.course_version_id))]);
   databaseFailure(outlines.error, 'Course titles could not be loaded');
