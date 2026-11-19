@@ -3,6 +3,7 @@
 import type { LearnerQuestion } from '@/content-engine/render/registry';
 import { cn } from '@/lib/utils';
 import type { LearnerExam } from './types';
+import { hasExamAnswer, type SequentialExamProgress } from '../navigation';
 
 interface PaletteEntry {
   question: LearnerQuestion;
@@ -23,7 +24,8 @@ interface ExamPaletteProps {
   currentIndex: number;
   currentSectionIndex: number;
   entries: readonly PaletteEntry[];
-  flagged: ReadonlySet<string>;
+  flagged: ReadonlySet<number>;
+  page?: SequentialExamProgress;
   labels: ExamPaletteLabels;
   layout: LearnerExam['settings']['layout'];
   navigation: LearnerExam['settings']['navigation'];
@@ -31,13 +33,7 @@ interface ExamPaletteProps {
   submitting: boolean;
 }
 
-export function hasAnswer(value: unknown): boolean {
-  if (value === undefined || value === null) return false;
-  if (typeof value === 'string') return value.trim().length > 0;
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === 'object') return Object.values(value).some(hasAnswer);
-  return true;
-}
+export const hasAnswer = hasExamAnswer;
 
 export function ExamPalette({
   answers,
@@ -45,31 +41,37 @@ export function ExamPalette({
   currentSectionIndex,
   entries,
   flagged,
+  page,
   labels,
   layout,
   navigation,
   onNavigate,
   submitting,
 }: ExamPaletteProps) {
+  const offset = page?.questionOffset ?? 0;
+  const priorAnswers = new Set(page?.answeredBefore);
   return (
     <nav aria-label={labels.navigation} className="min-w-0">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(44px,1fr))] gap-2">
-        {entries.map(({ question, sectionIndex }, index) => {
-          const answered = hasAnswer(answers[question.id]);
-          const isFlagged = flagged.has(question.id);
-          const sequentiallyLocked = navigation === 'sequential'
+        {Array.from({ length: page?.questionCount ?? entries.length }, (_, index) => {
+          const localIndex = index - offset;
+          const entry = entries[localIndex];
+          const answered = entry ? hasAnswer(answers[entry.question.id]) : priorAnswers.has(index);
+          const isFlagged = flagged.has(index);
+          const isCurrent = localIndex === currentIndex;
+          const sequentiallyLocked = !entry || (navigation === 'sequential'
             && (layout === 'one_per_page'
-              ? index !== currentIndex
+              ? !isCurrent
               : layout === 'section_per_page'
-                ? sectionIndex !== currentSectionIndex
-                : false);
+                ? entry.sectionIndex !== currentSectionIndex
+                : false));
           return (
             <button
-              key={question.id}
+              key={index}
               type="button"
               data-answered={answered}
               data-flagged={isFlagged}
-              aria-current={index === currentIndex ? 'page' : undefined}
+              aria-current={isCurrent ? 'page' : undefined}
               aria-disabled={sequentiallyLocked ? 'true' : undefined}
               disabled={submitting}
               aria-label={labels.question(
@@ -81,10 +83,10 @@ export function ExamPalette({
                 'relative min-h-11 min-w-0 rounded-md border border-border px-1 text-sm font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                 answered && 'border-primary/50 bg-primary/10 text-foreground',
                 isFlagged && 'ring-2 ring-warning-foreground ring-offset-1',
-                index === currentIndex && 'bg-primary text-primary-foreground',
+                isCurrent && 'bg-primary text-primary-foreground',
               )}
               onClick={() => {
-                if (!sequentiallyLocked) onNavigate(index);
+                if (!sequentiallyLocked) onNavigate(localIndex);
               }}
             >
               {index + 1}

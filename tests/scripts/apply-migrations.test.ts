@@ -63,7 +63,7 @@ describe('applyMigrations', () => {
     });
   });
 
-  it('accepts the explicit59-file migration inventory in lexical order on a fresh ledger', async () => {
+  it('accepts the explicit owned migration inventory in lexical order on a fresh ledger', async () => {
     const migrationsDir = join(process.cwd(), 'supabase', 'migrations');
     const expected = [
       '0001_identity.sql',
@@ -125,6 +125,13 @@ describe('applyMigrations', () => {
       '20261106020000_teaching_grading_guards.sql',
       '20261106030000_teaching_report_scope.sql',
       '20261106040000_management_teaching_scope.sql',
+      '20261120000100_secure_school_invitations.sql',
+      '20261120000200_secure_learner_read_policies.sql',
+      '20261120000300_secure_studio_publication.sql',
+      '20261120000400_limit_owner_reservations.sql',
+      '20261120000500_sequential_exam_progress.sql',
+      '20261120000600_index_public_media_references.sql',
+      '20261120000700_bound_quiz_rewards.sql',
     ];
     const files = migrationFiles(migrationsDir);
     const prefixes = files.map((filename) => filename.split('_')[0]);

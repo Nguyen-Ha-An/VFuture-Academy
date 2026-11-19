@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPGlite, repositoryRoot } from './lib/admin-db-harness.mjs';
 import { createFullAdminDatabase } from './verify-admin-migrations.mjs';
+import { verifyStudioPublicationIntegrity } from './fixtures/studio-publication-integrity.mjs';
 
 async function expectFailure(operation, marker) {
   try { await operation(); }
@@ -84,8 +85,8 @@ async function verify(PGlite) {
     // Every content type canonicalized by the wrapper must preserve foreign
     // published links while an authorized owner can still reach its editor.
     await db.exec(`
-      insert into public.opportunities(id,title,organization,type,description,created_by,branch_scope)
-      values ('shared-opportunity','{"en":"Published opportunity"}','Fixture organization','event','{"en":"Published description"}','${actor}','{"scope":"branches","branchIds":["ans"]}');
+      insert into public.opportunities(id,title,organization,type,description,created_by,ownership_kind,branch_scope)
+      values ('shared-opportunity','{"en":"Published opportunity"}','Fixture organization','event','{"en":"Published description"}','${actor}','central','{"scope":"branches","branchIds":["ans"]}');
       insert into public.projects(id,title,summary,owner_id,branch_scope)
       values ('shared-project','{"en":"Published project"}','{"en":"Published summary"}','${actor}','{"scope":"branches","branchIds":["ans"]}');
     `);
@@ -201,6 +202,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     await verify(loaded.PGlite);
     await verifyLegacyBackfill(loaded.PGlite);
+    await verifyStudioPublicationIntegrity(loaded.PGlite);
     console.log('Actual course and bank CMS publication verification passed.');
   } finally {
     if (loaded.temporaryPrefix) rmSync(loaded.temporaryPrefix, { recursive: true, force: true });

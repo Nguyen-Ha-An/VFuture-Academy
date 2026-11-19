@@ -445,7 +445,7 @@ describe('persistent transfer admission and maintenance', () => {
   });
   it('preserves critical exam reads/auth/writes while discretionary work is stopped', async () => {
     const f = await fixture(); f.writeMaintenance('discretionary-stop');
-    for (const [method, path] of [['POST', '/rest/v1/rpc/exam_save_active_answers'], ['POST', '/rest/v1/rpc/exam_finalize_attempt'], ['POST', '/rest/v1/rpc/rate_limit'], ['POST', '/rest/v1/rpc/authorization_actor'], ['GET', '/rest/v1/profiles'], ['POST', '/auth/v1/token?grant_type=refresh_token']]) {
+    for (const [method, path] of [['POST', '/rest/v1/rpc/exam_save_active_answers'], ['POST', '/rest/v1/rpc/exam_advance_sequential_page'], ['POST', '/rest/v1/rpc/exam_sequential_answered_before'], ['POST', '/rest/v1/rpc/exam_finalize_attempt'], ['POST', '/rest/v1/rpc/rate_limit'], ['POST', '/rest/v1/rpc/authorization_actor'], ['GET', '/rest/v1/profiles'], ['POST', '/auth/v1/token?grant_type=refresh_token']]) {
       expect((await call(f.url, path, { method, headers: KEY_HEADERS })).status).toBe(200);
     }
     for (const path of ['/rest/v1/rpc/exam_start_attempt', '/auth/v1/signup', '/auth/v1/recover']) expect((await call(f.url, path, { method: 'POST', headers: KEY_HEADERS })).status).toBe(503);

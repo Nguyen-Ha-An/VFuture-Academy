@@ -8,6 +8,7 @@ import type {
   ExamRepo,
 } from './types';
 import { ExamError } from './types';
+import { hasExamAnswer, sequentialPage } from './navigation';
 
 const clone = <T>(value: T): T => structuredClone(value);
 const answerKey = (answer: Pick<ExamAnswerRecord, 'attemptId' | 'questionId'>) => `${answer.attemptId}:${answer.questionId}`;
@@ -90,8 +91,33 @@ export class InMemoryExamRepo implements ExamRepo {
   async saveActiveAnswers(attemptId: string, userId: string, answers: readonly ExamAnswerRecord[]) {
     const attempt = this.attempts.get(attemptId);
     if (!attempt || attempt.userId !== userId || attempt.status !== 'in_progress') return false;
+    const page = sequentialPage(attempt);
+    if (page && answers.some(answer => !page.questionIds.includes(answer.questionId))) {
+      throw new ExamError('EXAM_PAGE_CHANGED', 'This question is outside the current exam page.');
+    }
     for (const answer of answers) this.answers.set(answerKey(answer), clone(answer));
     return true;
+  }
+
+  async advanceSequentialPage(attemptId: string, userId: string, fromStep: number) {
+    const attempt = this.attempts.get(attemptId);
+    if (!attempt || attempt.userId !== userId || attempt.status !== 'in_progress') {
+      throw new ExamError('ATTEMPT_NOT_ACTIVE', 'Only an active exam can change page.');
+    }
+    const page = sequentialPage(attempt);
+    if (!page || fromStep < 0 || fromStep > page.index || fromStep >= page.count - 1) {
+      throw new ExamError('EXAM_PAGE_CHANGED', 'The requested exam page transition is unavailable.');
+    }
+    if (page.index === fromStep) attempt.sequentialStep += 1;
+    return attempt.sequentialStep;
+  }
+
+  async sequentialAnsweredBefore(attemptId: string, userId: string, step: number) {
+    const attempt = this.attempts.get(attemptId);
+    if (!attempt || attempt.userId !== userId) return [];
+    const page = sequentialPage({ ...attempt, sequentialStep: Math.min(step, attempt.sequentialStep) });
+    return page?.previousIds.flatMap((questionId, index) =>
+      hasExamAnswer(this.answers.get(answerKey({ attemptId, questionId }))?.answer) ? [index] : []) ?? [];
   }
 
   async finalizeAttempt(

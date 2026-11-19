@@ -10,6 +10,7 @@ import {
 } from '../../content-engine/compile/project';
 import { drawPools, type DrawnPoolQuestion } from './pools';
 import { containsAttachmentReferences, validQuestionAnswer } from '@/features/learning/question-answer';
+import { referencesAsset } from '@/features/media/references';
 import type {
   BankSource,
   Clock,
@@ -23,6 +24,7 @@ import type {
   LoadExamItem,
 } from './types';
 import { ExamError } from './types';
+import { sequentialPage, type SequentialExamProgress } from './navigation';
 import type { AnalyticsEventName, ServerAnalyticsProps } from '../../lib/analytics';
 
 export interface ExamServiceDependencies {
@@ -35,7 +37,7 @@ export interface ExamServiceDependencies {
   clock: Clock;
   bank: BankSource;
   loadItem: LoadExamItem;
-  isEnrolled: (userId: string, courseVersionId: string) => Promise<boolean>;
+  isEnrolled: (userId: string, courseVersionId: string, attemptBranch?: string | null) => Promise<boolean>;
   recomputeProgress?: (attempt: ExamAttemptRecord) => Promise<void>;
   onExamPassed?: (attempt: ExamAttemptRecord) => Promise<void>;
   awardXp?: (attempt: ExamAttemptRecord) => Promise<void>;
@@ -52,6 +54,7 @@ export interface ExamStartResult {
   sectionDeadlines: Record<string, Date | null>;
   answers: Record<string, unknown>;
   learner: { sections: Record<string, unknown>[] };
+  page?: SequentialExamProgress;
 }
 
 export interface ExamSubmitResult {
@@ -67,6 +70,8 @@ export interface ExamSubmitResult {
 
 export interface ExamReviewResult {
   attemptId: string;
+  /** Language of release-controlled feedback, which can differ from the interface language. */
+  locale?: ExamActor['locale'];
   status: ExamAttemptRecord['status'];
   late: boolean;
   /**
@@ -90,6 +95,8 @@ export interface ExamReviewResult {
   score?: { points: number; maxPoints: number; percent: number };
   manualFeedback?: Record<string, string>;
   revealed: RevealedInfo;
+  /** The terminal projection replaces the active page when a sequential player submits. */
+  learner?: ExamStartResult['learner'];
 }
 
 export interface ExamSessionResult {
@@ -115,9 +122,11 @@ export interface ExamCompleteGradingOutcome {
 export interface ExamService {
   session(actor: ExamActor, courseId: string, itemId: string): Promise<ExamSessionResult>;
   start(actor: ExamActor, courseId: string, itemId: string): Promise<ExamStartResult>;
+  advance(actor: ExamActor, attemptId: string, fromStep: number): Promise<ExamStartResult>;
   save(actor: ExamActor, attemptId: string, answers: Record<string, unknown>, options?: { compact?: boolean }): Promise<ExamAnswerRecord[]>;
   submit(actor: ExamActor, attemptId: string): Promise<ExamSubmitResult>;
   review(actor: ExamActor, attemptId: string): Promise<ExamReviewResult>;
+  canReadMedia(actor: ExamActor, attemptId: string, assetId: string): Promise<boolean>;
   historicalReview(actor: ExamActor, attemptId: string, courseId: string, itemId: string): Promise<{ learner: LearnerItem; review: ExamReviewResult }>;
   release(actor: ExamActor, target: { itemId: string; courseVersionId: string } | { attemptId: string }): Promise<ExamReleaseResult>;
   /**
@@ -493,7 +502,29 @@ function gradeAttempt(
 function toStartResult(
   attempt: ExamAttemptRecord,
   savedAnswers: readonly ExamAnswerRecord[],
+  answeredBefore: number[] = [],
+  page = attempt.status === 'in_progress' ? sequentialPage(attempt) : null,
 ): ExamStartResult {
+  const source = attempt.questionSet.learner;
+  let learner = source;
+  let accepted = savedAnswers;
+  let progress: SequentialExamProgress | undefined;
+  if (page) {
+    const section = (Array.isArray(source.sections) ? source.sections : [])
+      .find(entry => entry?.id === page.sectionId);
+    const allowed = new Set(page.questionIds);
+    const questions = Array.isArray(section?.questions)
+      ? section.questions.filter((question: unknown) => allowed.has(questionId(question) ?? '')) : [];
+    if (questions.length !== page.questionIds.length) {
+      throw new ExamError('INVALID_EXAM_CONFIGURATION', 'The pinned sequential exam questions are unavailable.');
+    }
+    learner = { ...source, sections: [{ ...section, questions }] };
+    accepted = savedAnswers.filter(answer => allowed.has(answer.questionId));
+    progress = {
+      index: page.index, count: page.count, questionOffset: page.questionOffset, questionCount: page.questionCount,
+      answeredBefore,
+    };
+  }
   return {
     attemptId: attempt.id,
     attemptNo: attempt.attemptNo,
@@ -501,14 +532,15 @@ function toStartResult(
     late: attempt.late,
     startedAt: attempt.startedAt,
     deadlineAt: attempt.deadlineAt,
-    sectionDeadlines: Object.fromEntries(attempt.questionSet.sections.map((section) => [
+    sectionDeadlines: Object.fromEntries(attempt.questionSet.sections.filter(section => !page || section.id === page.sectionId).map((section) => [
       section.id,
       section.deadlineOffsetMs === null
         ? null
         : new Date(attempt.startedAt.getTime() + section.deadlineOffsetMs),
     ])),
-    answers: Object.fromEntries(savedAnswers.map((answer) => [answer.questionId, answer.answer])),
-    learner: learnerProjection(attempt.questionSet.learner),
+    answers: Object.fromEntries(accepted.map((answer) => [answer.questionId, answer.answer])),
+    learner: learnerProjection(learner),
+    ...(progress ? { page: progress } : {}),
   };
 }
 
@@ -625,7 +657,12 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
   }
 
   async function startResult(attempt: ExamAttemptRecord) {
-    return toStartResult(attempt, await repo.listAnswers(attempt.id));
+    const page = attempt.status === 'in_progress' ? sequentialPage(attempt) : null;
+    const [answers, answeredBefore] = await Promise.all([
+      repo.listAnswers(attempt.id, page?.questionIds),
+      page && page.index > 0 ? repo.sequentialAnsweredBefore(attempt.id, attempt.userId, page.index) : [],
+    ]);
+    return toStartResult(attempt, answers, answeredBefore, page);
   }
 
   async function recomputeGrade(attempt: ExamAttemptRecord) {
@@ -737,6 +774,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       status: 'in_progress',
       late: false,
       questionSet: assembled.questionSet,
+      sequentialStep: 0,
       gradingSnapshot: assembled.grading,
       startedAt: now,
       deadlineAt: effectiveLimitMinutes === undefined
@@ -793,6 +831,10 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     if (isAfterGrace(attempt, now)) {
       throw new ExamError('DEADLINE_PASSED', 'The exam deadline and grace period have passed.');
     }
+    const page = sequentialPage(attempt);
+    if (page && Object.keys(answers).some(id => !page.questionIds.includes(id))) {
+      throw new ExamError('EXAM_PAGE_CHANGED', 'This question is outside the current exam page.');
+    }
     const validIds = new Set(allQuestionIds(attempt));
     if (Object.keys(answers).some((id) => !validIds.has(id))) {
       throw new ExamError('FORBIDDEN', 'An answer referenced a question outside this attempt.');
@@ -811,7 +853,8 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     } else if (containsAttachmentReferences(answers)) {
       throw new ExamError('FORBIDDEN', 'Exam attachments cannot be verified.');
     }
-    const existing = new Map((await repo.listAnswers(attemptId, options?.compact ? Object.keys(answers) : undefined)).map((answer) => [answer.questionId, answer]));
+    const ids = options?.compact ? Object.keys(answers) : page?.questionIds;
+    const existing = new Map((await repo.listAnswers(attemptId, ids)).map((answer) => [answer.questionId, answer]));
     const records = Object.entries(answers).map(([id, answer]): ExamAnswerRecord => ({
       attemptId,
       questionId: id,
@@ -827,7 +870,6 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
     }
     // Submission can finish before this response read. Saving authorizes an answer
     // acknowledgement, while grading details remain behind the review policy.
-    const ids=options?.compact ? Object.keys(answers) : undefined;
     const selected=await repo.listAnswers(attemptId,ids);
     return selected.filter(saved=>!ids || ids.includes(saved.questionId)).map((saved) => ({
       attemptId: saved.attemptId,
@@ -839,6 +881,18 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       manualFeedback: null,
       gradedBy: null,
     }));
+  }
+
+  async function advance(actor: ExamActor, attemptId: string, fromStep: number) {
+    const attempt = await attemptFor(actor, attemptId);
+    if (attempt.status !== 'in_progress') throw new ExamError('ATTEMPT_NOT_ACTIVE', 'Only an active exam can change page.');
+    if (isAfterGrace(attempt, clock.now())) throw new ExamError('DEADLINE_PASSED', 'The exam deadline has passed.');
+    const page = sequentialPage(attempt);
+    if (!page || !Number.isSafeInteger(fromStep) || fromStep < 0 || fromStep > page.index || fromStep >= page.count - 1) {
+      throw new ExamError('EXAM_PAGE_CHANGED', 'The requested exam page transition is unavailable.');
+    }
+    const sequentialStep = await repo.advanceSequentialPage(attemptId, actor.id, fromStep);
+    return startResult({ ...attempt, sequentialStep });
   }
 
   async function submitAttempt(
@@ -1000,6 +1054,7 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
       status: attempt.status,
       late: attempt.late,
       released,
+      locale: actor.locale,
       // Aggregate score availability; question-level review has its own gate.
       resultsAvailable: showScore,
       answers,
@@ -1027,7 +1082,23 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
   }
 
   async function review(actor: ExamActor, attemptId: string): Promise<ExamReviewResult> {
-    return projectReview(actor, await attemptFor(actor, attemptId, { permission: 'submission.grade' }));
+    const attempt = await attemptFor(actor, attemptId, { permission: 'submission.grade' });
+    const result = await projectReview(actor, attempt);
+    const settings = attempt.gradingSnapshot.exam;
+    return settings?.navigation === 'sequential' && settings.layout !== 'single_page'
+      ? { ...result, learner: learnerProjection(attempt.questionSet.learner) } : result;
+  }
+
+  async function canReadMedia(actor: ExamActor, attemptId: string, assetId: string): Promise<boolean> {
+    const attempt = await repo.getAttempt(attemptId);
+    if (!attempt || attempt.userId !== actor.id || !await isEnrolled(actor.id, attempt.courseVersionId, attempt.branchId)) return false;
+    if (attempt.status === 'in_progress' && isAfterGrace(attempt, clock.now())) return false;
+    if (attempt.status === 'submitted') return false;
+    if (referencesAsset(toStartResult(attempt, []).learner, assetId)) return true;
+    if (attempt.status === 'in_progress') return false;
+    // Submitted answers are learner input. Only the release-controlled fields can grant a course file.
+    const review = await projectReview(actor, attempt);
+    return referencesAsset(review.revealed, assetId);
   }
 
   async function historicalReview(actor: ExamActor, attemptId: string, courseId: string, itemId: string) {
@@ -1333,9 +1404,11 @@ export function createExamService(dependencies: ExamServiceDependencies): ExamSe
   return {
     session,
     start,
+    advance,
     save,
     submit,
     review,
+    canReadMedia,
     historicalReview,
     release,
     manualGrade,

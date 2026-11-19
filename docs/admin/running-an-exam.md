@@ -2,6 +2,10 @@
 
 Exam operations are branch-scoped. Instructors and Branch Leads may operate only within branches where they hold `exam.release`; administrators may operate globally. The Studio exam navigation is not yet enabled, so the current operator workflow uses the authenticated Studio APIs.
 
+For sequential exams, **Next** saves the current question or section and closes that page to further edits. Reopening the exam resumes the server-confirmed page. A learner can skip an unanswered question by advancing or finish early by submitting. Free navigation and single-page exams keep every question accessible throughout the attempt.
+
+Apply `20261120000500_sequential_exam_progress.sql` before rolling out the player and API together. Prefer a gap between exam sittings. An active attempt from the older player resumes at its furthest page with a saved response, or at the first page if it has no saved responses. The older player kept skipped-page navigation in the browser. During a rollout with active sittings, ask those learners to reload the player. Completed attempts keep their pinned review and release settings.
+
 ## Before publishing
 
 1. Set `settings.availability.openAt` and `closeAt` as ISO-8601 UTC timestamps. `openAt` must be earlier than `closeAt`.

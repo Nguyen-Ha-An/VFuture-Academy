@@ -8,6 +8,7 @@ vi.mock('next-intl', () => ({ useLocale: () => 'en' }));
 
 import { StaticRichContent } from '@/features/ecosystem/ui/StaticRichContent';
 import { publicRichContentHeadings } from '@/features/ecosystem/ui/public-rich-content';
+import { publicOpportunityDescription } from '@/features/opportunities/schema';
 
 const fixture: RichContent = {
   blocks: [
@@ -26,6 +27,25 @@ const fixture: RichContent = {
 };
 
 afterEach(cleanup);
+
+it('renders registered media from the selected opportunity description, including a nested video poster', () => {
+  const english = { blocks: [
+    { type: 'callout', variant: 'tip', blocks: [
+      { type: 'image', src: { assetId: 'image' }, alt: 'Image' },
+      { type: 'video', src: { assetId: 'video' }, poster: { assetId: 'poster' } },
+      { type: 'audio', src: { assetId: 'audio' } },
+      { type: 'pdf', src: { assetId: 'file' }, title: 'Reading' },
+    ] },
+    { type: 'diagram', src: { assetId: 'reserved' }, alt: 'Reserved' },
+  ] };
+  const selected = publicOpportunityDescription({ en: english, vi: { blocks: [{ type: 'divider' }] } }, 'en');
+  expect(selected).toBeTruthy();
+  const markup = renderToStaticMarkup(<StaticRichContent content={selected!} publicContent />);
+  for (const id of ['image', 'video', 'poster', 'audio', 'file']) {
+    expect(markup).toContain(`/api/v1/public/media/${id}`);
+  }
+  expect(markup).not.toContain('/api/v1/public/media/reserved');
+});
 
 describe('public rich content headings', () => {
   it('copies only changed heading branches and preserves all other fields', () => {

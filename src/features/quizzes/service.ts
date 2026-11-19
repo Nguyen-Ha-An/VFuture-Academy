@@ -4,8 +4,9 @@ import { findOversizedRegexAnswers, type OversizedAnswer } from '@/content-engin
 import { buildRevealed } from '@/content-engine/render/preview-runtime';
 import type { QuizSubmitResult, RevealedInfo } from '@/content-engine/render/runtime';
 import { ApiError } from '@/lib/api';
-import { assertEnrollmentMembershipAccess,type MembershipAccessDatabase } from '@/features/learning/membership-access';
+import { assertEnrollmentMembershipAccess, enrollmentBranch, type MembershipAccessDatabase } from '@/features/learning/membership-access';
 import { containsAttachmentReferences, validQuestionAnswer } from '@/features/learning/question-answer';
+import { bindQuizMedia, bindSubmittedQuizMedia, submittedQuizFeedback } from './media';
 
 export interface QuizActor {
   id: string;
@@ -27,7 +28,6 @@ export interface ProgressHooks {
     kind: 'quiz_submitted';
     refType: 'quiz_attempt';
     refId: string;
-    points: number;
   }): Promise<void>;
 }
 
@@ -72,6 +72,7 @@ type QuizDefinition = QuizGradingSettings & { questionIds: string[] };
 
 interface QuizContext {
   courseVersionId: string;
+  branchId: string | null;
   grading: GradingItem;
   quiz: QuizDefinition;
 }
@@ -115,14 +116,6 @@ function answersForQuiz(questionIds: readonly string[], answers: Record<string, 
     if (Object.hasOwn(answers, questionId)) filtered[questionId] = answers[questionId];
   }
   return filtered;
-}
-
-function correctQuestionCount(results: readonly QuestionResult[]): number {
-  return results.reduce((total, result) => total + (
-    result.children?.length
-      ? correctQuestionCount(result.children)
-      : result.status === 'correct' ? 1 : 0
-  ), 0);
 }
 
 function requiresManualGrading(question: GradingQuestion): boolean {
@@ -202,7 +195,7 @@ export function createQuizService(_dependencies: {
     const grading = itemResult.data.grading as unknown as GradingItem;
     const quiz = grading.quizzes?.[quizId];
     if (!quiz) throw new ApiError(404, 'QUIZ_NOT_FOUND', 'Quiz not found');
-    return { courseVersionId, grading, quiz };
+    return { courseVersionId, branchId: enrollmentBranch(enrollmentResult.data), grading, quiz };
   }
 
   function questionInQuiz(context: QuizContext, questionId: string) {
@@ -238,13 +231,13 @@ export function createQuizService(_dependencies: {
       await validateAttachments(actor, context, courseId, itemId, quizId, { [questionId]: answer });
       return {
         ...gradeQuestion(question, answer),
-        revealed: buildRevealed(
+        revealed: bindQuizMedia(buildRevealed(
           context.grading,
           [questionId],
           actor.locale,
           defaultLocale,
           { answers: true, explanations: context.quiz.showExplanations },
-        ),
+        ), actor.id, context.courseVersionId, context.branchId),
       };
     },
     async submit(actor, courseId, itemId, quizId, answers) {
@@ -318,17 +311,17 @@ export function createQuizService(_dependencies: {
       }
       const attemptId = insertResult.data.id;
 
-      const points = Math.min(20, 5 + 2 * correctQuestionCount(graded.results));
       await runPostCommitEffects([
         { name: 'progress.recompute', run: () => hooks.recompute(actor, courseId) },
-        ...hooks.awardXp ? [{
+        // The database evaluates the saved answers and credits any improvement
+        // against this learner's prior awards for the same version, item and quiz.
+        ...hooks.awardXp && graded.results.some((result) => result.status !== 'incomplete') ? [{
           name: 'xp.quiz_submitted',
           run: () => hooks.awardXp!({
             userId: actor.id,
             kind: 'quiz_submitted',
             refType: 'quiz_attempt',
             refId: attemptId,
-            points,
           }),
         }] : [],
       ], {
@@ -348,13 +341,7 @@ export function createQuizService(_dependencies: {
         attemptsRemaining: context.quiz.attemptsAllowed === 0
           ? null
           : context.quiz.attemptsAllowed - attemptNo,
-        revealed: buildRevealed(
-          context.grading,
-          context.quiz.questionIds,
-          actor.locale,
-          defaultLocale,
-          { answers: reveal, explanations: reveal && context.quiz.showExplanations },
-        ),
+        revealed: bindSubmittedQuizMedia(submittedQuizFeedback(context.grading, context.quiz, actor.locale, defaultLocale), attemptId, actor.locale),
       };
     },
   };

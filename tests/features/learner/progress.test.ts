@@ -143,13 +143,18 @@ describe('learner progress service', () => {
     const client = new SupabaseStub({
       enrollments: [successful(activeEnrollment), successful(activeEnrollment)],
       course_version_outline: [successful({ outline: { modules: [{ items: [{ id: 'lesson-1', type: 'lesson' }] }] } }), successful({ outline: { modules: [{ items: [{ id: 'lesson-1', type: 'lesson' }] }] } })],
-      course_version_item_renders: [successful([{ locale: 'en', payload: { id: 'lesson-1', kind: 'lesson', blocks: [{ type: 'quiz', id: 'assessment', settings: { feedback } }] } }])],
+      course_version_item_renders: [successful([{ locale: 'en', payload: { id: 'lesson-1', kind: 'lesson', blocks: [{
+        type: 'quiz', id: 'assessment', settings: { feedback },
+        questions: [{ id: 'q1', options: [{ id: 'a', feedback: 'private option feedback' }], optionFeedback: { a: 'private grader feedback' } }],
+      }] } }])],
       course_version_items: [successful({ grading: { activities: [{ id: 'assessment', type: 'quiz' }], quizzes: { assessment: { feedback } } } })],
       quiz_attempts: [successful([])],
       activity_state: [successful([{ block_id: 'assessment', state, completed: false }, { block_id: 'reflection', state: { parts: { draft: 'keep' }, last: { results: ['draft'] } }, completed: false }]), successful({ block_id: 'assessment', state, completed: false })],
     });
     mocks.supabaseService.mockReturnValue(client);
     const read = await getItemPayload(actor, 'ai-foundations', 'lesson-1', 'en');
+    expect(read.item).toMatchObject({ blocks: [{ settings: { feedback }, questions: [{ id: 'q1', options: [{ id: 'a' }] }] }] });
+    expect(JSON.stringify(read.item)).not.toMatch(/private option feedback|private grader feedback/);
     expect(read.activityState.reflection).toMatchObject({ parts: { draft: 'keep' }, last: { results: ['draft'] } });
     const written = await putBlockState(actor, 'ai-foundations', 'lesson-1', 'assessment', state, false);
     const insert = client.queriesFor('activity_state')[1].operations.find(([op]) => op === 'upsert')?.[1] as { state: unknown };

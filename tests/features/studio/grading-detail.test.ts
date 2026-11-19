@@ -46,6 +46,7 @@ function repository(overrides: Partial<GradingDetailRepository> = {}): GradingDe
     id: '33333333-3333-4333-8333-333333333333', userId: 'learner',
     courseVersionId: '22222222-2222-4222-8222-222222222222', itemId: 'exam-one',
     branchId: 'school-a', attemptNo: 1, status: 'graded', late: false,
+    sequentialStep: 0,
     questionSet: { locale: 'vi', defaultLocale: 'vi', sections: [{ id: 'main', questionIds: ['auto', 'manual', 'blank'], optionOrders: {}, deadlineOffsetMs: null }], learner: { kind: 'exam', id: 'exam-one', title: 'Exam', sections: [{ id: 'main', questions: [{ id: 'auto', type: 'single_choice', content: 'A' }, { id: 'manual', type: 'short_answer', content: 'M' }, { id: 'blank', type: 'short_answer', content: 'B' }] }] } },
     gradingSnapshot: { questions: { auto: { type: 'single_choice', points: 1 }, manual: { type: 'short_answer', points: 2 }, blank: { type: 'short_answer', points: 2 } }, quizzes: {}, rubrics: {}, assignments: {}, activities: [] } as unknown as GradingItem,
     startedAt: new Date('2026-09-07T00:00:00Z'), deadlineAt: null,

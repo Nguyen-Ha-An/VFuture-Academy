@@ -7,14 +7,19 @@ const omissions = [
   { file: '0016_completion_effects.sql', text: 'drop policy if exists "certificate PDFs are public" on storage.objects;', reason: 'Retained Storage policies remain on the source storage project.' },
   { file: '20260906065957_notebook_foundation.sql', text: "insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)\nvalues('notebooks','notebooks',false,10485760,array['application/x-ipynb+json','application/json','text/csv'])\non conflict(id) do nothing;", reason: 'Retained private Storage bucket is configured and verified separately.' },
 ];
-/** @type {Array<[string,URL]>} */
+/** @type {Array<[string,URL,string?]>} */
 const suffixSteps=[
   ['storage.sql',new URL('storage.sql',import.meta.url)],
   ['src/lib/identity/schema.sql',new URL('src/lib/identity/schema.sql',root)],
   ['src/lib/identity/admin-schema.sql',new URL('src/lib/identity/admin-schema.sql',root)],
   ['media-delete.sql',new URL('media-delete.sql',import.meta.url)],
   ['account-access.sql',new URL('account-access.sql',import.meta.url)],
+  ['src/lib/identity/recovery-sessions.sql',new URL('src/lib/identity/recovery-sessions.sql',root),'20261120000100_secure_school_invitations.sql'],
+  ['owner-reservations.sql',new URL('owner-reservations.sql',import.meta.url),'20261120000400_limit_owner_reservations.sql'],
 ];
+function suffixAt(boundary){
+  return suffixSteps.filter(([, ,since])=>since===undefined||boundary>=since);
+}
 const ownedMigrationPattern=/^(?:[0-9]{4}|[0-9]{14})_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/;
 /** Fail closed on packaging metadata and unexpected SQL; never silently skip it.
  * @param {string[]} entries
@@ -35,7 +40,8 @@ function listOwnedMigrationNames(directory){
 }
 /** Exact owned identifiers, also used to filter diagnostic output. */
 export function azureSchemaStepNames(){
-  return ['bootstrap.sql',...listOwnedMigrationNames(new URL('supabase/migrations/',root)).map(name=>`supabase/migrations/${name}`),...suffixSteps.map(([id])=>id)];
+  const names=listOwnedMigrationNames(new URL('supabase/migrations/',root));
+  return ['bootstrap.sql',...names.map(name=>`supabase/migrations/${name}`),...suffixAt(names.at(-1)).map(([id])=>id)];
 }
 /** Build all current migrations unless an explicit historical release boundary is requested.
  * @param {{through?:string}} options
@@ -68,7 +74,7 @@ export function buildAzureSchema(options = {}) {
     steps.push({id:`supabase/migrations/${file}`,sql:`-- source: ${file}\n${sql}`});
     receipt.migrations.push({ file, sourceSha256: hash(original), azureSha256: hash(sql) });
   }
-  for(const [id,path] of suffixSteps){
+  for(const [id,path] of suffixAt(files.at(-1))){
     // Released explicit boundaries retain the identity SQL reviewed at that time.
     const historical=options.through!==undefined&&options.through<='20261105030000_exam_attachment_bindings.sql'&&id==='src/lib/identity/schema.sql';
     const handles=options.through==='20261106000000_managed_profile_handles.sql'&&id==='src/lib/identity/schema.sql';

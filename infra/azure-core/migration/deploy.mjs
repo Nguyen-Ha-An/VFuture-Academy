@@ -12,7 +12,8 @@ const probe=process.argv.includes('--probe');
 const cutover=process.argv.includes('--map-identities')?'map-identities':process.argv.includes('--final-sync')?'final-sync':null;
 const forward=Object.keys(FORWARD_ACTIONS).find(name=>process.argv.includes(`--${name}`));
 const assessment=Object.keys(ASSESSMENT_ACTIONS).find(name=>process.argv.includes(`--${name}`));
-const lane=assessment?.startsWith('forward-55-')?'55':assessment?.startsWith('forward-54-')?'54':'53';
+if(process.argv.slice(2).some(arg=>arg.startsWith('--forward')&&!Object.hasOwn(FORWARD_ACTIONS,arg.slice(2))&&!Object.hasOwn(ASSESSMENT_ACTIONS,arg.slice(2))))throw new Error('Unknown forward job action');
+const lane=assessment?.split('-')[1];
 if([probe,configureAuthenticator,process.argv.includes('--map-identities'),process.argv.includes('--final-sync'),...[...Object.keys(FORWARD_ACTIONS),...Object.keys(ASSESSMENT_ACTIONS)].map(name=>process.argv.includes(`--${name}`))].filter(Boolean).length>1)throw new Error('Choose only one job action');
 const requestedAction=assessment??forward??cutover??(probe?'probe':configureAuthenticator?'configure-authenticator':'schema-import');
 if(!['--prepare','--start','--receipt'].includes(action))throw new Error('Usage: node infra/azure-core/migration/deploy.mjs --prepare|--start|--receipt');
@@ -42,7 +43,7 @@ const {vault,storage}=migrationTargetChecks(outputs,{prepare:action==='--prepare
 const postgresHost=outputs.postgresHost?.value;
 if(!/^[a-z0-9][a-z0-9-]{0,62}\.postgres\.database\.azure\.com$/.test(postgresHost??''))throw new Error('Invalid approved PostgreSQL host output');
 const receipt=forwardApplyReceipt??JSON.parse(readFileSync('build/azure-core/migration-package-receipt.json','utf8'));
-if(Boolean(forward)!==(receipt.packageType==='forward')||Boolean(assessment)!==(receipt.packageType===`forward-${lane}`))throw new Error('Forward actions require an explicit matching package and action');
+if(Boolean(forward)!==(receipt.packageType==='forward')||(assessment?receipt.packageType!==`forward-${lane}`:receipt.packageType.startsWith('forward-')))throw new Error('Forward actions require an explicit matching package and action');
 if(cutover&&receipt.packageType!=='cutover')throw new Error('Cutover action requires a cutover package');
 if(!cutover&&receipt.packageType==='cutover')throw new Error('Cutover package requires an explicit cutover action');
 if(!probe&&receipt.packageType==='probe')throw new Error('Diagnostic-only package cannot run schema/import/authenticator actions');
@@ -101,7 +102,7 @@ if(action==='--prepare') {
     if(failure.status!=='failed'||!stages.includes(failure.stage)||failure.errorCode!=='MIGRATION_STAGE_FAILED')throw new Error('Invalid diagnostic failure receipt');
     const safe={status:'failed',stage:failure.stage,errorCode:failure.errorCode};
     if(failure.stage==='forward_action'&&failure.childErrorCode==='FORWARD_FAILED')safe.childErrorCode='FORWARD_FAILED';
-    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED','FORWARD_55_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
+    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED','FORWARD_55_FAILED','FORWARD_56_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
     if(/^[0-9A-Z]{5}$/.test(failure.sqlState??''))safe.sqlState=failure.sqlState;
     if(Number.isInteger(failure.childExitCode))safe.childExitCode=failure.childExitCode;
     if(Number.isInteger(failure.httpStatus))safe.httpStatus=failure.httpStatus;

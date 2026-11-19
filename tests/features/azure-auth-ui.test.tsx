@@ -53,6 +53,23 @@ describe('inline Azure identity UI',()=>{
     fireEvent.click(screen.getByRole('button',{name:'Send verification code'}));
     await screen.findByLabelText('Verification code');expect(window.open).not.toHaveBeenCalled();
   });
+  it('asks other tabs to recheck their own session after recovery',async()=>{
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({step:'reset-complete'})));
+    render(<AzureAuthPanel mode="recovery"/>);
+    fireEvent.change(screen.getByLabelText('email'),{target:{value:'learner@example.com'}});
+    fireEvent.click(screen.getByRole('button',{name:'Send verification code'}));
+    await screen.findByText('Password updated');
+    expect(window.localStorage.getItem('vfuture:auth:changed')).toBeTruthy();
+    expect(window.localStorage.getItem('vfuture:auth:signed-out')).toBeNull();
+  });
+  it.each([['m***@verification.test','m***@verification.test'],[undefined,'your registered verification email']])('describes the registered MFA destination (%s)',async(target,destination)=>{
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({step:'mfa-code',flowId:'a'.repeat(43),attemptId:'b'.repeat(43),target})));
+    render(<AzureAuthPanel mode="recovery"/>);
+    fireEvent.change(screen.getByLabelText('email'),{target:{value:'owner@recovery.test'}});
+    fireEvent.click(screen.getByRole('button',{name:'Send verification code'}));
+    expect(await screen.findByText('Enter the code sent to '+destination+'.')).toBeInTheDocument();
+    expect(screen.queryByText('Enter the code sent to owner@recovery.test.')).not.toBeInTheDocument();
+  });
   it('clears an abandoned social-window wait when the user switches to password login',async()=>{
     vi.mocked(window.open).mockReturnValue({closed:true,close:vi.fn(),focus:vi.fn()} as unknown as Window);
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({error:'invalid_credentials'},{status:400})));

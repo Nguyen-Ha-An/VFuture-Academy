@@ -43,6 +43,7 @@ const ATTEMPT_BASE_COLUMNS = [
   'status',
   'late',
   'question_set',
+  'sequential_step',
   'grading_snapshot',
   'started_at',
   'deadline_at',
@@ -138,6 +139,7 @@ function toAttempt(value: unknown, branchFallback: string | null = null): ExamAt
     status: requiredString(row, 'status') as AttemptStatus,
     late: row.late === true,
     questionSet: row.question_set as ExamAttemptRecord['questionSet'],
+    sequentialStep: nullableNumber(row.sequential_step) ?? 0,
     gradingSnapshot: row.grading_snapshot as ExamAttemptRecord['gradingSnapshot'],
     startedAt: requiredDate(row.started_at),
     deadlineAt: nullableDate(row.deadline_at),
@@ -252,6 +254,12 @@ function toGrade(value: unknown): ExamGradeRecord {
 
 function assertDatabase(result: DatabaseResult, operation: string) {
   if (result.error) {
+    switch (record(result.error)?.code) {
+      case 'P3004': throw new ExamError('EXAM_PAGE_CHANGED', 'The current exam page has changed.');
+      case 'P3005': throw new ExamError('ATTEMPT_NOT_ACTIVE', 'The exam attempt is no longer active.');
+      case 'P3006': throw new ExamError('DEADLINE_PASSED', 'The exam deadline has passed.');
+      case 'P3007': throw new ExamError('SECTION_DEADLINE_PASSED', 'The section deadline has passed.');
+    }
     if (record(result.error)?.code === '42501') throw new ExamError('FORBIDDEN', 'Teaching scope denied.');
     throw new Error(`Unable to ${operation}`);
   }
@@ -356,6 +364,25 @@ export class SupabaseExamRepo implements ExamRepo {
     });
     const data = assertDatabase(result, 'save active exam answers');
     if (typeof data !== 'boolean') throw new Error('Invalid active answer admission result');
+    return data;
+  }
+
+  async advanceSequentialPage(attemptId: string, userId: string, fromStep: number) {
+    const result = await this.database.rpc('exam_advance_sequential_page', {
+      p_attempt_id: attemptId, p_user_id: userId, p_from_step: fromStep,
+    });
+    const data = assertDatabase(result, 'advance sequential exam page');
+    if (typeof data !== 'number' || !Number.isSafeInteger(data) || data < 0) throw new Error('Invalid sequential exam page');
+    return data;
+  }
+
+  async sequentialAnsweredBefore(attemptId: string, userId: string, step: number) {
+    const data = assertDatabase(await this.database.rpc('exam_sequential_answered_before', {
+      p_attempt_id: attemptId, p_user_id: userId, p_step: step,
+    }), 'load sequential exam progress');
+    if (!Array.isArray(data) || !data.every((index): index is number => Number.isSafeInteger(index) && index >= 0)) {
+      throw new Error('Invalid sequential exam progress');
+    }
     return data;
   }
 

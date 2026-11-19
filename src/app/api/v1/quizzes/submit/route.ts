@@ -45,7 +45,6 @@ export const POST = withHandler(async (request) => {
         effect.kind,
         effect.refType,
         effect.refId,
-        effect.points,
       ).then(() => undefined),
     },
   });

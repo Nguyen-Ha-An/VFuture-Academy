@@ -10,6 +10,10 @@ const migrationFiles=new Set([
   'scripts/azure-core/snapshot.mjs','scripts/azure-core/bootstrap.sql','scripts/azure-core/storage.sql',
   'scripts/azure-core/media-delete.sql','scripts/azure-core/account-access.sql',
   'scripts/azure-core/forward.mjs','scripts/azure-core/forward-cli.mjs',
+  'infra/azure-core/archive-policy.mjs','scripts/azure-core/forward-artifact.mjs',
+  'scripts/azure-core/forward-56.mjs','scripts/azure-core/forward-56-catalog.mjs','scripts/azure-core/forward-56-catalog.json','scripts/azure-core/forward-56-artifact.mjs','scripts/azure-core/forward-56-job.mjs',
+  'src/lib/identity/recovery-sessions.sql','scripts/azure-core/owner-reservations.sql',
+  'build/azure-core/private/forward-56-plan.json','build/azure-core/private/forward-56-v1-evidence.json','build/azure-core/private/forward-56-source-manifest.json',
   'scripts/azure-core/forward-55.mjs','scripts/azure-core/forward-55-inventory.mjs','scripts/azure-core/forward-55-cli.mjs','scripts/azure-core/forward-55-package.mjs','scripts/azure-core/forward-55-artifact.mjs','scripts/azure-core/forward-55-job.mjs',
   'build/azure-core/private/forward-55-plan.json','build/azure-core/private/forward-55-v1-evidence.json','build/azure-core/private/forward-55-source-manifest.json',
   'scripts/azure-core/forward-54.mjs','scripts/azure-core/forward-54-cli.mjs','scripts/azure-core/forward-54-package.mjs','scripts/azure-core/forward-54-artifact.mjs','scripts/azure-core/forward-54-job.mjs',
@@ -58,6 +62,8 @@ export const FORWARD_ACTIONS=Object.freeze({
   'forward-activate':Object.freeze({mode:'apply-activate',phase:'activate',resultAction:'forward-activate'}),
 });
 export const ASSESSMENT_ACTIONS=Object.freeze({
+  'forward-56-plan':Object.freeze({mode:'plan',resultAction:'forward-56-plan'}),
+  'forward-56-apply':Object.freeze({mode:'apply',resultAction:'forward-56-apply'}),
   'forward-55-plan':Object.freeze({mode:'plan',resultAction:'forward-55-plan'}),
   'forward-55-apply':Object.freeze({mode:'apply',resultAction:'forward-55-apply'}),
   'forward-54-plan':Object.freeze({mode:'plan',resultAction:'forward-54-plan'}),
@@ -66,6 +72,7 @@ export const ASSESSMENT_ACTIONS=Object.freeze({
   'forward-53-apply':Object.freeze({mode:'apply',resultAction:'forward-53-apply'}),
 });
 export function validateAssessmentReceipt(value,action,{transport=false}={}){
+ if(action==='forward-56-plan'||action==='forward-56-apply')return validateRepairReceipt(value,action,{transport});
  if(action==='forward-55-plan'||action==='forward-55-apply')return validateTeachingReceipt(value,action,{transport});
  if(action==='forward-54-plan'||action==='forward-54-apply')return validateHandleReceipt(value,action,{transport});
  const selected=Object.hasOwn(ASSESSMENT_ACTIONS,action)?ASSESSMENT_ACTIONS[action]:null;
@@ -83,6 +90,48 @@ export function validateAssessmentReceipt(value,action,{transport=false}={}){
   if(plan.action==='noop'? !/^[a-f0-9]{40}$/.test(plan.receiptSourceCommit??'')||!/^[a-f0-9]{40}$/.test(plan.receiptSourceTree??'') : Object.hasOwn(plan,'receiptSourceCommit')||Object.hasOwn(plan,'receiptSourceTree'))throw new Error('invalid_assessment_receipt');
  }else if(!keys(value,['action','outcome','filename','source','packageContentSha256',...transportKeys])||!['applied','noop'].includes(value.outcome)||value.filename!==file)throw new Error('invalid_assessment_receipt');
  return value;
+}
+export const REPAIR_MIGRATIONS=Object.freeze([
+  '20261120000100_secure_school_invitations.sql',
+  '20261120000200_secure_learner_read_policies.sql',
+  '20261120000300_secure_studio_publication.sql',
+  '20261120000400_limit_owner_reservations.sql',
+  '20261120000500_sequential_exam_progress.sql',
+  '20261120000600_index_public_media_references.sql',
+  '20261120000700_bound_quiz_rewards.sql',
+]);
+export const REPAIR_FILES=Object.freeze([
+  ...REPAIR_MIGRATIONS.map(file=>'supabase/migrations/'+file),
+  'src/lib/identity/recovery-sessions.sql','scripts/azure-core/owner-reservations.sql',
+]);
+// The trusted inline bootstrap accepts metadata from the fixed repair job only.
+function validateRepairReceipt(value,action,{transport}){
+  const exact=(item,keys)=>item!==null && typeof item==='object' && !Array.isArray(item)
+    && Object.keys(item).length===keys.length && keys.every(key=>Object.hasOwn(item,key));
+  const sha=item=>typeof item==='string' && /^[a-f0-9]{64}$/.test(item);
+  const commit=item=>typeof item==='string' && /^[a-f0-9]{40}$/.test(item);
+  const source=item=>exact(item,['sourceClean','sourceCommit','sourceTree']) && item.sourceClean===true
+    && commit(item.sourceCommit) && commit(item.sourceTree);
+  const fail=()=>{throw new Error('Invalid repair release receipt');};
+  const keys=['action','source','packageContentSha256',...(transport?['encryptedPackageSha256','sourceManifestSha256']:[])];
+  if(value?.action!==action || !source(value.source) || !sha(value.packageContentSha256)
+    || transport && (!sha(value.encryptedPackageSha256) || !sha(value.sourceManifestSha256)))fail();
+  if(action==='forward-56-apply'){
+    if(!exact(value,[...keys,'outcome','filename']) || !['applied','noop'].includes(value.outcome)
+      || value.filename!==REPAIR_MIGRATIONS[0])fail();
+    return value;
+  }
+  const plan=value.plan;
+  const planKeys=['action','filename','steps','source','evidenceSha256','priorReceiptDigest','catalogSha256'];
+  if(!exact(value,[...keys,'plan']) || !['apply','noop'].includes(plan?.action)
+    || !exact(plan,[...planKeys,...(plan.action==='noop'?['receiptSourceCommit','receiptSourceTree']:[])])
+    || plan.filename!==REPAIR_MIGRATIONS[0] || !source(plan.source)
+    || plan.source.sourceCommit!==value.source.sourceCommit || plan.source.sourceTree!==value.source.sourceTree
+    || ![plan.evidenceSha256,plan.priorReceiptDigest,plan.catalogSha256].every(sha)
+    || plan.action==='noop' && (!commit(plan.receiptSourceCommit) || !commit(plan.receiptSourceTree))
+    || !Array.isArray(plan.steps) || plan.steps.length!==REPAIR_FILES.length
+    || plan.steps.some((step,i)=>!exact(step,['file','sourceSha256','azureSha256']) || step.file!==REPAIR_FILES[i] || !sha(step.sourceSha256) || !sha(step.azureSha256)))fail();
+  return value;
 }
 export function validateHandleReceipt(value,action,{transport=false}={}){
  const selected=Object.hasOwn(ASSESSMENT_ACTIONS,action)?ASSESSMENT_ACTIONS[action]:null;

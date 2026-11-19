@@ -91,6 +91,15 @@ describe('exam server composition', () => {
     expect(from).toHaveBeenCalledWith('branch_memberships');
   });
 
+  it('checks a known original attempt school when it differs from the current enrollment', async () => {
+    const enrollment = new EnrollmentQuery({ course_version_id: 'version-1', branch_id: null, branch_scope_known: false });
+    const original = new EnrollmentQuery({ status: 'suspended' });
+    const from = vi.fn((table: string) => table === 'enrollments' ? enrollment : original);
+    await expect(createExamEnrollmentChecker({ from } as never)('learner-1', 'version-1', 'old-school'))
+      .rejects.toMatchObject({ code: 'MEMBERSHIP_SUSPENDED' });
+    expect(original.calls).toContainEqual(['eq', 'branch_id', 'old-school']);
+  });
+
   it('grants a studio actor only the verified permission and marks only global admins global', () => {
     const globalAdmin: Actor = {
       userId: 'admin-1',

@@ -12,6 +12,7 @@ import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
 import { mediaAssetId, mediaUploadMetadata, MAX_MEDIA_BYTES } from '@/features/media/upload';
 import { mediaHref } from '@/features/media/urls';
 import { ApiError } from '@/lib/api';
+import { signedUploadExpiry } from '@/lib/storage/signed-upload-expiry';
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const QuestionIdSchema = z.string().min(1).max(194).regex(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*){0,2}$/);
@@ -69,6 +70,7 @@ async function authorize(owner: string, input: Omit<DirectUploadInput, 'uploadId
   return null;
 }
 function rpcError(error: DbError): never {
+  if (error?.message?.includes('UPLOAD_OWNER_CAPACITY')) throw new ApiError(429, 'UPLOAD_OWNER_CAPACITY', 'Your recent uploads have reached the limit. Try again after their reservations expire.');
   const code = ['UPLOAD_NOT_FOUND', 'UPLOAD_CONFLICT', 'UPLOAD_ACTIVE', 'UPLOAD_CAPACITY', 'UPLOAD_BUSY', 'UPLOAD_EXPIRED', 'UPLOAD_FINALIZED', 'UPLOAD_BYTES_REMAIN'].find((key) => error?.message?.includes(key));
   if (code) throw new ApiError(code === 'UPLOAD_NOT_FOUND' ? 404 : code === 'UPLOAD_CAPACITY' ? 507 : 409, code, {
     UPLOAD_NOT_FOUND: 'Upload not found', UPLOAD_CONFLICT: 'Upload details changed', UPLOAD_ACTIVE: 'Finish or cancel the active upload first',
@@ -107,16 +109,9 @@ export async function reserveDirectUpload(owner: string, value: unknown, databas
   if (row.state === 'ready') return { uploadId, file: response(row) };
   const signed = await database.storage.from(row.bucket).createSignedUploadUrl(row.pending_path, { upsert: false });
   if (signed.error || !signed.data) throw new ApiError(503, 'UPLOAD_UNAVAILABLE', 'Upload signing is unavailable');
-  // The Storage response is trusted, but its configured token TTL can drift.
-  // Reading exp is only a retention calculation, never an authorization check.
-  let tokenExpiry: number;
-  try {
-    const token = new URL(signed.data.signedUrl).searchParams.get('token');
-    const claims = JSON.parse(Buffer.from(token!.split('.')[1], 'base64url').toString('utf8'));
-    tokenExpiry = claims.exp;
-    if (!Number.isSafeInteger(tokenExpiry) || tokenExpiry * 1000 <= Date.now()) throw new Error('Invalid expiry');
-  } catch { throw new ApiError(503, 'UPLOAD_UNAVAILABLE', 'Upload signing returned an invalid expiry'); }
-  await transition(database, owner, uploadId, 'signed', null, { expiresAt: new Date(tokenExpiry * 1000).toISOString() });
+  const expiresAt = signedUploadExpiry(signed.data.signedUrl);
+  if (!expiresAt) throw new ApiError(503, 'UPLOAD_UNAVAILABLE', 'Upload signing returned an invalid expiry');
+  await transition(database, owner, uploadId, 'signed', null, { expiresAt });
   // Signing may have waited on the network; never issue a permit past the
   // reservation deadline. SQL quarantine covers issuance up to this deadline.
   const seconds = Math.min(900, Math.floor((Date.parse(row.expires_at) - Date.now()) / 1000));

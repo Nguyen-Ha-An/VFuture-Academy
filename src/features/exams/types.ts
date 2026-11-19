@@ -24,6 +24,7 @@ export type ExamErrorCode =
   | 'EXAM_CAPACITY'
   | 'EXAM_STARTS_PAUSED'
   | 'ATTEMPT_NOT_ACTIVE'
+  | 'EXAM_PAGE_CHANGED'
   | 'DEADLINE_PASSED'
   | 'SECTION_DEADLINE_PASSED'
   | 'FORBIDDEN'
@@ -93,6 +94,8 @@ export interface ExamAttemptRecord {
   status: AttemptStatus;
   late: boolean;
   questionSet: AttemptQuestionSet;
+  /** Zero-based position in the pinned sequential, paged exam. */
+  sequentialStep: number;
   gradingSnapshot: GradingItem;
   startedAt: Date;
   deadlineAt: Date | null;
@@ -191,6 +194,10 @@ export interface ExamRepo {
   updateAttempt(id: string, patch: Partial<ExamAttemptRecord>): Promise<ExamAttemptRecord>;
   /** Saves learner answers only while the owned attempt remains in progress. */
   saveActiveAnswers(attemptId: string, userId: string, answers: readonly ExamAnswerRecord[]): Promise<boolean>;
+  /** Shares the active-answer row lock. A retry returns the current page without advancing again. */
+  advanceSequentialPage(attemptId: string, userId: string, fromStep: number): Promise<number>;
+  /** Palette status for completed pages, without reading their response bodies into the application. */
+  sequentialAnsweredBefore(attemptId: string, userId: string, step: number): Promise<number[]>;
   /** Atomically writes graded answers and transitions one in-progress attempt. */
   finalizeAttempt(
     id: string,

@@ -1,12 +1,13 @@
 import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
 import { z } from 'zod';
-import { IdSchema } from '@/content-engine/schema/common';
+import { IdSchema, LocaleSchema } from '@/content-engine/schema/common';
 import { AttemptIdSchema } from '@/features/exams/http';
 import { canReadHistoricalExamMedia } from '@/features/exams/historical-media';
 import { createServerExamService } from '@/features/exams/server';
 import { ExamError } from '@/features/exams/types';
 import { ApiError, withHandler } from '@/lib/api';
 import { isEligibleResourceAsset, isEnrolledForAsset } from '@/features/media/access';
+import { canReadCheckedQuizMedia, canReadSubmittedQuizMedia } from '@/features/quizzes/media';
 import { checkBoundAssessmentOwnerAccess } from '@/features/media/assessment-owner';
 import { canReviewProjectCover, canViewProjectCover } from '@/features/projects/service';
 import { assertCourseTeaching } from '@/features/teaching/assignments';
@@ -15,14 +16,19 @@ import { can, getActor, type ResourceOwner } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 
 type RouteContext = { params: Promise<{ assetId: string }> };
-const historicalQuerySchema=z.object({attemptId:AttemptIdSchema,courseId:IdSchema,itemId:IdSchema}).strict();
-function historicalQuery(request:Request) {
-  const params=new URL(request.url).searchParams;
-  const keys=['historicalExamAttemptId','courseId','itemId'];
-  if(!keys.some(key=>params.has(key))) return null;
-  if(keys.some(key=>params.getAll(key).length!==1)) throw new ApiError(404,'NOT_FOUND','Media not found');
-  const parsed=historicalQuerySchema.safeParse({attemptId:params.get(keys[0]),courseId:params.get(keys[1]),itemId:params.get(keys[2])});
-  if(!parsed.success) throw new ApiError(404,'NOT_FOUND','Media not found');
+const assessmentQuery = z.union([
+  z.object({ historicalExamAttemptId: AttemptIdSchema, courseId: IdSchema, itemId: IdSchema, locale: LocaleSchema.default('vi') }).strict(),
+  z.object({ examAttemptId: AttemptIdSchema, locale: LocaleSchema.default('vi') }).strict(),
+  z.object({ quizAttemptId: AttemptIdSchema, locale: LocaleSchema.optional() }).strict(),
+  z.object({ quizMediaReceipt: z.string().min(1).max(160) }).strict(),
+]);
+function assessmentContext(request: Request) {
+  const params = new URL(request.url).searchParams;
+  if (!['historicalExamAttemptId', 'courseId', 'itemId', 'examAttemptId', 'quizAttemptId', 'quizMediaReceipt'].some((key) => params.has(key))) return null;
+  const parsed = assessmentQuery.safeParse(Object.fromEntries(params));
+  if (!parsed.success || [...params.keys()].some((key) => params.getAll(key).length !== 1)) {
+    throw new ApiError(404, 'NOT_FOUND', 'Media not found');
+  }
   return parsed.data;
 }
 
@@ -108,7 +114,7 @@ export const GET = withHandler(async (request, context) => {
     await requireApiUser();
     const actor = await getActor();
     if (!actor) throw new ApiError(401, 'UNAUTHENTICATED', 'Authentication required');
-    const historical=historicalQuery(request);
+    const assessment = assessmentContext(request);
 
     const { params } = context as RouteContext;
     const { assetId } = await params;
@@ -118,7 +124,8 @@ export const GET = withHandler(async (request, context) => {
       .eq('id', assetId)
       .maybeSingle();
     if (error) throw new Error('Media lookup failed');
-    if (!data || typeof data.owner_id !== 'string' || typeof data.bucket !== 'string' || typeof data.path !== 'string') {
+    if (!data || typeof data.owner_id !== 'string' || typeof data.bucket !== 'string'
+      || typeof data.path !== 'string' || data.path.startsWith('direct-pending/')) {
       throw new ApiError(404, 'NOT_FOUND', 'Media not found');
     }
 
@@ -129,10 +136,21 @@ export const GET = withHandler(async (request, context) => {
       : data.ownership_kind === 'branch' && typeof data.owner_branch_id === 'string'
         ? { kind: 'branch', id: data.owner_branch_id }
         : null;
-    let historicalAccess=false;
-    if(historical) {
+    let assessmentAccess = false;
+    if (assessment) {
       try {
-        historicalAccess=await canReadHistoricalExamMedia(createServerExamService(),{id:actor.userId,locale:'vi'},historical,assetId,{ownerId:data.owner_id,bucket:data.bucket});
+        if ('historicalExamAttemptId' in assessment) {
+          assessmentAccess = await canReadHistoricalExamMedia(createServerExamService(), { id: actor.userId, locale: assessment.locale },
+            { attemptId: assessment.historicalExamAttemptId, courseId: assessment.courseId, itemId: assessment.itemId },
+            assetId, { ownerId: data.owner_id, bucket: data.bucket });
+        } else if ('examAttemptId' in assessment) {
+          assessmentAccess = data.bucket === 'media' && await createServerExamService().canReadMedia(
+            { id: actor.userId, locale: assessment.locale }, assessment.examAttemptId, assetId);
+        } else if ('quizAttemptId' in assessment) {
+          assessmentAccess = data.bucket === 'media' && await canReadSubmittedQuizMedia(database, actor, assessment.quizAttemptId, assetId, assessment.locale);
+        } else if (data.bucket === 'media') {
+          assessmentAccess = await canReadCheckedQuizMedia(database, actor, assessment.quizMediaReceipt, assetId);
+        }
       } catch(error) {
         if((error instanceof ExamError && (error.code==='FORBIDDEN' || error.code==='ATTEMPT_NOT_ACTIVE')) || (error instanceof ApiError && error.status===403)) {
           throw new ApiError(404,'NOT_FOUND','Media not found');
@@ -140,7 +158,7 @@ export const GET = withHandler(async (request, context) => {
         throw error;
       }
     }
-    const canRead = historical ? historicalAccess : data.bucket === 'submissions'
+    const canRead = assessment ? assessmentAccess : data.bucket === 'submissions'
       ? await canReadSubmissionAsset(database, actor, assetId, data.owner_id)
       : data.owner_id === actor.userId
         ? true

@@ -45,7 +45,7 @@ export async function eligibleAudienceBranch(
   return null;
 }
 
-function enrollmentBranch(enrollment: TrustedEnrollmentBranch): string | null {
+export function enrollmentBranch(enrollment: TrustedEnrollmentBranch): string | null {
   return enrollment.branch_scope_known === true && typeof enrollment.branch_id === 'string' && enrollment.branch_id
     ? enrollment.branch_id : null;
 }

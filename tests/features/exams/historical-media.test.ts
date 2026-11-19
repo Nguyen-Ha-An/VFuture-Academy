@@ -21,6 +21,13 @@ describe('historical exam media references',()=>{
     await expect(canReadHistoricalExamMedia(reader,actor,context,'asset-file',{ownerId:actor.id,bucket:'submissions'})).resolves.toBe(true);
     await expect(canReadHistoricalExamMedia(reader,actor,context,'asset-file',{ownerId:'other',bucket:'submissions'})).resolves.toBe(false);
   });
+  it('includes media only when the historical review releases the explanation',async()=>{
+    const historical=await service().historicalReview();
+    const reader={historicalReview:vi.fn(async()=>historical)};
+    await expect(canReadHistoricalExamMedia(reader,actor,context,'solution',media)).resolves.toBe(false);
+    historical.review.revealed={explanations:{'s/q':{blocks:[{type:'image',src:{assetId:'solution'},alt:'Diagram'}]}}};
+    await expect(canReadHistoricalExamMedia(reader,actor,context,'solution',media)).resolves.toBe(true);
+  });
   it('does not admit unrelated, cross-bucket, or fabricated arbitrary answer assetIds',async()=>{
     const reader=service();
     await expect(canReadHistoricalExamMedia(reader,actor,context,'other',media)).resolves.toBe(false);

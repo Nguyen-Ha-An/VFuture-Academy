@@ -6,6 +6,7 @@ import { assertEnrollmentMembershipAccess, type MembershipAccessDatabase } from 
 import { allowedSubmissionUrl } from '@/content-engine/render/assignment-contracts';
 import { SupabaseExamRepo } from './supabase-repo';
 import type { ExamActor, ExamAttemptRecord } from './types';
+import { sequentialPage } from './navigation';
 
 type Row = Record<string, unknown>;
 type ExamUploadContext = { courseId?: string; itemId?: string; examAttemptId: string; rootQuestionId: string; questionId: string; size: number; mime: string };
@@ -41,6 +42,8 @@ function checkOpen(attempt: ExamAttemptRecord, rootId: string, now = new Date())
   if (attempt.deadlineAt && now.getTime() > attempt.deadlineAt.getTime() + grace) throw new ApiError(409, 'DEADLINE_PASSED', 'The exam deadline has passed');
   const section = attempt.questionSet.sections.find(entry => entry.questionIds.includes(rootId));
   if (!section) return invalid();
+  const page = sequentialPage(attempt);
+  if (page && !page.questionIds.includes(rootId)) throw new ApiError(409, 'EXAM_PAGE_CHANGED', 'The current exam page has changed');
   if (section.deadlineOffsetMs !== null && now.getTime() > attempt.startedAt.getTime() + section.deadlineOffsetMs + grace) throw new ApiError(409, 'SECTION_DEADLINE_PASSED', 'The section deadline has passed');
 }
 
