@@ -9,8 +9,7 @@ import { IDENTITY_CHANGED_EVENT, IDENTITY_SIGNED_OUT_KEY } from "@/lib/identity/
 import { safeInternalPath } from "@/lib/safe-internal-path";
 import { routes } from "@/lib/routes";
 import { captureSessionFocus, concealSessionPortals, restoreSessionFocus } from "@/lib/identity/session-concealment";
-
-const SESSION_FRESHNESS_MS = 5 * 60 * 1000;
+import { invalidateSessionFreshness, isSessionFresh, markSessionValidated } from "@/lib/identity/session-freshness";
 
 /** Conceal previously authorized data when another tab changes the signed-in actor. */
 export function AdminSessionGuard({
@@ -51,14 +50,13 @@ export function AdminSessionGuard({
       let checkingGeneration = 0;
       let backgrounded = false;
       let recheck = false;
-      let validatedAt: number | null = null;
       const loginDestination = () => routes.auth.login({ next: safeInternalPath(`${window.location.pathname}${window.location.search}${window.location.hash}`, destination) });
       const check = async (conceal = false) => {
         if (!active) return;
         if (conceal && !actorChanged) { rememberFocus(); setState("checking"); }
         if (checking) { if (checkingGeneration !== generation) recheck = true; return; }
         checking = true;
-        validatedAt = null;
+        invalidateSessionFreshness();
         recheck = false;
         const started = generation;
         checkingGeneration = started;
@@ -66,6 +64,7 @@ export function AdminSessionGuard({
           const response = await fetch('/api/v1/auth/session', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000) });
           if (!active || started !== generation || backgrounded) return;
           if (response.status === 401) {
+            invalidateSessionFreshness();
             actorChanged = true;
             savedFocus.current = null;
             setDiscardedActor(actorId);
@@ -79,12 +78,13 @@ export function AdminSessionGuard({
           if (!active || started !== generation || backgrounded) return;
           if (typeof session.userId !== 'string' || !session.userId) throw new Error('session_unavailable');
           if (session.userId !== actorId) {
+            invalidateSessionFreshness();
             actorChanged = true;
             savedFocus.current = null;
             setDiscardedActor(actorId);
             setState("changed"); router.replace(destination); router.refresh();
           } else {
-            if (!actorChanged) validatedAt = Date.now();
+            if (!actorChanged) markSessionValidated(actorId);
             setState(actorChanged ? "unavailable" : "ready");
           }
         } catch {
@@ -97,14 +97,16 @@ export function AdminSessionGuard({
         }
       };
       retry.current = () => { void check(true); };
-      void check(true);
+      // Admin, Studio, Teaching and App each have their own layout and guard, so
+      // a workspace switch mounts a new guard. Reuse this tab's recent
+      // same-actor validation instead of concealing the page and refetching.
+      if (!isSessionFresh(actorId)) void check(true);
       const focus = () => {
         if (document.visibilityState !== 'visible') return;
         if (backgrounded) { generation++; backgrounded = false; }
         // Reuse only this tab's recent server validation. Identity hints and
         // failed/in-flight checks invalidate it; returning to a fresh tab is free.
-        const age = validatedAt === null ? null : Date.now() - validatedAt;
-        if (!actorChanged && age !== null && age >= 0 && age < SESSION_FRESHNESS_MS) return;
+        if (!actorChanged && isSessionFresh(actorId)) return;
         void check(true);
       };
       const blur = () => {
@@ -117,7 +119,7 @@ export function AdminSessionGuard({
       const invalidate = (signedOut: boolean) => {
         rememberFocus();
         generation++;
-        validatedAt = null;
+        invalidateSessionFreshness();
         // A logout hint cannot grant access or let an older successful response
         // uncover the old actor while server-side revocation is completing.
         if (signedOut) { actorChanged = true; savedFocus.current = null; setDiscardedActor(actorId); }

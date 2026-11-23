@@ -11,8 +11,9 @@ vi.mock('next/navigation',()=>({useRouter:()=>mocks}));
 vi.mock('@/lib/supabase/client',()=>({supabaseBrowser:()=>({auth:{onAuthStateChange:(listener:typeof mocks.listener)=>{mocks.listener=listener;return{data:{subscription:{unsubscribe:mocks.unsubscribe}}};}}})}));
 import {AdminSessionGuard} from '@/features/admin/components/AdminSessionGuard';
 import {notifyIdentityChanged} from '@/lib/identity/browser-session';
+import {invalidateSessionFreshness} from '@/lib/identity/session-freshness';
 beforeEach(()=>{vi.useFakeTimers({toFake:['Date']});});
-afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();vi.clearAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();invalidateSessionFreshness();vi.useRealTimers();vi.restoreAllMocks();vi.clearAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals();});
 const expireSessionCheck=()=>vi.setSystemTime(Date.now()+300_000);
 describe('Admin actor changes',()=>{
  it('removes old authorized children immediately when account changes',()=>{
@@ -263,4 +264,67 @@ it('leaves direct-body learner content interactive after initial validation and 
  expect(screen.getByRole('textbox',{name:'Direct learner draft'})).toBe(editor);expect(editor).toHaveFocus();
  expect(editor.closest('[inert]')).toBeNull();expect(editor.closest('[hidden]')).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Learner action 1'}));expect(screen.getByRole('button',{name:'Learner action 2'})).toBeVisible();
+});
+
+describe('workspace switches (separate Admin, Studio, Teaching and App guards)',()=>{
+ const guard=(workspace:string,actorId='a')=><NextIntlClientProvider locale="en" messages={messages}><AdminSessionGuard key={workspace} actorId={actorId} destination={`/${workspace}`}><p>{workspace} content</p></AdminSessionGuard></NextIntlClientProvider>;
+ it('reuses a fresh same-actor validation instead of concealing and refetching on every workspace switch', async()=>{
+  vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+  const fetchSession=vi.fn().mockImplementation(async()=>Response.json({userId:'a'}));
+  vi.stubGlobal('fetch',fetchSession);
+  const view=render(guard('admin'));
+  await act(async()=>{});
+  for(const workspace of ['studio','admin','grading','app']){
+   await act(async()=>{view.rerender(guard(workspace));});
+   expect(screen.queryByRole('status')).not.toBeInTheDocument();
+   expect(screen.getByText(`${workspace} content`)).toBeVisible();
+  }
+  expect(fetchSession).toHaveBeenCalledTimes(1);
+ });
+ it('validates again on a workspace switch after the freshness window', async()=>{
+  vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+  const fetchSession=vi.fn().mockImplementation(async()=>Response.json({userId:'a'}));
+  vi.stubGlobal('fetch',fetchSession);
+  const view=render(guard('admin'));
+  await act(async()=>{});
+  expireSessionCheck();
+  await act(async()=>{view.rerender(guard('studio'));});
+  expect(fetchSession).toHaveBeenCalledTimes(2);
+ });
+ it('never reuses another actor validation', async()=>{
+  vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+  const fetchSession=vi.fn().mockResolvedValueOnce(Response.json({userId:'a'})).mockImplementation(()=>new Promise<Response>(()=>{}));
+  vi.stubGlobal('fetch',fetchSession);
+  const view=render(guard('admin'));
+  await act(async()=>{});
+  await act(async()=>{view.rerender(guard('studio','b'));});
+  expect(fetchSession).toHaveBeenCalledTimes(2);
+  expect(screen.getByText('studio content')).not.toBeVisible();
+ });
+ it.each([
+  ['a cross-tab logout hint',()=>window.dispatchEvent(new StorageEvent('storage',{key:'vfuture:auth:signed-out',newValue:'logout'}))],
+  ['a cross-tab login change hint',()=>window.dispatchEvent(new StorageEvent('storage',{key:'vfuture:auth:changed',newValue:'login'}))],
+  ['a same-tab confirmed login',()=>notifyIdentityChanged()],
+ ])('forgets freshness after %s received while no guard is mounted', async(_label,hint)=>{
+  vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+  const fetchSession=vi.fn().mockResolvedValueOnce(Response.json({userId:'a'})).mockImplementation(()=>new Promise<Response>(()=>{}));
+  vi.stubGlobal('fetch',fetchSession);
+  const view=render(guard('admin'));
+  await act(async()=>{});
+  view.unmount();
+  act(()=>{hint();});
+  render(guard('studio'));
+  await act(async()=>{});
+  expect(fetchSession).toHaveBeenCalledTimes(2);
+  expect(screen.getByText('studio content')).not.toBeVisible();
+ });
+ it('does not share freshness from a failed or unauthenticated check', async()=>{
+  vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','azure');
+  const fetchSession=vi.fn().mockResolvedValueOnce(new Response('{}',{status:503})).mockImplementation(()=>new Promise<Response>(()=>{}));
+  vi.stubGlobal('fetch',fetchSession);
+  const view=render(guard('admin'));
+  await act(async()=>{});
+  await act(async()=>{view.rerender(guard('studio'));});
+  expect(fetchSession).toHaveBeenCalledTimes(2);
+ });
 });
