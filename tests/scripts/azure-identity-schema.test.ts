@@ -54,6 +54,44 @@ describe.skipIf(!runtime)('Azure identity SQL contracts', () => {
     await db.query('select public.academy_identity_delete_session($1)', [hash]);
     expect((await db.query('select public.academy_identity_read_session($1) result', [hash])).rows[0].result).toBeNull();
   });
+  it('revokes all sessions of the mapped recovery account exactly once and preserves other accounts',async()=>{
+    const recovered='1a000000-0000-4000-8000-000000000001', other='1a000000-0000-4000-8000-000000000002';
+    const recoverySubject='1b000000-0000-4000-8000-000000000001', staffSubject='1b000000-0000-4000-8000-000000000002';
+    const workforce='https://login.microsoftonline.com/157419c9-2de9-45e7-a6f9-91546dbef629/v2.0';
+    await db.query('insert into academy_identity.users(id) values($1),($2)',[recovered,other]);
+    await db.query('insert into academy_identity.mappings(issuer,subject,user_id) values($1,$2,$3),($4,$5,$3),($6,$2,$7)',
+      [issuer,recoverySubject,recovered,workforce,staffSubject,'another-issuer',other]);
+    await db.query("insert into public.role_assignments(user_id,role_definition_id) values($1,'central_editor')",[recovered]);
+    const session=(hash:string,user:string,iss:string,sub:string,provider='external-id')=>db.query(
+      'select public.academy_identity_create_session($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [hash,user,iss,sub,'pairwise',new Date(Date.now()+3600000).toISOString(),new Date(Date.now()+1800000).toISOString(),'cipher',provider]);
+    const hashes=['1','2','3','4'].map(character=>character.repeat(64));
+    await session(hashes[0],recovered,issuer,recoverySubject);
+    await session(hashes[1],recovered,workforce,staffSubject,'microsoft');
+    await session(hashes[2],other,'another-issuer',recoverySubject);
+    const lease='a'.repeat(43);
+    await db.query('select public.academy_identity_claim_refresh($1,1,$2)',[hashes[0],lease]);
+    const revoke='select public.academy_identity_revoke_recovered_sessions($1,$2,$3)';
+    const args=[issuer,recoverySubject,'a'.repeat(64)];
+    const alive=async(hash:string)=>(await db.query('select public.academy_identity_read_session($1) value',[hash])).rows[0].value;
+    await db.exec('set role service_role');
+    try {
+      await db.query(revoke,args);
+      expect(await alive(hashes[0])).toBeNull();expect(await alive(hashes[1])).toBeNull();
+      expect(await alive(hashes[2])).toMatchObject({user:{id:other}});
+      expect((await db.query("select public.academy_identity_rotate_session($1,1,now()+interval '1 hour','new',$2) rotated",[hashes[0],lease])).rows[0].rotated).toBe(false);
+      await session(hashes[3],recovered,issuer,recoverySubject);
+      await db.query(revoke,args);
+      expect(await alive(hashes[3])).toMatchObject({user:{id:recovered}});
+      await db.query(revoke,[issuer,staffSubject,'b'.repeat(64)]);
+      expect(await alive(hashes[3])).toMatchObject({user:{id:recovered}});
+    } finally {await db.exec('reset role');}
+    for (const role of ['anon','authenticated']) {
+      await db.exec('set role '+role);
+      try { await expect(db.query(revoke,args)).rejects.toThrow('permission denied'); }
+      finally {await db.exec('reset role');}
+    }
+  });
   it('admits a thirty-day session and never extends its expiry when the token rotates', async () => {
     const hash='t'.repeat(64), lease='a'.repeat(43);
     const expiry=new Date(Date.now()+2592000000).toISOString();

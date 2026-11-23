@@ -21,7 +21,8 @@ const privateDir=resolve('build/azure-core/private');mkdirSync(privateDir,{recur
 const probe=process.argv.includes('--probe');
 const cutover=process.argv.includes('--cutover');
 const forward=process.argv.includes('--forward');
-const selectedLanes=['53','54','55'].filter(value=>process.argv.includes(`--forward-${value}`));
+const selectedLanes=['53','54','55','56'].filter(value=>process.argv.includes(`--forward-${value}`));
+if(process.argv.slice(2).some(arg=>arg.startsWith('--forward')&&arg!=='--forward'&&!selectedLanes.some(lane=>arg===`--forward-${lane}`)))throw new Error('Unknown forward package');
 if(selectedLanes.length>1)throw new Error('Choose one fixed forward package');
 const assessment=selectedLanes.length===1;
 const lane=selectedLanes[0]??'53';
@@ -37,7 +38,8 @@ if([probe,cutover,forward,assessment].filter(Boolean).length>1)throw new Error('
 const snapshot=probe||forward||assessment?null:JSON.parse(readFileSync(join(privateDir,'source-snapshot.json'),'utf8'));
 // The released V1 forward job is fixed at52. New migrations use their separately
 // reviewed executor/package, never an implicit expansion of this archive.
-const currentSchema=probe?null:buildAzureSchema(forward?{through:'20261105020000_teaching_permissions_activation.sql'}:assessment?{through:lane==='55'?'20261106040000_management_teaching_scope.sql':lane==='54'?'20261106000000_managed_profile_handles.sql':'20261105030000_exam_attachment_bindings.sql'}:{});
+const boundary=bounded?.[`FORWARD${lane}_BOUNDARY`]??bounded?.[`FORWARD${lane}_FILE`]??'20261105030000_exam_attachment_bindings.sql';
+const currentSchema=probe?null:buildAzureSchema(forward?{through:'20261105020000_teaching_permissions_activation.sql'}:assessment?{through:boundary}:{});
 if(forward&&currentSchema.receipt.migrations.length!==52)throw new Error('Forward package requires the fixed reviewed 52 migrations');
 if(snapshot&&snapshot.schemaSha256!==currentSchema.receipt.schemaSha256)throw new Error('Snapshot schema digest differs from current reviewed code; rebuild/rehearse before upload.');
 const originalProvenance=forward||assessment?sourceProvenance():null;
@@ -56,6 +58,11 @@ try {
     for(const optional of ['build/azure-core/private/forward-plan.json','build/azure-core/private/forward-deployment-evidence.json'])if(existsSync(optional))files.push(optional);
   }
   if(assessment)files.splice(0,files.length,...boundedFiles(),evidencePath,...(assessmentPlan?[planPath]:[]));
+  if(!probe&&!forward&&!assessment){
+    for(const file of ['src/lib/identity/recovery-sessions.sql','scripts/azure-core/owner-reservations.sql']){
+      if(currentSchema.steps.some(step=>step.id===file||'scripts/azure-core/'+step.id===file))files.push(file);
+    }
+  }
   if(cutover)files.push('scripts/azure-core/cutover.mjs','build/azure-core/private/cutover-manifest.json');
   for(const path of files){const target=join(staging,path);mkdirSync(dirname(target),{recursive:true,mode:0o700});cpSync(path,target,{recursive:true,filter:source=>!isArchiveMetadataPath(source)});}
   if(!assessment)writeFileSync(join(staging,'package.json'),'{"type":"module","private":true}\n',{mode:0o600});

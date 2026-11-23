@@ -6,7 +6,6 @@ import { normalizeQuizSettings } from '@/content-engine/compile/normalize';
 import {
   evaluateCompletion,
   evaluateLessonCompletion,
-  LEARNER_FORBIDDEN_KEYS,
   type GradingItem,
   type Locale,
 } from '@/content-engine';
@@ -14,6 +13,8 @@ import { ApiError } from '@/lib/api';
 import type { Actor } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 import { assertEnrollmentMembershipAccess } from '@/features/learning/membership-access';
+import { learnerItemProjection, sanitizedLearnerValue } from '@/features/learning/item-projection';
+import { restoreQuizMedia } from '@/features/quizzes/media';
 import { onCourseCompleted as recordCourseCompletionSkills } from '@/features/skills/service';
 import {
   handleCourseCompleted,
@@ -31,8 +32,6 @@ import {
   recordsOf,
   type LearnerDatabase,
 } from '@/features/learning/shared';
-
-const LEARNER_FORBIDDEN_KEY_SET = new Set<string>(LEARNER_FORBIDDEN_KEYS);
 
 type CompletionTransition = CourseCompletionTransition;
 
@@ -174,15 +173,6 @@ async function processCompletionEffects(
   }
 }
 
-function sanitizedLearnerValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizedLearnerValue);
-  const object = recordOf(value);
-  if (!object) return value;
-  return Object.fromEntries(Object.entries(object).flatMap(([key, nested]) => (
-    LEARNER_FORBIDDEN_KEY_SET.has(key) ? [] : [[key, sanitizedLearnerValue(nested)]]
-  )));
-}
-
 async function requireActiveEnrollment(database: LearnerDatabase, actor: Actor, courseId: string) {
   const { data, error } = await database.from('enrollments')
     .select('id,user_id,course_id,course_version_id,status,enrolled_at,completed_at,branch_id,branch_scope_known')
@@ -277,7 +267,7 @@ export async function getItemPayload(actor: Actor, courseId: string, itemId: str
     if (typeof row.block_id !== 'string') return [];
     const state = blockState(row);
     return [[row.block_id, quizPolicies.has(row.block_id)
-      ? learnerQuizState(state, quizAnswersVisible(quizPolicies.get(row.block_id)))
+      ? restoreQuizMedia(learnerQuizState(state, quizAnswersVisible(quizPolicies.get(row.block_id))))
       : state]];
   }));
 
@@ -286,16 +276,7 @@ export async function getItemPayload(actor: Actor, courseId: string, itemId: str
     courseVersionId: versionId,
     itemId,
     locale: render.locale as Locale,
-    item: outlineItem.type === 'exam'
-      ? sanitizedLearnerValue({
-        id: itemId,
-        kind: 'exam',
-        title: recordOf(render.payload)?.title,
-        description: recordOf(render.payload)?.description,
-        settings: recordOf(render.payload)?.settings,
-        sections: [],
-      })
-      : sanitizedLearnerValue(render.payload),
+    item: learnerItemProjection(outlineItem, render.payload),
     activityState,
   };
 }

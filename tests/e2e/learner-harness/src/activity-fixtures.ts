@@ -86,6 +86,7 @@ export function createFixtureExamClient(exam: LearnerExam, phase = 'active'): Ex
   const active = (): ExamStartResult => { if (!attempt) throw new Error('No local attempt'); return attempt; };
   return {
     async session() { sessionReads += 1; if (phase === 'restore-error' && sessionReads === 1) throw new Error('Disposable restore failure'); return { attemptsUsed: attempt?.attemptNo ?? 0, attempt }; },
+    async advance() { throw new Error('This fixture uses free navigation.'); },
     async start() { starts += 1; if (phase === 'start-error' && starts === 1) throw new Error('Disposable start failure'); const attemptNo = (attempt?.attemptNo ?? 0) + 1; attempt = { attemptId: `fixture-exam-start-${attemptNo}`, attemptNo, status: 'in_progress', late: false, startedAt: new Date(), deadlineAt: new Date(Date.now() + 30 * 60000), sectionDeadlines: {}, answers: {}, learner: { sections: exam.sections as unknown as Record<string, unknown>[] } }; return attempt; },
     async save(answers): Promise<ExamAnswerRecord[]> {
       saves = { ...saves, ...structuredClone(answers) };

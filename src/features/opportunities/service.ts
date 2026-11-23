@@ -206,7 +206,14 @@ function opportunityFormValue(row: Record<string, unknown>) {
 
 function matchesOpportunityDraft(row: Record<string, unknown>, document: OpportunityForm): boolean {
   const parsed = OpportunityFormSchema.safeParse(opportunityFormValue(row));
-  return parsed.success && isDeepStrictEqual(parsed.data, document);
+  if (!parsed.success) return false;
+  // PostgreSQL may return a different offset or fractional spelling for the same instant.
+  for (const field of ['openAt', 'closeAt', 'startAt', 'endAt'] as const) {
+    const stored = parsed.data[field];
+    if (stored !== document[field] && !sameContentRevision('opportunity', stored, document[field])) return false;
+    parsed.data[field] = document[field];
+  }
+  return isDeepStrictEqual(parsed.data, document);
 }
 
 function withBranchScope(query: OpportunityQuery, branchId: string | null): OpportunityQuery {
@@ -297,13 +304,20 @@ export function createOpportunityService({ database, requirePermission, scope }:
         .maybeSingle();
       if (current.error) databaseError('Opportunity could not be loaded');
       const existing = record(current.data);
+      const ownershipKind = scope?.kind ?? 'central';
+      const ownerBranchId = scope?.kind === 'branch' ? scope.branchId : null;
+      const isCreateReplay = (row: Record<string, unknown> | null) => row?.status === 'draft'
+        && row.created_by === actor.userId
+        && row.ownership_kind === ownershipKind
+        && row.owner_branch_id === ownerBranchId
+        && matchesOpportunityDraft(row, parsed.data);
       if (options.expectedUpdatedAt !== undefined
         && !(existing?.status === 'published' && !options.unpublish)
         && (!existing || !sameContentRevision('opportunity', typeof existing.updated_at === 'string' ? existing.updated_at : null, options.expectedUpdatedAt))) {
         draftConflict(parsed.data.id);
       }
       if (options.createOnly && existing) {
-        if (existing.status === 'draft' && matchesOpportunityDraft(existing, parsed.data)) return existing;
+        if (isCreateReplay(existing)) return existing;
         draftConflict(parsed.data.id);
       }
       const published = existing?.status === 'published';
@@ -329,12 +343,14 @@ export function createOpportunityService({ database, requirePermission, scope }:
       const draftRow = {
         ...databaseRow(parsed.data),
         updated_at: new Date().toISOString(),
-        ...(!existing ? { status: 'draft', published_at: null, created_by: actor.userId } : {}),
         ...(published ? { status: 'draft', published_at: null } : {}),
       };
-      if (options.createOnly) {
+      if (!existing) {
         const inserted = await database.from('opportunities')
-          .insert(draftRow)
+          .insert({
+            ...draftRow, status: 'draft', published_at: null, created_by: actor.userId,
+            ownership_kind: ownershipKind, owner_branch_id: ownerBranchId,
+          })
           .select('id,status,updated_at')
           .maybeSingle();
         if (!inserted.error && record(inserted.data)) return inserted.data;
@@ -345,25 +361,14 @@ export function createOpportunityService({ database, requirePermission, scope }:
           .maybeSingle();
         if (raced.error) databaseError('Opportunity could not be reloaded after a create conflict');
         const row = record(raced.data);
-        if (row?.status === 'draft' && matchesOpportunityDraft(row, parsed.data)) return row;
+        if (row && isCreateReplay(row)) return row;
         draftConflict(parsed.data.id);
       }
-      if (options.expectedUpdatedAt !== undefined) {
-        const { data, error } = await database.from('opportunities')
-          .update(draftRow)
-          .eq('id', parsed.data.id)
-          .eq('updated_at', options.expectedUpdatedAt)
-          .select('id,status,updated_at')
-          .maybeSingle();
-        if (!error && !record(data)) draftConflict(parsed.data.id);
-        if (error || !record(data)) databaseError('Opportunity draft could not be saved');
-        return data;
-      }
-      const { data, error } = await database.from('opportunities')
-        .upsert(draftRow, { onConflict: 'id' })
-        .select('id,status,updated_at')
-        .single();
-      if (error || !record(data)) databaseError('Opportunity draft could not be saved');
+      let update = database.from('opportunities').update(draftRow).eq('id', parsed.data.id).eq('status', existing.status);
+      if (options.expectedUpdatedAt !== undefined) update = update.eq('updated_at', options.expectedUpdatedAt);
+      const { data, error } = await update.select('id,status,updated_at').maybeSingle();
+      if (error) databaseError('Opportunity draft could not be saved');
+      if (!record(data)) draftConflict(parsed.data.id);
       return data;
     },
 

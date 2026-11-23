@@ -61,6 +61,10 @@ export async function rotateStoredSession(hash: string, version: number, tokenEx
   return rpc<boolean>('academy_identity_rotate_session', { p_hash: hash, p_version: version, p_lease: lease, p_token_expires_at: new Date(tokenExpiresAt * 1000).toISOString(), p_refresh_ciphertext: refreshCiphertext });
 }
 export async function deleteStoredSession(hash: string, version?: number) { return rpc<IdentityProvider | null>('academy_identity_delete_session', { p_hash: hash, p_version: version ?? null }); }
+/** The issuer and object ID must come from the verified reset-continuation ID token. */
+export async function revokeRecoveredAccountSessions(issuer: string, objectId: string, attemptHash: string) {
+  await rpc('academy_identity_revoke_recovered_sessions', {p_issuer:issuer, p_subject:objectId, p_attempt_hash:attemptHash});
+}
 
 export async function claimSessionRefresh(hash: string, version: number, lease: string) {
   return rpc<boolean>('academy_identity_claim_refresh', { p_hash: hash, p_version: version, p_lease: lease });

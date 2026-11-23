@@ -10,11 +10,6 @@ export const XP_POINTS = {
   course_completed: 100,
 } as const;
 
-const XP_POINT_CAPS: Record<keyof typeof XP_POINTS, number> = {
-  ...XP_POINTS,
-  quiz_submitted: 20,
-};
-
 export type XpKind = keyof typeof XP_POINTS;
 export type LeaderboardScope = 'global' | 'branch';
 
@@ -127,15 +122,6 @@ function parsedStreak(value: unknown): StreakState | null {
   return { current, longest, lastActiveDate };
 }
 
-function pointsFor(kind: XpKind, requested?: number): number {
-  if (kind !== 'quiz_submitted') return XP_POINTS[kind];
-  const points = requested ?? XP_POINTS.quiz_submitted;
-  if (!Number.isSafeInteger(points) || points < 0) {
-    throw new ApiError(400, 'INVALID_XP_POINTS', 'XP points must be a non-negative integer');
-  }
-  return Math.min(points, XP_POINT_CAPS.quiz_submitted);
-}
-
 function parsedEvent(value: unknown) {
   const row = record(value);
   if (!row || typeof row.id !== 'string' || typeof row.created_at !== 'string') return null;
@@ -176,13 +162,28 @@ export function createXpService({ database, now = () => new Date() }: Dependenci
     refId: string,
     points?: number,
   ) {
-    const awardedPoints = pointsFor(kind, points);
+    if (kind === 'quiz_submitted') {
+      if (refType !== 'quiz_attempt') throw new ApiError(400, 'INVALID_XP_REFERENCE', 'A quiz reward requires a quiz attempt');
+      if (points !== undefined && (!Number.isSafeInteger(points) || points < 0)) {
+        throw new ApiError(400, 'INVALID_XP_POINTS', 'XP points must be a non-negative integer');
+      }
+      const result = await database.rpc('xp_record_quiz_submission', { p_user_id: userId, p_attempt_id: refId });
+      const receipt = firstRecord(result.data);
+      const streak = parsedStreak(receipt);
+      const eventId = receipt?.event_id;
+      const delta = Number(receipt?.points);
+      if (result.error || !streak || receipt?.points == null || !Number.isFinite(delta) || delta < 0
+        || (eventId !== null && typeof eventId !== 'string') || (eventId === null) !== (delta === 0)) {
+        databaseFailure('Quiz XP could not be recorded');
+      }
+      return { awarded: delta > 0, eventId, points: delta, streak };
+    }
     const createdAt = now();
     const insertResult = await database.from('xp_events')
       .insert({
         user_id: userId,
         kind,
-        points: awardedPoints,
+        points: XP_POINTS[kind],
         ref_type: refType,
         ref_id: refId,
         created_at: createdAt.toISOString(),

@@ -12,12 +12,13 @@ import { ApiError, toValidationIssues } from '@/lib/api-error';
 export const MAX_WIRE_BODY_BYTES = 2 * 1024 * 1024;
 
 const DEFAULT_MAX_BYTES = MAX_WIRE_BODY_BYTES;
+type HttpBody = Pick<Request,'headers'|'body'>;
 
 function payloadTooLarge(maxBytes: number): ApiError {
   return new ApiError(413, 'PAYLOAD_TOO_LARGE', `Request body exceeds the ${maxBytes} byte limit`);
 }
 
-function assertDeclaredLength(request: Request, maxBytes: number): void {
+function assertDeclaredLength(request: HttpBody, maxBytes: number): void {
   const raw = request.headers.get('content-length');
   if (raw === null || !/^\d+$/.test(raw.trim())) return;
   try {
@@ -28,8 +29,8 @@ function assertDeclaredLength(request: Request, maxBytes: number): void {
   }
 }
 
-/** Reads a request body while enforcing the byte cap for declared and streamed bodies. */
-export async function readBodyLimited(request: Request, maxBytes = DEFAULT_MAX_BYTES): Promise<Uint8Array> {
+/** Enforces the byte cap on a declared or streamed request or response body. */
+export async function readBodyLimited(request: HttpBody, maxBytes = DEFAULT_MAX_BYTES): Promise<Uint8Array> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new TypeError('maxBytes must be a non-negative safe integer');
   assertDeclaredLength(request, maxBytes);
   if (!request.body) return new Uint8Array();
@@ -61,7 +62,7 @@ export async function readBodyLimited(request: Request, maxBytes = DEFAULT_MAX_B
   return body;
 }
 
-export async function readTextBodyLimited(request: Request, maxBytes = DEFAULT_MAX_BYTES): Promise<string> {
+export async function readTextBodyLimited(request: HttpBody, maxBytes = DEFAULT_MAX_BYTES): Promise<string> {
   return new TextDecoder().decode(await readBodyLimited(request, maxBytes));
 }
 

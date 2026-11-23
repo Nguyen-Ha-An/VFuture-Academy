@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { IdSchema, L10nStringSchema } from '@/content-engine/schema/common';
+import { IdSchema, L10nStringSchema, type Locale } from '@/content-engine/schema/common';
 import { CourseAccessSchema } from '@/content-engine/schema/course';
-import { L10nRichContentSchema } from '@/content-engine/schema/rich-content';
+import { L10nRichContentSchema, RichContentSchema } from '@/content-engine/schema/rich-content';
 
 export const OPPORTUNITY_TYPES = [
   'course', 'workshop', 'event', 'research_cohort', 'competition', 'hackathon',
@@ -19,6 +19,15 @@ const optionalHttpsUrl = HttpsUrlSchema.nullable();
 export function safeApplicationUrl(value: unknown): string | null {
   const parsed = HttpsUrlSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
+}
+
+/** Select the description shown by a public page, including single-locale legacy rows. */
+export function publicOpportunityDescription(value: unknown, locale: Locale) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const map = value as Record<string, unknown>;
+  const selected = Array.isArray(map.blocks) ? map : map[locale] ?? map.vi ?? map.en;
+  const description = RichContentSchema.safeParse(selected);
+  return description.success ? description.data : null;
 }
 
 export const OpportunityFormSchema = z.object({

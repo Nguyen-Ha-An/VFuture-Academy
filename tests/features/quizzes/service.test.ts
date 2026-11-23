@@ -7,6 +7,9 @@ import { FIXTURES, fixtureResolver } from '@/content-engine/fixtures';
 import { createQuizService, type QuizActor, type QuizAttachmentContext, type QuizDatabase } from '@/features/quizzes/service';
 import type { GradingQuestion } from '@/content-engine/compile/project';
 import { ApiError } from '@/lib/api';
+import { checkedQuizMediaScope, restoreQuizMedia } from '@/features/quizzes/media';
+import { learnerMediaHref } from '@/features/media/urls';
+import type { ImageBlock } from '@/content-engine/schema/types';
 
 type QueryError = { code?: string; message?: string };
 type QueryResult = { data: unknown; error: QueryError | null; count?: number | null };
@@ -73,9 +76,9 @@ beforeAll(async () => {
   lesson = compiled.compiled.items['what-is-ai'];
 });
 
-function databaseFor(grading: CompiledItem['grading'], attempts: number, attemptId = 'attempt-1') {
+function databaseFor(grading: CompiledItem['grading'], attempts: number, attemptId = 'attempt-1', versionId = 'version-1') {
   return new DatabaseStub({
-    enrollments: [{ data: { course_version_id: 'version-1' }, error: null }],
+    enrollments: [{ data: { course_version_id: versionId }, error: null }],
     course_version_items: [{ data: { grading }, error: null }],
     quiz_attempts: [
       { data: null, error: null, count: attempts },
@@ -85,6 +88,42 @@ function databaseFor(grading: CompiledItem['grading'], attempts: number, attempt
 }
 
 describe('quiz service', () => {
+  it('binds feedback media to a successful practice check by this learner in this version', async () => {
+    const versionId = 'c74c1611-95d1-4365-85f8-0265ae7f60ad';
+    const grading = structuredClone(lesson.grading);
+    const diagram: ImageBlock = { type: 'image', src: { assetId: 'solution-image' }, alt: 'Explanation' };
+    grading.questions['check-1/q1'].explanation = { blocks: [diagram] };
+    grading.quizzes['check-1'].feedback = 'per_question';
+    grading.quizzes['check-1'].mode = 'practice';
+    grading.quizzes['check-1'].showExplanations = true;
+    const check = () => createQuizService({ database: databaseFor(grading, 0, 'unused', versionId) })
+      .check(actor, 'ai-foundations', 'what-is-ai', 'check-1', 'check-1/q1', 'a');
+    vi.stubEnv('ACADEMY_BACKEND','supabase');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND','supabase');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY','local-quiz-media-test-secret-'.repeat(2));
+    try {
+      const checked = await check();
+      const block = checked.revealed.explanations!['check-1/q1'].blocks[0] as ImageBlock;
+      const url = new URL(learnerMediaHref(block.src), 'https://example.test');
+      const receipt = url.searchParams.get('quizMediaReceipt')!;
+      expect(checkedQuizMediaScope(receipt, actor.id, 'solution-image')).toEqual({ versionId, branchId: null });
+      expect(checkedQuizMediaScope(receipt, 'other-learner', 'solution-image')).toBeNull();
+      expect(checkedQuizMediaScope(receipt, actor.id, 'other-image')).toBeNull();
+      expect(restoreQuizMedia({ checks: { 'check-1/q1': checked } })).toEqual({ checks: { 'check-1/q1': checked } });
+      grading.quizzes['check-1'].showExplanations = false;
+      expect((await check()).revealed.explanations).toBeUndefined();
+    } finally { vi.unstubAllEnvs(); }
+  });
+
+  it('restores a recorded attempt locator and keeps old practice answers available for rechecking', () => {
+    const quizAttemptId = 'a15dbfc7-15fb-4eef-9e71-e9227b8f096f';
+    const revealed = { explanations: { 'quiz/q': { blocks: [{ type: 'image', src: { assetId: 'diagram' }, alt: 'Diagram' }] } } };
+    const oldCheck = { answers: { 'quiz/q': true }, checks: { 'quiz/q': { revealed } } };
+    expect(restoreQuizMedia(oldCheck)).toEqual({ answers: { 'quiz/q': true }, checks: {} });
+    expect(restoreQuizMedia({ last: { attemptId: quizAttemptId, revealed } })).toMatchObject({
+      last: { revealed: { explanations: { 'quiz/q': { blocks: [{ src: { assetId: 'diagram', quizAttemptId } }] } } } },
+    });
+  });
   it('validates self-assessment upload ownership before recording an attempt', async () => {
     const grading=structuredClone(lesson.grading);
     const question:GradingQuestion={id:'check-1/upload',type:'upload_answer',points:0,settings:{},interactionType:'upload',selfAssessment:true};
@@ -606,6 +645,21 @@ describe('quiz service', () => {
     expect(insert).toMatchObject({ passed: false });
   });
 
+  it('keeps unlimited practice and skips the XP request when every quiz answer is missing', async () => {
+    const grading = structuredClone(lesson.grading);
+    grading.quizzes['check-1'].attemptsAllowed = 0;
+    const hooks = { recompute: vi.fn(), awardXp: vi.fn() };
+    const service = createQuizService({ database: databaseFor(grading, 3), hooks });
+
+    const result = await service.submit(actor, 'ai-foundations', 'what-is-ai', 'check-1', {
+      'other-quiz/q1': 'a', 'check-1/q3': null, 'check-1/q4': { b1: ' ' },
+    });
+
+    expect(result.attemptsRemaining).toBeNull();
+    expect(result.results.every((question) => question.status === 'incomplete')).toBe(true);
+    expect(hooks.awardXp).not.toHaveBeenCalled();
+  });
+
   it('keeps a submitted quiz successful when progress and XP hooks fail', async () => {
     const database = databaseFor(lesson.grading, 0, 'attempt-hooks');
     const recompute = vi.fn().mockRejectedValue(new Error('progress unavailable'));
@@ -618,12 +672,12 @@ describe('quiz service', () => {
         'check-1/q1': 'a',
       })).resolves.toMatchObject({ attemptId: 'attempt-hooks' });
       expect(recompute).toHaveBeenCalledOnce();
-      expect(awardXp).toHaveBeenCalledWith(expect.objectContaining({
+      expect(awardXp).toHaveBeenCalledWith({
         userId: 'learner-1',
         kind: 'quiz_submitted',
+        refType: 'quiz_attempt',
         refId: 'attempt-hooks',
-        points: 7,
-      }));
+      });
       expect(log).toHaveBeenCalledTimes(2);
     } finally {
       log.mockRestore();

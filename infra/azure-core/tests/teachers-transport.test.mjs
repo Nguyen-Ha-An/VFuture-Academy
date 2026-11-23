@@ -51,9 +51,9 @@ function bootstrap(root,receipt,action,s){
  assert.equal((result.stdout+result.stderr).includes('NEVER_LOG'),false);return {...result,receiptFile,failureFile};
 }
 test('fixed55 plan/apply receipt policy never widens V1 or exports private rows',()=>{
- assert.deepEqual(Object.keys(ASSESSMENT_ACTIONS),['forward-55-plan','forward-55-apply','forward-54-plan','forward-54-apply','forward-53-plan','forward-53-apply']);
+ assert.deepEqual(Object.keys(ASSESSMENT_ACTIONS),['forward-56-plan','forward-56-apply','forward-55-plan','forward-55-apply','forward-54-plan','forward-54-apply','forward-53-plan','forward-53-apply']);
  for(const path of ['build/azure-core/private/forward-55-v1-evidence.json','build/azure-core/private/forward-55-plan.json','build/azure-core/private/forward-55-source-manifest.json'])assert.doesNotThrow(()=>validateArchiveListing(path));
- for(const path of ['build/azure-core/private/forward-55-other.json','scripts/azure-core/forward-56.mjs'])assert.throws(()=>validateArchiveListing(path));
+ for(const path of ['build/azure-core/private/forward-55-other.json','scripts/azure-core/forward-57.mjs'])assert.throws(()=>validateArchiveListing(path));
 });
 test('real clean encrypted55 package relocates, produces reviewed transport plan, repacks and applies idempotently',()=>{
  const root=prepare(),s=support();let relocated,applyFolder;

@@ -71,6 +71,12 @@ describe('direct upload admission and byte verification',()=>{
     await expect(reserveDirectUpload(owner,input,h.db)).rejects.toThrow('assignment forbidden');
     expect(h.rpc).not.toHaveBeenCalled();
   });
+  it('returns the owner limit distinctly from the site capacity error', async () => {
+    const h = harness();
+    h.rpc.mockResolvedValueOnce({ data: null, error: { message: 'UPLOAD_OWNER_CAPACITY' } });
+    await expect(reserveDirectUpload(owner, input, h.db)).rejects.toMatchObject({ status: 429, code: 'UPLOAD_OWNER_CAPACITY' });
+    expect(auth.grant).not.toHaveBeenCalled();
+  });
   it('binds a fresh signed grant to exact owner/path/bytes and records actual token expiry',async()=>{
     const h=harness(); const permit=await reserveDirectUpload(owner,input,h.db);
     expect(permit.uploadUrl).toContain('token=');

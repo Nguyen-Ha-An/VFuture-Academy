@@ -26,7 +26,7 @@ export const GET = withHandler(async (request) => {
 });
 
 export const POST = withHandler(async (request) => {
-  const { context, service: reviews } = await typedContentContext(request, 'content.create', 'opportunity.edit', true);
+  const { context } = await typedContentContext(request, 'content.create', 'opportunity.edit', true);
   const actor = context.actor;
   const body = await parseBody(z.unknown(), request);
   const envelope = DraftEnvelopeSchema.safeParse(body);
@@ -40,8 +40,6 @@ export const POST = withHandler(async (request) => {
     document,
     { ...(envelope.success ? { unpublish: envelope.data.unpublish === true } : {}), createOnly: true },
   );
-  const id = typeof result === 'object' && result !== null && 'id' in result ? String(result.id) : '';
-  if (id) await reviews.assignOwnership('opportunity', id);
   if (envelope.success && envelope.data.unpublish === true) invalidatePublicCache('opportunities');
   return ok(result, { status: 201 });
 });

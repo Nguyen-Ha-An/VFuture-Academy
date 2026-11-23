@@ -26,6 +26,7 @@ import {
   withExamSettings,
 } from './test-kit';
 import { createMemoryExamClient } from './memory-client';
+import { learnerMediaHref, mediaHref } from '@/features/media/urls';
 
 let exam: CompiledItem;
 
@@ -58,12 +59,14 @@ function VietnameseProvider({ children }: { children: React.ReactNode }) {
 
 async function playerHarness(
   settings: Partial<NonNullable<CompiledItem['grading']['exam']>> = {},
+  prepare?: (item: CompiledItem) => void,
 ) {
   const item = withExamSettings(exam, {
     shuffleQuestions: false,
     shuffleOptions: false,
     ...settings,
   });
+  prepare?.(item);
   const renderItem = structuredClone(item.renders.en) as LearnerExam;
   renderItem.settings = { ...renderItem.settings, ...settings };
   const repo = new InMemoryExamRepo();
@@ -458,6 +461,73 @@ describe('ExamPlayer', () => {
     expect(lockedQuestion).toHaveFocus();
     expect(currentQuestion).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { name: 'Question 2' })).toBeInTheDocument();
+  });
+
+  it('recovers the same sequential page after a lost advance response', async () => {
+    const h = await playerHarness({ navigation: 'sequential' });
+    const user = userEvent.setup();
+    const advance = h.client.advance.bind(h.client);
+    const request = vi.spyOn(h.client, 'advance').mockImplementationOnce(async from => {
+      await advance(from);
+      throw new Error('Page response interrupted.');
+    });
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client}
+      runtime={h.runtime} onSubmitted={vi.fn()} /></Provider>);
+    await user.click(screen.getAllByRole('radio')[0]);
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText(en.exam.player.pageError)).toBeInTheDocument();
+    expect(screen.getAllByRole('radio')[0]).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByRole('heading', { name: 'Question 2' })).toHaveFocus();
+    expect(request.mock.calls).toEqual([[0], [0]]);
+    expect((await h.client.session()).attempt?.page?.index).toBe(1);
+    expect((await h.client.session()).attempt).toMatchObject({ answers: {}, page: { answeredBefore: [0] } });
+    expect(await h.repo.listAnswers(h.attempt.attemptId)).toHaveLength(1);
+  });
+
+  it('binds the full terminal review after the player has received one sequential section', async () => {
+    const h = await playerHarness({ navigation: 'sequential', layout: 'section_per_page' });
+    const user = userEvent.setup();
+    render(<Provider><ExamFlow exam={{ ...h.exam, sections: [] }} attemptsUsed={1} client={h.client} runtime={h.runtime} /></Provider>);
+    expect(await screen.findByRole('heading', { name: 'Part 1: Concepts' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Part 2: Application' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: en.exam.player.submit }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: en.exam.player.confirm }));
+    expect(await screen.findByRole('heading', { name: 'Part 2: Application' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Part 1: Concepts' })).toBeInTheDocument();
+  });
+
+  it('retains a local response when a second tab has already closed its page', async () => {
+    const h = await playerHarness({ navigation: 'sequential' });
+    const user = userEvent.setup();
+    const recovery = vi.fn();
+    const journal = createPendingExamDraftStore(h.attempt.attemptId);
+    const first = h.exam.sections[0].questions[0].id;
+    render(<Provider><ExamPlayer exam={h.exam} attempt={h.attempt} client={h.client}
+      runtime={h.runtime} onSubmitted={vi.fn()} draftStore={journal} onRecoverySnapshot={recovery} /></Provider>);
+    await user.click(screen.getAllByRole('radio')[0]);
+    await h.service.advance(learner, h.attempt.attemptId, 0);
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByRole('heading', { name: 'Question 2' })).toBeInTheDocument();
+    expect(recovery).toHaveBeenCalledWith(expect.objectContaining({ answers: { [first]: expect.any(String) }, verified: false }));
+    expect(journal.read()).toEqual({ [first]: expect.any(String) });
+    expect(await h.repo.listAnswers(h.attempt.attemptId)).toEqual([]);
+  });
+
+  it('uses the active attempt to load an image first delivered on the second page', async () => {
+    const assetId = 'asset_1234567890abcdef';
+    const h = await playerHarness({ navigation: 'sequential' }, item => {
+      const second = (item.renders.en as LearnerExam).sections[0].questions[1];
+      second.content = { blocks: [{ type: 'image', src: { assetId }, alt: 'Second question diagram' }] };
+    });
+    const user = userEvent.setup();
+    const runtime = { ...h.runtime, resolveMedia: learnerMediaHref };
+    render(<Provider><ExamFlow exam={{ ...h.exam, sections: [] }} attemptsUsed={1} client={h.client} runtime={runtime} /></Provider>);
+    await screen.findByRole('heading', { name: 'Question 1' });
+    expect(screen.queryByRole('img', { name: 'Second question diagram' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    const diagram = await screen.findByRole('img', { name: 'Second question diagram' });
+    expect(diagram).toHaveAttribute('src', `${mediaHref(assetId)}?examAttemptId=${h.attempt.attemptId}&locale=en`);
   });
 
   it('focuses the section heading before instructions when navigation changes sections', async () => {

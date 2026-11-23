@@ -223,6 +223,8 @@ describe('ecosystem routes', () => {
 
     expect(response.status).toBe(201);
     expect(mocks.opportunities.saveDraft).toHaveBeenCalledWith(document, { unpublish: false, createOnly: true });
+    expect(mocks.createOpportunityService).toHaveBeenCalledWith(expect.objectContaining({ scope: { kind: 'central' } }));
+    expect(mocks.assignOwnership).not.toHaveBeenCalled();
   });
 
   it('forwards opportunity draft and publish CAS envelopes without changing identity', async () => {

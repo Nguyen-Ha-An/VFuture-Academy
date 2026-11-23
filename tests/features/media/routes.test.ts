@@ -43,6 +43,9 @@ import { POST } from '@/app/api/v1/studio/media/route';
 import { GET } from '@/app/api/v1/media/[assetId]/route';
 import { MAX_MEDIA_BYTES } from '@/features/media/upload';
 import { ApiError } from '@/lib/api';
+import { bindQuizMedia } from '@/features/quizzes/media';
+import { learnerMediaHref } from '@/features/media/urls';
+import type { ImageBlock } from '@/content-engine/schema/types';
 
 function requestWithFile(file: File) {
   const form = new FormData();
@@ -229,6 +232,15 @@ describe('authenticated media redirect route', () => {
     };
   }
 
+  function courseItem(kind = 'lesson', versionId = 'version-1') {
+    const item = { id: 'item-1', type: kind };
+    return { version_id: versionId, outline: { modules: [{ items: [item] }] } };
+  }
+
+  function courseRender(kind = 'lesson', body: Record<string, unknown> = { blocks: [{ src: { assetId: 'asset_X' } }] }, versionId = 'version-1') {
+    return { version_id: versionId, item_id: 'item-1', payload: { id: 'item-1', kind, ...body } };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireApiUser.mockResolvedValue({ id: 'viewer-1' });
@@ -319,25 +331,24 @@ describe('authenticated media redirect route', () => {
   });
 
   it.each([
-    ['published item source', {
-      course_version_items: [{ version_id: 'version-1', source: { blocks: [{ src: { assetId: 'asset_X' } }] } }],
-      course_version_item_renders: [],
-    }],
-    ['localized item render', {
-      course_version_items: [],
-      course_version_item_renders: [{ version_id: 'version-1', payload: { blocks: [{ src: { assetId: 'asset_X' } }] } }],
-    }],
-  ])('allows an enrolled learner to read an asset referenced by a %s', async (_label, references) => {
+    ['localized lesson content', 'lesson', { blocks: [{ src: { assetId: 'asset_X' } }] }, 302],
+    ['an assigned download', 'assignment', { instructions: { blocks: [{ src: { assetId: 'asset_X' } }] } }, 302],
+    ['an exam introduction', 'exam', { description: { blocks: [{ src: { assetId: 'asset_X' } }] } }, 302],
+    ['an exam question before its attempt', 'exam', { sections: [{ questions: [{ content: { assetId: 'asset_X' } }] }] }, 404],
+    ['a quiz explanation withheld from the learner render', 'lesson', { blocks: [{ type: 'quiz', questions: [{ explanation: { assetId: 'asset_X' } }] }] }, 404],
+    ['a private authored sample answer', 'lesson', { blocks: [] }, 404],
+  ] as const)('returns the expected download status for %s', async (_label, kind, body, status) => {
     const media = queryResult({
       owner_id: 'owner-1', bucket: 'media', path: 'media/asset_X/file.pdf', mime: 'application/pdf',
     });
     const enrollments = queryResult([{ course_version_id: 'version-1' }]);
-    const items = queryResult(references.course_version_items);
-    const renders = queryResult(references.course_version_item_renders);
+    const items = queryResult([{ version_id: 'version-1', source: { sampleAnswer: { assetId: 'asset_X' } } }]);
+    const renders = queryResult([courseRender(kind, body)]);
     mocks.supabaseService.mockReturnValue({
       from: vi.fn((table: string) => ({
         media_assets: media,
         enrollments,
+        course_version_outline: queryResult([courseItem(kind)]),
         course_version_items: items,
         course_version_item_renders: renders,
       })[table] ?? queryResult([])),
@@ -348,10 +359,11 @@ describe('authenticated media redirect route', () => {
       params: Promise.resolve({ assetId: 'asset_X' }),
     });
 
-    expect(response.status).toBe(302);
+    expect(response.status).toBe(status);
     expect(enrollments.eq).toHaveBeenCalledWith('user_id', 'viewer-1');
     expect(enrollments.in).toHaveBeenCalledWith('status', ['active', 'completed']);
-    expect(createSignedUrl).toHaveBeenCalledOnce();
+    expect(items.select).not.toHaveBeenCalled();
+    expect(createSignedUrl).toHaveBeenCalledTimes(status === 302 ? 1 : 0);
   });
 
   it.each([
@@ -376,7 +388,7 @@ describe('authenticated media redirect route', () => {
     const from = vi.fn((table: string) => ({
       media_assets: queryResult({ owner_id: 'owner-1', bucket: 'media', path: 'media/asset_X/file.pdf' }),
       enrollments, profiles: profile, branch_memberships: membership,
-      course_version_items: queryResult([{ version_id: 'version-1', source: { assetId: 'asset_X' } }]),
+      course_version_outline: queryResult([courseItem()]), course_version_item_renders: queryResult([courseRender()]),
     })[table] ?? queryResult([]));
     mocks.supabaseService.mockReturnValue({ from, storage: { from: vi.fn(() => ({ createSignedUrl })) } });
 
@@ -423,6 +435,60 @@ describe('authenticated media redirect route', () => {
 
     expect(response.status).toBe(404);
     expect(createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['released feedback', 'after_submit', true, 'viewer-1', true, 302],
+    ['withheld explanations', 'after_submit', false, 'viewer-1', true, 404],
+    ['withheld feedback', 'none', true, 'viewer-1', true, 404],
+    ['another learner’s result', 'after_submit', true, 'other-learner', true, 404],
+    ['a previous enrollment version', 'after_submit', true, 'viewer-1', false, 404],
+  ] as const)('applies the submitted quiz policy for %s', async (_label, feedback, showExplanations, owner, enrolled, status) => {
+    const attemptId = '32caff1e-164a-43cb-8791-6347c892f328';
+    const attempt = queryResult({
+      id: attemptId, user_id: owner, course_version_id: 'version-1', quiz_id: 'check',
+      course_version_items: { kind: 'lesson', grading: {
+        questions: { 'check/question': { id: 'check/question', explanation: { blocks: [{ type: 'image', src: { assetId: 'asset_X' }, alt: 'Solution' }] } } },
+        quizzes: { check: { questionIds: ['check/question'], feedback, showExplanations } },
+      } },
+    });
+    const from = vi.fn((table: string) => ({
+      media_assets: queryResult({ owner_id: 'publisher', bucket: 'media', path: 'media/asset_X/solution.png' }),
+      quiz_attempts: attempt,
+      enrollments: queryResult(enrolled ? [{ course_version_id: 'version-1' }] : []),
+    })[table] ?? queryResult([]));
+    mocks.supabaseService.mockReturnValue({ from, storage: { from: () => ({ createSignedUrl }) } });
+    const response = await GET(new Request(`http://localhost/api/v1/media/asset_X?quizAttemptId=${attemptId}&locale=en`), {
+      params: Promise.resolve({ assetId: 'asset_X' }),
+    });
+    expect(response.status).toBe(status);
+    expect(attempt.eq).toHaveBeenCalledWith('user_id', 'viewer-1');
+    expect(createSignedUrl).toHaveBeenCalledTimes(status === 302 ? 1 : 0);
+  });
+
+  it.each([
+    ['current enrollment', true, false, 302],
+    ['missing enrollment', false, false, 404],
+    ['suspension at the original school', true, true, 404],
+  ] as const)('rechecks %s when redeeming checked practice feedback', async (_label, enrolled, suspended, status) => {
+    vi.stubEnv('ACADEMY_BACKEND', 'supabase');
+    vi.stubEnv('NEXT_PUBLIC_ACADEMY_BACKEND', 'supabase');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'practice-media-fixture-'.repeat(2));
+    const version = '32caff1e-164a-43cb-8791-6347c892f328';
+    const diagram: ImageBlock = { type: 'image', alt: 'Solution', src: { assetId: 'asset_X' } };
+    const revealed = bindQuizMedia({ explanations: { q: { blocks: [diagram] } } }, 'viewer-1', version, 'old-school');
+    mocks.getActor.mockResolvedValue({ userId: 'viewer-1', roles: [], authorization: { source: 'database', accountStatus: 'active',
+      assignments: [], memberships: [{ branchId: 'old-school', status: suspended ? 'suspended' : 'active' }] } });
+    const ref = (revealed.explanations!.q.blocks[0] as ImageBlock).src;
+    const enrollments = queryResult(enrolled ? [{ course_version_id: version }] : []);
+    const from = vi.fn((table: string) => ({
+      media_assets: queryResult({ owner_id: 'publisher', bucket: 'media', path: 'media/asset_X/solution.png' }), enrollments,
+    })[table] ?? queryResult([]));
+    mocks.supabaseService.mockReturnValue({ from, storage: { from: () => ({ createSignedUrl }) } });
+    const result = await GET(new Request(new URL(learnerMediaHref(ref), 'http://localhost')), { params: Promise.resolve({ assetId: 'asset_X' }) });
+    expect(result.status).toBe(status);
+    expect(enrollments.eq).toHaveBeenCalledWith('course_version_id', version);
+    expect(createSignedUrl).toHaveBeenCalledTimes(status === 302 ? 1 : 0);
   });
 
   it('hides an asset referenced only by a course version outside the learner enrollment', async () => {
@@ -481,8 +547,9 @@ describe('authenticated media redirect route', () => {
             data = state.ranges[0] === 500
               ? [{ course_version_id: 'version-target' }]
               : firstEnrollmentPage;
-          } else if (table === 'course_version_items' && state.versions.includes('version-target')) {
-            data = [{ version_id: 'version-target', source: { src: { assetId: 'asset_X' } } }];
+          } else if (state.versions.includes('version-target')) {
+            if (table === 'course_version_outline') data = [courseItem('lesson', 'version-target')];
+            if (table === 'course_version_item_renders') data = [courseRender('lesson', undefined, 'version-target')];
           }
           return Promise.resolve({ data, error: null }).then(resolve);
         },
@@ -818,6 +885,13 @@ describe('authenticated media redirect route', () => {
     const missing = await GET(new Request('http://localhost/api/v1/media/missing'), { params: Promise.resolve({ assetId: 'missing' }) });
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({ error: { code: 'NOT_FOUND', message: 'Media not found' } });
+  });
+
+  it('never signs an upload’s pending object', async () => {
+    maybeSingle.mockResolvedValue({ data: { owner_id: 'viewer-1', bucket: 'media', path: 'direct-pending/viewer-1/upload/diagram.png' }, error: null });
+    const pending = await GET(new Request('http://localhost/api/v1/media/asset_X'), { params: Promise.resolve({ assetId: 'asset_X' }) });
+    expect(pending.status).toBe(404);
+    expect(createSignedUrl).not.toHaveBeenCalled();
   });
 
   it('returns the standard internal error envelope when the media lookup fails', async () => {

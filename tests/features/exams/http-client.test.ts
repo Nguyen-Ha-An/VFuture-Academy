@@ -11,6 +11,19 @@ const jsonResponse = (data: unknown, date = 'Thu, 03 Sep 2026 05:00:00 GMT') => 
 );
 
 describe('HTTP exam client', () => {
+  it('advances only the bound attempt using the last confirmed page', async () => {
+    const result = { attemptId: 'attempt-1', status: 'in_progress', startedAt: '2026-09-03T05:00:00Z',
+      deadlineAt: null, sectionDeadlines: {}, learner: { sections: [] }, answers: {},
+      page: { index: 2, count: 4, questionOffset: 2, questionCount: 4, answeredBefore: [] } };
+    const fetcher = vi.fn().mockResolvedValueOnce(jsonResponse(result)).mockResolvedValueOnce(jsonResponse(result));
+    const client = createHttpExamClient({ courseId: 'course-one', itemId: 'exam', attemptId: 'attempt-1', fetcher });
+    await expect(client.advance(1)).resolves.toMatchObject({ page: { index: 2 } });
+    expect(fetcher).toHaveBeenCalledWith('/api/v1/exams/attempts/attempt-1/advance', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ fromStep: 1 }), credentials: 'same-origin',
+    }));
+    await expect(client.advance(2)).rejects.toMatchObject({ code: 'INVALID_RESPONSE', ambiguous: true });
+  });
+
   it('restores and binds an existing session without creating an attempt', async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

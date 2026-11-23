@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { signedUploadExpiry } from './signed-upload-expiry';
 
 type Storage = SupabaseClient['storage'];
 type Database = Pick<SupabaseClient, 'rpc'>;
@@ -64,13 +65,9 @@ export function withVerifiedInventory(storage: Storage, database: Database): Sto
             if (held.error) throw new Error('Storage upload reservation failed');
             const result = await file.createSignedUploadUrl(...args);
             if (result.error || !result.data) return result;
-            let expiry: number;
-            try {
-              const token = new URL(result.data.signedUrl).searchParams.get('token');
-              expiry = JSON.parse(Buffer.from(token!.split('.')[1], 'base64url').toString()).exp;
-              if (!Number.isSafeInteger(expiry) || expiry * 1000 <= Date.now()) throw new Error();
-            } catch { throw new Error('Storage signing returned an invalid expiry'); }
-            const confirmation = await database.rpc('academy_storage_confirm_signed', { p_bucket: bucket, p_path: args[0], p_expires_at: new Date(expiry * 1000).toISOString() });
+            const expiresAt = signedUploadExpiry(result.data.signedUrl);
+            if (!expiresAt) throw new Error('Storage signing returned an invalid expiry');
+            const confirmation = await database.rpc('academy_storage_confirm_signed', { p_bucket: bucket, p_path: args[0], p_expires_at: expiresAt });
             if (confirmation.error) throw new Error('Storage token retention could not be recorded');
             return result;
           };

@@ -6,7 +6,7 @@ import { ApiError } from '@/lib/api';
 import { can, hasGlobalPermission, type Actor } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 import { recompute } from '@/features/progress/service';
-import { assertEnrollmentMembershipAccess,type MembershipAccessDatabase } from '@/features/learning/membership-access';
+import { assertEnrollmentMembershipAccess, enrollmentBranch, type MembershipAccessDatabase } from '@/features/learning/membership-access';
 import { contentOwnerScope } from '@/features/bank/ownership';
 import { onExamPassed } from '@/features/skills/service';
 import { award } from '@/features/xp/service';
@@ -105,7 +105,7 @@ function examItemLoader(database: ServiceClient): LoadExamItem {
 }
 
 export function createExamEnrollmentChecker(database: Pick<ServiceClient, 'from'>) {
-  return async (userId: string, courseVersionId: string): Promise<boolean> => {
+  return async (userId: string, courseVersionId: string, attemptBranch?: string | null): Promise<boolean> => {
     const result = await database.from('enrollments')
       .select('course_version_id,branch_id,branch_scope_known')
       .eq('user_id', userId)
@@ -114,8 +114,14 @@ export function createExamEnrollmentChecker(database: Pick<ServiceClient, 'from'
       .maybeSingle();
     if (result.error) databaseFailure('recheck exam enrollment');
     const enrollment = record(result.data);
-    if(enrollment?.course_version_id===courseVersionId)await assertEnrollmentMembershipAccess({userId,roles:[]},enrollment,database as unknown as MembershipAccessDatabase);
-    return enrollment?.course_version_id === courseVersionId;
+    if (enrollment?.course_version_id !== courseVersionId) return false;
+    const actor = { userId, roles: [] };
+    const memberships = database as unknown as MembershipAccessDatabase;
+    await assertEnrollmentMembershipAccess(actor, enrollment, memberships);
+    if (attemptBranch && attemptBranch !== enrollmentBranch(enrollment)) {
+      await assertEnrollmentMembershipAccess(actor, { branch_scope_known: true, branch_id: attemptBranch }, memberships);
+    }
+    return true;
   };
 }
 

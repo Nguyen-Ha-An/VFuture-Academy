@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks=vi.hoisted(()=>({user:vi.fn(),actor:vi.fn(),database:vi.fn(),review:vi.fn(),sign:vi.fn(),check:vi.fn()}));
+const mocks=vi.hoisted(()=>({user:vi.fn(),actor:vi.fn(),database:vi.fn(),review:vi.fn(),activeMedia:vi.fn(),sign:vi.fn(),check:vi.fn()}));
 vi.mock('server-only',()=>({}));
 vi.mock('@/lib/auth',()=>({requireApiUser:mocks.user}));
 vi.mock('@/lib/permissions',async original=>({...await original<typeof import('@/lib/permissions')>(),getActor:mocks.actor}));
 vi.mock('@/lib/supabase/server',()=>({supabaseService:mocks.database}));
-vi.mock('@/features/exams/server',()=>({createServerExamService:()=>({historicalReview:mocks.review})}));
+vi.mock('@/features/exams/server',()=>({createServerExamService:()=>({historicalReview:mocks.review,canReadMedia:mocks.activeMedia})}));
 vi.mock('@/features/media/assessment-owner',()=>({checkBoundAssessmentOwnerAccess:mocks.check}));
 vi.mock('@/features/storage-transfer/grants',()=>({grantStorageTransferUrl:(url:string)=>url}));
 import { GET } from '@/app/api/v1/media/[assetId]/route';
@@ -20,6 +20,13 @@ beforeEach(()=>{
   mocks.review.mockResolvedValue({learner:{id:'exam-one',kind:'exam',title:'Exam',sections:[{content:{assetId:'asset-image'}}]},review:{answers:{}}});
 });
 describe('historical exam media endpoint',()=>{
+  it.each([[false,404],[true,302]])('signs current attempt media according to its projection (%s)',async (allowed,status)=>{
+    mocks.activeMedia.mockResolvedValue(allowed);
+    const response=await GET(new Request(`http://localhost/api/v1/media/asset-image?examAttemptId=${attemptId}&locale=en`),{params:Promise.resolve({assetId:'asset-image'})});
+    expect(response.status).toBe(status);
+    expect(mocks.activeMedia).toHaveBeenCalledWith({id:'learner-one',locale:'en'},attemptId,'asset-image');
+    expect(mocks.sign).toHaveBeenCalledTimes(allowed?1:0);
+  });
   it('authorizes an exact snapshot reference through the owner review gate',async()=>{
     const response=await GET(new Request(`http://localhost/api/v1/media/asset-image?${query}`),{params:Promise.resolve({assetId:'asset-image'})});
     expect(response.status).toBe(302);expect(mocks.review).toHaveBeenCalledWith({id:'learner-one',locale:'vi'},attemptId,'course-one','exam-one');

@@ -106,6 +106,7 @@ export function useAutosave({
   const saveGenerationRef = useRef(0);
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const terminalHandledRef = useRef(false);
+  const pageClosedRef = useRef(false);
   const lastSaveErrorCodeRef = useRef<string | null>(null);
   // Backoff applies to automatic triggers only; it is cleared by the first acknowledged save.
   const consecutiveFailuresRef = useRef(0);
@@ -211,6 +212,7 @@ export function useAutosave({
             setClosedGroups((current) => new Set(current).add(group));
             continue;
           }
+          if (code === 'EXAM_PAGE_CHANGED') pageClosedRef.current = true;
           // Timeouts and other unacknowledged writes land here too: the draft stays, nothing is "saved".
           recordSaveFailure(error);
           retainPendingDraft(answersRef.current);
@@ -250,13 +252,25 @@ export function useAutosave({
 
   const retryNow = useCallback(() => persistAnswers(true), [persistAnswers]);
   const lastSaveErrorCode = useCallback(() => lastSaveErrorCodeRef.current, []);
+  const pendingDraft = () => pendingAnswers(answersRef.current, acceptedAnswersRef.current);
+  const adoptAcceptedAnswers = (answers: Record<string, unknown>) => {
+    acceptedAnswersRef.current = structuredClone(answers);
+    pageClosedRef.current = false;
+    oversizedRef.current = null;
+    lastSaveErrorCodeRef.current = null;
+    setOversizedQuestionId(null);
+    setClosedGroups(new Set());
+    recordSaveSuccess();
+    const pending = retainPendingDraft(answersRef.current);
+    setSaveStatus(Object.keys(pending).length ? 'saving' : 'saved');
+  };
 
   /**
    * Runs an automatic save now, or, when a backoff is in force, schedules exactly one
    * deferred attempt for when it ends (the save is postponed, never dropped).
    */
   const requestAutomaticSave = useCallback((retrying: boolean) => {
-    if (submittingRef.current || !mountedRef.current || oversizedRef.current !== null) return;
+    if (submittingRef.current || !mountedRef.current || pageClosedRef.current || oversizedRef.current !== null) return;
     if (automaticSaveInFlightRef.current) {
       automaticSavePendingRef.current = true;
       return;
@@ -309,6 +323,8 @@ export function useAutosave({
 
   return {
     closedGroups,
+    adoptAcceptedAnswers,
+    pendingDraft,
     markDirty,
     lastSaveErrorCode,
     markSubmitted,

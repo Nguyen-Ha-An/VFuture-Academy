@@ -137,8 +137,9 @@ export async function openAccountTray(page: Page) {
   await accountButton(page).click();
   const tray = page.getByRole('dialog', { name: /^(Account|Tài khoản)$/ });
   await expect(tray).toHaveCount(1);
-  await expect(tray).toBeVisible();
-  await settle(tray);
+  // InstUI slides and fades a parent of the dialog inside this clipped mount.
+  await expect(tray).toBeInViewport({ ratio: 1 });
+  await settle(page.locator('.canvas-account-mount[data-open]'));
   return tray;
 }
 

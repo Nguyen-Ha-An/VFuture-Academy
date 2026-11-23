@@ -1,5 +1,6 @@
 import { directUploadFile, DirectUploadError } from '@/features/media/direct-upload-client';
-import type { Locale, MediaRef } from '@/content-engine/schema/common';
+import { learnerMediaHref } from '@/features/media/urls';
+import type { Locale } from '@/content-engine/schema/common';
 import type { NextStepTarget } from '@/content-engine/schema/types';
 import type {
   AssignmentPayload,
@@ -20,7 +21,6 @@ import { canonicalAnswer, canonicalAnswers } from '@/features/learning/answer-ca
 
 const BLOCK_STATE_DEBOUNCE_MS = 800;
 const MAX_BLOCK_WRITE_ATTEMPTS = 3;
-const MEDIA_ROUTE = '/api/v1/media';
 
 type ApiErrorEnvelope = {
   error: {
@@ -83,10 +83,6 @@ function isErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
 
 function completedOf(state: unknown): boolean {
   return isRecord(state) && state.completed === true;
-}
-
-function mediaHref(assetId: string): string {
-  return `${MEDIA_ROUTE}/${encodeURIComponent(assetId)}`;
 }
 
 function networkMessage(error: unknown): string {
@@ -442,7 +438,7 @@ export function createApiRuntime(ctx: ApiRuntimeContext): ApiRuntime {
     uploadFile: (file, options) => options?.quizId && options.rootQuestionId && options.questionId
       ? directUploadFile(file, { purpose: 'submission', courseId: ctx.courseId, itemId: ctx.itemId, blockId: null, quizId: options.quizId, rootQuestionId: options.rootQuestionId, questionId: options.questionId }, { fetchImpl, signal: options.signal, onProgress: options.onProgress })
       : uploadAssignment({ blockId: null }, file, options),
-    resolveMedia: (ref: MediaRef) => ('url' in ref ? ref.url : mediaHref(ref.assetId)),
+    resolveMedia: learnerMediaHref,
     hrefFor: (target: NextStepTarget | { kind: 'resource' | 'opportunity'; id: string }) => {
       if ('url' in target) return target.url;
       if (target.kind === 'lesson' || target.kind === 'exam') return routes.learner.courseItem(ctx.courseId, target.id);

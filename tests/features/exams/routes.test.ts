@@ -40,6 +40,7 @@ vi.mock('@/features/exams/server', () => ({
 
 import { GET as sessionAttempt, POST as startAttempt } from '@/app/api/v1/exams/[itemId]/attempts/route';
 import { PUT as saveAnswers } from '@/app/api/v1/exams/attempts/[attemptId]/answers/route';
+import { POST as advancePage } from '@/app/api/v1/exams/attempts/[attemptId]/advance/route';
 import { POST as saveEvents } from '@/app/api/v1/exams/attempts/[attemptId]/events/route';
 import { POST as submitAttempt } from '@/app/api/v1/exams/attempts/[attemptId]/submit/route';
 import { GET as reviewAttempt } from '@/app/api/v1/exams/attempts/[attemptId]/review/route';
@@ -56,6 +57,7 @@ const uuid = {
 };
 
 let allTypesExam: CompiledItem;
+let aiExam: CompiledItem;
 
 function rateLimitDatabase() {
   const counts = new Map<string, number>();
@@ -70,7 +72,7 @@ function rateLimitDatabase() {
 }
 
 beforeAll(async () => {
-  ({ all: allTypesExam } = await compileExamFixtures());
+  ({ all: allTypesExam, ai: aiExam } = await compileExamFixtures());
 });
 
 beforeEach(() => {
@@ -128,6 +130,45 @@ function responseFor(question: GradingQuestion): unknown {
 }
 
 describe('learner exam routes', () => {
+  it.each(['one_per_page', 'section_per_page'] as const)('serves only the current %s page and resumes the acknowledged step', async layout => {
+    const item = withExamSettings(aiExam, { navigation: 'sequential', layout });
+    const { repo, service } = harness(item);
+    const started = await service.start(learner, 'course-one', item.id);
+    const attempt = (await repo.getAttempt(started.attemptId))!;
+    const sections = attempt.questionSet.sections;
+    const steps = layout === 'one_per_page' ? sections.flatMap(section => section.questionIds.map(id => [id])) : sections.map(section => section.questionIds);
+    const renderedIds = (projection: typeof started.learner) => projection.sections.flatMap(section =>
+      (section.questions as { id: string }[]).map(question => question.id));
+    const first = steps[0][0];
+    const next = steps[1][0];
+    expect(renderedIds(started.learner)).toEqual(steps[0]);
+    expect(started.page).toMatchObject({ index: 0, count: steps.length, questionOffset: 0 });
+    expect(JSON.stringify(started)).not.toContain(next);
+    await expect(service.save(learner, attempt.id, { [next]: 'a' })).rejects.toMatchObject({ code: 'EXAM_PAGE_CHANGED' });
+    await service.save(learner, attempt.id, { [first]: responseFor(attempt.gradingSnapshot.questions[first]) });
+    const pageAnswerReads = vi.spyOn(repo, 'listAnswers');
+    const context = { params: Promise.resolve({ attemptId: attempt.id }) };
+    const advance = () => advancePage(new Request('http://localhost/advance', {
+      method: 'POST', body: JSON.stringify({ fromStep: 0 }),
+    }), context);
+    const [firstAdvance, repeated] = await Promise.all([advance(), advance()]);
+    expect(firstAdvance.status).toBe(200);
+    const a = (await firstAdvance.json()).data;
+    expect((await repeated.json()).data).toEqual(a);
+    expect(pageAnswerReads.mock.calls).toEqual([[attempt.id, steps[1]], [attempt.id, steps[1]]]);
+    expect(a.page).toMatchObject({ index: 1, questionOffset: steps[0].length });
+    expect(a.answers).not.toHaveProperty(first);
+    expect(a.page.answeredBefore).toContain(0);
+    expect(renderedIds(a.learner)).toEqual(steps[1]);
+    assertNoAnswerKeys(a);
+    await expect(service.save(learner, attempt.id, { [first]: 'different' })).rejects.toMatchObject({ code: 'EXAM_PAGE_CHANGED' });
+    await expect(service.session(learner, 'course-one', item.id)).resolves.toMatchObject({ attempt: { page: { index: 1 }, learner: a.learner } });
+    await service.submit(learner, attempt.id);
+    const review = await service.review(learner, attempt.id);
+    expect(renderedIds(review.learner!)).toEqual(steps.flat());
+    expect(review.revealed).toEqual({});
+  });
+
   it('negotiates a compact acknowledgement for only this batch while legacy callers retain the full DTO',async()=>{
     const {repo,service}=harness(allTypesExam);
     const started=await service.start(learner,'course-one',allTypesExam.id);
