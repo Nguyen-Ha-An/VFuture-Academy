@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -315,7 +315,7 @@ describe('project proposal form', () => {
     expect(sentBody(fetchMock)).toMatchObject({ skills: ['climate-science'], courseIds: ['product-lab'] });
   });
 
-  it('adds https link rows with a hostname default label, removes them and caps them at 20', async () => {
+  it('adds and removes HTTPS link rows and defaults the label to the hostname', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 'climate-lab' }, 201));
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
@@ -351,10 +351,16 @@ describe('project proposal form', () => {
       { label: { en: 'demo.example.com' }, url: 'https://www.demo.example.com/app' },
       { label: { en: 'Repository' }, url: 'https://git.example.com/lab' },
     ]);
+  });
 
-    for (let count = 2; count < 20; count += 1) await user.click(screen.getByRole('button', { name: 'Add link' }));
+  it('caps output links at 20 rows', () => {
+    renderForm('en');
+    const addLink = screen.getByRole('button', { name: 'Add link' });
+
+    for (let count = 0; count < 20; count += 1) fireEvent.click(addLink);
+
     expect(screen.getAllByRole('textbox', { name: /^URL for link/ })).toHaveLength(20);
-    expect(screen.getByRole('button', { name: 'Add link' })).toBeDisabled();
+    expect(addLink).toBeDisabled();
     expect(screen.getByText('You can add up to 20 links.')).toBeVisible();
   });
 
@@ -398,8 +404,11 @@ describe('project proposal form', () => {
 
     mocks.upload.mockResolvedValueOnce({ assetId: 'asset_cover2', url: '/api/v1/media/asset_cover2', name: 'cover.png', size: 3, mime: 'image/png' });
     await user.upload(screen.getByLabelText('Upload cover'), file);
-    expect(await screen.findByRole('img', { name: 'Cover preview' })).toBeDefined();
-    await user.click(screen.getByRole('button', { name: 'Submit proposal' }));
+    expect(await screen.findByRole('img', { name: 'Cover preview' })).toBeVisible();
+    const submit = screen.getByRole('button', { name: 'Submit proposal' });
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(sentBody(fetchMock).coverAssetId).toBe('asset_cover2');
   });
 
