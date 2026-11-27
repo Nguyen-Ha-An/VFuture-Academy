@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 import { ResourceDocumentSchema, type ResourceDocument } from '@/content-engine/schema/bundle';
 import { actorResourcePermissionCheck, createResourceService, type ResourceDatabase, type StudioResourceRecord } from '@/features/resources/service';
 import { ResourceEditor } from '@/features/resources/ui/ResourceEditor';
+import { ResourceFilesPilot } from '@/features/resources/ui/ResourceFilesPilot';
+import { academyFilesWritesEnabled, isAcademyFilesPilot } from '@/features/resources/files-pilot';
 import { can } from '@/lib/permissions';
 import { supabaseService } from '@/lib/supabase/server';
 import { typedContentPageContext } from '@/features/admin/content-review-production';
@@ -65,5 +67,9 @@ export default async function StudioResourceDetailPage({ params }: PageProps) {
     ? document.title
     : document.title[locale === 'en' ? 'en' : 'vi'] ?? document.title.en ?? document.title.vi ?? t('untitled');
   const knownStatus = status === 'published' || status === 'archived' ? status : 'draft';
-  return <div className="mx-auto flex w-full max-w-7xl flex-col gap-6"><EditorPageHeader backHref="/studio/resources" backLabel={t('back')} title={title} status={{ kind: 'content', value: knownStatus, label: statusLabel }} /><ResourceEditor key={id} recoveryKey={`studio:recovery:${context.actor.userId}:${scopeKey(context.scope)}:resource:${id}`} initialDocument={document} initialRecord={record} initialStatus={status as 'draft' | 'published' | 'archived'} isNew={id === 'new'} canPublish={can(actor, 'resource.publish', context.scope)} /></div>;
+  const showFilesPilot = isAcademyFilesPilot(id) && record?.status === 'published'
+    && (document.branchScope?.scope ?? 'global') === 'global' && context.scope.kind === 'central'
+    && can(actor, 'resource.publish', context.scope) && can(actor, 'content.publish', context.scope)
+    && can(actor, 'resource.edit', context.scope);
+  return <div className="mx-auto flex w-full max-w-7xl flex-col gap-6"><EditorPageHeader backHref="/studio/resources" backLabel={t('back')} title={title} status={{ kind: 'content', value: knownStatus, label: statusLabel }} />{showFilesPilot ? <ResourceFilesPilot id={id} actorId={actor.userId} locale={locale === 'en' ? 'en' : 'vi'} writesEnabled={academyFilesWritesEnabled()} /> : null}<ResourceEditor key={id} recoveryKey={`studio:recovery:${context.actor.userId}:${scopeKey(context.scope)}:resource:${id}`} initialDocument={document} initialRecord={record} initialStatus={status as 'draft' | 'published' | 'archived'} isNew={id === 'new'} canPublish={can(actor, 'resource.publish', context.scope)} /></div>;
 }

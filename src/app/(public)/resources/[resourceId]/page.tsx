@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { ArrowRight, ArrowUpRight, Paperclip } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { createResourceFilesPilot, isAcademyFilesPilot } from '@/features/resources/files-pilot';
+import type { ResourceDatabase } from '@/features/resources/service';
 import type { MediaRef } from '@/content-engine/schema/common';
 import { PATHWAYS } from '@/content-engine/schema/course';
 import { StaticRichContent } from '@/features/ecosystem/ui/StaticRichContent';
@@ -36,6 +38,11 @@ export default async function PublicResourcePage({ params, searchParams }: Resou
   const copy = publicResourcesCopy[locale];
   const resource = await getPublicResource(resourceId, locale);
   if (!resource) notFound();
+  const filesUrl = isAcademyFilesPilot(resource.id)
+    ? await import('@/lib/supabase/server').then(({ supabaseService }) =>
+      createResourceFilesPilot(supabaseService() as unknown as ResourceDatabase).publicUrl(resource.id))
+    : null;
+  const attachmentCount = resource.attachments.length + Number(Boolean(filesUrl));
   const backHref = publicBackHref('resources', context, locale);
   const continueHref = routes.learner.resource(resource.id);
   const breadcrumbs = [{ label: copy.home, href: publicHref('/', locale) }, { label: t('title'), href: backHref }, { label: resource.title }];
@@ -64,11 +71,12 @@ export default async function PublicResourcePage({ params, searchParams }: Resou
                 {!resource.body.blocks.length ? <p>{copy.noBody}</p> : null}
               </div>
             </section>
-            {resource.attachments.length ? (
+            {attachmentCount ? (
               <section id="resource-attachments" className="public-resource-attachments" aria-labelledby="resource-attachments-title">
                 <h2 id="resource-attachments-title" className="public-resource-section-title"><span aria-hidden="true">02</span>{t('attachments')}</h2>
                 <p className="public-copy">{copy.downloadHelp}</p>
                 <ul>
+                  {filesUrl ? <li><a href={filesUrl}><Paperclip size={19} aria-hidden="true" /><span>{copy.readPdf}</span><ArrowUpRight size={18} aria-hidden="true" /></a></li> : null}
                   {resource.attachments.map((attachment, index) => (
                     <li key={`${attachment.label}:${index}`}><a href={mediaHref(attachment.src)}><Paperclip size={19} aria-hidden="true" /><span>{attachment.label}</span><ArrowUpRight size={18} aria-hidden="true" /></a></li>
                   ))}
@@ -86,7 +94,7 @@ export default async function PublicResourcePage({ params, searchParams }: Resou
             </dl>
             <nav aria-label={copy.contents} className="public-resource-contents">
               <a href="#resource-content">{copy.read}<ArrowRight size={15} aria-hidden="true" /></a>
-              {resource.attachments.length ? <a href="#resource-attachments">{t('attachments')}<span>{resource.attachments.length}</span></a> : null}
+              {attachmentCount ? <a href="#resource-attachments">{t('attachments')}<span>{attachmentCount}</span></a> : null}
             </nav>
             <div className="public-resource-continue">
               <h3>{copy.continueTitle}</h3>
