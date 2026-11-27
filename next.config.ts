@@ -1,4 +1,5 @@
 import { staffLegacyRedirects } from './src/lib/staff-legacy-redirects';
+import { ACADEMY_FILES_RESOURCE_ID } from './src/features/resources/files-pilot-config';
 import { notebookRuntimeUrl } from './src/features/notebooks/config';
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
@@ -53,15 +54,22 @@ const nextConfig: NextConfig = {
     remotePatterns: buildImageRemotePatterns(),
   },
   async redirects() {
+    const pilotId = process.env.ACADEMY_FILES_PILOT_RESOURCE_ID ?? '';
+    // The selected detail must reach the public page, which checks publication
+    // and ownership on each request before showing a Files attachment.
+    const resourcePath = ACADEMY_FILES_RESOURCE_ID.test(pilotId)
+      ? `/resources/:path((?!${pilotId}$).*)?`
+      : '/resources/:path*';
     return [
       {
         source: '/:path((?!api/mcp/$).+)/',
         destination: '/:path',
         permanent: true,
       },
-      ...['courses', 'resources', 'opportunities', 'projects'].map((section) => ({
+      ...['courses', 'opportunities', 'projects'].map((section) => ({
         source: `/${section}/:path*`, destination: `/app/${section}/:path*`, permanent: false,
       })),
+      { source: resourcePath, destination: '/app/resources/:path*', permanent: false },
       { source: '/academy', destination: '/app/explore', permanent: false },
       { source: '/contact', destination: '/app/explore', permanent: false },
       ...staffLegacyRedirects,

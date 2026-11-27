@@ -13,13 +13,13 @@ import {
   academyFilesReleaseUrl, createAcademyFilesClient, type AcademyFilesClient,
 } from './files-client';
 import type { ResourceDatabase } from './service';
+import { ACADEMY_FILES_RESOURCE_ID } from './files-pilot-config';
 
 export const MAX_ACADEMY_PILOT_PDF_BYTES = 4 * 1024 * 1024;
 const MAX_FORM_BYTES = MAX_ACADEMY_PILOT_PDF_BYTES + 32 * 1024;
 const TABLE = 'resource_files_pilot';
-const RESOURCE_ID = /^(?=.{1,64}$)[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const rowSchema = z.object({
-  resource_id: z.string().regex(RESOURCE_ID), operation_id: z.string().uuid(),
+  resource_id: z.string().regex(ACADEMY_FILES_RESOURCE_ID), operation_id: z.string().uuid(),
   file_name: z.string(), size_bytes: z.number().int().positive(),
   sha256: z.string().regex(/^[0-9a-f]{64}$/), title: z.string().max(180),
   file_id: z.string().uuid().nullable(), release_id: z.string().uuid().nullable(),
@@ -29,7 +29,7 @@ type PilotRow = z.infer<typeof rowSchema>;
 export type ResourceFilesState = { status: 'empty' | 'uploading' | 'review' | 'published' | 'withdrawn'; url?: string };
 
 export function isAcademyFilesPilot(id: string) {
-  return RESOURCE_ID.test(id) && !isInternalContentId(id) && process.env.ACADEMY_FILES_PILOT_RESOURCE_ID === id;
+  return ACADEMY_FILES_RESOURCE_ID.test(id) && !isInternalContentId(id) && process.env.ACADEMY_FILES_PILOT_RESOURCE_ID === id;
 }
 
 export function academyFilesWritesEnabled() {
