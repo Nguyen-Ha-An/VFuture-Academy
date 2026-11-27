@@ -23,7 +23,7 @@ const publicRelease = z.object({
   releaseId,
   status: z.literal('published'),
   primaryPdfId: z.string().uuid(),
-  files: z.array(pdfRecord.extend({ openUrl: z.string().optional() })),
+  files: z.array(pdfRecord.extend({ openUrl: z.string().optional(), shareUrl: z.string().optional() })),
 });
 
 export function academyFilesSourceRef(resourceId: string) {
@@ -103,9 +103,15 @@ export function createAcademyFilesClient({
         return null;
       }
       const attachment = result.data.release.files.find((file) => file.fileId === fileId);
-      const expectedUrl = `${FILES_ORIGIN}${path}/files/${fileId}/open`;
-      return attachment?.sha256 === sha256 && attachment.sizeBytes === sizeBytes && attachment.openUrl === expectedUrl
-        ? expectedUrl : null;
+      if (!attachment || attachment.sha256 !== sha256 || attachment.sizeBytes !== sizeBytes) return null;
+
+      if (attachment.shareUrl !== undefined) {
+        const shareUrl = `${FILES_ORIGIN}/api/f/academy-${resourceId}/v1`;
+        return attachment.shareUrl === shareUrl ? shareUrl : null;
+      }
+
+      const openUrl = `${FILES_ORIGIN}${path}/files/${fileId}/open`;
+      return attachment.openUrl === openUrl ? openUrl : null;
     },
   };
 }

@@ -11,6 +11,7 @@ const id = 'teacher-guide';
 const fileId = '691c18e5-628a-48af-8a50-c07025e8a401';
 const releaseId = '8da323be-4f38-42f4-8d75-95fc817ba84a';
 const directUrl = `https://files.vfuturelabs.org/api/v1/public/releases/academy-${id}/v1/files/${fileId}/open`;
+const shareUrl = `https://files.vfuturelabs.org/api/f/academy-${id}/v1`;
 const actorId = 'b3c8ca6f-2f4e-4c65-af15-48c13a7fba0c';
 const contents = '%PDF-1.4\n% synthetic PDF fixture\n%%EOF';
 const file = new File([contents], 'guide.pdf', { type: 'application/pdf' });
@@ -208,6 +209,17 @@ describe('Academy Files client', () => {
     expect(publicOptions).toMatchObject({ redirect: 'error', cache: 'no-store' });
   });
 
+  it('prefers the exact short link on the verified primary attachment', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
+      release: {
+        releaseId, status: 'published', primaryPdfId: fileId,
+        files: [{ fileId, sizeBytes: file.size, sha256: digest, contentType: 'application/pdf', openUrl: directUrl, shareUrl }],
+      },
+    }));
+    const client = createAcademyFilesClient({ fetcher });
+    await expect(client.publishedOpenUrl(id, releaseId, fileId, digest, file.size)).resolves.toBe(shareUrl);
+  });
+
   it.each([
     ['missing openUrl', {}, { openUrl: undefined }],
     ['foreign origin', {}, { openUrl: directUrl.replace('files.vfuturelabs.org', 'files.example.test') }],
@@ -220,6 +232,15 @@ describe('Academy Files client', () => {
     ['different byte length', {}, { sizeBytes: file.size + 1 }],
     ['different MIME type', {}, { contentType: 'image/png' }],
     ['withdrawn release', { status: 'withdrawn' }, {}],
+    ['short link on another origin', {}, { shareUrl: shareUrl.replace('files.vfuturelabs.org', 'files.example.test') }],
+    ['short link to another service', {}, { shareUrl: shareUrl.replace('academy-', 'foundation-') }],
+    ['short link to another Academy resource', {}, { shareUrl: shareUrl.replace(id, 'other-guide') }],
+    ['wrong checksum on the short-link attachment', {}, { sha256: 'a'.repeat(64), shareUrl }],
+    ['short link without the matching primary PDF', { primaryPdfId: actorId }, { shareUrl }],
+    ['short link to another version', {}, { shareUrl: shareUrl.replace('/v1', '/v2') }],
+    ['short link with a query', {}, { shareUrl: shareUrl + '?extra=1' }],
+    ['empty short link', {}, { shareUrl: '' }],
+    ['null short link', {}, { shareUrl: null }],
   ] as const)('rejects published metadata with %s', async (_description, releasePatch, filePatch) => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
       release: {

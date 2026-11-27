@@ -62,7 +62,11 @@ describe('public discovery pages', () => {
     expect(screen.getByRole('link', { name: /resourceAction/ }).getAttribute('href')).toBe('/app/resources/guide');
   });
 
-  it.each(['https://files.vfuturelabs.org/api/v1/public/releases/academy-guide/v1/files/691c18e5-628a-48af-8a50-c07025e8a401/open', null])(
+  it.each([
+    'https://files.vfuturelabs.org/api/f/academy-guide/v1',
+    'https://files.vfuturelabs.org/api/v1/public/releases/academy-guide/v1/files/691c18e5-628a-48af-8a50-c07025e8a401/open',
+    null,
+  ])(
     'renders the verified Files PDF link %s alongside legacy attachments',
     async (url) => {
       vi.stubEnv('ACADEMY_FILES_PILOT_RESOURCE_ID', 'guide');
