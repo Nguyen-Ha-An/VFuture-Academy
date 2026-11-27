@@ -23,7 +23,7 @@ const publicRelease = z.object({
   releaseId,
   status: z.literal('published'),
   primaryPdfId: z.string().uuid(),
-  files: z.array(pdfRecord),
+  files: z.array(pdfRecord.extend({ openUrl: z.string().optional() })),
 });
 
 export function academyFilesSourceRef(resourceId: string) {
@@ -96,12 +96,16 @@ export function createAcademyFilesClient({
       return result.release;
     },
 
-    async published(resourceId: string, id: string, fileId: string, sha256: string, sizeBytes: number) {
-      const result = z.object({ release: publicRelease }).safeParse(
-        await read(`/api/v1/public/releases/academy-${resourceId}/v1`, {}, false),
-      );
-      return result.success && result.data.release.releaseId === id && result.data.release.primaryPdfId === fileId
-        && result.data.release.files.some((file) => file.fileId === fileId && file.sha256 === sha256 && file.sizeBytes === sizeBytes);
+    async publishedOpenUrl(resourceId: string, id: string, fileId: string, sha256: string, sizeBytes: number) {
+      const path = `/api/v1/public/releases/academy-${resourceId}/v1`;
+      const result = z.object({ release: publicRelease }).safeParse(await read(path, {}, false));
+      if (!result.success || result.data.release.releaseId !== id || result.data.release.primaryPdfId !== fileId) {
+        return null;
+      }
+      const attachment = result.data.release.files.find((file) => file.fileId === fileId);
+      const expectedUrl = `${FILES_ORIGIN}${path}/files/${fileId}/open`;
+      return attachment?.sha256 === sha256 && attachment.sizeBytes === sizeBytes && attachment.openUrl === expectedUrl
+        ? expectedUrl : null;
     },
   };
 }

@@ -71,7 +71,7 @@ function persistedState(row: PilotRow | null): ResourceFilesState {
   if (!row) return { status: 'empty' };
   const url = academyFilesReleaseUrl(row.resource_id);
   if (row.withdrawn) return { status: 'withdrawn' };
-  if (row.release_url === url) return { status: 'published', url };
+  if (row.release_url === url) return { status: 'published' };
   return { status: row.release_id ? 'review' : 'uploading' };
 }
 
@@ -108,16 +108,21 @@ export function createResourceFilesPilot(database: ResourceDatabase, files: Acad
     return parsed.data;
   }
 
+  async function verifiedOpenUrl(id: string, row: PilotRow) {
+    if (row.withdrawn || !row.release_id || !row.file_id) return null;
+    const url = await files.publishedOpenUrl(id, row.release_id, row.file_id, row.sha256, row.size_bytes);
+    if (url) await currentPublicResource(id);
+    return url;
+  }
+
   async function sync(id: string, row: PilotRow): Promise<ResourceFilesState> {
     if (!row.release_id || !row.file_id) return persistedState(row);
     const release = await files.status(row.release_id);
     if (release.status === 'published') {
-      const url = academyFilesReleaseUrl(id);
-      if (release.releaseUrl !== url || !await files.published(id, row.release_id, row.file_id, row.sha256, row.size_bytes)) {
-        throw new ApiError(502, 'FILES_INVALID_PUBLICATION', 'The public Files release could not be verified');
-      }
-      await currentPublicResource(id);
-      if (row.release_url !== url) await checkpoint(row, { release_url: url, withdrawn: false });
+      const releaseUrl = academyFilesReleaseUrl(id);
+      const url = release.releaseUrl === releaseUrl ? await verifiedOpenUrl(id, row) : null;
+      if (!url) throw new ApiError(502, 'FILES_INVALID_PUBLICATION', 'The public Files release could not be verified');
+      if (row.release_url !== releaseUrl) await checkpoint(row, { release_url: releaseUrl, withdrawn: false });
       return { status: 'published', url };
     }
     const withdrawn = release.status === 'withdrawn';
@@ -129,7 +134,11 @@ export function createResourceFilesPilot(database: ResourceDatabase, files: Acad
     async status(id: string) {
       if (!isAcademyFilesPilot(id)) throw unavailable();
       await currentPublicResource(id);
-      return persistedState(await load(id));
+      const row = await load(id);
+      const state = persistedState(row);
+      if (!row || state.status !== 'published') return state;
+      const url = await verifiedOpenUrl(id, row).catch(() => null);
+      return url ? { ...state, url } : state;
     },
 
     async refresh(id: string) {
@@ -185,9 +194,7 @@ export function createResourceFilesPilot(database: ResourceDatabase, files: Acad
       try {
         await currentPublicResource(id);
         const row = await load(id);
-        const url = academyFilesReleaseUrl(id);
-        if (row?.release_url !== url || !row.release_id || !row.file_id) return null;
-        return await files.published(id, row.release_id, row.file_id, row.sha256, row.size_bytes) ? url : null;
+        return row && persistedState(row).status === 'published' ? await verifiedOpenUrl(id, row) : null;
       } catch {
         // A provider outage should hide the new attachment without suppressing
         // the existing public resource or any of its legacy attachments.

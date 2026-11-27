@@ -9,22 +9,22 @@ import type { ResourceFilesState } from '@/features/resources/files-pilot';
 const copy = {
   en: {
     title: 'VFuture Files PDF', choose: 'Choose a PDF (up to 4 MiB)', upload: 'Submit PDF for review',
-    refresh: 'Check Files release status', read: 'Read PDF', select: 'Choose a PDF before uploading.',
+    refresh: 'Check Files release status', read: 'Open PDF', select: 'Choose a PDF before uploading.',
     network: 'Files could not complete this request. Try again.',
     empty: 'Choose an approved PDF for this public resource. A Files publisher will review it.',
     uploading: 'Upload interrupted. Select the same PDF and filename to resume.',
     review: 'Waiting for a Files publisher. Check here after publication.',
-    published: 'The verified PDF is linked from the public resource.',
+    published: 'Published in VFuture Files.',
     withdrawn: 'The Files release was withdrawn.',
   },
   vi: {
     title: 'PDF trên VFuture Files', choose: 'Chọn tệp PDF (tối đa 4 MiB)', upload: 'Gửi PDF để xét duyệt',
-    refresh: 'Kiểm tra trạng thái phát hành', read: 'Đọc PDF', select: 'Hãy chọn tệp PDF trước khi tải lên.',
+    refresh: 'Kiểm tra trạng thái phát hành', read: 'Mở PDF', select: 'Hãy chọn tệp PDF trước khi tải lên.',
     network: 'Không thể hoàn tất yêu cầu trên Files. Vui lòng thử lại.',
     empty: 'Chọn tệp PDF đã được duyệt cho tài nguyên công khai này. Người phụ trách Files sẽ xét duyệt.',
     uploading: 'Quá trình tải lên bị gián đoạn. Chọn lại tệp PDF gốc với cùng tên để tiếp tục.',
     review: 'Đang chờ phát hành trên Files. Kiểm tra lại tại đây sau khi phát hành.',
-    published: 'Tài nguyên công khai đã có liên kết đến tệp PDF đã xác minh.',
+    published: 'Đã phát hành trên VFuture Files.',
     withdrawn: 'Bản phát hành trên Files đã được thu hồi.',
   },
 } as const;
