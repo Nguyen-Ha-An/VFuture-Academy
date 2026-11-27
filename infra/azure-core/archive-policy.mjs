@@ -11,6 +11,8 @@ const migrationFiles=new Set([
   'scripts/azure-core/media-delete.sql','scripts/azure-core/account-access.sql',
   'scripts/azure-core/forward.mjs','scripts/azure-core/forward-cli.mjs',
   'infra/azure-core/archive-policy.mjs','scripts/azure-core/forward-artifact.mjs',
+  'scripts/azure-core/forward-57.mjs','scripts/azure-core/forward-57-artifact.mjs','scripts/azure-core/forward-57-job.mjs',
+  'build/azure-core/private/forward-57-plan.json','build/azure-core/private/forward-57-v1-evidence.json','build/azure-core/private/forward-57-source-manifest.json',
   'scripts/azure-core/forward-56.mjs','scripts/azure-core/forward-56-catalog.mjs','scripts/azure-core/forward-56-catalog.json','scripts/azure-core/forward-56-artifact.mjs','scripts/azure-core/forward-56-job.mjs',
   'src/lib/identity/recovery-sessions.sql','scripts/azure-core/owner-reservations.sql',
   'build/azure-core/private/forward-56-plan.json','build/azure-core/private/forward-56-v1-evidence.json','build/azure-core/private/forward-56-source-manifest.json',
@@ -61,7 +63,13 @@ export const FORWARD_ACTIONS=Object.freeze({
   'forward-activation-plan':Object.freeze({mode:'plan-activate',phase:'activate',resultAction:'forward-plan'}),
   'forward-activate':Object.freeze({mode:'apply-activate',phase:'activate',resultAction:'forward-activate'}),
 });
+export const FILES_PILOT_FILE = '20261128000000_academy_files_pilot.sql';
+export const FILES_PILOT_SQL_SHA256 = 'd966f4b978c5fa8d2d84c75ecb2d9d7f8e866607769bfe0665bb55e97c6efc70';
+export const FILES_PILOT_CATALOG_SHA256 = 'fb3dc39f0b873c3f564206c5eaebae92b6c7fc27341b77ec0d9903028d543cdd';
+
 export const ASSESSMENT_ACTIONS=Object.freeze({
+  'forward-57-plan':Object.freeze({mode:'plan',resultAction:'forward-57-plan'}),
+  'forward-57-apply':Object.freeze({mode:'apply',resultAction:'forward-57-apply'}),
   'forward-56-plan':Object.freeze({mode:'plan',resultAction:'forward-56-plan'}),
   'forward-56-apply':Object.freeze({mode:'apply',resultAction:'forward-56-apply'}),
   'forward-55-plan':Object.freeze({mode:'plan',resultAction:'forward-55-plan'}),
@@ -72,6 +80,7 @@ export const ASSESSMENT_ACTIONS=Object.freeze({
   'forward-53-apply':Object.freeze({mode:'apply',resultAction:'forward-53-apply'}),
 });
 export function validateAssessmentReceipt(value,action,{transport=false}={}){
+ if(action==='forward-57-plan'||action==='forward-57-apply')return validateFilesPilotReceipt(value,action,{transport});
  if(action==='forward-56-plan'||action==='forward-56-apply')return validateRepairReceipt(value,action,{transport});
  if(action==='forward-55-plan'||action==='forward-55-apply')return validateTeachingReceipt(value,action,{transport});
  if(action==='forward-54-plan'||action==='forward-54-apply')return validateHandleReceipt(value,action,{transport});
@@ -91,6 +100,28 @@ export function validateAssessmentReceipt(value,action,{transport=false}={}){
  }else if(!keys(value,['action','outcome','filename','source','packageContentSha256',...transportKeys])||!['applied','noop'].includes(value.outcome)||value.filename!==file)throw new Error('invalid_assessment_receipt');
  return value;
 }
+function validateFilesPilotReceipt(value, action, { transport }) {
+ const exact = (object, keys) => object && typeof object === 'object' && !Array.isArray(object)
+   && Object.keys(object).length === keys.length && keys.every(key => Object.hasOwn(object, key));
+ const sha = digest => typeof digest === 'string' && /^[a-f0-9]{64}$/.test(digest);
+ const commit = digest => typeof digest === 'string' && /^[a-f0-9]{40}$/.test(digest);
+ const source = value?.source;
+ const fields = ['action','source','packageContentSha256', ...(transport ? ['encryptedPackageSha256','sourceManifestSha256'] : [])];
+ if (value?.action !== action || !exact(source, ['sourceClean','sourceCommit','sourceTree']) || source.sourceClean !== true
+   || !commit(source.sourceCommit) || !commit(source.sourceTree) || !sha(value.packageContentSha256)
+   || (transport && (!sha(value.encryptedPackageSha256) || !sha(value.sourceManifestSha256)))) throw new Error('Invalid Files pilot receipt');
+ if (action === 'forward-57-plan') {
+   const plan = value.plan;
+   if (!exact(value,[...fields,'plan']) || !exact(plan,['action','filename','sqlSha256','targetSha256','catalogSha256'])
+     || !['apply','noop'].includes(plan.action) || !sha(plan.targetSha256) || plan.filename !== FILES_PILOT_FILE
+     || plan.sqlSha256 !== FILES_PILOT_SQL_SHA256
+     || plan.catalogSha256 !== (plan.action === 'noop' ? FILES_PILOT_CATALOG_SHA256 : null)) throw new Error('Invalid Files pilot plan');
+ } else if (!exact(value,[...fields,'outcome','filename','sqlSha256','catalogSha256']) || !['applied','noop'].includes(value.outcome)
+   || value.filename !== FILES_PILOT_FILE || value.sqlSha256 !== FILES_PILOT_SQL_SHA256
+   || value.catalogSha256 !== FILES_PILOT_CATALOG_SHA256) throw new Error('Invalid Files pilot apply receipt');
+ return value;
+}
+
 export const REPAIR_MIGRATIONS=Object.freeze([
   '20261120000100_secure_school_invitations.sql',
   '20261120000200_secure_learner_read_policies.sql',

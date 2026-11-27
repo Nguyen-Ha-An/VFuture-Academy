@@ -18,5 +18,5 @@ create table public.resource_files_pilot (
 );
 
 alter table public.resource_files_pilot enable row level security;
-revoke all on table public.resource_files_pilot from public, anon, authenticated;
+revoke all on table public.resource_files_pilot from public, anon, authenticated, service_role;
 grant select, insert, update on table public.resource_files_pilot to service_role;

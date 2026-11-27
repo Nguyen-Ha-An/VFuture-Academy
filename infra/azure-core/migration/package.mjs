@@ -21,7 +21,7 @@ const privateDir=resolve('build/azure-core/private');mkdirSync(privateDir,{recur
 const probe=process.argv.includes('--probe');
 const cutover=process.argv.includes('--cutover');
 const forward=process.argv.includes('--forward');
-const selectedLanes=['53','54','55','56'].filter(value=>process.argv.includes(`--forward-${value}`));
+const selectedLanes=['53','54','55','56','57'].filter(value=>process.argv.includes(`--forward-${value}`));
 if(process.argv.slice(2).some(arg=>arg.startsWith('--forward')&&arg!=='--forward'&&!selectedLanes.some(lane=>arg===`--forward-${lane}`)))throw new Error('Unknown forward package');
 if(selectedLanes.length>1)throw new Error('Choose one fixed forward package');
 const assessment=selectedLanes.length===1;
@@ -46,6 +46,7 @@ const originalProvenance=forward||assessment?sourceProvenance():null;
 let assessmentEvidence,assessmentPlan,assessmentManifest;
 if(assessment){
   if(!originalProvenance.sourceClean)throw new Error('Fixed forward packaging requires clean committed source');
+  if(lane==='57')writeFileSync(evidencePath,JSON.stringify(bounded.approvedFilesPilotEvidence())+'\n',{mode:0o600});
   const evidence=readFileSync(evidencePath);if(evidence.length>65536)throw new Error('Invalid fixed forward evidence');
   assessmentEvidence=boundedEvidence(JSON.parse(evidence));
   if(existsSync(planPath)){const plan=readFileSync(planPath);if(plan.length>65536)throw new Error('Invalid reviewed fixed forward plan');assessmentPlan=JSON.parse(plan);boundedReview(assessmentPlan,{v1Evidence:assessmentEvidence});}
