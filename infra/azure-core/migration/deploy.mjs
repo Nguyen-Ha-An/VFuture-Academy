@@ -31,6 +31,7 @@ if((['forward-schema','forward-activate'].includes(forward)||assessment)&&['--pr
     if(assessment===`forward-${lane}-apply`){
       const createManifest=(await import(`../../../scripts/azure-core/forward-${lane}-package.mjs`))[`createForward${lane}PackageManifest`];
       const plan=readFileSync(`build/azure-core/private/forward-${lane}-plan.json`);
+      if(lane==='57'&&!plan.equals(readFileSync('build/azure-core/hosted-forward-57-plan.json')))throw new Error('Files pilot apply requires the exact hosted read-only plan receipt');
       if(!forwardApplyReceipt.reviewedPlanSha256||createHash('sha256').update(plan).digest('hex')!==forwardApplyReceipt.reviewedPlanSha256||manifest.reviewedPlanSha256!==forwardApplyReceipt.reviewedPlanSha256)throw new Error('Assessment reviewed plan mismatch');
       createManifest(JSON.parse(plan),{v1Evidence:JSON.parse(readFileSync(`build/azure-core/private/forward-${lane}-v1-evidence.json`,'utf8'))});
     }
@@ -55,6 +56,10 @@ const hostedReceiptPath=(forward||assessment)?`build/azure-core/hosted-${request
 if((forward||assessment)&&!new RegExp(`^${requestedAction}-${receipt.sha256}-[0-9]+-[a-f0-9-]{36}\\.json$`).test(receiptName))throw new Error('Prepared forward receipt does not match requested action/package');
 const run=(args)=>{try{return execFileSync('az',[...args,'--only-show-errors','-o','none'],{stdio:['ignore','pipe','pipe']});}catch{throw new Error(`Azure migration ${args.slice(0,3).join(' ')} failed; inspect permissions/target privately. Raw provider errors suppressed to avoid secret output.`);}};
 if(action==='--prepare') {
+  if(lane==='57'){
+    const executions=az(['containerapp','job','execution','list','--subscription',policy.subscriptionId,'--resource-group',policy.resourceGroup,'--name','vfa-core-migration']);
+    if(!Array.isArray(executions)||executions.some(item=>['Running','Processing','Pending'].includes(item.properties?.status)))throw new Error('A migration job may already be active');
+  }
   // Operator requires Key Vault Secrets Officer and Blob Data Contributor on these Academy resources.
   run(['keyvault','secret','set','--vault-name',vault,'--name',keyName,'--file','build/azure-core/private/migration-package-key.txt','--subscription',policy.subscriptionId]);
   if(configureAuthenticator){
@@ -70,6 +75,14 @@ if(action==='--prepare') {
   console.log('Manual private migration job and encrypted blob prepared. The job has not run. Review the initial rehearsal snapshot and start explicitly.');
 }else if(action==='--start') {
   const job=az(['containerapp','job','show','--subscription',policy.subscriptionId,'--resource-group',policy.resourceGroup,'--name','vfa-core-migration']);
+  if(lane==='57'){
+    const expectedEnvironment=`/subscriptions/${policy.subscriptionId}/resourceGroups/${policy.resourceGroup}/providers/Microsoft.App/managedEnvironments/vfa-core-environment`;
+    const { configuration, environmentId, template } = job.properties;
+    if(String(environmentId).toLowerCase()!==expectedEnvironment.toLowerCase()
+      ||configuration.triggerType!=='Manual'||configuration.replicaRetryLimit!==0
+      ||configuration.manualTriggerConfig?.parallelism!==1||configuration.manualTriggerConfig?.replicaCompletionCount!==1
+      ||configuration.secrets?.length||template.containers.length!==1||template.initContainers?.length)throw new Error('Prepared Files pilot job execution boundary differs');
+  }
   const container=job.properties.template.containers[0],env=container.env;
   if((forward||assessment)&&env.find(e=>e.name==='MIGRATION_RECEIPT_URL')?.value!==`https://${storage}.blob.core.windows.net/migration-receipts/${receiptName}`)throw new Error('Prepared forward receipt destination does not match requested start');
   if(assessment){
@@ -102,7 +115,7 @@ if(action==='--prepare') {
     if(failure.status!=='failed'||!stages.includes(failure.stage)||failure.errorCode!=='MIGRATION_STAGE_FAILED')throw new Error('Invalid diagnostic failure receipt');
     const safe={status:'failed',stage:failure.stage,errorCode:failure.errorCode};
     if(failure.stage==='forward_action'&&failure.childErrorCode==='FORWARD_FAILED')safe.childErrorCode='FORWARD_FAILED';
-    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED','FORWARD_55_FAILED','FORWARD_56_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
+    if(failure.stage==='assessment_action'&&['FORWARD_53_FAILED','FORWARD_54_FAILED','FORWARD_55_FAILED','FORWARD_56_FAILED','FORWARD_57_FAILED'].includes(failure.childErrorCode))safe.childErrorCode=failure.childErrorCode;
     if(/^[0-9A-Z]{5}$/.test(failure.sqlState??''))safe.sqlState=failure.sqlState;
     if(Number.isInteger(failure.childExitCode))safe.childExitCode=failure.childExitCode;
     if(Number.isInteger(failure.httpStatus))safe.httpStatus=failure.httpStatus;

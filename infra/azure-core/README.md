@@ -196,3 +196,28 @@ A hosted protocol error was traced to macOS AppleDouble `._0001_identity.sql` be
 Ordinary BSDtar listing also absorbs AppleDouble members, so `COPYFILE_DISABLE` alone does not make inspection sufficient. Inspection detects BSDtar/libarchive and uses `--options !mac-ext`; GNUtar uses its normal member listing. The macOS regression sets a real ResourceFork xattr, proves unsafe tar emits a hidden sidecar, exercises the actual offline verifier in a temporary workspace, and proves clean creation excludes it. The runtime regression rejects encrypted metadata-bearing archives at `validate_archive`, before extraction or fetching the database credential. The database builder independently accepts only approved regular SQL filenames; its combined SQL/digest is unchanged.
 
 `migration-job.bicep` prefixes the shared `archive-policy.mjs` into the bootstrap command. Deploy the current template rather than copying the bootstrap text alone. No extra module is required inside the encrypted package. Functions ZIP creation excludes the same metadata and validates its raw ZIP listing before publication. Root alone regenerates real release artifacts; all regression fixtures use unique temporary directories.
+
+## Academy Files pilot migration
+
+The `forward-57` lane adds the single Files pilot journal using the existing private job. It pins the pilot SQL, refuses an unexpected PostgreSQL target or catalog, and checks the exact table grants. Service-role defaults are cleared on this table before granting SELECT, INSERT, and UPDATE. The browser roles have no effective access. The lane leaves the previous forward modes and receipts intact.
+
+From a clean, committed Academy source tree with the locked `pg` dependencies, package and verify the read-only plan. Use the existing Academy Azure operator context. The plan and apply steps use the same private job, Key Vault paths, and package and receipt containers.
+
+```sh
+node infra/azure-core/migration/package.mjs --forward-57
+node infra/azure-core/migration/verify-package.mjs
+node infra/azure-core/migration/deploy.mjs --prepare --forward-57-plan
+node infra/azure-core/migration/deploy.mjs --start --forward-57-plan
+```
+
+Wait for the job execution to succeed and run `node infra/azure-core/migration/deploy.mjs --receipt --forward-57-plan`. Review the resulting `build/azure-core/hosted-forward-57-plan.json` against the target and committed source. Copy that exact hosted receipt into the private input path before packaging the apply action.
+
+```sh
+cp build/azure-core/hosted-forward-57-plan.json build/azure-core/private/forward-57-plan.json
+node infra/azure-core/migration/package.mjs --forward-57
+node infra/azure-core/migration/verify-package.mjs
+node infra/azure-core/migration/deploy.mjs --prepare --forward-57-apply
+node infra/azure-core/migration/deploy.mjs --start --forward-57-apply
+```
+
+After successful execution, run `node infra/azure-core/migration/deploy.mjs --receipt --forward-57-apply`. The apply action uses an advisory lock and checks the reviewed target again before executing SQL. It verifies the resulting table and role access before committing and notifying PostgREST. A retry against the exact existing table reports `noop`. If a job fails, check the actual production state through a fresh read-only plan before retrying. Source changes require a plan from the new commit. Follow the [pilot release document](../../docs/deployment/2026-11-28-academy-files-pilot.md) for app wiring and hosted checks.

@@ -8,7 +8,12 @@ vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_APP_URL: 'https://labs.example.
 vi.mock('@/features/public-site/PublicStickyAction', () => ({ PublicStickyAction: () => null }));
 
 
-const mocks = vi.hoisted(() => ({ listResources: vi.fn(), getResource: vi.fn(), listOpportunities: vi.fn(), getOpportunity: vi.fn(), listProjects: vi.fn(), getProject: vi.fn(), getPublicCourse: vi.fn(), listPublicCourses: vi.fn() }));
+const mocks = vi.hoisted(() => ({ listResources: vi.fn(), getResource: vi.fn(), listOpportunities: vi.fn(), getOpportunity: vi.fn(), listProjects: vi.fn(), getProject: vi.fn(), getPublicCourse: vi.fn(), listPublicCourses: vi.fn(), filesPublicUrl: vi.fn() }));
+vi.mock('@/features/resources/files-pilot', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/features/resources/files-pilot')>(),
+  createResourceFilesPilot: () => ({ publicUrl: mocks.filesPublicUrl }),
+}));
+vi.mock('@/lib/supabase/server', () => ({ supabaseService: () => ({}) }));
 vi.mock('next-intl/server', () => ({ getLocale: vi.fn().mockResolvedValue('en'), getTranslations: vi.fn().mockResolvedValue((key: string, values?: Record<string, unknown>) => values ? `${key}:${Object.values(values).join(':')}` : key) }));
 vi.mock('@/features/marketing/public-discovery', () => ({ listPublicResources: mocks.listResources, getPublicResource: mocks.getResource, listPublicOpportunities: mocks.listOpportunities, getPublicOpportunity: mocks.getOpportunity, listPublicProjects: mocks.listProjects, getPublicProject: mocks.getProject }));
 vi.mock('@/features/ecosystem/ui/StaticRichContent', () => ({ StaticRichContent: () => <div>public rich content</div> }));
@@ -32,7 +37,7 @@ import OpportunityPage from '@/app/(public)/opportunities/[opportunityId]/page';
 import ProjectsPage from '@/app/(public)/projects/page';
 import ProjectPage from '@/app/(public)/projects/[projectId]/page';
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
 beforeEach(() => { vi.clearAllMocks(); mocks.getPublicCourse.mockResolvedValue(null); mocks.listPublicCourses.mockResolvedValue([]); });
 
 describe('public discovery pages', () => {
@@ -56,6 +61,27 @@ describe('public discovery pages', () => {
     expect(screen.getByRole('link', { name: 'Worksheet' }).getAttribute('href')).toBe('/api/v1/public/media/asset%20one');
     expect(screen.getByRole('link', { name: /resourceAction/ }).getAttribute('href')).toBe('/app/resources/guide');
   });
+
+  it.each([
+    'https://files.vfuturelabs.org/api/f/academy-guide/v1',
+    'https://files.vfuturelabs.org/api/v1/public/releases/academy-guide/v1/files/691c18e5-628a-48af-8a50-c07025e8a401/open',
+    null,
+  ])(
+    'renders the verified Files PDF link %s alongside legacy attachments',
+    async (url) => {
+      vi.stubEnv('ACADEMY_FILES_PILOT_RESOURCE_ID', 'guide');
+      mocks.filesPublicUrl.mockResolvedValue(url);
+      mocks.getResource.mockResolvedValue({
+        id: 'guide', title: 'Guide', summary: 'Summary', resourceType: 'guide', tags: [], skills: [],
+        pathways: [], publishedAt: null, body: { blocks: [] },
+        attachments: [{ label: 'Worksheet', src: { assetId: 'asset one' } }],
+      });
+      render(await ResourcePage({ params: Promise.resolve({ resourceId: 'guide' }) }));
+      expect(mocks.filesPublicUrl).toHaveBeenCalledWith('guide');
+      expect(screen.queryByRole('link', { name: 'Open PDF' })?.getAttribute('href') ?? null).toBe(url);
+      expect(screen.getByRole('link', { name: 'Worksheet' }).getAttribute('href')).toBe('/api/v1/public/media/asset%20one');
+    },
+  );
 
   it('passes functional opportunity filters and links results publicly', async () => {
     mocks.listOpportunities.mockResolvedValue({ items: [{ id: 'sprint', title: 'Sprint', organization: 'Lab', type: 'hackathon', featured: true, online: true }], total: 1, page: 1, pageSize: 12 });
