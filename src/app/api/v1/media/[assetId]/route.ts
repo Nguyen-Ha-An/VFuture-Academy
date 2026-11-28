@@ -1,3 +1,6 @@
+import {
+  assignmentFileForAsset, checkAssignmentFileOwner, downloadAssignmentFile, usesAssignmentFiles, type AssignmentFile,
+} from '@/features/media/assignment-files';
 import { grantStorageTransferUrl } from '@/features/storage-transfer/grants';
 import { z } from 'zod';
 import { IdSchema, LocaleSchema } from '@/content-engine/schema/common';
@@ -63,6 +66,7 @@ async function canReadSubmissionAsset(
   actor: NonNullable<Awaited<ReturnType<typeof getActor>>>,
   assetId: string,
   ownerId: string,
+  assignment?: AssignmentFile,
 ) {
   if (actor.userId === ownerId) {
     try {
@@ -83,15 +87,18 @@ async function canReadSubmissionAsset(
   });
   if (submissionIds.length) {
     const submissions = await database.from('assignment_submissions')
-      .select('id,user_id,course_version_id,branch_id,branch_scope_known')
+      .select(assignment ? 'id,user_id,course_version_id,branch_id,branch_scope_known,item_id,block_id' : 'id,user_id,course_version_id,branch_id,branch_scope_known')
       .in('id', submissionIds).eq('user_id', ownerId);
     if (submissions.error) throw new Error('Submission history lookup failed');
     for (const value of Array.isArray(submissions.data) ? submissions.data : []) {
       const row = record(value);
       if (row?.user_id !== ownerId || typeof row.id !== 'string' || !submissionIds.includes(row.id)) continue;
+      if (assignment && (row.course_version_id !== assignment.course_version_id || row.item_id !== assignment.item_id
+        || row.block_id !== null || row.branch_scope_known !== true || row.branch_id !== assignment.branch_id)) continue;
       if (await canTeachVersion(database, actor, row.course_version_id, row.branch_scope_known === true ? row.branch_id : null)) return true;
     }
   }
+  if (assignment) return false;
   const exams = await database.rpc('exam_attachment_gradeable_attempts', { p_asset: assetId, p_owner: ownerId });
   if (exams.error) throw new Error('Exam attachment lookup failed');
   for (const value of Array.isArray(exams.data) ? exams.data : []) {
@@ -127,6 +134,20 @@ export const GET = withHandler(async (request, context) => {
     if (!data || typeof data.owner_id !== 'string' || typeof data.bucket !== 'string'
       || typeof data.path !== 'string' || data.path.startsWith('direct-pending/')) {
       throw new ApiError(404, 'NOT_FOUND', 'Media not found');
+    }
+
+    if (usesAssignmentFiles(data.path)) {
+      const notFound = () => new ApiError(404, 'NOT_FOUND', 'Media not found');
+      if (assessment || data.bucket !== 'submissions') throw notFound();
+      const attachment = await assignmentFileForAsset(database, data.owner_id, assetId, data.path);
+      if (actor.userId === data.owner_id) {
+        try { await checkAssignmentFileOwner(database, attachment); }
+        catch (error) {
+          if (error instanceof ApiError && (error.status === 403 || error.status === 404)) throw notFound();
+          throw error;
+        }
+      } else if (!await canReadSubmissionAsset(database, actor, assetId, data.owner_id, attachment)) throw notFound();
+      return downloadAssignmentFile(attachment);
     }
 
     // Submission assets require grading authority over the immutable submission school;

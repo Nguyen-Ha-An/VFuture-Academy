@@ -132,6 +132,7 @@ describe('applyMigrations', () => {
       '20261120000500_sequential_exam_progress.sql',
       '20261120000600_index_public_media_references.sql',
       '20261120000700_bound_quiz_rewards.sql',
+      '20261128000001_academy_private_assignment_files.sql',
     ];
     const files = migrationFiles(migrationsDir);
     const prefixes = files.map((filename) => filename.split('_')[0]);

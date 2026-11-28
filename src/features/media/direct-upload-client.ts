@@ -4,7 +4,7 @@ import { MAX_SUBMISSION_UPLOAD_MB } from '@/content-engine/schema/uploads';
 type UploadContext = { purpose: 'avatar' | 'project_cover' | 'submission'; courseId?: string; itemId?: string; blockId?: string | null; examAttemptId?: string; quizId?: string; rootQuestionId?: string; questionId?: string };
 type UploadOptions = { signal?: AbortSignal; onProgress?: (progress: UploadProgress) => void; fetchImpl?: typeof fetch };
 export type DirectUploadedFile = UploadedFile & { url?: string };
-type Permit = { uploadId: string; uploadUrl?: string; method?: 'PUT'; file?: DirectUploadedFile };
+type Permit = { uploadId: string; uploadUrl?: string; method?: 'PUT'; provider?: 'vfuture-files'; file?: DirectUploadedFile };
 export class DirectUploadError extends Error {
   constructor(readonly code: string, message: string, readonly status = 0) { super(message); this.name = 'DirectUploadError'; }
 }
@@ -89,6 +89,7 @@ async function performDirectUpload(file: File, context: UploadContext, options: 
   const uploadId = previous?.context === key ? previous.id : crypto.randomUUID();
   retries.set(file, { context: key, id: uploadId });
   let reservationAttempted = false;
+  let assignmentPath: string | undefined;
   const json = async <T>(url: string, body: unknown) => unwrap<T>(await fetchImpl(url, {
     method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: options.signal,
   }));
@@ -110,6 +111,24 @@ async function performDirectUpload(file: File, context: UploadContext, options: 
       catch (error) { if (!(error instanceof DirectUploadError) && !options.signal?.aborted && attempt === 0) continue; throw error; }
       if (permit.file) return finish(permit.file);
       if (typeof permit.uploadUrl !== 'string' || permit.method !== 'PUT') throw new DirectUploadError('INVALID_RESPONSE', 'Upload permit is invalid');
+      if (permit.provider === 'vfuture-files') {
+        const expectedPath = `/api/v1/uploads/${uploadId}/assignment-file`;
+        if (permit.uploadId !== uploadId || permit.uploadUrl !== expectedPath) {
+          throw new DirectUploadError('INVALID_RESPONSE', 'Assignment file permit is invalid');
+        }
+        assignmentPath = expectedPath;
+        try {
+          const uploaded = await fetchImpl(assignmentPath, {
+            method: 'PUT', credentials: 'same-origin', headers: { 'content-type': file.type },
+            body: file, signal: options.signal,
+          });
+          return finish(await unwrap<DirectUploadedFile>(uploaded));
+        } catch (error) {
+          assertNotAborted(options.signal);
+          if (attempt === 0 && (!(error instanceof DirectUploadError) || error.status >= 500)) continue;
+          throw error;
+        }
+      }
       assertNotAborted(options.signal);
       try {
         if (options.onProgress && typeof XMLHttpRequest !== 'undefined') await transferWithProgress(permit.uploadUrl, file, options);
@@ -142,7 +161,7 @@ async function performDirectUpload(file: File, context: UploadContext, options: 
     const terminal = error instanceof DirectUploadError && ['UPLOAD_EXPIRED', 'CHECKSUM_MISMATCH', 'UPLOAD_SIZE_MISMATCH', 'UNSUPPORTED_MEDIA'].includes(error.code);
     if (options.signal?.aborted || terminal) {
       retries.delete(file);
-      if (reservationAttempted) await fetchImpl(`/api/v1/uploads/${uploadId}`, { method: 'DELETE', credentials: 'same-origin', keepalive: true }).catch(() => undefined);
+      if (reservationAttempted) await fetchImpl(assignmentPath ?? `/api/v1/uploads/${uploadId}`, { method: 'DELETE', credentials: 'same-origin', keepalive: true }).catch(() => undefined);
       if (options.signal?.aborted) throw cancelled();
     }
     if (error instanceof DirectUploadError) throw error;
