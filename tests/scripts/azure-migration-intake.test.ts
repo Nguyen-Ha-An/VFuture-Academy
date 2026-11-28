@@ -5,12 +5,12 @@ import { REPAIR_MIGRATIONS } from '../../infra/azure-core/archive-policy.mjs';
 it.each(['._0001_identity.sql','_0001_identity.sql','.0001_identity.sql','.hidden.sql','manual.sql','00001_identity.sql','2026090606594_identity.sql','0001_identity.SQL','__MACOSX','.DS_Store','._notes.md'])('rejects metadata or unknown SQL rather than silently selecting around it: %s',name=>{
   expect(()=>ownedMigrationNames(['0001_identity.sql',name])).toThrow('Unexpected migration directory entry');
 });
-it('appends the seven repairs after the exact five-file teacher release',()=>{
+it('appends the private assignment journal after the fixed teacher release and repairs',()=>{
   const names=readdirSync(new URL('../../supabase/migrations/',import.meta.url));
   const eligible=ownedMigrationNames(names);
-  expect(eligible).toHaveLength(66);
+  expect(eligible).toHaveLength(67);
   expect(eligible.slice(54,59)).toEqual(['20261106010000_course_teaching_assignments.sql','20261106011000_exam_teaching_scope.sql','20261106020000_teaching_grading_guards.sql','20261106030000_teaching_report_scope.sql','20261106040000_management_teaching_scope.sql']);
-  expect(eligible.slice(59)).toEqual(REPAIR_MIGRATIONS);
+  expect(eligible.slice(59)).toEqual([...REPAIR_MIGRATIONS, '20261128000001_academy_private_assignment_files.sql']);
   expect(ownedMigrationNames([...eligible].reverse())).toEqual(eligible);
   const artifact=buildAzureSchema();
   expect(artifact.receipt.migrations.map(migration=>migration.file)).toEqual(eligible);
